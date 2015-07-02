@@ -1,0 +1,3 @@
+[submodule "vendor/ceph-ansible"]
+	path = vendor/ceph-ansible
+	url = https://github.com/ceph/ceph-ansible
