@@ -13,3 +13,6 @@ provision:
 
 ssh:
 	vagrant ssh mon0
+
+build:
+	godep go install ./
