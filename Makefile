@@ -8,5 +8,8 @@ stop:
 
 restart: stop start
 
+provision:
+	vagrant provision
+
 ssh:
 	vagrant ssh mon0

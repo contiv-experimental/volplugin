@@ -6,5 +6,6 @@
     - file: path=/opt/golang/src/github.com/contiv state=directory
     - copy: 
         dest: /etc/profile.d/00golang.sh
-        content: "export PATH=/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
+        content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
     - file: src=/vagrant dest=/opt/golang/src/github.com/contiv/volplugin state=link
+    - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
