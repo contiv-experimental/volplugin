@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/symphony/pkg/cephdriver"
+	"github.com/contiv/volplugin/cephdriver"
 	"github.com/docker/docker/pkg/plugins"
 	"github.com/gorilla/mux"
 )

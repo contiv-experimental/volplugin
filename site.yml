@@ -1,5 +1,10 @@
 - hosts: all
   sudo: true
   tasks:
-    - shell: curl https://experimental.docker.com | sudo bash
-    - shell: curl -sL https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz 2>/dev/null | tar -xvz -C /usr/local
+    - shell: creates=/usr/bin/docker curl https://experimental.docker.com | sudo bash
+    - shell: creates=/usr/local/go/bin/go curl -sL https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz 2>/dev/null | tar -xvz -C /usr/local
+    - file: path=/opt/golang/src/github.com/contiv state=directory
+    - copy: 
+        dest: /etc/profile.d/00golang.sh
+        content: "export PATH=/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
+    - file: src=/vagrant dest=/opt/golang/src/github.com/contiv/volplugin state=link
