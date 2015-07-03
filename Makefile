@@ -1,6 +1,6 @@
 CEPH_ANSIBLE_DIR=${PWD}/vendor/ceph-ansible
 
-start:
+start: install-ansible
 	vagrant up
 
 stop:
@@ -16,3 +16,6 @@ ssh:
 
 build:
 	godep go install ./
+
+install-ansible:
+	[[ -n `which ansible` ]] || sudo pip install ansible
