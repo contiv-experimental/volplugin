@@ -35,7 +35,7 @@ ansible_provision = proc do |ansible|
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
-    monitor_interface: 'eth1',
+    monitor_interface: 'enp0s8',
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
   }
@@ -119,12 +119,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           # It is set when the base box is made in our case ubuntu/trusty64.
           # Be careful while changing the box.
           vb.customize ['storageattach', :id,
-                        '--storagectl', 'SATAController',
+                        '--storagectl', 'SATA Controller',
                         '--port', 3 + d,
                         '--device', 0,
                         '--type', 'hdd',
                         '--medium', "disk-#{i}-#{d}.vdi"]
         end
+
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       osd.vm.provider :vmware_fusion do |v|

@@ -4,7 +4,10 @@
     - shell: creates=/usr/bin/docker curl https://experimental.docker.com | sudo bash
     - shell: creates=/usr/local/go/bin/go curl -sL https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz 2>/dev/null | tar -xvz -C /usr/local
     - file: path=/opt/golang/src/github.com/contiv state=directory
-    - apt: name=build-essential
+    - yum: "name={{ item }}"
+      with_items:
+        - git
+        - mercurial
     - copy: 
         dest: /etc/profile.d/00golang.sh
         content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
