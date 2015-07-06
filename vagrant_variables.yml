@@ -8,7 +8,7 @@ rgw_vms: 0
 client_vms: 0
 
 # SUBNET TO USE FOR THE VMS
-subnet: 192.168.42
+subnet: 192.168.24
 
 # MEMORY
 memory: 1024

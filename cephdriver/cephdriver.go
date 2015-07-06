@@ -107,7 +107,6 @@ func (self *CephDriver) unmapImage(spec CephVolumeSpec) error {
 func (self *CephDriver) volumeExists(spec CephVolumeSpec) (bool, error) {
 	out, err := exec.Command("rbd", "ls", spec.PoolName).CombinedOutput()
 	if err != nil {
-		fmt.Println("hi", err)
 		return false, err
 	}
 

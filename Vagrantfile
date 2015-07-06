@@ -17,7 +17,7 @@ BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
 
 ansible_provision = proc do |ansible|
-  ansible.playbook = 'vendor/ceph-ansible/site.yml'
+  ansible.playbook = 'ansible/site.yml'
   # Note: Can't do ranges like mon[0-2] in groups because
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
@@ -40,10 +40,6 @@ ansible_provision = proc do |ansible|
     public_network: "#{SUBNET}.0/24",
   }
   ansible.limit = 'all'
-end
-
-ansible_provision_docker = proc do |ansible|
-  ansible.playbook = 'site.yml'
 end
 
 def create_vmdk(name, size)
@@ -106,7 +102,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
       end
-      mon.vm.provision 'ansible', &ansible_provision_docker
     end
   end
 
@@ -142,7 +137,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Run the provisioner after the last machine comes up
-      osd.vm.provision 'ansible', &ansible_provision if i == (NOSDS - 1)
+      config.vm.provision 'ansible', &ansible_provision if i == (NOSDS - 1)
     end
   end
 end

@@ -1,0 +1,111 @@
+---
+- name: install dependencies
+  yum: >
+    name={{ item }}
+    state=present
+  with_items:
+    - python-pycurl
+    - ntp
+    - hdparm
+    - yum-plugin-priorities.noarch
+    - epel-release
+
+- name: install the Ceph stable repository key
+  rpm_key: >
+    key={{ ceph_stable_key }}
+    state=present
+  when: ceph_stable
+
+- name: install the Ceph development repository key
+  rpm_key: >
+    key={{ ceph_dev_key }}
+    state=present
+  when: ceph_dev
+
+- name: install Inktank Ceph Enterprise repository key
+  rpm_key: >
+    key={{ ceph_stable_ice_temp_path }}/release.asc
+    state=present
+  when: ceph_stable_ice
+
+- name: install red hat storage repository key
+  rpm_key: >
+    key={{ ceph_stable_rh_storage_mount_path }}/RPM-GPG-KEY-redhat-release
+    state=present
+  when: ceph_stable_rh_storage
+
+- name: add Ceph stable repository
+  yum: name=http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
+  changed_when: false
+  when: ceph_stable
+
+- name: add Ceph development repository
+  yum: name=http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
+  changed_when: false
+  when: ceph_dev
+
+- name: add Inktank Ceph Enterprise repository
+  template: >
+    src=redhat_ice_repo.j2
+    dest=/etc/yum.repos.d/ice.repo
+    owner=root
+    group=root
+    mode=0644
+  when: ceph_stable_ice
+
+- name: add red hat storage repository
+  template: >
+    src=redhat_storage_repo.j2
+    dest=/etc/yum.repos.d/rh_storage.repo
+    owner=root
+    group=root
+    mode=0644
+  when: ceph_stable_rh_storage
+
+- name: install Ceph
+  yum: >
+    name=ceph
+    state=latest
+  when: not ceph_stable_rh_storage
+
+- name: install red hat storage ceph mon
+  yum: >
+    name={{ item }}
+    state=latest
+  with_items:
+    - ceph
+    - ceph-mon
+  when:
+    ceph_stable_rh_storage and
+    mon_group_name in group_names
+
+- name: install red hat storage ceph osd
+  yum: >
+    name={{ item }}
+    state=latest
+  with_items:
+    - ceph
+    - ceph-osd
+  when:
+    ceph_stable_rh_storage and
+    osd_group_name in group_names
+
+- name: install Inktank Ceph Enterprise RBD Kernel modules
+  yum: >
+    name={{ item }}
+  with_items:
+    - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
+    - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
+  when: ceph_stable_ice
+
+- name: configure rbd clients directories
+  file: >
+    path={{ item }}
+    state=directory
+    owner=qemu
+    group=libvirtd
+    mode=0755
+  with_items:
+   - rbd_client_log_path
+   - rbd_client_admin_socket_path
+  when: rbd_client_directories
