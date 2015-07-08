@@ -5,7 +5,7 @@ mon_vms: 3
 osd_vms: 3
 mds_vms: 0
 rgw_vms: 0
-client_vms: 0
+client_vms: 1
 
 # SUBNET TO USE FOR THE VMS
 subnet: 192.168.24
@@ -20,4 +20,4 @@ memory: 1024
 # For more boxes have a look at:
 #   - https://atlas.hashicorp.com/boxes/search?utf8=✓&sort=&provider=virtualbox&q=
 #   - https://download.gluster.org/pub/gluster/purpleidea/vagrant/
-vagrant_box: chef/centos-7.1
+vagrant_box: ubuntu/trusty64
