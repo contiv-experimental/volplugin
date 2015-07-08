@@ -43,8 +43,21 @@ func main() {
 		panic(err)
 	}
 
-	driver := cephdriver.NewCephDriver()
+	router := configureRouter(poolName, size)
 
+	os.Remove("/usr/share/docker/plugins/volplugin.sock")
+
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: "/usr/share/docker/plugins/volplugin.sock", Net: "unix"})
+	if err != nil {
+		panic(err)
+	}
+
+	http.Serve(l, router)
+	l.Close()
+}
+
+func configureRouter(poolName string, size uint64) *mux.Router {
+	driver := cephdriver.NewCephDriver()
 	router := mux.NewRouter()
 	s := router.Headers("Accept", "application/vnd.docker.plugins.v1+json").
 		Methods("POST").Subrouter()
@@ -61,15 +74,7 @@ func main() {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
 	}
 
-	os.Remove("/usr/share/docker/plugins/volplugin.sock")
-
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: "/usr/share/docker/plugins/volplugin.sock", Net: "unix"})
-	if err != nil {
-		panic(err)
-	}
-
-	http.Serve(l, router)
-	l.Close()
+	return router
 }
 
 func nilAction(w http.ResponseWriter, r *http.Request) {}
