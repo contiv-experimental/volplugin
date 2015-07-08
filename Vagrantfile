@@ -99,6 +99,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
+
       mon.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
       end
