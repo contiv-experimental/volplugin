@@ -28,5 +28,6 @@ volplugin:
 
 volplugin-start:
 	pkill volplugin || exit 0
+	sleep 1
 	godep go install -v .
 	volplugin rbd 10
