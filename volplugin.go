@@ -55,6 +55,10 @@ func main() {
 		panic(err)
 	}
 
+	if DEBUG != "" {
+		log.SetLevel(log.DebugLevel)
+	}
+
 	http.Serve(l, configureRouter(poolName, size))
 	l.Close()
 }
