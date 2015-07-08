@@ -55,7 +55,7 @@ func (self *CephDriver) volumeCreate(spec CephVolumeSpec) error {
 	out, err := exec.Command("rbd", "create", spec.Path(), "--size",
 		strconv.Itoa(int(spec.VolumeSize))).CombinedOutput()
 
-	log.Debug(string(out))
+	log.Debug(strings.TrimSpace(string(out)))
 
 	if err != nil {
 		return fmt.Errorf("Error creating Ceph RBD image(name: %s, size: %d). Err: %v\n",
@@ -69,9 +69,8 @@ func (self *CephDriver) mapImage(spec CephVolumeSpec) error {
 	// Temporarily map the image to create a filesystem
 	out, err := exec.Command("rbd", "map", spec.Path()).CombinedOutput()
 
-	log.Debug(string(out))
-
 	if err != nil {
+		log.Debug(string(out))
 		return fmt.Errorf("Error mapping the image %s. Error: %v", spec.Path(), err)
 	}
 
@@ -82,9 +81,8 @@ func (self *CephDriver) mkfsVolume(spec CephVolumeSpec) error {
 	// Create ext4 filesystem on the device. this will take a while
 	out, err := exec.Command("mkfs.ext4", "-m0", self.DevicePath(spec)).CombinedOutput()
 
-	log.Debug(string(out))
-
 	if err != nil {
+		log.Debug(string(out))
 		return fmt.Errorf("Error creating ext4 filesystem on %s. Error: %v", self.DevicePath(spec), err)
 	}
 
@@ -95,9 +93,8 @@ func (self *CephDriver) unmapImage(spec CephVolumeSpec) error {
 	// finally, Unmap the rbd image
 	out, err := exec.Command("rbd", "unmap", self.DevicePath(spec)).CombinedOutput()
 
-	log.Debug(string(out))
-
 	if err != nil {
+		log.Debug(string(out))
 		return fmt.Errorf("Error unmapping the device %s. Error: %v", self.DevicePath(spec), err)
 	}
 
@@ -223,9 +220,8 @@ func (self *CephDriver) UnmountVolume(spec CephVolumeSpec) error {
 func (self *CephDriver) DeleteVolume(spec CephVolumeSpec) error {
 	out, err := exec.Command("rbd", "rm", spec.Path()).CombinedOutput()
 
-	log.Debug(string(out))
-
 	if err != nil {
+		log.Debug(string(out))
 		return fmt.Errorf("Error deleting Ceph RBD image(name: %s). Err: %v", spec.Path(), err)
 	}
 
