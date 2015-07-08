@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -60,7 +61,15 @@ func main() {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
 	}
 
-	http.ListenAndServe("localhost:5454", router)
+	os.Remove("/usr/share/docker/plugins/volplugin.sock")
+
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: "/usr/share/docker/plugins/volplugin.sock", Net: "unix"})
+	if err != nil {
+		panic(err)
+	}
+
+	http.Serve(l, router)
+	l.Close()
 }
 
 func nilAction(w http.ResponseWriter, r *http.Request) {}
