@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,6 +18,8 @@ import (
 )
 
 var DEBUG = os.Getenv("DEBUG")
+
+const BASEPATH = "/usr/share/docker/plugins"
 
 // why these types aren't in docker is beyond comprehension
 // pulled from calavera's volumes api
@@ -32,27 +35,27 @@ type VolumeResponse struct {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Printf("Usage: %s [pool name] [image size]\n", os.Args[0])
+	if len(os.Args) != 4 {
+		fmt.Printf("Usage: %s [driver name] [pool name] [image size]\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	poolName := os.Args[1]
-	size, err := strconv.ParseUint(os.Args[2], 10, 64)
+	driverName := os.Args[1]
+	poolName := os.Args[2]
+	size, err := strconv.ParseUint(os.Args[3], 10, 64)
 	if err != nil {
 		panic(err)
 	}
 
-	router := configureRouter(poolName, size)
+	driverPath := path.Join(BASEPATH, driverName) + ".sock"
+	os.Remove(driverPath)
 
-	os.Remove("/usr/share/docker/plugins/volplugin.sock")
-
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: "/usr/share/docker/plugins/volplugin.sock", Net: "unix"})
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: driverPath, Net: "unix"})
 	if err != nil {
 		panic(err)
 	}
 
-	http.Serve(l, router)
+	http.Serve(l, configureRouter(poolName, size))
 	l.Close()
 }
 
@@ -66,7 +69,7 @@ func configureRouter(poolName string, size uint64) *mux.Router {
 	s.HandleFunc("/Plugin.Deactivate", nilAction)
 	s.HandleFunc("/VolumeDriver.Create", create(driver, poolName, uint(size)))
 	s.HandleFunc("/VolumeDriver.Remove", nilAction)
-	s.HandleFunc("/VolumeDriver.Path", path(driver, poolName))
+	s.HandleFunc("/VolumeDriver.Path", getPath(driver, poolName))
 	s.HandleFunc("/VolumeDriver.Mount", mount(driver, poolName))
 	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver, poolName))
 
@@ -127,7 +130,7 @@ func create(driver *cephdriver.CephDriver, poolName string, size uint) func(http
 	}
 }
 
-func path(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWriter, *http.Request) {
+func getPath(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
