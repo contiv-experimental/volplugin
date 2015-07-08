@@ -15,7 +15,7 @@ ssh:
 	vagrant ssh mon0
 
 build:
-	godep go install ./
+	godep go install -v ./
 
 install-ansible:
 	[[ -n `which ansible` ]] || sudo pip install ansible
