@@ -13,6 +13,10 @@
         content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
     - file: src=/vagrant dest=/opt/golang/src/github.com/contiv/volplugin state=link
     - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
+    - file: path=/usr/share/docker/plugins state=directory
+    - copy:
+        dest: /usr/share/docker/plugins/volplugin.spec
+        content: "http://127.0.0.1:5454"
   roles:
   - ceph-mon
   - ceph-restapi
