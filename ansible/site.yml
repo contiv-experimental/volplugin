@@ -8,6 +8,7 @@
       with_items:
         - git
         - mercurial
+        - librbd-dev
     - copy: 
         dest: /etc/profile.d/00golang.sh
         content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
