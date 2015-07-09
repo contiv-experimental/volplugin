@@ -5,7 +5,7 @@ mon_vms: 3
 osd_vms: 3
 mds_vms: 0
 rgw_vms: 0
-client_vms: 1
+client_vms: 0
 
 # SUBNET TO USE FOR THE VMS
 subnet: 192.168.24
