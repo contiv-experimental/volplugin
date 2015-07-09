@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/librbd"
 )
 
 func readWriteTest(mountDir string) error {
@@ -42,17 +43,29 @@ func readWriteTest(mountDir string) error {
 	}
 	log.Infof("Read back: %s", string(rb))
 
+	file.Close()
+
 	return nil
 }
 
 func TestMountUnmountVolume(t *testing.T) {
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a new driver
-	cephDriver := NewCephDriver()
-	volumeSpec := CephVolumeSpec{PoolName: "rbd", VolumeName: "pithos1234", VolumeSize: 10}
+	cephDriver, err := NewCephDriver(config.MonitorIP, config.UserName, config.Secret, "rbd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volumeSpec := CephVolumeSpec{VolumeName: "pithos1234", VolumeSize: 10240000}
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	cephDriver.UnmountVolume(volumeSpec)
+	finished := make(chan bool)
+	cephDriver.UnmountVolume(volumeSpec, nil)
 	cephDriver.DeleteVolume(volumeSpec)
 
 	if err := cephDriver.CreateVolume(volumeSpec); err != nil {
@@ -69,9 +82,11 @@ func TestMountUnmountVolume(t *testing.T) {
 	}
 
 	// unmount the volume
-	if err := cephDriver.UnmountVolume(volumeSpec); err != nil {
+	if err := cephDriver.UnmountVolume(volumeSpec, finished); err != nil {
 		t.Fatalf("Error unmounting the volume. Err: %v", err)
 	}
+
+	<-finished
 
 	if err := cephDriver.DeleteVolume(volumeSpec); err != nil {
 		t.Fatalf("Error deleting the volume: %v", err)
@@ -79,13 +94,21 @@ func TestMountUnmountVolume(t *testing.T) {
 }
 
 func TestRepeatedMountUnmount(t *testing.T) {
+	finished := make(chan bool)
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a new driver
-	cephDriver := NewCephDriver()
+	cephDriver, err := NewCephDriver(config.MonitorIP, config.UserName, config.Secret, "rbd")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	volumeSpec := CephVolumeSpec{
 		VolumeName: "pithos1234",
-		VolumeSize: 10,
-		PoolName:   "rbd",
+		VolumeSize: 10240000,
 	}
 	// Create a volume
 	if err := cephDriver.CreateVolume(volumeSpec); err != nil {
@@ -104,9 +127,10 @@ func TestRepeatedMountUnmount(t *testing.T) {
 		}
 
 		// unmount the volume
-		if err := cephDriver.UnmountVolume(volumeSpec); err != nil {
+		if err := cephDriver.UnmountVolume(volumeSpec, finished); err != nil {
 			t.Fatalf("Error unmounting the volume. Err: %v", err)
 		}
+		<-finished
 	}
 
 	// delete the volume

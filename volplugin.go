@@ -13,6 +13,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/cephdriver"
+	"github.com/contiv/volplugin/librbd"
 	"github.com/docker/docker/pkg/plugins"
 	"github.com/gorilla/mux"
 )
@@ -64,18 +65,27 @@ func main() {
 }
 
 func configureRouter(poolName string, size uint64) *mux.Router {
-	driver := cephdriver.NewCephDriver()
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		panic(err)
+	}
+
+	driver, err := cephdriver.NewCephDriver(config.MonitorIP, config.UserName, config.Secret, poolName)
+	if err != nil {
+		panic(err)
+	}
+
 	router := mux.NewRouter()
 	s := router.Headers("Accept", "application/vnd.docker.plugins.v1+json").
 		Methods("POST").Subrouter()
 
 	s.HandleFunc("/Plugin.Activate", activate)
 	s.HandleFunc("/Plugin.Deactivate", nilAction)
-	s.HandleFunc("/VolumeDriver.Create", create(driver, poolName, uint(size)))
+	s.HandleFunc("/VolumeDriver.Create", create(driver, size))
 	s.HandleFunc("/VolumeDriver.Remove", nilAction)
-	s.HandleFunc("/VolumeDriver.Path", getPath(driver, poolName))
-	s.HandleFunc("/VolumeDriver.Mount", mount(driver, poolName))
-	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver, poolName))
+	s.HandleFunc("/VolumeDriver.Path", getPath(driver))
+	s.HandleFunc("/VolumeDriver.Mount", mount(driver))
+	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver))
 
 	if DEBUG != "" {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
@@ -100,7 +110,7 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func create(driver *cephdriver.CephDriver, poolName string, size uint) func(http.ResponseWriter, *http.Request) {
+func create(driver *cephdriver.CephDriver, size uint64) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -115,7 +125,6 @@ func create(driver *cephdriver.CephDriver, poolName string, size uint) func(http
 
 		volSpec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
-			PoolName:   poolName,
 			VolumeSize: size,
 		}
 
@@ -134,7 +143,7 @@ func create(driver *cephdriver.CephDriver, poolName string, size uint) func(http
 	}
 }
 
-func getPath(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWriter, *http.Request) {
+func getPath(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -149,10 +158,9 @@ func getPath(driver *cephdriver.CephDriver, poolName string) func(http.ResponseW
 
 		volspec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
-			PoolName:   poolName,
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -162,7 +170,7 @@ func getPath(driver *cephdriver.CephDriver, poolName string) func(http.ResponseW
 	}
 }
 
-func mount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWriter, *http.Request) {
+func mount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -177,7 +185,6 @@ func mount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWri
 
 		volspec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
-			PoolName:   poolName,
 		}
 
 		if err := driver.MountVolume(volspec); err != nil {
@@ -185,7 +192,7 @@ func mount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWri
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -195,7 +202,7 @@ func mount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWri
 	}
 }
 
-func unmount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseWriter, *http.Request) {
+func unmount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -210,15 +217,18 @@ func unmount(driver *cephdriver.CephDriver, poolName string) func(http.ResponseW
 
 		volspec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
-			PoolName:   poolName,
 		}
 
-		if err := driver.UnmountVolume(volspec); err != nil {
+		finished := make(chan bool)
+
+		if err := driver.UnmountVolume(volspec, finished); err != nil {
 			httpError(w, "Could not mount image", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec)})
+		<-finished
+
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
