@@ -1,2 +1,3 @@
 *.vdi
 .vagrant
+ansible/fetch/*
