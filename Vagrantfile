@@ -30,12 +30,17 @@ ansible_provision = proc do |ansible|
     'clients'     => (0..CLIENTS - 1).map { |j| "client#{j}" }
   }
 
+  proxy_env = { }
+
+  %w[http_proxy https_proxy].each do |name|
+    if ENV[name]
+      proxy_env[name] = ENV[name]
+    end
+  end
+
   # In a production deployment, these should be secret
   ansible.extra_vars = {
-    proxy_env: {
-      https_proxy: ENV["http_proxy"],
-      http_proxy: ENV["https_proxy"],
-    },
+    proxy_env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
