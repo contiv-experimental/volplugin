@@ -1,3 +1,10 @@
+// Package librbd provides functionality to interact with Ceph RADOS block device (RBD)
+// subsystem and underlying kernel support. It requires the librados and librbd
+// libraries to function.
+//
+// No operations are handled under lock; this is a deliberate design decision
+// that allows you to implement the locks in the distributed fashion of your
+// choice.
 package librbd
 
 // #cgo LDFLAGS: -lrbd -lrados
@@ -152,10 +159,10 @@ func (p *Pool) List() ([]string, error) {
 	}()
 
 	// FIXME number of entries, but it's an undocumented call so I don't know for sure
-	size_t := C.size_t(1024 * 1024)
+	sizeT := C.size_t(1024 * 1024)
 
 	var i C.int
-	if i = C.rbd_list(p.ioctx, list, &size_t); i < 0 {
+	if i = C.rbd_list(p.ioctx, list, &sizeT); i < 0 {
 		return nil, strerror(i)
 	}
 
