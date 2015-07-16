@@ -12,7 +12,11 @@ provision:
 ssh:
 	vagrant ssh mon0
 
-build:
+golint:
+	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
+	golint ./...
+
+build: golint
 	godep go install -v ./
 
 install-ansible:
