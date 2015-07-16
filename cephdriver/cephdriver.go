@@ -169,7 +169,7 @@ func (self *CephDriver) UnmountVolume(spec CephVolumeSpec) error {
 	//
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
-	if err := syscall.Unmount(volumeDir, syscall.MNT_FORCE); err != nil && err != syscall.ENOENT {
+	if err := syscall.Unmount(volumeDir, syscall.MNT_DETACH); err != nil && err != syscall.ENOENT {
 		return fmt.Errorf("Failed to unmount %q: %v", volumeDir, err)
 	}
 
