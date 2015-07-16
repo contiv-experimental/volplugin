@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/librbd"
@@ -81,7 +80,7 @@ func (self *CephDriver) mkfsVolume(devicePath string) error {
 }
 
 func (self *CephDriver) unmapImage(volumeName string) error {
-	return self.pool.UnMapDevice(volumeName)
+	return self.pool.UnmapDevice(volumeName)
 }
 
 func (self *CephDriver) volumeExists(volumeName string) (bool, error) {
@@ -161,7 +160,7 @@ func (self *CephDriver) MountVolume(spec CephVolumeSpec) error {
 }
 
 // Unount a Ceph volume, remove the mount directory and unmap the RBD device
-func (self *CephDriver) UnmountVolume(spec CephVolumeSpec, finish chan bool) error {
+func (self *CephDriver) UnmountVolume(spec CephVolumeSpec) error {
 	// formatted image name
 	// Directory to mount the volume
 	dataStoreDir := filepath.Join(self.mountBase, self.PoolName)
@@ -175,7 +174,7 @@ func (self *CephDriver) UnmountVolume(spec CephVolumeSpec, finish chan bool) err
 	//
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
-	if err := syscall.Unmount(volumeDir, syscall.MNT_DETACH); err != nil && err != syscall.ENOENT {
+	if err := syscall.Unmount(volumeDir, syscall.MNT_FORCE); err != nil && err != syscall.ENOENT {
 		return fmt.Errorf("Failed to unmount %q: %v", volumeDir, err)
 	}
 
@@ -188,20 +187,9 @@ func (self *CephDriver) UnmountVolume(spec CephVolumeSpec, finish chan bool) err
 		return fmt.Errorf("error removing %q directory: %v", volumeDir, err)
 	}
 
-	go func() {
-		var err error
-		i := 0
-		for i < 100 {
-			// FIXME protect this with some kind of a lock
-			time.Sleep(100 * time.Millisecond)
-			if err = self.unmapImage(spec.VolumeName); err == nil {
-				break
-			}
-			i++
-		}
-
-		finish <- true
-	}()
+	if err := self.unmapImage(spec.VolumeName); err != os.ErrNotExist {
+		return err
+	}
 
 	return nil
 }

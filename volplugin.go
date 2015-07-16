@@ -219,14 +219,10 @@ func unmount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Requ
 			VolumeName: vr.Name,
 		}
 
-		finished := make(chan bool)
-
-		if err := driver.UnmountVolume(volspec, finished); err != nil {
+		if err := driver.UnmountVolume(volspec); err != nil {
 			httpError(w, "Could not mount image", err)
 			return
 		}
-
-		<-finished
 
 		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
 		if err != nil {

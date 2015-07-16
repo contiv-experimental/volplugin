@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -166,8 +167,10 @@ func (p *Pool) List() ([]string, error) {
 
 func (p *Pool) findDevice(imageName string) (string, error) {
 	fi, err := ioutil.ReadDir("/sys/bus/rbd/devices")
-	if err != nil {
+	if err != nil && err != os.ErrNotExist {
 		return "", err
+	} else if err == os.ErrNotExist {
+		return "", fmt.Errorf("Could not locate devices directory")
 	}
 
 	for _, f := range fi {
@@ -194,7 +197,7 @@ func (p *Pool) findDevice(imageName string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Device for mapped image %s/%s not found", p.poolName, imageName)
+	return "", os.ErrNotExist
 }
 
 func modprobeRBD() error {
@@ -231,7 +234,7 @@ func (p *Pool) MapDevice(monIP, username, secret, imageName string) (string, err
 
 // UnmapDevice removes a RBD device. Given an image name, it will locate the
 // device and unmap it. Returns an error on any failure.
-func (p *Pool) UnMapDevice(imageName string) error {
+func (p *Pool) UnmapDevice(imageName string) error {
 	devName, err := p.findDevice(imageName)
 	if err != nil {
 		return err
@@ -239,16 +242,33 @@ func (p *Pool) UnMapDevice(imageName string) error {
 
 	devNum := strings.TrimPrefix(devName, "/dev/rbd")
 
+	if _, err := os.Stat(devName); err != nil {
+		println("here")
+		return os.ErrNotExist
+	}
+
+	if _, err := os.Stat("/sys/bus/rbd/remove"); err != nil {
+		return fmt.Errorf("Can't locate remove file: %v", err)
+	}
+
 	remF, err := os.OpenFile("/sys/bus/rbd/remove", os.O_WRONLY, 0200)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error writing to remove file: %v", err)
 	}
 
 	defer remF.Close()
 
-	if _, err := remF.Write([]byte(devNum)); err != nil {
-		return err
-	}
+	var success bool
 
-	return nil
+	for {
+		if _, err := remF.Write([]byte(devNum)); err != nil {
+			if success {
+				return nil
+			}
+		}
+
+		success = true
+
+		time.Sleep(100 * time.Millisecond)
+	}
 }

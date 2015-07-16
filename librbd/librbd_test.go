@@ -57,7 +57,7 @@ func TestPool(t *testing.T) {
 	}
 
 	defer func() {
-		if err := pool.UnMapDevice("test"); err != nil {
+		if err := pool.UnmapDevice("test"); err != nil {
 			t.Fatal(err)
 		}
 
