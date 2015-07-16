@@ -53,7 +53,7 @@ func TestMountUnmountVolume(t *testing.T) {
 	}
 
 	// Create a new driver
-	cephDriver, err := NewCephDriver(config.MonitorIP, config.UserName, config.Secret, "rbd")
+	cephDriver, err := NewCephDriver(config, "rbd")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	}
 
 	// Create a new driver
-	cephDriver, err := NewCephDriver(config.MonitorIP, config.UserName, config.Secret, "rbd")
+	cephDriver, err := NewCephDriver(config, "rbd")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,8 +35,8 @@ type CephVolumeSpec struct {
 }
 
 // Create a new Ceph driver
-func NewCephDriver(monitorIP, userName, secret, poolName string) (*CephDriver, error) {
-	pool, err := librbd.GetPool(userName, poolName)
+func NewCephDriver(config librbd.RBDConfig, poolName string) (*CephDriver, error) {
+	pool, err := librbd.GetPool(config, poolName)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +45,10 @@ func NewCephDriver(monitorIP, userName, secret, poolName string) (*CephDriver, e
 		deviceBase: defaultDeviceBase,
 		mountBase:  defaultMountBase,
 		PoolName:   poolName,
-		UserName:   userName,
-		MonitorIP:  monitorIP,
+		UserName:   config.UserName,
+		MonitorIP:  config.MonitorIP,
 		pool:       pool,
-		secret:     secret,
+		secret:     config.Secret,
 	}, nil
 }
 

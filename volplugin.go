@@ -70,7 +70,7 @@ func configureRouter(poolName string, size uint64) *mux.Router {
 		panic(err)
 	}
 
-	driver, err := cephdriver.NewCephDriver(config.MonitorIP, config.UserName, config.Secret, poolName)
+	driver, err := cephdriver.NewCephDriver(config, poolName)
 	if err != nil {
 		panic(err)
 	}

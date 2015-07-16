@@ -1,6 +1,8 @@
 package librbd
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -10,7 +12,17 @@ func TestVersion(t *testing.T) {
 }
 
 func TestPool(t *testing.T) {
-	pool, err := GetPool("admin", "rbd")
+	content, err := ioutil.ReadFile("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var config RBDConfig
+	if err := json.Unmarshal(content, &config); err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := GetPool(config, "rbd")
 	if err != nil {
 		t.Fatal(err)
 	}

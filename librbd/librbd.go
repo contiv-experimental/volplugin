@@ -41,9 +41,10 @@ type RBDConfig struct {
 
 // Pool is a unit of storage composing of many images.
 type Pool struct {
-	ioctx    C.rados_ioctx_t
-	cluster  C.rados_t
-	poolName string
+	ioctx     C.rados_ioctx_t
+	cluster   C.rados_t
+	poolName  string
+	rbdConfig RBDConfig
 }
 
 // Version returns the version of librbd.
@@ -101,15 +102,15 @@ func freePool(pool *Pool) {
 // GetPool instantiates a Pool object from librados. It must be able to
 // authenticate to ceph through normal (e.g., CLI) means to perform this
 // operation.
-func GetPool(username, poolName string) (*Pool, error) {
+func GetPool(config RBDConfig, poolName string) (*Pool, error) {
 	var err error
 
-	pool := &Pool{poolName: poolName}
+	pool := &Pool{poolName: poolName, rbdConfig: config}
 
 	str := C.CString(poolName)
 	defer C.free(unsafe.Pointer(str))
 
-	pool.cluster, err = getRados(username)
+	pool.cluster, err = getRados(config.UserName)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +214,9 @@ func modprobeRBD() error {
 
 // MapDevice maps an image to a device on the host. Returns the device path and
 // any errors. On error, the device path will be blank.
+//
+// Note that monIP may be a comma-delimited list of ip addresses, corresponding
+// to several monitors.
 func (p *Pool) MapDevice(monIP, username, secret, imageName string) (string, error) {
 	if str, err := p.findDevice(imageName); err == nil {
 		return str, nil
@@ -225,7 +229,7 @@ func (p *Pool) MapDevice(monIP, username, secret, imageName string) (string, err
 
 	defer addF.Close()
 
-	output := fmt.Sprintf("%s name=%s,secret=%s rbd %s", monIP, username, secret, imageName)
+	output := fmt.Sprintf("%s name=%s,secret=%s %s %s", monIP, username, secret, p.poolName, imageName)
 
 	if _, err := addF.Write([]byte(output)); err != nil {
 		if err != nil {
