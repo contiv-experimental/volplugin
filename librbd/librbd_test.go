@@ -1,8 +1,6 @@
 package librbd
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -12,13 +10,8 @@ func TestVersion(t *testing.T) {
 }
 
 func TestPool(t *testing.T) {
-	content, err := ioutil.ReadFile("/etc/rbdconfig.json")
+	config, err := ReadConfig("/etc/rbdconfig.json")
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	var config RBDConfig
-	if err := json.Unmarshal(content, &config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,12 +47,7 @@ func TestPool(t *testing.T) {
 		t.Fatal("image list was invalid")
 	}
 
-	rbdconfig, err := ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	device, err := pool.MapDevice(rbdconfig.MonitorIP, rbdconfig.UserName, rbdconfig.Secret, "test")
+	device, err := pool.MapDevice("test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +66,7 @@ func TestPool(t *testing.T) {
 		}
 	}()
 
-	device2, err := pool.MapDevice(rbdconfig.MonitorIP, rbdconfig.UserName, rbdconfig.Secret, "test")
+	device2, err := pool.MapDevice("test")
 	if err != nil {
 		t.Fatal(err)
 	}

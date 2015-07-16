@@ -21,11 +21,8 @@ type CephDriver struct {
 	deviceBase string
 	mountBase  string
 	pool       *librbd.Pool
-	secret     string
-
-	MonitorIP string
-	PoolName  string // Ceph Pool this volume belongs to default:rbd
-	UserName  string
+	rbdConfig  librbd.RBDConfig
+	PoolName   string
 }
 
 // Volume specification
@@ -45,10 +42,8 @@ func NewCephDriver(config librbd.RBDConfig, poolName string) (*CephDriver, error
 		deviceBase: defaultDeviceBase,
 		mountBase:  defaultMountBase,
 		PoolName:   poolName,
-		UserName:   config.UserName,
-		MonitorIP:  config.MonitorIP,
 		pool:       pool,
-		secret:     config.Secret,
+		rbdConfig:  config,
 	}, nil
 }
 
@@ -61,7 +56,7 @@ func (self *CephDriver) volumeCreate(volumeName string, volumeSize uint64) error
 }
 
 func (self *CephDriver) mapImage(volumeName string) (string, error) {
-	blkdev, err := self.pool.MapDevice(self.MonitorIP, self.UserName, self.secret, volumeName)
+	blkdev, err := self.pool.MapDevice(volumeName)
 	log.Debugf("mapped volume %q as %q", volumeName, blkdev)
 
 	return blkdev, err

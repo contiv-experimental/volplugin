@@ -217,7 +217,7 @@ func modprobeRBD() error {
 //
 // Note that monIP may be a comma-delimited list of ip addresses, corresponding
 // to several monitors.
-func (p *Pool) MapDevice(monIP, username, secret, imageName string) (string, error) {
+func (p *Pool) MapDevice(imageName string) (string, error) {
 	if str, err := p.findDevice(imageName); err == nil {
 		return str, nil
 	}
@@ -229,7 +229,7 @@ func (p *Pool) MapDevice(monIP, username, secret, imageName string) (string, err
 
 	defer addF.Close()
 
-	output := fmt.Sprintf("%s name=%s,secret=%s %s %s", monIP, username, secret, p.poolName, imageName)
+	output := fmt.Sprintf("%s name=%s,secret=%s %s %s", p.rbdConfig.MonitorIP, p.rbdConfig.UserName, p.rbdConfig.Secret, p.poolName, imageName)
 
 	if _, err := addF.Write([]byte(output)); err != nil {
 		if err != nil {
