@@ -35,7 +35,7 @@ func readWriteTest(mountDir string) error {
 
 	rb := make([]byte, 200)
 	_, err = io.ReadAtLeast(file, rb, num)
-	var rbs string = string(rb)
+	var rbs = string(rb)
 	if (err != nil) || (!strings.Contains(rbs, "Test string")) {
 		log.Errorf("Error reading back file(Got %s). Err: %v", rbs, err)
 		return errors.New("Failed to read back a file")
