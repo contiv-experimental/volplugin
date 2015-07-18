@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/librbd"
 )
 
 func readWriteTest(mountDir string) error {
@@ -17,21 +18,20 @@ func readWriteTest(mountDir string) error {
 		log.Errorf("Error creating file. Err: %v", err)
 		return errors.New("Failed to create a file")
 	}
-	defer file.Close()
 
 	num, err := file.WriteString("Test string\n")
 	if err != nil {
 		log.Errorf("Error writing file. Err: %v", err)
 		return errors.New("Failed to write a file")
 	}
-	file.Sync()
+
+	file.Close()
 
 	file, err = os.Open(mountDir + "/test.txt")
 	if err != nil {
 		log.Errorf("Error opening file. Err: %v", err)
 		return errors.New("Failed to open a file")
 	}
-	defer file.Close()
 
 	rb := make([]byte, 200)
 	_, err = io.ReadAtLeast(file, rb, num)
@@ -41,14 +41,24 @@ func readWriteTest(mountDir string) error {
 		return errors.New("Failed to read back a file")
 	}
 	log.Infof("Read back: %s", string(rb))
+	file.Close()
 
 	return nil
 }
 
 func TestMountUnmountVolume(t *testing.T) {
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a new driver
-	cephDriver := NewCephDriver()
-	volumeSpec := CephVolumeSpec{PoolName: "rbd", VolumeName: "pithos1234", VolumeSize: 10}
+	cephDriver, err := NewCephDriver(config, "rbd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volumeSpec := CephVolumeSpec{VolumeName: "pithos1234", VolumeSize: 10240000}
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
@@ -79,13 +89,20 @@ func TestMountUnmountVolume(t *testing.T) {
 }
 
 func TestRepeatedMountUnmount(t *testing.T) {
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a new driver
-	cephDriver := NewCephDriver()
+	cephDriver, err := NewCephDriver(config, "rbd")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	volumeSpec := CephVolumeSpec{
 		VolumeName: "pithos1234",
-		VolumeSize: 10,
-		PoolName:   "rbd",
+		VolumeSize: 10000000,
 	}
 	// Create a volume
 	if err := cephDriver.CreateVolume(volumeSpec); err != nil {

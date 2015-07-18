@@ -10,9 +10,18 @@
         - git
         - mercurial
         - librbd-dev
+        - perl
     - copy: 
         dest: /etc/profile.d/00golang.sh
         content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
+    - name: "read client.admin credentials"
+      shell: >
+        cat /etc/ceph/ceph.client.admin.keyring | perl -e 'undef $/; $line = <>; $line =~ s/.*= //sg; print $line'
+      register: client_secret 
+    - copy:
+        dest: /etc/rbdconfig.json
+        mode: 0600
+        content: "{ \"secret\": \"{{ client_secret.stdout }}\", \"monitor_ip\": \"{{ hostvars['mon0']['ansible_' + monitor_interface]['ipv4']['address'] }}\", \"username\": \"admin\" }\n"
     - file: src=/vagrant dest=/opt/golang/src/github.com/contiv/volplugin state=link
     - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
     - file: path=/usr/share/docker/plugins state=directory
