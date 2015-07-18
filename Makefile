@@ -12,13 +12,17 @@ provision:
 ssh:
 	vagrant ssh mon0
 
-build:
+golint:
+	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
+	golint ./...
+
+build: golint
 	godep go install -v ./
 
 install-ansible:
 	[ -n "`which ansible`" ] || sudo -E pip install ansible
 
-test: 
+test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go test -v ./..."'
 
 volplugin:

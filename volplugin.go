@@ -18,18 +18,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var DEBUG = os.Getenv("DEBUG")
+var debug = os.Getenv("DEBUG")
 
-const BASEPATH = "/usr/share/docker/plugins"
+const basePath = "/usr/share/docker/plugins"
 
 // why these types aren't in docker is beyond comprehension
 // pulled from calavera's volumes api
 // https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
 
+// VolumeRequest is taken from
+// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
 type VolumeRequest struct {
 	Name string
 }
 
+// VolumeResponse is taken from
+// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
 type VolumeResponse struct {
 	Mountpoint string
 	Err        string
@@ -48,7 +52,7 @@ func main() {
 		panic(err)
 	}
 
-	driverPath := path.Join(BASEPATH, driverName) + ".sock"
+	driverPath := path.Join(basePath, driverName) + ".sock"
 	os.Remove(driverPath)
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: driverPath, Net: "unix"})
@@ -56,7 +60,7 @@ func main() {
 		panic(err)
 	}
 
-	if DEBUG != "" {
+	if debug != "" {
 		log.SetLevel(log.DebugLevel)
 	}
 
@@ -87,7 +91,7 @@ func configureRouter(poolName string, size uint64) *mux.Router {
 	s.HandleFunc("/VolumeDriver.Mount", mount(driver))
 	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver))
 
-	if DEBUG != "" {
+	if debug != "" {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
 	}
 
