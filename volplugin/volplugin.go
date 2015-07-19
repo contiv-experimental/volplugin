@@ -9,12 +9,11 @@ import (
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/librbd"
 	"github.com/gorilla/mux"
 )
-
-var debug = os.Getenv("DEBUG")
 
 const basePath = "/usr/share/docker/plugins"
 
@@ -31,15 +30,15 @@ type VolumeResponse struct {
 	Err        string
 }
 
-func main() {
-	if len(os.Args) != 4 {
+func daemon(ctx *cli.Context) {
+	if len(ctx.Args()) != 3 {
 		fmt.Printf("Usage: %s [driver name] [pool name] [image size]\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	driverName := os.Args[1]
-	poolName := os.Args[2]
-	size, err := strconv.ParseUint(os.Args[3], 10, 64)
+	driverName := ctx.Args()[0]
+	poolName := ctx.Args()[1]
+	size, err := strconv.ParseUint(ctx.Args()[2], 10, 64)
 	if err != nil {
 		panic(err)
 	}
@@ -52,15 +51,15 @@ func main() {
 		panic(err)
 	}
 
-	if debug != "" {
+	if ctx.Bool("debug") {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, configureRouter(poolName, size))
+	http.Serve(l, configureRouter(poolName, size, ctx.Bool("debug")))
 	l.Close()
 }
 
-func configureRouter(poolName string, size uint64) *mux.Router {
+func configureRouter(poolName string, size uint64, debug bool) *mux.Router {
 	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
 	if err != nil {
 		panic(err)
@@ -83,7 +82,7 @@ func configureRouter(poolName string, size uint64) *mux.Router {
 	s.HandleFunc("/VolumeDriver.Mount", mount(driver))
 	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver))
 
-	if debug != "" {
+	if debug {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
 	}
 

@@ -11,6 +11,11 @@
 			"Rev": "81e2611f37acccd8cb5e4e1a5a4a5f6c9c7f4537"
 		},
 		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-127-gad48024",
+			"Rev": "ad480243a8a6cda30acf7cd999ea3e5142154fde"
+		},
+		{
 			"ImportPath": "github.com/docker/docker/pkg/plugins",
 			"Comment": "v1.4.1-4308-g77396bd",
 			"Rev": "77396bd66acc141f1d5a1743cecd27777af7ef1d"
