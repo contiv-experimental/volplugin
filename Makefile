@@ -25,11 +25,11 @@ install-ansible:
 test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go test -v ./..."'
 
-volplugin:
+run-volplugin:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volplugin-start"'
 
 volplugin-start:
 	pkill volplugin || exit 0
 	sleep 1
-	godep go install -v .
+	godep go install -v ./volplugin/
 	DEBUG=1 volplugin volplugin rbd 1000000000
