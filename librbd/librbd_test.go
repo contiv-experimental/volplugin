@@ -31,7 +31,7 @@ func TestPool(t *testing.T) {
 	// it's ok if it fails, we just don't want the next call to unless stuff is
 	// broken.
 	pool.RemoveImage("test")
-	if err := pool.CreateImage("test", 10); err != nil {
+	if err := pool.CreateImage("test", 10000000); err != nil {
 		t.Fatal(err)
 	}
 
@@ -41,9 +41,22 @@ func TestPool(t *testing.T) {
 		}
 	}()
 
-	if items, err := pool.List(); err != nil {
+	items, err := pool.List()
+
+	if err != nil {
 		t.Fatal(err)
-	} else if len(items) != 1 || items[0] != "test" {
+	}
+
+	var found bool
+
+	for _, item := range items {
+		if item == "test" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
 		t.Fatal("image list was invalid")
 	}
 
