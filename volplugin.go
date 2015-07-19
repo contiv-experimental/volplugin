@@ -22,10 +22,6 @@ var debug = os.Getenv("DEBUG")
 
 const basePath = "/usr/share/docker/plugins"
 
-// why these types aren't in docker is beyond comprehension
-// pulled from calavera's volumes api
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-
 // VolumeRequest is taken from
 // https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
 type VolumeRequest struct {
@@ -222,6 +218,8 @@ func unmount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Requ
 		volspec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
 		}
+
+		log.Debugf("Unmapping volume %q", vr.Name)
 
 		if err := driver.UnmountVolume(volspec); err != nil {
 			httpError(w, "Could not mount image", err)
