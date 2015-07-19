@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -32,7 +33,8 @@ type VolumeResponse struct {
 
 func daemon(ctx *cli.Context) {
 	if len(ctx.Args()) != 3 {
-		fmt.Printf("Usage: %s [driver name] [pool name] [image size]\n", os.Args[0])
+		fmt.Printf("\nUsage: %s [driver name] [pool name] [image size]\n\n", os.Args[0])
+		cli.ShowAppHelp(ctx)
 		os.Exit(1)
 	}
 
@@ -70,21 +72,35 @@ func configureRouter(poolName string, size uint64, debug bool) *mux.Router {
 		panic(err)
 	}
 
+	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
+		"/Plugin.Activate":      activate,
+		"/Plugin.Deactivate":    nilAction,
+		"/VolumeDriver.Create":  create(driver, size),
+		"/VolumeDriver.Remove":  nilAction,
+		"/VolumeDriver.Path":    getPath(driver),
+		"/VolumeDriver.Mount":   mount(driver),
+		"/VolumeDriver.Unmount": unmount(driver),
+	}
+
 	router := mux.NewRouter()
 	s := router.Headers("Accept", "application/vnd.docker.plugins.v1+json").
 		Methods("POST").Subrouter()
 
-	s.HandleFunc("/Plugin.Activate", activate)
-	s.HandleFunc("/Plugin.Deactivate", nilAction)
-	s.HandleFunc("/VolumeDriver.Create", create(driver, size))
-	s.HandleFunc("/VolumeDriver.Remove", nilAction)
-	s.HandleFunc("/VolumeDriver.Path", getPath(driver))
-	s.HandleFunc("/VolumeDriver.Mount", mount(driver))
-	s.HandleFunc("/VolumeDriver.Unmount", unmount(driver))
+	for key, value := range routeMap {
+		parts := strings.SplitN(key, ".", 2)
+		s.HandleFunc(key, logHandler(parts[1], value))
+	}
 
 	if debug {
 		s.HandleFunc("/VolumeDriver.{action:.*}", action)
 	}
 
 	return router
+}
+
+func logHandler(name string, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Debugf("Handling %q event", name)
+		actionFunc(w, r)
+	}
 }

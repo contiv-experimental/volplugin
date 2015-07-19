@@ -45,6 +45,8 @@ func create(driver *cephdriver.CephDriver, size uint64) func(http.ResponseWriter
 			VolumeSize: size,
 		}
 
+		log.Infof("Creating volume with parameters: %v", volSpec)
+
 		if err := driver.CreateVolume(volSpec); err != nil {
 			httpError(w, "Could not make new image", err)
 			return
@@ -77,6 +79,8 @@ func getPath(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Requ
 			VolumeName: vr.Name,
 		}
 
+		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
+
 		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
@@ -103,6 +107,8 @@ func mount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Reques
 		volspec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
 		}
+
+		log.Infof("Mounting volume %q", vr.Name)
 
 		if err := driver.MountVolume(volspec); err != nil {
 			httpError(w, "Volume could not be mounted", err)
@@ -136,7 +142,7 @@ func unmount(driver *cephdriver.CephDriver) func(http.ResponseWriter, *http.Requ
 			VolumeName: vr.Name,
 		}
 
-		log.Debugf("Unmapping volume %q", vr.Name)
+		log.Infof("Unmounting volume %q", vr.Name)
 
 		if err := driver.UnmountVolume(volspec); err != nil {
 			httpError(w, "Could not mount image", err)

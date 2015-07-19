@@ -46,6 +46,10 @@ func NewCephDriver(config librbd.RBDConfig, poolName string) (*CephDriver, error
 	}, nil
 }
 
+func (cvs CephVolumeSpec) String() string {
+	return fmt.Sprintf("[name: %s size: %d]", cvs.VolumeName, cvs.VolumeSize)
+}
+
 // MountPath joins the necessary parts to find the mount point for the volume
 // name.
 func (cd *CephDriver) MountPath(volumeName string) string {
