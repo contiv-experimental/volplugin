@@ -48,10 +48,10 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 
 		volSpec := cephdriver.CephVolumeSpec{
 			VolumeName: vr.Name,
-			VolumeSize: config.size,
+			VolumeSize: config.Size,
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.pool)
+		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
 		if err != nil {
 			httpError(w, "Error creating ceph driver", err)
 			return
@@ -99,7 +99,7 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.pool)
+		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
 		if err != nil {
 			httpError(w, "Error creating ceph driver", err)
 			return
@@ -140,7 +140,7 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.pool)
+		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
 		if err != nil {
 			httpError(w, "Error creating ceph driver", err)
 			return
@@ -186,7 +186,7 @@ func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.pool)
+		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
 		if err != nil {
 			httpError(w, "Error creating ceph driver", err)
 			return

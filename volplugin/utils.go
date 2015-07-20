@@ -53,6 +53,10 @@ func requestTenantConfig(tenantName string) (configTenant, error) {
 		return tenConfig, err
 	}
 
+	if resp.StatusCode != 200 {
+		return tenConfig, fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return tenConfig, err

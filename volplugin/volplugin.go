@@ -31,13 +31,13 @@ type VolumeResponse struct {
 
 // request to the volmaster
 type request struct {
-	tenant string
+	Tenant string `json:"tenant"`
 }
 
 // response from the volmaster
 type configTenant struct {
-	pool string
-	size uint64
+	Pool string `json:"pool"`
+	Size uint64 `json:"size"`
 }
 
 func daemon(ctx *cli.Context) {

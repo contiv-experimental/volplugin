@@ -12,14 +12,14 @@ import (
 )
 
 type request struct {
-	tenant string
+	Tenant string `json:"tenant"`
 }
 
 func daemon(config config) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", config.handleRequest).Methods("POST")
 
-	http.ListenAndServe(":8000", r)
+	http.ListenAndServe(":8080", r)
 
 	select {}
 }
@@ -38,17 +38,17 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.tenant == "" {
+	if req.Tenant == "" {
 		httpError(w, "Reading tenant", errors.New("tenant was blank"))
 		return
 	}
 
-	log.Infof("Request for tenant %q", req.tenant)
+	log.Infof("Request for tenant %q", req.Tenant)
 
-	tenConfig, ok := conf[req.tenant]
+	tenConfig, ok := conf[req.Tenant]
 	if !ok {
-		log.Infof("Request for tenant %q cannot be satisfied: not found", req.tenant)
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.tenant))
+		log.Infof("Request for tenant %q cannot be satisfied: not found", req.Tenant)
+		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.Tenant))
 		return
 	}
 
