@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -165,17 +164,4 @@ func action(w http.ResponseWriter, r *http.Request) {
 	content, _ := ioutil.ReadAll(r.Body)
 	log.Debug("Body content:", string(content))
 	w.WriteHeader(503)
-}
-
-func httpError(w http.ResponseWriter, message string, err error) {
-	fullError := fmt.Sprintf("%s %v", message, err)
-
-	content, errc := marshalResponse(VolumeResponse{"", fullError})
-	if errc != nil {
-		log.Warnf("Error received marshalling error response: %v, original error: %s", errc, fullError)
-		return
-	}
-
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", fullError)
-	http.Error(w, string(content), http.StatusInternalServerError)
 }
