@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,4 +38,29 @@ func unmarshalRequest(body io.Reader) (VolumeRequest, error) {
 
 func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
+}
+
+func requestTenantConfig(tenantName string) (configTenant, error) {
+	var tenConfig configTenant
+
+	content, err := json.Marshal(request{tenantName})
+	if err != nil {
+		return tenConfig, err
+	}
+
+	resp, err := http.Post("http://localhost:8080", "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return tenConfig, err
+	}
+
+	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return tenConfig, err
+	}
+
+	if err := json.Unmarshal(content, &tenConfig); err != nil {
+		return tenConfig, err
+	}
+
+	return tenConfig, nil
 }

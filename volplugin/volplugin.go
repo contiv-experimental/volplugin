@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/librbd"
 	"github.com/gorilla/mux"
 )
@@ -31,20 +29,25 @@ type VolumeResponse struct {
 	Err        string
 }
 
+// request to the volmaster
+type request struct {
+	tenant string
+}
+
+// response from the volmaster
+type configTenant struct {
+	pool string
+	size uint64
+}
+
 func daemon(ctx *cli.Context) {
-	if len(ctx.Args()) != 3 {
-		fmt.Printf("\nUsage: %s [driver name] [pool name] [image size]\n\n", os.Args[0])
+	if len(ctx.Args()) != 1 {
+		fmt.Printf("\nUsage: %s [tenant/driver name]\n\n", os.Args[0])
 		cli.ShowAppHelp(ctx)
 		os.Exit(1)
 	}
 
 	driverName := ctx.Args()[0]
-	poolName := ctx.Args()[1]
-	size, err := strconv.ParseUint(ctx.Args()[2], 10, 64)
-	if err != nil {
-		panic(err)
-	}
-
 	driverPath := path.Join(basePath, driverName) + ".sock"
 	os.Remove(driverPath)
 
@@ -57,17 +60,12 @@ func daemon(ctx *cli.Context) {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, configureRouter(poolName, size, ctx.Bool("debug")))
+	http.Serve(l, configureRouter(driverName, ctx.Bool("debug")))
 	l.Close()
 }
 
-func configureRouter(poolName string, size uint64, debug bool) *mux.Router {
+func configureRouter(tenant string, debug bool) *mux.Router {
 	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		panic(err)
-	}
-
-	driver, err := cephdriver.NewCephDriver(config, poolName)
 	if err != nil {
 		panic(err)
 	}
@@ -75,11 +73,11 @@ func configureRouter(poolName string, size uint64, debug bool) *mux.Router {
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":      activate,
 		"/Plugin.Deactivate":    nilAction,
-		"/VolumeDriver.Create":  create(driver, size),
+		"/VolumeDriver.Create":  create(tenant, config),
 		"/VolumeDriver.Remove":  nilAction,
-		"/VolumeDriver.Path":    getPath(driver),
-		"/VolumeDriver.Mount":   mount(driver),
-		"/VolumeDriver.Unmount": unmount(driver),
+		"/VolumeDriver.Path":    getPath(tenant, config),
+		"/VolumeDriver.Mount":   mount(tenant, config),
+		"/VolumeDriver.Unmount": unmount(tenant, config),
 	}
 
 	router := mux.NewRouter()
