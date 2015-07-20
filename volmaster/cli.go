@@ -23,7 +23,7 @@ func start(ctx *cli.Context) {
 		errExit(ctx, err)
 	}
 
-	var config Config
+	var config config
 
 	if err := json.Unmarshal(content, &config); err != nil {
 		errExit(ctx, err)

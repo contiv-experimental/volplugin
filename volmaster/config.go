@@ -7,9 +7,9 @@ type configTenant struct {
 	size uint64
 }
 
-type Config map[string]configTenant
+type config map[string]configTenant
 
-func (c Config) validate() error {
+func (c config) validate() error {
 	for tenant, cfg := range c {
 		if cfg.pool == "" {
 			return fmt.Errorf("Config for tenant %q has a blank pool name", tenant)

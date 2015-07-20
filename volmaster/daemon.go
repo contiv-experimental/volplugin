@@ -15,7 +15,7 @@ type request struct {
 	tenant string
 }
 
-func daemon(config Config) {
+func daemon(config config) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", config.handleRequest).Methods("POST")
 
@@ -24,7 +24,7 @@ func daemon(config Config) {
 	select {}
 }
 
-func (config Config) handleRequest(w http.ResponseWriter, r *http.Request) {
+func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
@@ -45,7 +45,7 @@ func (config Config) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request for tenant %q", req.tenant)
 
-	tenConfig, ok := config[req.tenant]
+	tenConfig, ok := conf[req.tenant]
 	if !ok {
 		log.Infof("Request for tenant %q cannot be satisfied: not found", req.tenant)
 		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.tenant))
