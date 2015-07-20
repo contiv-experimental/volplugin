@@ -28,10 +28,18 @@ test: golint
 run-volplugin:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volplugin-start"'
 
+run-volmaster:
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volmaster-start"'
+
 build:
-	godep go install -v ./volplugin/
+	godep go install -v ./volplugin/ ./volmaster/
 
 volplugin-start: build
 	pkill volplugin || exit 0
 	sleep 1
 	DEBUG=1 volplugin volplugin rbd 1000000000
+
+volmaster-start: build
+	pkill volmaster || exit 0
+	sleep 1
+	DEBUG=1 volmaster /etc/volmaster.json
