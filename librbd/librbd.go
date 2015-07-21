@@ -174,6 +174,22 @@ func (p *Pool) List() ([]string, error) {
 }
 
 func (p *Pool) findDevice(imageName string) (string, error) {
+	if name, err := p.findDeviceTree(imageName); err == nil {
+		if _, err := os.Stat("/dev/rbd" + name); err != nil {
+			return "", err
+		}
+
+		return "/dev/rbd" + name, nil
+	}
+
+	return "", os.ErrNotExist
+}
+
+func modprobeRBD() error {
+	return exec.Command("modprobe", "rbd").Run()
+}
+
+func (p *Pool) findDeviceTree(imageName string) (string, error) {
 	fi, err := ioutil.ReadDir("/sys/bus/rbd/devices")
 	if err != nil && err != os.ErrNotExist {
 		return "", err
@@ -196,20 +212,12 @@ func (p *Pool) findDevice(imageName string) (string, error) {
 			}
 
 			if strings.TrimSpace(string(content)) == p.poolName {
-				if _, err := os.Stat("/dev/rbd" + f.Name()); err != nil {
-					return "", err
-				}
-
-				return "/dev/rbd" + f.Name(), nil
+				return f.Name(), err
 			}
 		}
 	}
 
 	return "", os.ErrNotExist
-}
-
-func modprobeRBD() error {
-	return exec.Command("modprobe", "rbd").Run()
 }
 
 // MapDevice maps an image to a device on the host. Returns the device path and
