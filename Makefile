@@ -16,8 +16,6 @@ golint:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	golint ./...
 
-build: golint
-	godep go install -v ./
 
 install-ansible:
 	[ -n "`which ansible`" ] || sudo -E pip install ansible
@@ -28,10 +26,18 @@ test: golint
 run-volplugin:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volplugin-start"'
 
-build:
-	godep go install -v ./volplugin/
+run-volmaster:
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volmaster-start"'
+
+build: golint
+	godep go install -v ./volplugin/ ./volmaster/
 
 volplugin-start: build
 	pkill volplugin || exit 0
 	sleep 1
 	DEBUG=1 volplugin volplugin rbd 1000000000
+
+volmaster-start: build
+	pkill volmaster || exit 0
+	sleep 1
+	DEBUG=1 volmaster /etc/volmaster.json
