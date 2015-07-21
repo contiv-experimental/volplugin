@@ -69,6 +69,11 @@ func TestPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// FIXME test this was actually done, not just the error
+	// if err := pool.CreateSnapshot("test", "test-snap"); err != nil {
+	// 	t.Fatal(err)
+	// }
+
 	defer func() {
 		if err := pool.UnmapDevice("test"); err != nil {
 			t.Fatal(err)

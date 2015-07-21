@@ -13,6 +13,10 @@ package librbd
 // #include <stdlib.h>
 // #include <errno.h>
 // #include <string.h>
+//
+// rbd_image_t*  make_image() {
+//   return malloc(sizeof(rbd_image_t));
+// }
 import "C"
 import (
 	"encoding/json"
@@ -27,6 +31,8 @@ import (
 	"time"
 	"unsafe"
 )
+
+const rbdDevicePath = "/sys/bus/rbd/devices"
 
 // RBDConfig provides a JSON representation of some Ceph configuration elements
 // that are vital to librbd's use.  librados does not support nested
@@ -190,7 +196,7 @@ func modprobeRBD() error {
 }
 
 func (p *Pool) findDeviceTree(imageName string) (string, error) {
-	fi, err := ioutil.ReadDir("/sys/bus/rbd/devices")
+	fi, err := ioutil.ReadDir(rbdDevicePath)
 	if err != nil && err != os.ErrNotExist {
 		return "", err
 	} else if err == os.ErrNotExist {
@@ -198,14 +204,14 @@ func (p *Pool) findDeviceTree(imageName string) (string, error) {
 	}
 
 	for _, f := range fi {
-		namePath := filepath.Join("/sys/bus/rbd/devices", f.Name(), "name")
+		namePath := filepath.Join(rbdDevicePath, f.Name(), "name")
 		content, err := ioutil.ReadFile(namePath)
 		if err != nil {
 			return "", err
 		}
 
 		if strings.TrimSpace(string(content)) == imageName {
-			poolPath := filepath.Join("/sys/bus/rbd/devices", f.Name(), "pool")
+			poolPath := filepath.Join(rbdDevicePath, f.Name(), "pool")
 			content, err := ioutil.ReadFile(poolPath)
 			if err != nil {
 				return "", err
@@ -220,11 +226,38 @@ func (p *Pool) findDeviceTree(imageName string) (string, error) {
 	return "", os.ErrNotExist
 }
 
+// CreateSnapshot creates a named snapshot for the image provided.
+func (p *Pool) CreateSnapshot(imageName, snapshotName string) error {
+	image := C.make_image()
+	imageStr := C.CString(imageName)
+	snapshotStr := C.CString(snapshotName)
+	defer func() {
+		C.free(unsafe.Pointer(image))
+		C.free(unsafe.Pointer(imageStr))
+		C.free(unsafe.Pointer(snapshotStr))
+	}()
+
+	if i, err := C.rbd_open(p.ioctx, imageStr, image, nil); err != nil || i < 0 {
+		if i < 0 {
+			err = strerror(i)
+		}
+
+		return fmt.Errorf("Error creating snapshot: %v", err)
+	}
+
+	if i, err := C.rbd_snap_create(*image, snapshotStr); err != nil || i < 0 {
+		if i < 0 {
+			err = strerror(i)
+		}
+
+		return fmt.Errorf("Error creating snapshot: %v", err)
+	}
+
+	return nil
+}
+
 // MapDevice maps an image to a device on the host. Returns the device path and
 // any errors. On error, the device path will be blank.
-//
-// Note that monIP may be a comma-delimited list of ip addresses, corresponding
-// to several monitors.
 func (p *Pool) MapDevice(imageName string) (string, error) {
 	if str, err := p.findDevice(imageName); err == nil {
 		return str, nil
