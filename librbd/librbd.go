@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,7 +34,11 @@ import (
 	"unsafe"
 )
 
-const rbdDevicePath = "/sys/bus/rbd/devices"
+var (
+	rbdBusPath    = "/sys/bus/rbd"
+	rbdDevicePath = path.Join(rbdBusPath, "devices")
+	rbdDev        = "/dev/rbd"
+)
 
 // RBDConfig provides a JSON representation of some Ceph configuration elements
 // that are vital to librbd's use.  librados does not support nested
@@ -108,7 +113,10 @@ func freePool(pool *Pool) {
 
 // GetPool instantiates a Pool object from librados. It must be able to
 // authenticate to ceph through normal (e.g., CLI) means to perform this
-// operation.
+// operation. The RBDConfig is used to supply parts of the configuration which
+// cannot be necessarily parsed by the C versions of librados and librbd. This
+// struct will need to be populated; if you want a way to fill it from JSON,
+// see ReadConfig.
 func GetPool(config RBDConfig, poolName string) (*Pool, error) {
 	var err error
 
@@ -182,11 +190,11 @@ func (p *Pool) List() ([]string, error) {
 
 func (p *Pool) findDevice(imageName string) (string, error) {
 	if name, err := p.findDeviceTree(imageName); err == nil {
-		if _, err := os.Stat("/dev/rbd" + name); err != nil {
+		if _, err := os.Stat(rbdDev + name); err != nil {
 			return "", err
 		}
 
-		return "/dev/rbd" + name, nil
+		return rbdDev + name, nil
 	}
 
 	return "", os.ErrNotExist
@@ -351,7 +359,7 @@ func (p *Pool) MapDevice(imageName string) (string, error) {
 		return str, nil
 	}
 
-	addF, err := os.OpenFile("/sys/bus/rbd/add", os.O_WRONLY, 0200)
+	addF, err := os.OpenFile(filepath.Join(rbdBusPath, "add"), os.O_WRONLY, 0200)
 	if err != nil {
 		return "", err
 	}
@@ -380,18 +388,20 @@ func (p *Pool) UnmapDevice(imageName string) error {
 		return err
 	}
 
-	devNum := strings.TrimPrefix(devName, "/dev/rbd")
+	devNum := strings.TrimPrefix(devName, rbdDev)
 
 	if _, err := os.Stat(devName); err != nil {
 		println("here")
 		return os.ErrNotExist
 	}
 
-	if _, err := os.Stat("/sys/bus/rbd/remove"); err != nil {
+	removePath := filepath.Join(rbdBusPath, "remove")
+
+	if _, err := os.Stat(removePath); err != nil {
 		return fmt.Errorf("Can't locate remove file: %v", err)
 	}
 
-	remF, err := os.OpenFile("/sys/bus/rbd/remove", os.O_WRONLY, 0200)
+	remF, err := os.OpenFile(removePath, os.O_WRONLY, 0200)
 	if err != nil {
 		return fmt.Errorf("Error writing to remove file: %v", err)
 	}
