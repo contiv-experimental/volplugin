@@ -11,9 +11,6 @@ package librbd
 // #include <rados/librados.h>
 // #include <rbd/librbd.h>
 // #include <stdlib.h>
-// #include <errno.h>
-// #include <string.h>
-//
 // rbd_image_t*  make_image() {
 //   return malloc(sizeof(rbd_image_t));
 // }
@@ -21,11 +18,9 @@ package librbd
 import "C"
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -79,10 +74,6 @@ func ReadConfig(path string) (RBDConfig, error) {
 	err = json.Unmarshal(content, &config)
 
 	return config, err
-}
-
-func strerror(i C.int) error {
-	return errors.New(C.GoString(C.strerror(-i)))
 }
 
 func getRados(username string) (C.rados_t, error) {
@@ -186,53 +177,6 @@ func (p *Pool) List() ([]string, error) {
 	// at the end. Hence GoStringN.
 	items := strings.Split(C.GoStringN(list, i), string([]byte{0}))
 	return items[:len(items)-1], nil
-}
-
-func (p *Pool) findDevice(imageName string) (string, error) {
-	if name, err := p.findDeviceTree(imageName); err == nil {
-		if _, err := os.Stat(rbdDev + name); err != nil {
-			return "", err
-		}
-
-		return rbdDev + name, nil
-	}
-
-	return "", os.ErrNotExist
-}
-
-func modprobeRBD() error {
-	return exec.Command("modprobe", "rbd").Run()
-}
-
-func (p *Pool) findDeviceTree(imageName string) (string, error) {
-	fi, err := ioutil.ReadDir(rbdDevicePath)
-	if err != nil && err != os.ErrNotExist {
-		return "", err
-	} else if err == os.ErrNotExist {
-		return "", fmt.Errorf("Could not locate devices directory")
-	}
-
-	for _, f := range fi {
-		namePath := filepath.Join(rbdDevicePath, f.Name(), "name")
-		content, err := ioutil.ReadFile(namePath)
-		if err != nil {
-			return "", err
-		}
-
-		if strings.TrimSpace(string(content)) == imageName {
-			poolPath := filepath.Join(rbdDevicePath, f.Name(), "pool")
-			content, err := ioutil.ReadFile(poolPath)
-			if err != nil {
-				return "", err
-			}
-
-			if strings.TrimSpace(string(content)) == p.poolName {
-				return f.Name(), err
-			}
-		}
-	}
-
-	return "", os.ErrNotExist
 }
 
 func (p *Pool) wrapOpen(imageName string, action func(*C.rbd_image_t) error) error {
