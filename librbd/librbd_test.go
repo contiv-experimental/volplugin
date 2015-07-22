@@ -35,11 +35,7 @@ func TestPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		if err := pool.RemoveImage("test"); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	defer pool.RemoveImage("test")
 
 	items, err := pool.List()
 
@@ -91,5 +87,25 @@ func TestPool(t *testing.T) {
 
 	if device != device2 {
 		t.Fatal("mapdevice failed to find existing rbd device")
+	}
+
+	if err := pool.UnmapDevice("test"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(device); err == nil {
+		t.Fatal("device still exists after unmap")
+	}
+
+	if err := pool.UnmapDevice("test"); err == nil {
+		t.Fatal("Did not receive error trying to unmap device twice")
+	}
+
+	if err := pool.RemoveImage("test"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pool.RemoveImage("test"); err == nil {
+		t.Fatal("Did not receive error trying to remove image a second time")
 	}
 }
