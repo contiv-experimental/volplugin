@@ -13,11 +13,8 @@ package librbd
 // #include <stdlib.h>
 import "C"
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -25,51 +22,12 @@ import (
 	"unsafe"
 )
 
-var (
-	rbdBusPath    = "/sys/bus/rbd"
-	rbdDevicePath = path.Join(rbdBusPath, "devices")
-	rbdDev        = "/dev/rbd"
-)
-
-// RBDConfig provides a JSON representation of some Ceph configuration elements
-// that are vital to librbd's use.  librados does not support nested
-// configuration; we may sometimes be stuck with this (and in the ansible, are)
-// so we need a back up plan on how to manage configuration. This is it. See
-// ReadConfig.
-type RBDConfig struct {
-	MonitorIP string `json:"monitor_ip"`
-	UserName  string `json:"username"`
-	Secret    string `json:"secret"`
-}
-
 // Pool is a unit of storage composing of many images.
 type Pool struct {
 	ioctx     C.rados_ioctx_t
 	cluster   C.rados_t
 	poolName  string
 	rbdConfig RBDConfig
-}
-
-// Version returns the version of librbd.
-func Version() (int, int, int) {
-	var major, minor, extra C.int
-
-	C.rbd_version(&major, &minor, &extra)
-	return int(major), int(minor), int(extra)
-}
-
-// ReadConfig parses a RBDConfig from a JSON encoded file and returns it.
-func ReadConfig(path string) (RBDConfig, error) {
-	config := RBDConfig{}
-
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		return config, err
-	}
-
-	err = json.Unmarshal(content, &config)
-
-	return config, err
 }
 
 // GetPool instantiates a Pool object from librados. It must be able to
