@@ -11,10 +11,6 @@ package librbd
 // #include <rados/librados.h>
 // #include <rbd/librbd.h>
 // #include <stdlib.h>
-// rbd_image_t*  make_image() {
-//   return malloc(sizeof(rbd_image_t));
-// }
-//
 import "C"
 import (
 	"encoding/json"
@@ -74,32 +70,6 @@ func ReadConfig(path string) (RBDConfig, error) {
 	err = json.Unmarshal(content, &config)
 
 	return config, err
-}
-
-func getRados(username string) (C.rados_t, error) {
-	var cluster C.rados_t
-
-	str := C.CString(username)
-	defer C.free(unsafe.Pointer(str))
-
-	if i := C.rados_create(&cluster, str); i < 0 {
-		return nil, strerror(i)
-	}
-
-	if i := C.rados_conf_read_file(cluster, nil); i < 0 {
-		return nil, strerror(i)
-	}
-
-	if i := C.rados_connect(cluster); i != 0 {
-		return nil, strerror(i)
-	}
-
-	return cluster, nil
-}
-
-func freePool(pool *Pool) {
-	C.rados_ioctx_destroy(pool.ioctx)
-	C.rados_shutdown(pool.cluster)
 }
 
 // GetPool instantiates a Pool object from librados. It must be able to
@@ -177,41 +147,6 @@ func (p *Pool) List() ([]string, error) {
 	// at the end. Hence GoStringN.
 	items := strings.Split(C.GoStringN(list, i), string([]byte{0}))
 	return items[:len(items)-1], nil
-}
-
-func (p *Pool) wrapOpen(imageName string, action func(*C.rbd_image_t) error) error {
-	image := C.make_image()
-	imageStr := C.CString(imageName)
-	defer func() {
-		C.free(unsafe.Pointer(image))
-		C.free(unsafe.Pointer(imageStr))
-	}()
-
-	if i, err := C.rbd_open(p.ioctx, imageStr, image, nil); err != nil || i < 0 {
-		if i < 0 {
-			err = strerror(i)
-		}
-
-		return fmt.Errorf("Error creating snapshot: %v", err)
-	}
-
-	defer func() error {
-		if i, err := C.rbd_close(*image); err != nil || i < 0 {
-			if i < 0 {
-				err = strerror(i)
-			}
-
-			return fmt.Errorf("Error creating snapshot: %v", err)
-		}
-
-		return nil
-	}()
-
-	if err := action(image); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // ListSnapshots yields a list of the snapshots for the given interface. max
