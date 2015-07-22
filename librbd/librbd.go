@@ -17,6 +17,7 @@ package librbd
 // rbd_image_t*  make_image() {
 //   return malloc(sizeof(rbd_image_t));
 // }
+//
 import "C"
 import (
 	"encoding/json"
@@ -226,15 +227,12 @@ func (p *Pool) findDeviceTree(imageName string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-// CreateSnapshot creates a named snapshot for the image provided.
-func (p *Pool) CreateSnapshot(imageName, snapshotName string) error {
+func (p *Pool) wrapOpen(imageName string, action func(*C.rbd_image_t) error) error {
 	image := C.make_image()
 	imageStr := C.CString(imageName)
-	snapshotStr := C.CString(snapshotName)
 	defer func() {
 		C.free(unsafe.Pointer(image))
 		C.free(unsafe.Pointer(imageStr))
-		C.free(unsafe.Pointer(snapshotStr))
 	}()
 
 	if i, err := C.rbd_open(p.ioctx, imageStr, image, nil); err != nil || i < 0 {
@@ -245,12 +243,102 @@ func (p *Pool) CreateSnapshot(imageName, snapshotName string) error {
 		return fmt.Errorf("Error creating snapshot: %v", err)
 	}
 
-	if i, err := C.rbd_snap_create(*image, snapshotStr); err != nil || i < 0 {
-		if i < 0 {
-			err = strerror(i)
+	defer func() error {
+		if i, err := C.rbd_close(*image); err != nil || i < 0 {
+			if i < 0 {
+				err = strerror(i)
+			}
+
+			return fmt.Errorf("Error creating snapshot: %v", err)
 		}
 
-		return fmt.Errorf("Error creating snapshot: %v", err)
+		return nil
+	}()
+
+	if err := action(image); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ListSnapshots yields a list of the snapshots for the given interface. max
+// will yield a maximum of N items.
+func (p *Pool) ListSnapshots(imageName string, max int) ([]string, error) {
+	snapInfo := make([]C.rbd_snap_info_t, max)
+	list := []string{}
+	cMax := C.int(max)
+
+	action := func(image *C.rbd_image_t) error {
+		if i, err := C.rbd_snap_list(*image, &snapInfo[0], &cMax); err != nil || i < 0 {
+			return strerror(i)
+		}
+
+		for i := 0; i < int(cMax); i++ {
+			if C.GoString(snapInfo[i].name) == "" {
+				return nil
+			}
+
+			list = append(list, C.GoString(snapInfo[i].name))
+		}
+
+		return nil
+	}
+
+	if err := p.wrapOpen(imageName, action); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+// CreateSnapshot creates a named snapshot for the image provided.
+func (p *Pool) CreateSnapshot(imageName, snapshotName string) error {
+	snapshotStr := C.CString(snapshotName)
+	defer func() {
+		C.free(unsafe.Pointer(snapshotStr))
+	}()
+
+	action := func(image *C.rbd_image_t) error {
+		if i, err := C.rbd_snap_create(*image, snapshotStr); err != nil || i < 0 {
+			if i < 0 {
+				err = strerror(i)
+			}
+
+			return fmt.Errorf("Error creating snapshot: %v", err)
+		}
+
+		return nil
+	}
+
+	if err := p.wrapOpen(imageName, action); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveSnapshot deletes a named snapshot for the image provided.
+func (p *Pool) RemoveSnapshot(imageName, snapshotName string) error {
+	snapshotStr := C.CString(snapshotName)
+	defer func() {
+		C.free(unsafe.Pointer(snapshotStr))
+	}()
+
+	action := func(image *C.rbd_image_t) error {
+		if i, err := C.rbd_snap_remove(*image, snapshotStr); err != nil || i < 0 {
+			if i < 0 {
+				err = strerror(i)
+			}
+
+			return fmt.Errorf("Error creating snapshot: %v", err)
+		}
+
+		return nil
+	}
+
+	if err := p.wrapOpen(imageName, action); err != nil {
+		return err
 	}
 
 	return nil
