@@ -58,7 +58,7 @@ func Version() (int, int, int) {
 	return int(major), int(minor), int(extra)
 }
 
-// ReadConfig parses a RBDConfig and returns it.
+// ReadConfig parses a RBDConfig from a JSON encoded file and returns it.
 func ReadConfig(path string) (RBDConfig, error) {
 	config := RBDConfig{}
 
