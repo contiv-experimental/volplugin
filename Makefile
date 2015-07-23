@@ -35,7 +35,7 @@ build: golint
 volplugin-start: build
 	pkill volplugin || exit 0
 	sleep 1
-	DEBUG=1 volplugin volplugin rbd 1000000000
+	DEBUG=1 volplugin tenant1
 
 volmaster-start: build
 	pkill volmaster || exit 0
