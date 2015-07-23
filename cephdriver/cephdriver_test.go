@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -85,6 +86,64 @@ func TestMountUnmountVolume(t *testing.T) {
 
 	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume: %v", err)
+	}
+}
+
+func TestSnapshots(t *testing.T) {
+	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a new driver
+	cephDriver, err := NewCephDriver(config, "rbd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10000000)
+	// Create a volume
+	if err := volumeSpec.Create(); err != nil {
+		t.Fatalf("Error creating the volume. Err: %v", err)
+	}
+
+	if err := volumeSpec.CreateSnapshot("hello"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := volumeSpec.CreateSnapshot("hello"); err == nil {
+		t.Fatal("Was able to create same snapshot name twice")
+	}
+
+	list, err := volumeSpec.ListSnapshots(100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(list) != 1 || !reflect.DeepEqual(list, []string{"hello"}) {
+		t.Fatal("Did not see snapshot created earlier in list")
+	}
+
+	if err := volumeSpec.RemoveSnapshot("hello"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := volumeSpec.RemoveSnapshot("hello"); err == nil {
+		t.Fatal("Was able to remove same snapshot name twice")
+	}
+
+	list, err = volumeSpec.ListSnapshots(100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(list) != 0 {
+		t.Fatal("Snapshot list is not empty and should be")
+	}
+
+	// delete the volume
+	if err := volumeSpec.Remove(); err != nil {
+		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
 
