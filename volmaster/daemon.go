@@ -26,7 +26,7 @@ func daemon(config config) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", config.handleRequest).Methods("POST")
 
-	go handleSnapshots(config)
+	go scheduleSnapshots(config)
 
 	http.ListenAndServe(":8080", r)
 

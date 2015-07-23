@@ -10,7 +10,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func handleSnapshots(config config) {
+func scheduleSnapshots(config config) {
 	for {
 		log.Debug("Running snapshot supervisor")
 
