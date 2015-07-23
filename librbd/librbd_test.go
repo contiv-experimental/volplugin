@@ -40,6 +40,20 @@ func TestPool(t *testing.T) {
 		t.Fatal("No error was recieved trying to create image twice")
 	}
 
+	// FIXME finish
+	img, err := pool.GetImage("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if img.imageName != "test" {
+		t.Fatal("Image name was not set properly")
+	}
+
+	if !reflect.DeepEqual(img.pool, pool) {
+		t.Fatal("Pool was not equal in image struct")
+	}
+
 	defer pool.RemoveImage("test")
 
 	items, err := pool.List()
@@ -61,7 +75,7 @@ func TestPool(t *testing.T) {
 		t.Fatal("image list was invalid")
 	}
 
-	device, err := pool.MapDevice("test")
+	device, err := img.MapDevice()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +84,7 @@ func TestPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := pool.ListSnapshots("test", 100)
+	list, err := img.ListSnapshots(100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,17 +93,17 @@ func TestPool(t *testing.T) {
 		t.Fatalf("Snapshot list expected to be empty but is not: %v", list)
 	}
 
-	if err := pool.CreateSnapshot("test", "test-snap"); err != nil {
+	if err := img.CreateSnapshot("test-snap"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := pool.CreateSnapshot("test", "test-snap"); err == nil {
+	if err := img.CreateSnapshot("test-snap"); err == nil {
 		t.Fatal("Did not recieve error creating snapshot twice")
 	}
 
-	defer pool.RemoveSnapshot("test", "test-snap")
+	defer img.RemoveSnapshot("test-snap")
 
-	if list, err = pool.ListSnapshots("test", 100); err != nil {
+	if list, err = img.ListSnapshots(100); err != nil {
 		t.Fatal(err)
 	}
 
@@ -97,15 +111,15 @@ func TestPool(t *testing.T) {
 		t.Fatal("Snapshot list after create did not match expectation")
 	}
 
-	if err := pool.RemoveSnapshot("test", "test-snap"); err != nil {
+	if err := img.RemoveSnapshot("test-snap"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := pool.RemoveSnapshot("test", "test-snap"); err == nil {
+	if err := img.RemoveSnapshot("test-snap"); err == nil {
 		t.Fatal("Did not receive error when trying to delete the same snapshot twice")
 	}
 
-	if list, err = pool.ListSnapshots("test", 100); err != nil {
+	if list, err = img.ListSnapshots(100); err != nil {
 		t.Fatal(err)
 	}
 
@@ -113,7 +127,7 @@ func TestPool(t *testing.T) {
 		t.Fatal("Snapshot list after create did not match expectation")
 	}
 
-	device2, err := pool.MapDevice("test")
+	device2, err := img.MapDevice()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +136,7 @@ func TestPool(t *testing.T) {
 		t.Fatal("mapdevice failed to find existing rbd device")
 	}
 
-	if err := pool.UnmapDevice("test"); err != nil {
+	if err := img.UnmapDevice(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -130,7 +144,7 @@ func TestPool(t *testing.T) {
 		t.Fatal("device still exists after unmap")
 	}
 
-	if err := pool.UnmapDevice("test"); err == nil {
+	if err := img.UnmapDevice(); err == nil {
 		t.Fatal("Did not receive error trying to unmap device twice")
 	}
 
@@ -140,5 +154,9 @@ func TestPool(t *testing.T) {
 
 	if err := pool.RemoveImage("test"); err == nil {
 		t.Fatal("Did not receive error trying to remove image a second time")
+	}
+
+	if _, err := pool.GetImage("test"); err == nil {
+		t.Fatal("Was able to get image after removal")
 	}
 }

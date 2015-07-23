@@ -12,7 +12,12 @@ func (cd *CephDriver) volumeCreate(volumeName string, volumeSize uint64) error {
 }
 
 func (cd *CephDriver) mapImage(volumeName string) (string, error) {
-	blkdev, err := cd.pool.MapDevice(volumeName)
+	img, err := cd.pool.GetImage(volumeName)
+	if err != nil {
+		return "", err
+	}
+
+	blkdev, err := img.MapDevice()
 	log.Debugf("mapped volume %q as %q", volumeName, blkdev)
 
 	return blkdev, err
@@ -31,7 +36,12 @@ func (cd *CephDriver) mkfsVolume(devicePath string) error {
 }
 
 func (cd *CephDriver) unmapImage(volumeName string) error {
-	return cd.pool.UnmapDevice(volumeName)
+	img, err := cd.pool.GetImage(volumeName)
+	if err != nil {
+		return err
+	}
+
+	return img.UnmapDevice()
 }
 
 func (cd *CephDriver) volumeExists(volumeName string) (bool, error) {
