@@ -41,3 +41,7 @@ volmaster-start: build
 	pkill volmaster || exit 0
 	sleep 1
 	DEBUG=1 volmaster /etc/volmaster.json
+
+reflex:
+	@echo 'To use this task, `go get github.com/cespare/reflex`'
+	reflex -r '.*\.go' make test
