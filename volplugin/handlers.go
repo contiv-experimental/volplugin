@@ -46,20 +46,17 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 			return
 		}
 
-		volSpec := cephdriver.CephVolumeSpec{
-			VolumeName: vr.Name,
-			VolumeSize: config.Size,
-		}
-
 		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
 		if err != nil {
 			httpError(w, "Error creating ceph driver", err)
 			return
 		}
 
-		log.Infof("Creating volume with parameters: %v", volSpec)
+		vol := driver.NewVolume(vr.Name, config.Size)
 
-		if err := driver.CreateVolume(volSpec); err != nil {
+		log.Infof("Creating volume with parameters: %v", vol)
+
+		if err := vol.Create(); err != nil {
 			httpError(w, "Could not make new image", err)
 			return
 		}
@@ -87,10 +84,6 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		volspec := cephdriver.CephVolumeSpec{
-			VolumeName: vr.Name,
-		}
-
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
 		config, err := requestTenantConfig(tenantName)
@@ -105,7 +98,7 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -128,10 +121,6 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 			return
 		}
 
-		volspec := cephdriver.CephVolumeSpec{
-			VolumeName: vr.Name,
-		}
-
 		log.Infof("Mounting volume %q", vr.Name)
 
 		config, err := requestTenantConfig(tenantName)
@@ -146,12 +135,12 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 			return
 		}
 
-		if err := driver.MountVolume(volspec); err != nil {
+		if err := driver.NewVolume(vr.Name, config.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -174,10 +163,6 @@ func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		volspec := cephdriver.CephVolumeSpec{
-			VolumeName: vr.Name,
-		}
-
 		log.Infof("Unmounting volume %q", vr.Name)
 
 		config, err := requestTenantConfig(tenantName)
@@ -192,12 +177,12 @@ func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 			return
 		}
 
-		if err := driver.UnmountVolume(volspec); err != nil {
+		if err := driver.NewVolume(vr.Name, config.Size).Unmount(); err != nil {
 			httpError(w, "Could not mount image", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volspec.VolumeName)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
