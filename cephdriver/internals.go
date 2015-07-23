@@ -7,18 +7,18 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func (cd *CephDriver) volumeCreate(volumeName string, volumeSize uint64) error {
-	return cd.pool.CreateImage(volumeName, volumeSize)
+func (cv *CephVolume) volumeCreate() error {
+	return cv.driver.pool.CreateImage(cv.VolumeName, cv.VolumeSize)
 }
 
-func (cd *CephDriver) mapImage(volumeName string) (string, error) {
-	img, err := cd.pool.GetImage(volumeName)
+func (cv *CephVolume) mapImage() (string, error) {
+	img, err := cv.driver.pool.GetImage(cv.VolumeName)
 	if err != nil {
 		return "", err
 	}
 
 	blkdev, err := img.MapDevice()
-	log.Debugf("mapped volume %q as %q", volumeName, blkdev)
+	log.Debugf("mapped volume %q as %q", cv.VolumeName, blkdev)
 
 	return blkdev, err
 }
@@ -35,26 +35,11 @@ func (cd *CephDriver) mkfsVolume(devicePath string) error {
 	return nil
 }
 
-func (cd *CephDriver) unmapImage(volumeName string) error {
-	img, err := cd.pool.GetImage(volumeName)
+func (cv *CephVolume) unmapImage() error {
+	img, err := cv.driver.pool.GetImage(cv.VolumeName)
 	if err != nil {
 		return err
 	}
 
 	return img.UnmapDevice()
-}
-
-func (cd *CephDriver) volumeExists(volumeName string) (bool, error) {
-	list, err := cd.pool.List()
-	if err != nil {
-		return false, err
-	}
-
-	for _, volName := range list {
-		if volName == volumeName {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

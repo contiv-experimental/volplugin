@@ -58,19 +58,19 @@ func TestMountUnmountVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	volumeSpec := CephVolumeSpec{VolumeName: "pithos1234", VolumeSize: 10240000}
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10240000)
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	cephDriver.UnmountVolume(volumeSpec)
-	cephDriver.DeleteVolume(volumeSpec)
+	volumeSpec.Unmount()
+	volumeSpec.Remove()
 
-	if err := cephDriver.CreateVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume: %v", err)
 	}
 
 	// mount the volume
-	if err := cephDriver.MountVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Mount(); err != nil {
 		t.Fatalf("Error mounting the volume. Err: %v", err)
 	}
 
@@ -79,11 +79,11 @@ func TestMountUnmountVolume(t *testing.T) {
 	}
 
 	// unmount the volume
-	if err := cephDriver.UnmountVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Unmount(); err != nil {
 		t.Fatalf("Error unmounting the volume. Err: %v", err)
 	}
 
-	if err := cephDriver.DeleteVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume: %v", err)
 	}
 }
@@ -100,19 +100,16 @@ func TestRepeatedMountUnmount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	volumeSpec := CephVolumeSpec{
-		VolumeName: "pithos1234",
-		VolumeSize: 10000000,
-	}
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10000000)
 	// Create a volume
-	if err := cephDriver.CreateVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
 	}
 
 	// Repeatedly perform mount unmount test
 	for i := 0; i < 10; i++ {
 		// mount the volume
-		if err := cephDriver.MountVolume(volumeSpec); err != nil {
+		if err := volumeSpec.Mount(); err != nil {
 			t.Fatalf("Error mounting the volume. Err: %v", err)
 		}
 
@@ -121,13 +118,13 @@ func TestRepeatedMountUnmount(t *testing.T) {
 		}
 
 		// unmount the volume
-		if err := cephDriver.UnmountVolume(volumeSpec); err != nil {
+		if err := volumeSpec.Unmount(); err != nil {
 			t.Fatalf("Error unmounting the volume. Err: %v", err)
 		}
 	}
 
 	// delete the volume
-	if err := cephDriver.DeleteVolume(volumeSpec); err != nil {
+	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
