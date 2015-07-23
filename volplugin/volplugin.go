@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -87,7 +89,7 @@ func configureRouter(tenant string, debug bool) *mux.Router {
 
 	for key, value := range routeMap {
 		parts := strings.SplitN(key, ".", 2)
-		s.HandleFunc(key, logHandler(parts[1], value))
+		s.HandleFunc(key, logHandler(parts[1], debug, value))
 	}
 
 	if debug {
@@ -97,9 +99,21 @@ func configureRouter(tenant string, debug bool) *mux.Router {
 	return router
 }
 
-func logHandler(name string, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Debugf("Handling %q event", name)
+		if debug {
+			buf := new(bytes.Buffer)
+			io.Copy(buf, r.Body)
+			log.Debugf("Handling %q event", name)
+			log.Debugf(strings.TrimSpace(string(buf.Bytes())))
+			var writer *io.PipeWriter
+			r.Body, writer = io.Pipe()
+			go func() {
+				io.Copy(writer, buf)
+				writer.Close()
+			}()
+		}
+
 		actionFunc(w, r)
 	}
 }
