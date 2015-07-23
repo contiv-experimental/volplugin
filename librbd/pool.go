@@ -33,6 +33,10 @@ type Pool struct {
 // struct will need to be populated; if you want a way to fill it from JSON,
 // see ReadConfig.
 func GetPool(config RBDConfig, poolName string) (*Pool, error) {
+	if err := modprobeRBD(); err != nil {
+		return nil, err
+	}
+
 	var err error
 
 	pool := &Pool{poolName: poolName, rbdConfig: config}

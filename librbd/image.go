@@ -120,10 +120,7 @@ func (img *Image) MapDevice() (string, error) {
 
 	if _, err := addF.Write([]byte(output)); err != nil {
 		if err != nil {
-			modprobeRBD()
-			if _, err := addF.Write([]byte(output)); err != nil {
-				return "", err
-			}
+			return "", err
 		}
 	}
 
