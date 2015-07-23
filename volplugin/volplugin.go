@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const basePath = "/usr/share/docker/plugins"
+const basePath = "/run/docker/plugins"
 
 // VolumeRequest is taken from
 // https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
@@ -50,6 +50,7 @@ func daemon(ctx *cli.Context) {
 	driverName := ctx.Args()[0]
 	driverPath := path.Join(basePath, driverName) + ".sock"
 	os.Remove(driverPath)
+	os.MkdirAll(basePath, 0700)
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: driverPath, Net: "unix"})
 	if err != nil {
