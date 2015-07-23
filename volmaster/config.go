@@ -3,8 +3,15 @@ package main
 import "fmt"
 
 type configTenant struct {
-	Pool string `json:"pool"`
-	Size uint64 `json:"size"`
+	Pool         string         `json:"pool"`
+	Size         uint64         `json:"size"`
+	UseSnapshots bool           `json:"snapshots"`
+	Snapshot     configSnapshot `json:"snapshot"`
+}
+
+type configSnapshot struct {
+	Frequency string `json:"frequency"`
+	Keep      uint   `json:"keep"`
 }
 
 type config map[string]configTenant
