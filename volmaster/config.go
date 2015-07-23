@@ -25,6 +25,10 @@ func (c config) validate() error {
 		if cfg.Size == 0 {
 			return fmt.Errorf("Config for tenant %q has a zero size", tenant)
 		}
+
+		if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
+			return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
+		}
 	}
 
 	return nil

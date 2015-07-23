@@ -40,10 +40,10 @@ func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
 }
 
-func requestTenantConfig(tenantName string) (configTenant, error) {
+func requestTenantConfig(tenantName, volumeName string) (configTenant, error) {
 	var tenConfig configTenant
 
-	content, err := json.Marshal(request{tenantName})
+	content, err := json.Marshal(request{tenantName, volumeName})
 	if err != nil {
 		return tenConfig, err
 	}
