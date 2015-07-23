@@ -104,8 +104,7 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		if debug {
 			buf := new(bytes.Buffer)
 			io.Copy(buf, r.Body)
-			log.Debugf("Handling %q event", name)
-			log.Debugf(strings.TrimSpace(string(buf.Bytes())))
+			log.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
 			var writer *io.PipeWriter
 			r.Body, writer = io.Pipe()
 			go func() {
