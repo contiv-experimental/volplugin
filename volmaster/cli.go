@@ -8,12 +8,18 @@ import (
 	"os"
 	"path"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 )
 
 func start(ctx *cli.Context) {
 	if len(ctx.Args()) != 1 {
 		errExit(ctx, errors.New("Config file required."))
+	}
+
+	if ctx.Bool("debug") {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug logging enabled")
 	}
 
 	configFile := ctx.Args()[0]
@@ -44,5 +50,12 @@ func main() {
 	app.Usage = fmt.Sprintf("Control many volplugins: %s [config file]", basePath)
 	app.Name = basePath
 	app.Action = start
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:   "debug",
+			Usage:  "turn on debugging",
+			EnvVar: "DEBUG",
+		},
+	}
 	app.Run(os.Args)
 }
