@@ -40,7 +40,7 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 			return
 		}
 
-		config, err := requestTenantConfig(tenantName)
+		config, err := requestTenantConfig(tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -86,7 +86,7 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName)
+		config, err := requestTenantConfig(tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -123,7 +123,7 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 
 		log.Infof("Mounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName)
+		config, err := requestTenantConfig(tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -165,7 +165,7 @@ func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 
 		log.Infof("Unmounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName)
+		config, err := requestTenantConfig(tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return

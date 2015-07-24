@@ -34,6 +34,7 @@ type VolumeResponse struct {
 // request to the volmaster
 type request struct {
 	Tenant string `json:"tenant"`
+	Volume string `json:"volume"`
 }
 
 // response from the volmaster
