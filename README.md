@@ -37,7 +37,7 @@ $ make volmaster-start
 
 ### Usage instructions
 
-1. Start the volmaster with the sample `volmaster.cfg` file. It should live in
+1. Start the volmaster with the sample `volmaster.json` file. It should live in
    `/etc/volmaster.json`.
 1. Start the volplugin with the tenant name `tenant1`: `volplugin tenant1`.
 1. Execute docker with the appropriate volume driver:
