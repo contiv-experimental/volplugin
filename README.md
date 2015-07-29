@@ -1,3 +1,17 @@
+### Prerequsites:
+
+On the host, equivalent or greater:
+
+* VirtualBox 5
+* Vagrant 1.7.4
+* Ansible 1.9.2
+  * install with pip; you'll want to install `python-pip` and `python-dev` on
+    ubuntu machines.
+* build-essential
+* golang 1.4.x
+
+Your guests will configure themselves.
+
 ### Usage instructions
 
 Be sure to start the environment with `make start` before you continue with
