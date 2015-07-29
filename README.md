@@ -6,7 +6,7 @@ these steps. You must have working vagrant, virtualbox, and ansible.
 You will also want to `make ssh` to ssh into the `mon0` VM to follow along.
 
 1. Start the volmaster with the sample `volmaster.json` file. It should live in
-   `/etc/volmaster.json`.
+   `/etc/volmaster.json`. Start it by typing `volmaster /etc/volmaster.json`.
 1. Start the volplugin with the tenant name `tenant1`: `volplugin tenant1`.
 1. Execute docker with the appropriate volume driver:
    * `docker run  -it --volume-driver tenant1 -v tmp:/mnt ubuntu`
