@@ -2,7 +2,7 @@
 
 On the host, equivalent or greater:
 
-* VirtualBox 5
+* VirtualBox 4.3
 * Vagrant 1.7.4
 * Ansible 1.9.2
   * install with pip; you'll want to install `python-pip` and `python-dev` on
