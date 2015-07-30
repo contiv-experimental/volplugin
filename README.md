@@ -7,6 +7,10 @@ On the host, equivalent or greater:
 * Ansible 1.9.2
   * install with pip; you'll want to install `python-pip` and `python-dev` on
     ubuntu machines.
+  * The make tooling in this repository will install it for you if it is not
+    already installed. If you are not root, it may fail to perform this
+    operation. The solution to this problem is to install ansible
+    independently.
 * build-essential
 * golang 1.4.x
 
