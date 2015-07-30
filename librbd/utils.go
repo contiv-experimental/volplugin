@@ -10,6 +10,7 @@ package librbd
 import "C"
 import (
 	"errors"
+	"fmt"
 	"os/exec"
 )
 
@@ -26,5 +27,9 @@ func strerror(i C.int) error {
 }
 
 func modprobeRBD() error {
-	return exec.Command("modprobe", "rbd").Run()
+	if err := exec.Command("modprobe", "rbd").Run(); err != nil {
+		return fmt.Errorf("Cannot modprobe rbd: %v", err)
+	}
+
+	return nil
 }
