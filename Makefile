@@ -23,21 +23,24 @@ install-ansible:
 test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go test -v ./..."'
 
+build: golint
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
+
 run-volplugin:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volplugin-start"'
 
 run-volmaster:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volmaster-start"'
 
-build: golint
+run-build:
 	godep go install -v ./volplugin/ ./volmaster/
 
-volplugin-start: build
+volplugin-start: run-build
 	pkill volplugin || exit 0
 	sleep 1
 	DEBUG=1 volplugin tenant1
 
-volmaster-start: build
+volmaster-start: run-build
 	pkill volmaster || exit 0
 	sleep 1
 	DEBUG=1 volmaster /etc/volmaster.json
