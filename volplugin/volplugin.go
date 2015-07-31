@@ -1,8 +1,7 @@
-package main
+package volplugin
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/librbd"
 	"github.com/gorilla/mux"
 )
@@ -43,29 +41,25 @@ type configTenant struct {
 	Size uint64 `json:"size"`
 }
 
-func daemon(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
-		fmt.Printf("\nUsage: %s [tenant/driver name]\n\n", os.Args[0])
-		cli.ShowAppHelp(ctx)
-		os.Exit(1)
-	}
-
-	driverName := ctx.Args()[0]
-	driverPath := path.Join(basePath, driverName) + ".sock"
+// Daemon starts the volplugin service.
+func Daemon(tenantName string, debug bool) error {
+	driverPath := path.Join(basePath, tenantName) + ".sock"
 	os.Remove(driverPath)
-	os.MkdirAll(basePath, 0700)
+	if err := os.MkdirAll(basePath, 0700); err != nil {
+		return err
+	}
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: driverPath, Net: "unix"})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	if ctx.Bool("debug") {
+	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, configureRouter(driverName, ctx.Bool("debug")))
-	l.Close()
+	http.Serve(l, configureRouter(tenantName, debug))
+	return l.Close()
 }
 
 func configureRouter(tenant string, debug bool) *mux.Router {

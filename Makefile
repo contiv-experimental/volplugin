@@ -36,7 +36,7 @@ run-volmaster:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volmaster-start"'
 
 run-build:
-	godep go install -v ./volplugin/ ./volmaster/
+	godep go install -v ./volplugin/volplugin/ ./volmaster
 
 container:
 	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
