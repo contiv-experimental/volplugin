@@ -67,7 +67,7 @@ ceph_stable_release: hammer # ceph stable release
 # supported distros are centos6, centos7, fc17, fc18, fc19, fc20, fedora17, fedora18,
 # fedora19, fedora20, opensuse12, sles0. (see http://gitbuilder.ceph.com/).
 # For rhel, please pay attention to the versions: 'rhel6 3' or 'rhel 4', the fullname is _very_ important.
-#ceph_dev_redhat_distro: centos7
+ceph_dev_redhat_distro: centos7
 
 ###############
 # CONFIGURATION

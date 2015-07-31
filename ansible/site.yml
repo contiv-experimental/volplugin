@@ -2,15 +2,17 @@
   sudo: true
   environment: proxy_env
   tasks:
+    - yum: "name={{ item }}"
+      with_items:
+        - gcc
+        - git
+        - mercurial
+        - librbd1-devel
+        - perl
+        - curl
     - shell: creates=/usr/bin/docker curl https://experimental.docker.com | bash
     - shell: creates=/usr/local/go/bin/go curl -L https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz | tar -xvz -C /usr/local
     - file: path=/opt/golang/src/github.com/contiv state=directory
-    - apt: "name={{ item }}"
-      with_items:
-        - git
-        - mercurial
-        - librbd-dev
-        - perl
     - copy: 
         dest: /etc/profile.d/00golang.sh
         content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
