@@ -6,11 +6,11 @@ On the host, equivalent or greater:
 * Vagrant 1.7.4
 * Ansible 1.9.2
   * install with pip; you'll want to install `python-pip` and `python-dev` on
-    ubuntu machines.
+    ubuntu machines, then `sudo pip install ansible`.
   * The make tooling in this repository will install it for you if it is not
     already installed. If you are not root, it may fail to perform this
     operation. The solution to this problem is to install ansible
-    independently.
+    independently as described above.
 * build-essential
 * golang 1.4.x
 
