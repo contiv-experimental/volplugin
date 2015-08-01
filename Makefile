@@ -26,25 +26,31 @@ test: golint
 build: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
 
+run:
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build; (make volplugin-start &); make volmaster-start"'
+
 run-volplugin:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volplugin-start"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volplugin-start"'
 
 run-volmaster:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make volmaster-start"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volmaster-start"'
 
 run-build:
 	godep go install -v ./volplugin/ ./volmaster/
 
-volplugin-start: run-build
+container:
+	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
+
+volplugin-start:
 	pkill volplugin || exit 0
 	sleep 1
-	DEBUG=1 volplugin tenant1
+	volplugin tenant1
 
-volmaster-start: run-build
+volmaster-start:
 	pkill volmaster || exit 0
 	sleep 1
-	DEBUG=1 volmaster /etc/volmaster.json
+	volmaster /etc/volmaster.json
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
-	reflex -r '.*\.go' make test
+	which reflex &>/dev/null && reflex -r '.*\.go' make test
