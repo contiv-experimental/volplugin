@@ -26,15 +26,13 @@ these steps. You must have working vagrant, virtualbox, and ansible.
 
 You will also want to `make ssh` to ssh into the `mon0` VM to follow along.
 
-1. Start the volmaster with the sample `volmaster.json` file. It should live in
-   `/etc/volmaster.json`. Start it by typing `volmaster /etc/volmaster.json` in
-   the guest or by typing `make run-volmaster` from the host.
-1. Start the volplugin with the tenant name `tenant1`: `volplugin tenant1` on
-   the guest, or `make run-volplugin` from the host.
-1. `make ssh` in, and execute docker with the appropriate volume driver:
-   * `docker run  -it --volume-driver tenant1 -v tmp:/mnt ubuntu`
-1. You should have a volume on `/mnt` pointing at a `/dev/rbd#` device. Exit
-   the shell to unmap the device.
+1. Start the volmaster and volplugin: `make run`. This will hang until you hit
+   ^C which will stop the started processes.
+1. Start a container with `make container`, or specify one manually:
+ * `docker run -it -v <volname>:<volpath> --volume-driver tenant1 <image> <command>`
+   * Example: `docker run -it -v tmp:/mnt --volume-driver tenant1 ubuntu bash`
+1. You should have a volume mounted at your path, pointing at a `/dev/rbd#`
+   device. Exit the shell to unmap the device.
 
 ### Build Instructions
 
