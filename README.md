@@ -1,4 +1,9 @@
-### Prerequsites:
+## volplugin: cluster-wide volume management for container ecosystems
+
+volplugin uses a master/slave model to dynamically mount and maintain ceph RBD
+devices. It is still very alpha as of this writing.
+
+### Prerequisites:
 
 On the host, equivalent or greater:
 
