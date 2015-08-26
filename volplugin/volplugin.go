@@ -20,6 +20,7 @@ const basePath = "/run/docker/plugins"
 // https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
 type VolumeRequest struct {
 	Name string
+	Opts map[string]string
 }
 
 // VolumeResponse is taken from
@@ -79,8 +80,7 @@ func configureRouter(tenant string, debug bool) *mux.Router {
 	}
 
 	router := mux.NewRouter()
-	s := router.Headers("Accept", "application/vnd.docker.plugins.v1+json").
-		Methods("POST").Subrouter()
+	s := router.Methods("POST").Subrouter()
 
 	for key, value := range routeMap {
 		parts := strings.SplitN(key, ".", 2)
@@ -88,7 +88,7 @@ func configureRouter(tenant string, debug bool) *mux.Router {
 	}
 
 	if debug {
-		s.HandleFunc("/VolumeDriver.{action:.*}", action)
+		s.HandleFunc("{action:.*}", action)
 	}
 
 	return router
