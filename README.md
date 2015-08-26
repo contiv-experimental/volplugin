@@ -50,7 +50,6 @@ func main() {
 		panic(err)
 	}
 
-	// FIXME finish
 	img, err := pool.GetImage("test")
 	if err != nil {
 		panic(err)
