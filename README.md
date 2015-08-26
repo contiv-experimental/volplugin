@@ -35,14 +35,6 @@ func main() {
 		panic(err)
 	}
 
-	if pool.ioctx == nil {
-		panic("ioctx was nil")
-	}
-
-	if pool.cluster == nil {
-		panic("rados was nil")
-	}
-
 	// it's ok if it fails, we just don't want the next call to unless stuff is
 	// broken.
 	pool.RemoveImage("test")
