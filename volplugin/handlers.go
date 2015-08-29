@@ -27,7 +27,7 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func create(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -40,24 +40,8 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 			return
 		}
 
-		config, err := requestTenantConfig(tenantName, vr.Name)
-		if err != nil {
+		if err := requestCreate(master, tenantName, vr.Name); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
-			return
-		}
-
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
-		if err != nil {
-			httpError(w, "Error creating ceph driver", err)
-			return
-		}
-
-		vol := driver.NewVolume(vr.Name, config.Size)
-
-		log.Infof("Creating volume with parameters: %v", vol)
-
-		if err := vol.Create(); err != nil {
-			httpError(w, "Could not make new image", err)
 			return
 		}
 
@@ -71,7 +55,7 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 	}
 }
 
-func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func getPath(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -86,7 +70,7 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName, vr.Name)
+		config, err := requestTenantConfig(master, tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -108,7 +92,7 @@ func getPath(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 	}
 }
 
-func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func mount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -123,7 +107,7 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 
 		log.Infof("Mounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName, vr.Name)
+		config, err := requestTenantConfig(master, tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -150,7 +134,7 @@ func mount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWrit
 	}
 }
 
-func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func unmount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -165,7 +149,7 @@ func unmount(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWr
 
 		log.Infof("Unmounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(tenantName, vr.Name)
+		config, err := requestTenantConfig(master, tenantName, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return

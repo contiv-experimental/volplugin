@@ -39,7 +39,7 @@ func start(ctx *cli.Context) {
 		errExit(ctx, err)
 	}
 
-	daemon(config)
+	daemon(config, ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {
@@ -55,6 +55,12 @@ func main() {
 			Name:   "debug",
 			Usage:  "turn on debugging",
 			EnvVar: "DEBUG",
+		},
+		cli.StringFlag{
+			Name:   "listen",
+			Usage:  "listen address for volmaster",
+			EnvVar: "LISTEN",
+			Value:  ":8080",
 		},
 	}
 	app.Run(os.Args)

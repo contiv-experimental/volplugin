@@ -18,6 +18,12 @@ func main() {
 			Usage:  "Turn on debug logging",
 			EnvVar: "DEBUG",
 		},
+		cli.StringFlag{
+			Name:   "master",
+			Usage:  "Set the volmaster host:port",
+			EnvVar: "MASTER",
+			Value:  "localhost:8080",
+		},
 	}
 	app.Action = run
 
@@ -31,8 +37,5 @@ func run(ctx *cli.Context) {
 		os.Exit(1)
 	}
 
-	driverName := ctx.Args()[0]
-	debug := ctx.Bool("debug")
-
-	volplugin.Daemon(driverName, debug)
+	volplugin.Daemon(ctx.Args()[0], ctx.Bool("debug"), ctx.String("master"))
 }

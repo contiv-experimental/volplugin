@@ -36,6 +36,11 @@ type request struct {
 	Volume string `json:"volume"`
 }
 
+type createRequest struct {
+	Tenant string `json:"tenant"`
+	Volume string `json:"volume"`
+}
+
 // response from the volmaster
 type configTenant struct {
 	Pool string `json:"pool"`
@@ -43,7 +48,7 @@ type configTenant struct {
 }
 
 // Daemon starts the volplugin service.
-func Daemon(tenantName string, debug bool) error {
+func Daemon(tenantName string, debug bool, master string) error {
 	driverPath := path.Join(basePath, tenantName) + ".sock"
 	os.Remove(driverPath)
 	if err := os.MkdirAll(basePath, 0700); err != nil {
@@ -59,11 +64,11 @@ func Daemon(tenantName string, debug bool) error {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, configureRouter(tenantName, debug))
+	http.Serve(l, configureRouter(tenantName, debug, master))
 	return l.Close()
 }
 
-func configureRouter(tenant string, debug bool) *mux.Router {
+func configureRouter(tenant string, debug bool, master string) *mux.Router {
 	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
 	if err != nil {
 		panic(err)
@@ -72,11 +77,11 @@ func configureRouter(tenant string, debug bool) *mux.Router {
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":      activate,
 		"/Plugin.Deactivate":    nilAction,
-		"/VolumeDriver.Create":  create(tenant, config),
+		"/VolumeDriver.Create":  create(master, tenant, config),
 		"/VolumeDriver.Remove":  nilAction,
-		"/VolumeDriver.Path":    getPath(tenant, config),
-		"/VolumeDriver.Mount":   mount(tenant, config),
-		"/VolumeDriver.Unmount": unmount(tenant, config),
+		"/VolumeDriver.Path":    getPath(master, tenant, config),
+		"/VolumeDriver.Mount":   mount(master, tenant, config),
+		"/VolumeDriver.Unmount": unmount(master, tenant, config),
 	}
 
 	router := mux.NewRouter()

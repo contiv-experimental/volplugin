@@ -88,22 +88,19 @@ func (p *Pool) RemoveImage(name string) error {
 
 // List all the images for the pool.
 func (p *Pool) List() ([]string, error) {
-	list := C.CString("")
-	defer func() {
-		C.free(unsafe.Pointer(list))
-	}()
+	buf := make([]byte, 1024*1024)
 
 	// FIXME number of entries, but it's an undocumented call so I don't know for sure
 	sizeT := C.size_t(1024 * 1024)
 
 	var i C.int
-	if i = C.rbd_list(p.ioctx, list, &sizeT); i < 0 {
+	if i = C.rbd_list(p.ioctx, (*C.char)(unsafe.Pointer(&buf[0])), &sizeT); i < 0 {
 		return nil, strerror(i)
 	}
 
 	// the returned string is multiple null terminated strings with a double null
 	// at the end. Hence GoStringN.
-	items := strings.Split(C.GoStringN(list, i), string([]byte{0}))
+	items := strings.Split(C.GoStringN((*C.char)(unsafe.Pointer(&buf[0])), i), string([]byte{0}))
 	return items[:len(items)-1], nil
 }
 
