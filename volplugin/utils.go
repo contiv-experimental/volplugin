@@ -48,7 +48,7 @@ func requestTenantConfig(tenantName, volumeName string) (configTenant, error) {
 		return tenConfig, err
 	}
 
-	resp, err := http.Post("http://localhost:8080", "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post("http://localhost:8080/request", "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return tenConfig, err
 	}
@@ -67,4 +67,22 @@ func requestTenantConfig(tenantName, volumeName string) (configTenant, error) {
 	}
 
 	return tenConfig, nil
+}
+
+func requestCreate(tenantName, volumeName string) error {
+	content, err := json.Marshal(createRequest{tenantName, volumeName})
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post("http://localhost:8080/create", "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
+	return nil
 }

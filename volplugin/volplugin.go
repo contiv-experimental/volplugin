@@ -36,6 +36,11 @@ type request struct {
 	Volume string `json:"volume"`
 }
 
+type createRequest struct {
+	Tenant string `json:"tenant"`
+	Volume string `json:"volume"`
+}
+
 // response from the volmaster
 type configTenant struct {
 	Pool string `json:"pool"`

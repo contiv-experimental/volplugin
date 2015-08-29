@@ -40,24 +40,8 @@ func create(tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWri
 			return
 		}
 
-		config, err := requestTenantConfig(tenantName, vr.Name)
-		if err != nil {
+		if err := requestCreate(tenantName, vr.Name); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
-			return
-		}
-
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
-		if err != nil {
-			httpError(w, "Error creating ceph driver", err)
-			return
-		}
-
-		vol := driver.NewVolume(vr.Name, config.Size)
-
-		log.Infof("Creating volume with parameters: %v", vol)
-
-		if err := vol.Create(); err != nil {
-			httpError(w, "Could not make new image", err)
 			return
 		}
 
