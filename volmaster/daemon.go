@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -28,17 +31,35 @@ var (
 	volumeMap = map[string]map[string]createRequest{} // tenant to array of volume names
 )
 
-func daemon(config config) {
+func daemon(config config, debug bool, listen string) {
 	r := mux.NewRouter()
-	r.HandleFunc("/request", config.handleRequest).Methods("POST")
-	r.HandleFunc("/create", config.handleCreate).Methods("POST")
+	r.HandleFunc("/request", logHandler("/request", debug, config.handleRequest)).Methods("POST")
+	r.HandleFunc("/create", logHandler("/create", debug, config.handleCreate)).Methods("POST")
 
 	go scheduleSnapshotPrune(config)
 	go scheduleSnapshots(config)
 
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(listen, r)
 
 	select {}
+}
+
+func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if debug {
+			buf := new(bytes.Buffer)
+			io.Copy(buf, r.Body)
+			log.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
+			var writer *io.PipeWriter
+			r.Body, writer = io.Pipe()
+			go func() {
+				io.Copy(writer, buf)
+				writer.Close()
+			}()
+		}
+
+		actionFunc(w, r)
+	}
 }
 
 func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
