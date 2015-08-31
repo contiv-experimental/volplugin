@@ -4,7 +4,10 @@ start: install-ansible
 stop:
 	vagrant destroy -f
 
-restart: stop start
+update:
+	vagrant box update
+
+restart: stop update start
 
 provision:
 	vagrant provision
