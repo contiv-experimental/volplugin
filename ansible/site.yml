@@ -10,7 +10,7 @@
         - librbd1-devel
         - perl
         - curl
-    - shell: creates=/usr/bin/docker curl https://experimental.docker.com | bash
+    - shell: curl https://experimental.docker.com | bash
     - shell: creates=/usr/local/go/bin/go curl -L https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz | tar -xvz -C /usr/local
     - file: path=/opt/golang/src/github.com/contiv state=directory
     - copy: 
@@ -27,6 +27,7 @@
     - file: src=/vagrant dest=/opt/golang/src/github.com/contiv/volplugin state=link
     - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
     - file: path=/usr/share/docker/plugins state=directory
+    - copy: src=../volmaster.json dest=/etc/volmaster.json
   roles:
   - ceph-mon
   - ceph-restapi
