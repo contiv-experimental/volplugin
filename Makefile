@@ -53,7 +53,7 @@ volmaster-start:
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
-	which reflex &>/dev/null && reflex -r '.*\.go' make test
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
 
 update-subtree:
 	git subtree -P librbd pull https://github.com/contiv/librbd master
