@@ -19,7 +19,7 @@ func (cv *CephVolume) mapImage() (string, error) {
 	device := strings.TrimSpace(string(blkdev))
 
 	if err == nil {
-		log.Debugf("mapped volume %q as %q", cv.VolumeName, blkdev)
+		log.Debugf("mapped volume %q as %q", cv.VolumeName, device)
 	}
 
 	return device, err
