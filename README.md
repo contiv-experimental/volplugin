@@ -7,10 +7,7 @@ devices. It is still very alpha as of this writing.
 
 On the host, equivalent or greater:
 
-* VirtualBox 4.3
-  * Note that with Ubuntu and Debian, you will always want to install the system packages
-    as we attach storage and command behavior is wildly inconsistent between
-    versions.
+* VirtualBox 5.0.2 or greater
 * Vagrant 1.7.4
 * Ansible 1.9.2
   * install with pip; you'll want to install `python-pip` and `python-dev` on
