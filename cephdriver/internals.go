@@ -10,9 +10,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// FIXME all the shell invocations in here are pretty fragile, fix with a
-// timeout.
-
 func (cv *CephVolume) volumeCreate() error {
 	return exec.Command("rbd", "create", cv.VolumeName, "--size", strconv.FormatUint(cv.VolumeSize, 10), "--pool", cv.PoolName()).Run()
 }

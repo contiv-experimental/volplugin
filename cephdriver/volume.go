@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// FIXME all the shell invocations in here are pretty fragile, fix with a
-// timeout.
-
 // CephVolume is a struct that communicates volume name and size.
 type CephVolume struct {
 	VolumeName string // Name of the volume
