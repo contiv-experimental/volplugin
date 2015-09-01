@@ -17,6 +17,8 @@ type CephVolume struct {
 	driver     *CephDriver
 }
 
+// PoolName returns the name of the pool the driver for this CephVolume was
+// configured with.
 func (cv *CephVolume) PoolName() string {
 	return cv.driver.PoolName
 }
