@@ -1,3 +1,4 @@
 *.vdi
 .vagrant
 ansible/fetch/*
+volmaster/volmaster

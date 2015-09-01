@@ -3,24 +3,26 @@ package cephdriver
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
+	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 func (cv *CephVolume) volumeCreate() error {
-	return cv.driver.pool.CreateImage(cv.VolumeName, cv.VolumeSize)
+	return exec.Command("rbd", "create", cv.VolumeName, "--size", strconv.FormatUint(cv.VolumeSize, 10), "--pool", cv.PoolName()).Run()
 }
 
 func (cv *CephVolume) mapImage() (string, error) {
-	img, err := cv.driver.pool.GetImage(cv.VolumeName)
-	if err != nil {
-		return "", err
+	blkdev, err := exec.Command("rbd", "map", cv.VolumeName, "--pool", cv.PoolName()).Output()
+	device := strings.TrimSpace(string(blkdev))
+
+	if err == nil {
+		log.Debugf("mapped volume %q as %q", cv.VolumeName, device)
 	}
 
-	blkdev, err := img.MapDevice()
-	log.Debugf("mapped volume %q as %q", cv.VolumeName, blkdev)
-
-	return blkdev, err
+	return device, err
 }
 
 func (cd *CephDriver) mkfsVolume(devicePath string) error {
@@ -36,10 +38,30 @@ func (cd *CephDriver) mkfsVolume(devicePath string) error {
 }
 
 func (cv *CephVolume) unmapImage() error {
-	img, err := cv.driver.pool.GetImage(cv.VolumeName)
+	output, err := exec.Command("rbd", "showmapped", "--pool", cv.PoolName()).Output()
 	if err != nil {
 		return err
 	}
 
-	return img.UnmapDevice()
+	lines := strings.Split(string(output), "\n")
+	if len(lines) < 2 {
+		return nil // no mapped images
+	}
+
+	// the first line is a header
+	for _, line := range lines[1 : len(lines)-1] {
+		parts := regexp.MustCompile(`\s+`).Split(line, -1)
+		pool := parts[1]
+		image := parts[2]
+		device := parts[4]
+
+		if strings.TrimSpace(pool) == cv.driver.PoolName && strings.TrimSpace(image) == cv.VolumeName {
+			log.Debugf("Unmapping volume %s/%s at device %q", cv.driver.PoolName, cv.VolumeName, strings.TrimSpace(device))
+			if err := exec.Command("rbd", "unmap", device).Run(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

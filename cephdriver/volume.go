@@ -3,7 +3,10 @@ package cephdriver
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"syscall"
 )
 
@@ -14,16 +17,24 @@ type CephVolume struct {
 	driver     *CephDriver
 }
 
+// PoolName returns the name of the pool the driver for this CephVolume was
+// configured with.
+func (cv *CephVolume) PoolName() string {
+	return cv.driver.PoolName
+}
+
 func (cv *CephVolume) String() string {
-	return fmt.Sprintf("[name: %s size: %d]", cv.VolumeName, cv.VolumeSize)
+	return fmt.Sprintf("[name: %s/%s size: %d]", cv.PoolName(), cv.VolumeName, cv.VolumeSize)
 }
 
 // Exists returns true if the volume already exists.
 func (cv *CephVolume) Exists() (bool, error) {
-	list, err := cv.driver.pool.List()
+	out, err := exec.Command("rbd", "ls", cv.PoolName()).Output()
 	if err != nil {
 		return false, err
 	}
+
+	list := strings.Split(string(out), "\n")
 
 	for _, volName := range list {
 		if volName == cv.VolumeName {
@@ -135,37 +146,46 @@ func (cv *CephVolume) Unmount() error {
 }
 
 // Remove removes an RBD volume i.e. rbd image
-func (cv *CephVolume) Remove() error {
-	return cv.driver.pool.RemoveImage(cv.VolumeName)
+func (cv *CephVolume) Remove(snapshots bool) error {
+	if snapshots {
+		if err := exec.Command("rbd", "snap", "purge", cv.VolumeName, "--pool", cv.PoolName()).Run(); err != nil {
+			return err
+		}
+	}
+	return exec.Command("rbd", "rm", cv.VolumeName, "--pool", cv.PoolName()).Run()
 }
 
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (cv *CephVolume) CreateSnapshot(snapName string) error {
-	image, err := cv.driver.pool.GetImage(cv.VolumeName)
-	if err != nil {
-		return err
-	}
-
-	return image.CreateSnapshot(snapName)
+	return exec.Command("rbd", "snap", "create", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName()).Run()
 }
 
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (cv *CephVolume) RemoveSnapshot(snapName string) error {
-	image, err := cv.driver.pool.GetImage(cv.VolumeName)
-	if err != nil {
-		return err
-	}
-
-	return image.RemoveSnapshot(snapName)
+	return exec.Command("rbd", "snap", "rm", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName()).Run()
 }
 
 // ListSnapshots returns an array of snapshot names provided a maximum number
 // of snapshots to be returned. Any error will be returned.
-func (cv *CephVolume) ListSnapshots(max int) ([]string, error) {
-	image, err := cv.driver.pool.GetImage(cv.VolumeName)
+func (cv *CephVolume) ListSnapshots() ([]string, error) {
+	out, err := exec.Command("rbd", "snap", "ls", cv.VolumeName, "--pool", cv.PoolName()).Output()
 	if err != nil {
 		return nil, err
 	}
 
-	return image.ListSnapshots(max)
+	names := []string{}
+
+	lines := strings.Split(string(out), "\n")
+	if len(lines) > 1 {
+		for _, line := range lines[1:] {
+			parts := regexp.MustCompile(`\s+`).Split(line, -1)
+			if len(parts) < 2 {
+				continue
+			}
+
+			names = append(names, parts[2])
+		}
+	}
+
+	return names, nil
 }

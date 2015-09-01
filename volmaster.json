@@ -1,7 +1,7 @@
 {
   "tenant1": {
     "pool": "rbd",
-    "size": 100000000,
+    "size": 10,
     "snapshots": true,
     "snapshot": {
       "frequency": "30m",
