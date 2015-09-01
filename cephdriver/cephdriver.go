@@ -2,8 +2,6 @@ package cephdriver
 
 import (
 	"path/filepath"
-
-	"github.com/contiv/volplugin/librbd"
 )
 
 const (
@@ -16,24 +14,15 @@ const (
 type CephDriver struct {
 	deviceBase string
 	mountBase  string
-	pool       *librbd.Pool
-	rbdConfig  librbd.RBDConfig
 	PoolName   string // Name of Pool, populated by NewCephDriver()
 }
 
 // NewCephDriver creates a new Ceph driver
-func NewCephDriver(config librbd.RBDConfig, poolName string) (*CephDriver, error) {
-	pool, err := librbd.GetPool(config, poolName)
-	if err != nil {
-		return nil, err
-	}
-
+func NewCephDriver(poolName string) (*CephDriver, error) {
 	return &CephDriver{
 		deviceBase: defaultDeviceBase,
 		mountBase:  defaultMountBase,
 		PoolName:   poolName,
-		pool:       pool,
-		rbdConfig:  config,
 	}, nil
 }
 

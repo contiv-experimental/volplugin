@@ -9,8 +9,13 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/volplugin/librbd"
 )
+
+func TestMain(m *testing.M) {
+	log.SetLevel(log.DebugLevel)
+
+	os.Exit(m.Run())
+}
 
 func readWriteTest(mountDir string) error {
 	// Write a file and verify you can read it
@@ -48,23 +53,18 @@ func readWriteTest(mountDir string) error {
 }
 
 func TestMountUnmountVolume(t *testing.T) {
-	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Create a new driver
-	cephDriver, err := NewCephDriver(config, "rbd")
+	cephDriver, err := NewCephDriver("rbd")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10240000)
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
 	volumeSpec.Unmount()
-	volumeSpec.Remove()
+	volumeSpec.Remove(true)
 
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume: %v", err)
@@ -84,24 +84,19 @@ func TestMountUnmountVolume(t *testing.T) {
 		t.Fatalf("Error unmounting the volume. Err: %v", err)
 	}
 
-	if err := volumeSpec.Remove(); err != nil {
+	if err := volumeSpec.Remove(true); err != nil {
 		t.Fatalf("Error deleting the volume: %v", err)
 	}
 }
 
 func TestSnapshots(t *testing.T) {
-	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Create a new driver
-	cephDriver, err := NewCephDriver(config, "rbd")
+	cephDriver, err := NewCephDriver("rbd")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10000000)
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
 	// Create a volume
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
@@ -115,7 +110,7 @@ func TestSnapshots(t *testing.T) {
 		t.Fatal("Was able to create same snapshot name twice")
 	}
 
-	list, err := volumeSpec.ListSnapshots(100)
+	list, err := volumeSpec.ListSnapshots()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +127,7 @@ func TestSnapshots(t *testing.T) {
 		t.Fatal("Was able to remove same snapshot name twice")
 	}
 
-	list, err = volumeSpec.ListSnapshots(100)
+	list, err = volumeSpec.ListSnapshots()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,24 +137,19 @@ func TestSnapshots(t *testing.T) {
 	}
 
 	// delete the volume
-	if err := volumeSpec.Remove(); err != nil {
+	if err := volumeSpec.Remove(false); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
 
 func TestRepeatedMountUnmount(t *testing.T) {
-	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Create a new driver
-	cephDriver, err := NewCephDriver(config, "rbd")
+	cephDriver, err := NewCephDriver("rbd")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10000000)
+	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
 	// Create a volume
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
@@ -183,7 +173,7 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	}
 
 	// delete the volume
-	if err := volumeSpec.Remove(); err != nil {
+	if err := volumeSpec.Remove(true); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
