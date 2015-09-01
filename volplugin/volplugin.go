@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/volplugin/librbd"
 	"github.com/gorilla/mux"
 )
 
@@ -69,19 +68,14 @@ func Daemon(tenantName string, debug bool, master string) error {
 }
 
 func configureRouter(tenant string, debug bool, master string) *mux.Router {
-	config, err := librbd.ReadConfig("/etc/rbdconfig.json")
-	if err != nil {
-		panic(err)
-	}
-
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":      activate,
 		"/Plugin.Deactivate":    nilAction,
-		"/VolumeDriver.Create":  create(master, tenant, config),
+		"/VolumeDriver.Create":  create(master, tenant),
 		"/VolumeDriver.Remove":  nilAction,
-		"/VolumeDriver.Path":    getPath(master, tenant, config),
-		"/VolumeDriver.Mount":   mount(master, tenant, config),
-		"/VolumeDriver.Unmount": unmount(master, tenant, config),
+		"/VolumeDriver.Path":    getPath(master, tenant),
+		"/VolumeDriver.Mount":   mount(master, tenant),
+		"/VolumeDriver.Unmount": unmount(master, tenant),
 	}
 
 	router := mux.NewRouter()

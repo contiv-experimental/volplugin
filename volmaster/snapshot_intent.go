@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/contiv/volplugin/cephdriver"
-	"github.com/contiv/volplugin/librbd"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -20,16 +19,7 @@ func wrapSnapshotAction(config config, action func(config config, tenant string,
 
 		if value.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
 			for _, volumes := range volumeMap {
-				rbdConfig, err := librbd.ReadConfig("/etc/rbdconfig.json")
-				if err != nil {
-					log.Errorf("Cannot read RBD configuration: %v", err)
-					break
-				}
-				driver, err := cephdriver.NewCephDriver(rbdConfig, config[tenant].Pool)
-				if err != nil {
-					log.Errorf("Cannot snap volumes for tenant %q: %v", tenant, err)
-					break
-				}
+				driver := cephdriver.NewCephDriver(config[tenant].Pool)
 				for volName := range volumes {
 					volume := driver.NewVolume(volName, config[tenant].Size)
 					action(config, tenant, volume)
@@ -52,7 +42,7 @@ func scheduleSnapshotPrune(config config) {
 
 func runSnapshotPrune(config config, tenant string, volume *cephdriver.CephVolume) {
 	log.Debugf("starting snapshot prune for %q %v", tenant, volume)
-	list, err := volume.ListSnapshots(100)
+	list, err := volume.ListSnapshots()
 	if err != nil {
 		log.Errorf("Could not list snapshots for tenant %q, volume %v", tenant, volume)
 		return

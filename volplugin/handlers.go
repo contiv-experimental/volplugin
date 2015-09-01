@@ -7,7 +7,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/cephdriver"
-	"github.com/contiv/volplugin/librbd"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -27,7 +26,7 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func create(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func create(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -55,7 +54,7 @@ func create(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Res
 	}
 }
 
-func getPath(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func getPath(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -76,11 +75,7 @@ func getPath(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Re
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
-		if err != nil {
-			httpError(w, "Error creating ceph driver", err)
-			return
-		}
+		driver := cephdriver.NewCephDriver(config.Pool)
 
 		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
 		if err != nil {
@@ -92,7 +87,7 @@ func getPath(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Re
 	}
 }
 
-func mount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func mount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -113,11 +108,7 @@ func mount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Resp
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
-		if err != nil {
-			httpError(w, "Error creating ceph driver", err)
-			return
-		}
+		driver := cephdriver.NewCephDriver(config.Pool)
 
 		if err := driver.NewVolume(vr.Name, config.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
@@ -134,7 +125,7 @@ func mount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Resp
 	}
 }
 
-func unmount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.ResponseWriter, *http.Request) {
+func unmount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -155,11 +146,7 @@ func unmount(master, tenantName string, rbdConfig librbd.RBDConfig) func(http.Re
 			return
 		}
 
-		driver, err := cephdriver.NewCephDriver(rbdConfig, config.Pool)
-		if err != nil {
-			httpError(w, "Error creating ceph driver", err)
-			return
-		}
+		driver := cephdriver.NewCephDriver(config.Pool)
 
 		if err := driver.NewVolume(vr.Name, config.Size).Unmount(); err != nil {
 			httpError(w, "Could not mount image", err)
