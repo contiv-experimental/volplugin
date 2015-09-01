@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
-	"time"
 )
 
 // CephVolume is a struct that communicates volume name and size.
@@ -59,14 +58,6 @@ func (cv *CephVolume) Create() error {
 	blkdev, err := cv.mapImage()
 	if err != nil {
 		return err
-	}
-
-	for {
-		if _, err := os.Stat(blkdev); err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		break
 	}
 
 	if err := cv.driver.mkfsVolume(blkdev); err != nil {
