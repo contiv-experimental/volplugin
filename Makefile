@@ -47,7 +47,7 @@ container:
 volplugin-start:
 	pkill volplugin || exit 0
 	sleep 1
-	volplugin tenant1
+	volplugin --debug tenant1
 
 volmaster-start:
 	pkill volmaster || exit 0
