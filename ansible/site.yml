@@ -10,7 +10,13 @@
         - librbd1-devel
         - perl
         - curl
-    - shell: curl https://experimental.docker.com | bash
+    - service:
+        name: docker
+        state: stopped
+    - shell: curl https://master.dockerproject.org/linux/amd64/docker -o /usr/bin/docker
+    - service:
+        name: docker
+        state: started
     - shell: creates=/usr/local/go/bin/go curl -L https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz | tar -xvz -C /usr/local
     - file: path=/opt/golang/src/github.com/contiv state=directory
     - copy: 
