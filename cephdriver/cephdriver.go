@@ -18,12 +18,12 @@ type CephDriver struct {
 }
 
 // NewCephDriver creates a new Ceph driver
-func NewCephDriver(poolName string) (*CephDriver, error) {
+func NewCephDriver(poolName string) *CephDriver {
 	return &CephDriver{
 		deviceBase: defaultDeviceBase,
 		mountBase:  defaultMountBase,
 		PoolName:   poolName,
-	}, nil
+	}
 }
 
 // MountPath joins the necessary parts to find the mount point for the volume

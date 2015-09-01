@@ -54,12 +54,7 @@ func readWriteTest(mountDir string) error {
 
 func TestMountUnmountVolume(t *testing.T) {
 	// Create a new driver
-	cephDriver, err := NewCephDriver("rbd")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
+	volumeSpec := NewCephDriver("rbd").NewVolume("pithos1234", 10)
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
@@ -91,12 +86,7 @@ func TestMountUnmountVolume(t *testing.T) {
 
 func TestSnapshots(t *testing.T) {
 	// Create a new driver
-	cephDriver, err := NewCephDriver("rbd")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
+	volumeSpec := NewCephDriver("rbd").NewVolume("pithos1234", 10)
 	// Create a volume
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
@@ -144,12 +134,7 @@ func TestSnapshots(t *testing.T) {
 
 func TestRepeatedMountUnmount(t *testing.T) {
 	// Create a new driver
-	cephDriver, err := NewCephDriver("rbd")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	volumeSpec := cephDriver.NewVolume("pithos1234", 10)
+	volumeSpec := NewCephDriver("rbd").NewVolume("pithos1234", 10)
 	// Create a volume
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
