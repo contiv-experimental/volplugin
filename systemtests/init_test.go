@@ -15,6 +15,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	if os.Getenv("HOST_TEST") != "" {
+		os.Exit(0)
+	}
+
 	if err := vagrant.Setup(false, "", 6); err != nil {
 		log.Fatalf("Vagrant is not working or nodes are not available: %v", err)
 	}

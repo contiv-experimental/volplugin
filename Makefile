@@ -19,12 +19,11 @@ golint:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	golint ./...
 
-
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
 
 test: golint
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go test -v ./..."'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./..."'
 
 build: golint
 	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
@@ -40,6 +39,9 @@ run-volmaster:
 
 run-build:
 	godep go install -v ./volplugin/volplugin/ ./volmaster
+
+system-test:
+	go test -v ./systemtests
 
 container:
 	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
