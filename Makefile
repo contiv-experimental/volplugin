@@ -1,4 +1,4 @@
-start: install-ansible
+start: download-docker install-ansible
 	vagrant up
 
 stop:
@@ -7,9 +7,9 @@ stop:
 update:
 	vagrant box update
 
-restart: stop update start
+restart: stop update download-docker start
 
-provision:
+provision: download-docker
 	vagrant provision
 
 ssh:
@@ -19,15 +19,17 @@ golint:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	golint ./...
 
+download-docker:
+	curl https://master.dockerproject.org/linux/amd64/docker -o ansible/docker
 
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
 
 test: golint
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go test -v ./..."'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./..."'
 
 build: golint
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
+	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
 
 run:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build; (make volplugin-start &); make volmaster-start"'
@@ -40,6 +42,9 @@ run-volmaster:
 
 run-build:
 	godep go install -v ./volplugin/volplugin/ ./volmaster
+
+system-test: build
+	go test -v ./systemtests
 
 container:
 	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
@@ -56,4 +61,4 @@ volmaster-start:
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
-	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test system-test
