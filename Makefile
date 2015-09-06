@@ -1,4 +1,4 @@
-start: install-ansible
+start: download-docker install-ansible
 	vagrant up
 
 stop:
@@ -7,9 +7,9 @@ stop:
 update:
 	vagrant box update
 
-restart: stop update start
+restart: stop update download-docker start
 
-provision:
+provision: download-docker
 	vagrant provision
 
 ssh:
@@ -18,6 +18,9 @@ ssh:
 golint:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	golint ./...
+
+download-docker:
+	curl https://master.dockerproject.org/linux/amd64/docker -o ansible/docker
 
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
@@ -40,7 +43,7 @@ run-volmaster:
 run-build:
 	godep go install -v ./volplugin/volplugin/ ./volmaster
 
-system-test:
+system-test: build
 	go test -v ./systemtests
 
 container:
@@ -58,4 +61,4 @@ volmaster-start:
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
-	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test system-test
