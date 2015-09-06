@@ -10,7 +10,14 @@ import (
 	"github.com/docker/docker/pkg/plugins"
 )
 
-func nilAction(w http.ResponseWriter, r *http.Request) {}
+func nilAction(w http.ResponseWriter, r *http.Request) {
+	content, err := json.Marshal(VolumeResponse{})
+	if err != nil {
+		httpError(w, "Could not marshal request", err)
+		return
+	}
+	w.Write(content)
+}
 
 func activate(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(plugins.Manifest{Implements: []string{"VolumeDriver"}})
