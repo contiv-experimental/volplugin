@@ -3,6 +3,7 @@ package systemtests
 import (
 	"fmt"
 	"strings"
+	"testing"
 
 	utils "github.com/contiv/systemtests-utils"
 )
@@ -25,4 +26,37 @@ func runSSH(cmd string) error {
 	return iterateNodes(func(node utils.TestbedNode) error {
 		return node.RunCommand(cmd)
 	})
+}
+
+func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
+	t.Logf("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
+
+	// ignore the error here so we get to the purge if we have to
+	nodeMap[host].RunCommand("docker volume rm " + name)
+
+	if purgeCeph {
+		if err := nodeMap[host].RunCommand("sudo rbd snap purge " + name + " && sudo rbd rm " + name); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func purgeVolumeHost(t *testing.T, host string, purgeCeph bool) {
+	purgeVolume(t, host, host, purgeCeph)
+}
+
+func createVolumeHost(t *testing.T, host string) {
+	createVolume(t, host, host)
+}
+
+func createVolume(t *testing.T, host, name string) {
+	t.Logf("Creating %s/%s", host, name)
+
+	if err := nodeMap[host].RunCommand("docker volume create -d tenant1 --name " + name); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := nodeMap[host].RunCommand("sudo rbd list | grep -q " + name); err != nil {
+		t.Fatal(err)
+	}
 }
