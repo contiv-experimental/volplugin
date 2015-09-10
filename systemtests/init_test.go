@@ -33,6 +33,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Volplugin could not be started: %v", err)
 	}
 
+	if err := pullUbuntu(); err != nil {
+		log.Fatalf("Could not pull necessary ubuntu docker image")
+	}
+
 	exitCode := m.Run()
 
 	if err := stopVolplugin(); err != nil {
@@ -56,6 +60,16 @@ func setNodeMap() {
 	for _, node := range vagrant.GetNodes() {
 		nodeMap[node.GetName()] = node
 	}
+}
+
+func pullUbuntu() error {
+	for _, host := range []string{"mon0", "mon1", "mon2"} {
+		if err := nodeMap[host].RunCommand("docker pull ubuntu"); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func startVolmaster() error {
