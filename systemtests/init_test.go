@@ -24,6 +24,13 @@ func TestMain(m *testing.M) {
 	}
 
 	setNodeMap()
+	if err := startEtcd(); err != nil {
+		log.Fatalf("etcd could not be started: %v", err)
+	}
+
+	if err := uploadIntent(); err != nil {
+		log.Fatalf("Intent could not be uploaded: %v", err)
+	}
 
 	if err := startVolmaster(); err != nil {
 		log.Fatalf("Volmaster could not be started: %v", err)
@@ -53,6 +60,13 @@ func TestMain(m *testing.M) {
 		}
 	}
 
+	if err := stopEtcd(); err != nil {
+		log.Errorf("Volmaster could not be stopped: %v", err)
+		if exitCode == 0 {
+			exitCode = 1
+		}
+	}
+
 	os.Exit(exitCode)
 }
 
@@ -73,7 +87,7 @@ func pullUbuntu() error {
 }
 
 func startVolmaster() error {
-	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E `which volmaster` /etc/volmaster.json &>/tmp/volmaster.log &")
+	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E `which volmaster` --debug &>/tmp/volmaster.log &")
 	time.Sleep(10 * time.Second)
 	return err
 }
@@ -93,10 +107,24 @@ func stopVolplugin() error {
 func volpluginStart(node utils.TestbedNode) error {
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --master 192.168.24.10:8080 tenant1 &>/tmp/volplugin.log &")
+	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --master 192.168.24.10:8080 tenant1 &>/tmp/volplugin.log &")
 	return err
 }
 
 func volpluginStop(node utils.TestbedNode) error {
 	return node.RunCommand("sudo pkill volplugin")
+}
+
+func stopEtcd() error {
+	return nodeMap["mon0"].RunCommand("pkill etcd && rm -rf /tmp/etcd")
+}
+
+func startEtcd() error {
+	_, err := nodeMap["mon0"].RunCommandBackground("etcd -data-dir /tmp/etcd")
+	time.Sleep(1 * time.Second)
+	return err
+}
+
+func uploadIntent() error {
+	return nodeMap["mon0"].RunCommand("volcli tenant upload tenant1 < /testdata/intent1.json")
 }
