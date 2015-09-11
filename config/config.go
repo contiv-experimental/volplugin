@@ -95,6 +95,25 @@ func (c *TopLevelConfig) GetTenant(name string) (string, error) {
 	return "", err
 }
 
+func (c *TopLevelConfig) ListTenants() ([]string, error) {
+	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Node == nil {
+		return nil, fmt.Errorf("Tenants root is missing")
+	}
+
+	tenants := []string{}
+
+	for _, node := range resp.Node.Nodes {
+		tenants = append(tenants, path.Base(node.Key))
+	}
+
+	return tenants, nil
+}
+
 // Sync populates all tenants from the configuration store.
 func (c *TopLevelConfig) Sync() error {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)

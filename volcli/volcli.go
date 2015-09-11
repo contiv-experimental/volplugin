@@ -86,3 +86,19 @@ func TenantGet(ctx *cli.Context) {
 
 	fmt.Println(string(content))
 }
+
+func TenantList(ctx *cli.Context) {
+	if len(ctx.Args()) != 0 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	tenants, err := cfg.ListTenants()
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	for _, tenant := range tenants {
+		fmt.Println(tenant)
+	}
+}

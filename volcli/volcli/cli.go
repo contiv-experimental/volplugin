@@ -44,7 +44,9 @@ func main() {
 					Action: volcli.TenantGet,
 				},
 				{
-					Name: "list",
+					Name:   "list",
+					Flags:  flags,
+					Action: volcli.TenantList,
 				},
 			},
 		},
