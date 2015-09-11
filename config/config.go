@@ -60,13 +60,22 @@ func (c *TopLevelConfig) prefixed(str string) string {
 }
 
 // PublishTenant publishes tenant intent to the configuration store.
-func (c *TopLevelConfig) PublishTenant(key, value string) error {
-	_, err := c.etcdClient.Set(c.prefixed(path.Join("tenants", key)), value, 0)
+func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
+	if err := cfg.Validate(name); err != nil {
+		return err
+	}
+
+	value, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.etcdClient.Set(c.prefixed(path.Join("tenants", name)), string(value), 0)
 	return err
 }
 
-// Validate validates all tenants within the configuration store.
-func (c *TopLevelConfig) Validate() error {
+// Sync populates all tenants from the configuration store.
+func (c *TopLevelConfig) Sync() error {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
 	if err != nil {
 		return err
@@ -78,19 +87,28 @@ func (c *TopLevelConfig) Validate() error {
 			return err
 		}
 
-		if cfg.Pool == "" {
-			return fmt.Errorf("Config for tenant %q has a blank pool name", tenant.Key)
-		}
-
-		if cfg.Size == 0 {
-			return fmt.Errorf("Config for tenant %q has a zero size", tenant.Key)
-		}
-
-		if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
-			return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
+		if err := cfg.Validate(tenant.Key); err != nil {
+			return err
 		}
 
 		c.Tenants[path.Base(tenant.Key)] = cfg
+	}
+
+	return nil
+}
+
+// Validate validates a tenant configuration, returning error on any issue.
+func (cfg *TenantConfig) Validate(tenantName string) error {
+	if cfg.Pool == "" {
+		return fmt.Errorf("Config for tenant %q has a blank pool name", tenantName)
+	}
+
+	if cfg.Size == 0 {
+		return fmt.Errorf("Config for tenant %q has a zero size", tenantName)
+	}
+
+	if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
+		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
 	return nil

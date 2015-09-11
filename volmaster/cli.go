@@ -19,7 +19,7 @@ func start(ctx *cli.Context) {
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.Sync(); err != nil {
 		errExit(ctx, err)
 	}
 

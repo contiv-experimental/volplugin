@@ -1,6 +1,7 @@
 package volcli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,7 +23,13 @@ func TenantUpload(ctx *cli.Context) {
 		errExit(ctx, err)
 	}
 
-	if err := cfg.PublishTenant(ctx.Args()[0], string(content)); err != nil {
+	tenant := &config.TenantConfig{}
+
+	if err := json.Unmarshal(content, tenant); err != nil {
+		errExit(ctx, err)
+	}
+
+	if err := cfg.PublishTenant(ctx.Args()[0], tenant); err != nil {
 		errExit(ctx, err)
 	}
 }
