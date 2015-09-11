@@ -41,7 +41,7 @@ run-volmaster:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volmaster-start"'
 
 run-build:
-	godep go install -v ./volplugin/volplugin/ ./volmaster
+	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster
 
 system-test: build
 	go test -v ./systemtests

@@ -4,3 +4,4 @@ ansible/docker
 ansible/fetch/*
 volmaster/volmaster
 volplugin/volplugin/volplugin
+volcli/volcli/volcli
