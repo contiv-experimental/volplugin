@@ -31,7 +31,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Version = "0.0.1"
-	app.Usage = fmt.Sprintf("Control many volplugins: %s [config file]", basePath)
+	app.Usage = fmt.Sprintf("Control many volplugins", basePath)
 	app.Name = basePath
 	app.Action = start
 	app.Flags = []cli.Flag{
