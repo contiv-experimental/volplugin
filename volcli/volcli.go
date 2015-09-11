@@ -55,3 +55,34 @@ func TenantDelete(ctx *cli.Context) {
 
 	fmt.Printf("%q removed!\n", tenant)
 }
+
+// TenantGet retrieves tenant configuration, the name of which is supplied as
+// an argument.
+func TenantGet(ctx *cli.Context) {
+	if len(ctx.Args()) != 1 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	tenant := ctx.Args()[0]
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	value, err := cfg.GetTenant(tenant)
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	// The following lines pretty-print the json by re-evaluating it. This is
+	// purely a nicety for the CLI and is not necessary to use the tool.
+	tenantObj := &config.TenantConfig{}
+
+	if err := json.Unmarshal([]byte(value), tenantObj); err != nil {
+		errExit(ctx, err)
+	}
+
+	content, err := json.MarshalIndent(tenantObj, "", "  ")
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	fmt.Println(string(content))
+}

@@ -39,7 +39,12 @@ func main() {
 					Action: volcli.TenantDelete,
 				},
 				{
-					Name: "get",
+					Name:   "get",
+					Flags:  flags,
+					Action: volcli.TenantGet,
+				},
+				{
+					Name: "list",
 				},
 			},
 		},

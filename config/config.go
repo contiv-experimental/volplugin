@@ -85,6 +85,16 @@ func (c *TopLevelConfig) DeleteTenant(name string) error {
 	return err
 }
 
+// GetTenant retrieves a tenant from the configuration store.
+func (c *TopLevelConfig) GetTenant(name string) (string, error) {
+	resp, err := c.etcdClient.Get(c.prefixed(path.Join("tenants", name)), true, false)
+	if resp.Node != nil {
+		return resp.Node.Value, nil
+	}
+
+	return "", err
+}
+
 // Sync populates all tenants from the configuration store.
 func (c *TopLevelConfig) Sync() error {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
