@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/contiv/volplugin/config"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 )
@@ -15,13 +17,13 @@ func start(ctx *cli.Context) {
 		log.Debug("Debug logging enabled")
 	}
 
-	config := newConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 
-	if err := config.validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		errExit(ctx, err)
 	}
 
-	daemon(config, ctx.Bool("debug"), ctx.String("listen"))
+	daemon(cfg, ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {

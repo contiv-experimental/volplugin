@@ -12,32 +12,28 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/config"
 	"github.com/gorilla/mux"
 )
 
-type configRequest struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
-}
-
-type createRequest struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
+type daemonConfig struct {
+	config *config.TopLevelConfig
 }
 
 var (
 	// FIXME this lock is really coarse and dangerous. Split into r/w mutex.
 	mutex     = new(sync.Mutex)
-	volumeMap = map[string]map[string]createRequest{} // tenant to array of volume names
+	volumeMap = map[string]map[string]config.RequestCreate{} // tenant to array of volume names
 )
 
-func daemon(config *config, debug bool, listen string) {
+func daemon(config *config.TopLevelConfig, debug bool, listen string) {
+	d := daemonConfig{config}
 	r := mux.NewRouter()
-	r.HandleFunc("/request", logHandler("/request", debug, config.handleRequest)).Methods("POST")
-	r.HandleFunc("/create", logHandler("/create", debug, config.handleCreate)).Methods("POST")
+	r.HandleFunc("/request", logHandler("/request", debug, d.handleRequest)).Methods("POST")
+	r.HandleFunc("/create", logHandler("/create", debug, d.handleCreate)).Methods("POST")
 
-	go scheduleSnapshotPrune(config)
-	go scheduleSnapshots(config)
+	go scheduleSnapshotPrune(d.config)
+	go scheduleSnapshots(d.config)
 
 	http.ListenAndServe(listen, r)
 
@@ -62,14 +58,14 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
-func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
+func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
 		return
 	}
 
-	var req createRequest
+	var req config.RequestCreate
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
@@ -89,7 +85,7 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	tenConfig, ok := conf.tenants[req.Tenant]
+	tenConfig, ok := d.config.Tenants[req.Tenant]
 	if ok {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -104,14 +100,14 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
-func (conf *config) handleCreate(w http.ResponseWriter, r *http.Request) {
+func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
 		return
 	}
 
-	var req createRequest
+	var req config.RequestCreate
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
@@ -130,7 +126,7 @@ func (conf *config) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request for tenant %q", req.Tenant)
 
-	tenConfig, ok := conf.tenants[req.Tenant]
+	tenConfig, ok := d.config.Tenants[req.Tenant]
 	if !ok {
 		log.Infof("Request for tenant %q cannot be satisfied: not found", req.Tenant)
 		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.Tenant))
@@ -140,7 +136,7 @@ func (conf *config) handleCreate(w http.ResponseWriter, r *http.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if _, ok := volumeMap[req.Tenant]; !ok {
-		volumeMap[req.Tenant] = map[string]createRequest{}
+		volumeMap[req.Tenant] = map[string]config.RequestCreate{}
 	}
 
 	if _, ok := volumeMap[req.Tenant][req.Volume]; ok {
@@ -148,7 +144,7 @@ func (conf *config) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := createImage(conf.tenants[req.Tenant], req.Volume, conf.tenants[req.Tenant].Size); err != nil {
+	if err := createImage(d.config.Tenants[req.Tenant], req.Volume, d.config.Tenants[req.Tenant].Size); err != nil {
 		volumeMap[req.Tenant][req.Volume] = req
 	}
 
