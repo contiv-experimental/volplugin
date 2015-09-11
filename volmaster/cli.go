@@ -46,6 +46,10 @@ func main() {
 			EnvVar: "LISTEN",
 			Value:  ":8080",
 		},
+		cli.StringFlag{
+			Name:  "prefix",
+			Value: "/volplugin",
+		},
 		cli.StringSliceFlag{
 			Name:  "etcd",
 			Usage: "URL for etcd",

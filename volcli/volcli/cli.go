@@ -7,17 +7,22 @@ import (
 	"github.com/contiv/volplugin/volcli"
 )
 
+var flags = []cli.Flag{
+	cli.StringFlag{
+		Name:  "prefix",
+		Value: "/volplugin",
+	},
+	cli.StringSliceFlag{
+		Name:  "etcd",
+		Usage: "URL for etcd",
+		Value: &cli.StringSlice{"http://localhost:2379"},
+	},
+}
+
 func main() {
 	app := cli.NewApp()
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name: "prefix",
-		},
-		cli.StringSliceFlag{
-			Name: "etcd",
-		},
-	}
+	app.Flags = flags
 
 	app.Commands = []cli.Command{
 		{
@@ -25,6 +30,7 @@ func main() {
 			Subcommands: []cli.Command{
 				{
 					Name:   "upload",
+					Flags:  flags,
 					Action: volcli.TenantUpload,
 				},
 				{

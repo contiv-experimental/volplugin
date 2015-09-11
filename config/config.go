@@ -71,7 +71,12 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 	}
 
 	_, err = c.etcdClient.Set(c.prefixed(path.Join("tenants", name)), string(value), 0)
-	return err
+	if err != nil {
+		return err
+	}
+
+	c.Tenants[name] = cfg
+	return nil
 }
 
 // Sync populates all tenants from the configuration store.
