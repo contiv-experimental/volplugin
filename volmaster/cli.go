@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -13,27 +10,12 @@ import (
 )
 
 func start(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
-		errExit(ctx, errors.New("Config file required."))
-	}
-
 	if ctx.Bool("debug") {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Debug logging enabled")
 	}
 
-	configFile := ctx.Args()[0]
-
-	content, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		errExit(ctx, err)
-	}
-
-	var config config
-
-	if err := json.Unmarshal(content, &config); err != nil {
-		errExit(ctx, err)
-	}
+	config := newConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 
 	if err := config.validate(); err != nil {
 		errExit(ctx, err)
@@ -61,6 +43,11 @@ func main() {
 			Usage:  "listen address for volmaster",
 			EnvVar: "LISTEN",
 			Value:  ":8080",
+		},
+		cli.StringSliceFlag{
+			Name:  "etcd",
+			Usage: "URL for etcd",
+			Value: &cli.StringSlice{"http://localhost:2379"},
 		},
 	}
 	app.Run(os.Args)

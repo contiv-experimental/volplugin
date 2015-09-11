@@ -9,19 +9,19 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(config config, action func(config config, tenant string, volume *cephdriver.CephVolume)) {
-	for tenant, value := range config {
+func wrapSnapshotAction(config *config, action func(config *config, tenant string, volume *cephdriver.CephVolume)) {
+	for tenant, value := range config.tenants {
 		mutex.Lock()
-		duration, err := time.ParseDuration(config[tenant].Snapshot.Frequency)
+		duration, err := time.ParseDuration(config.tenants[tenant].Snapshot.Frequency)
 		if err != nil {
-			panic(fmt.Sprintf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", config[tenant].Snapshot.Frequency))
+			panic(fmt.Sprintf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", config.tenants[tenant].Snapshot.Frequency))
 		}
 
 		if value.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
 			for _, volumes := range volumeMap {
-				driver := cephdriver.NewCephDriver(config[tenant].Pool)
+				driver := cephdriver.NewCephDriver(config.tenants[tenant].Pool)
 				for volName := range volumes {
-					volume := driver.NewVolume(volName, config[tenant].Size)
+					volume := driver.NewVolume(volName, config.tenants[tenant].Size)
 					action(config, tenant, volume)
 				}
 			}
@@ -30,7 +30,7 @@ func wrapSnapshotAction(config config, action func(config config, tenant string,
 	}
 }
 
-func scheduleSnapshotPrune(config config) {
+func scheduleSnapshotPrune(config *config) {
 	for {
 		log.Debug("Running snapshot prune supervisor")
 
@@ -40,7 +40,7 @@ func scheduleSnapshotPrune(config config) {
 	}
 }
 
-func runSnapshotPrune(config config, tenant string, volume *cephdriver.CephVolume) {
+func runSnapshotPrune(config *config, tenant string, volume *cephdriver.CephVolume) {
 	log.Debugf("starting snapshot prune for %q %v", tenant, volume)
 	list, err := volume.ListSnapshots()
 	if err != nil {
@@ -48,7 +48,7 @@ func runSnapshotPrune(config config, tenant string, volume *cephdriver.CephVolum
 		return
 	}
 
-	toDeleteCount := len(list) - int(config[tenant].Snapshot.Keep)
+	toDeleteCount := len(list) - int(config.tenants[tenant].Snapshot.Keep)
 	if toDeleteCount < 0 {
 		return
 	}
@@ -61,7 +61,7 @@ func runSnapshotPrune(config config, tenant string, volume *cephdriver.CephVolum
 	}
 }
 
-func runSnapshot(config config, tenant string, volume *cephdriver.CephVolume) {
+func runSnapshot(config *config, tenant string, volume *cephdriver.CephVolume) {
 	now := time.Now()
 	log.Infof("Snapping volume \"%s/%s\" at %v", tenant, volume, now)
 	if err := volume.CreateSnapshot(now.String()); err != nil {
@@ -69,7 +69,7 @@ func runSnapshot(config config, tenant string, volume *cephdriver.CephVolume) {
 	}
 }
 
-func scheduleSnapshots(config config) {
+func scheduleSnapshots(config *config) {
 	for {
 		log.Debug("Running snapshot supervisor")
 

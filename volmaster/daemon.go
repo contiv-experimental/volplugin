@@ -31,7 +31,7 @@ var (
 	volumeMap = map[string]map[string]createRequest{} // tenant to array of volume names
 )
 
-func daemon(config config, debug bool, listen string) {
+func daemon(config *config, debug bool, listen string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/request", logHandler("/request", debug, config.handleRequest)).Methods("POST")
 	r.HandleFunc("/create", logHandler("/create", debug, config.handleCreate)).Methods("POST")
@@ -89,7 +89,7 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	tenConfig, ok := conf[req.Tenant]
+	tenConfig, ok := conf.tenants[req.Tenant]
 	if ok {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -104,7 +104,7 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
-func (conf config) handleCreate(w http.ResponseWriter, r *http.Request) {
+func (conf *config) handleCreate(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
@@ -130,7 +130,7 @@ func (conf config) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request for tenant %q", req.Tenant)
 
-	tenConfig, ok := conf[req.Tenant]
+	tenConfig, ok := conf.tenants[req.Tenant]
 	if !ok {
 		log.Infof("Request for tenant %q cannot be satisfied: not found", req.Tenant)
 		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.Tenant))
@@ -148,7 +148,7 @@ func (conf config) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := createImage(conf[req.Tenant], req.Volume, conf[req.Tenant].Size); err != nil {
+	if err := createImage(conf.tenants[req.Tenant], req.Volume, conf.tenants[req.Tenant].Size); err != nil {
 		volumeMap[req.Tenant][req.Volume] = req
 	}
 
