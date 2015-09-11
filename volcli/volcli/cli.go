@@ -50,6 +50,21 @@ func main() {
 				},
 			},
 		},
+		{
+			Name: "volume",
+			Subcommands: []cli.Command{
+				{
+					Name:   "get",
+					Flags:  flags,
+					Action: volcli.VolumeGet,
+				},
+				{
+					Name:   "remove",
+					Flags:  flags,
+					Action: volcli.VolumeRemove,
+				},
+			},
+		},
 	}
 
 	app.Run(os.Args)

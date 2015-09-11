@@ -16,6 +16,10 @@ func errExit(ctx *cli.Context, err error) {
 	os.Exit(1)
 }
 
+func ppJSON(v interface{}) ([]byte, error) {
+	return json.MarshalIndent(v, "", "  ")
+}
+
 // TenantUpload uploads a Tenant intent from stdin.
 func TenantUpload(ctx *cli.Context) {
 	if len(ctx.Args()) != 1 {
@@ -79,7 +83,7 @@ func TenantGet(ctx *cli.Context) {
 		errExit(ctx, err)
 	}
 
-	content, err := json.MarshalIndent(tenantObj, "", "  ")
+	content, err := ppJSON(tenantObj)
 	if err != nil {
 		errExit(ctx, err)
 	}
@@ -100,5 +104,35 @@ func TenantList(ctx *cli.Context) {
 
 	for _, tenant := range tenants {
 		fmt.Println(tenant)
+	}
+}
+
+func VolumeGet(ctx *cli.Context) {
+	if len(ctx.Args()) != 1 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	vol, err := cfg.GetVolume(ctx.Args()[0])
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	content, err := ppJSON(vol)
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	fmt.Println(string(content))
+}
+
+func VolumeRemove(ctx *cli.Context) {
+	if len(ctx.Args()) != 1 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	if err := cfg.RemoveVolume(ctx.Args()[0]); err != nil {
+		errExit(ctx, err)
 	}
 }
