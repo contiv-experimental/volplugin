@@ -34,7 +34,9 @@ func main() {
 					Action: volcli.TenantUpload,
 				},
 				{
-					Name: "delete",
+					Name:   "delete",
+					Flags:  flags,
+					Action: volcli.TenantDelete,
 				},
 				{
 					Name: "get",

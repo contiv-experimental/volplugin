@@ -79,6 +79,12 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 	return nil
 }
 
+// DeleteTenant removes a tenant from the configuration store.
+func (c *TopLevelConfig) DeleteTenant(name string) error {
+	_, err := c.etcdClient.Delete(c.prefixed(path.Join("tenants", name)), true)
+	return err
+}
+
 // Sync populates all tenants from the configuration store.
 func (c *TopLevelConfig) Sync() error {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
