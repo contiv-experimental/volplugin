@@ -32,7 +32,7 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	_, err = c.etcdClient.Set(c.prefixed(path.Join("tenants", name)), string(value), 0)
+	_, err = c.etcdClient.Set(c.prefixed("tenants", name), string(value), 0)
 	if err != nil {
 		return err
 	}
@@ -43,13 +43,13 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 
 // DeleteTenant removes a tenant from the configuration store.
 func (c *TopLevelConfig) DeleteTenant(name string) error {
-	_, err := c.etcdClient.Delete(c.prefixed(path.Join("tenants", name)), true)
+	_, err := c.etcdClient.Delete(c.prefixed("tenants", name), true)
 	return err
 }
 
 // GetTenant retrieves a tenant from the configuration store.
 func (c *TopLevelConfig) GetTenant(name string) (string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed(path.Join("tenants", name)), true, false)
+	resp, err := c.etcdClient.Get(c.prefixed("tenants", name), true, false)
 	if resp.Node != nil {
 		return resp.Node.Value, nil
 	}

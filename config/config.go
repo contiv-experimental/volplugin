@@ -39,8 +39,13 @@ func NewTopLevelConfig(prefix string, etcdHosts []string) *TopLevelConfig {
 	}
 }
 
-func (c *TopLevelConfig) prefixed(str string) string {
-	return path.Join(c.prefix, str)
+func (c *TopLevelConfig) prefixed(strs ...string) string {
+	str := c.prefix
+	for _, s := range strs {
+		str = path.Join(str, s)
+	}
+
+	return str
 }
 
 // Sync populates all tenants from the configuration store.
