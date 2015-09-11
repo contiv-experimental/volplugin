@@ -59,6 +59,12 @@ func (c *TopLevelConfig) prefixed(str string) string {
 	return path.Join(c.prefix, str)
 }
 
+// PublishTenant publishes tenant intent to the configuration store.
+func (c *TopLevelConfig) PublishTenant(key, value string) error {
+	_, err := c.etcdClient.Set(c.prefixed(path.Join("tenants", key)), value, 0)
+	return err
+}
+
 // Validate validates all tenants within the configuration store.
 func (c *TopLevelConfig) Validate() error {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
