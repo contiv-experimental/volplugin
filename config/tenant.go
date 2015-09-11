@@ -50,11 +50,11 @@ func (c *TopLevelConfig) DeleteTenant(name string) error {
 // GetTenant retrieves a tenant from the configuration store.
 func (c *TopLevelConfig) GetTenant(name string) (string, error) {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants", name), true, false)
-	if resp.Node != nil {
-		return resp.Node.Value, nil
+	if err != nil {
+		return "", err
 	}
 
-	return "", err
+	return resp.Node.Value, nil
 }
 
 func (c *TopLevelConfig) ListTenants() ([]string, error) {

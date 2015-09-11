@@ -126,27 +126,14 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request for tenant %q", req.Tenant)
 
-	tenConfig, ok := d.config.Tenants[req.Tenant]
-	if !ok {
-		log.Infof("Request for tenant %q cannot be satisfied: not found", req.Tenant)
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.Tenant))
+	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
+	if err != nil {
+		httpError(w, "Handling request", fmt.Errorf("Tenant %q, Image %q could not be used: %v", req.Tenant, req.Volume, err))
 		return
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
-	if _, ok := volumeMap[req.Tenant]; !ok {
-		volumeMap[req.Tenant] = map[string]config.RequestCreate{}
-	}
-
-	if _, ok := volumeMap[req.Tenant][req.Volume]; ok {
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q, Image %q could not be used: in use", req.Tenant, req.Volume))
-		return
-	}
-
-	if err := createImage(d.config.Tenants[req.Tenant], req.Volume, d.config.Tenants[req.Tenant].Size); err != nil {
-		volumeMap[req.Tenant][req.Volume] = req
-	}
+	// FIXME for now, we want to ignore create errors so we can avoid handling deletions properly :)
+	createImage(d.config.Tenants[req.Tenant], req.Volume, d.config.Tenants[req.Tenant].Size)
 
 	content, err = json.Marshal(tenConfig)
 	if err != nil {
