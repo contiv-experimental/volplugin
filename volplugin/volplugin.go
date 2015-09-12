@@ -56,9 +56,9 @@ func configureRouter(tenant string, debug bool, master string) *mux.Router {
 		"/Plugin.Deactivate":    nilAction,
 		"/VolumeDriver.Create":  create(master, tenant),
 		"/VolumeDriver.Remove":  nilAction,
-		"/VolumeDriver.Path":    getPath(master, tenant),
-		"/VolumeDriver.Mount":   mount(master, tenant),
-		"/VolumeDriver.Unmount": unmount(master, tenant),
+		"/VolumeDriver.Path":    getPath(master),
+		"/VolumeDriver.Mount":   mount(master),
+		"/VolumeDriver.Unmount": unmount(master),
 	}
 
 	router := mux.NewRouter()

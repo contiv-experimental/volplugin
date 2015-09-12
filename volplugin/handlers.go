@@ -61,7 +61,7 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func getPath(master, tenantName string) func(http.ResponseWriter, *http.Request) {
+func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -76,7 +76,7 @@ func getPath(master, tenantName string) func(http.ResponseWriter, *http.Request)
 
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
-		config, err := requestTenantConfig(master, tenantName, vr.Name)
+		config, err := requestTenantConfig(master, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -94,7 +94,7 @@ func getPath(master, tenantName string) func(http.ResponseWriter, *http.Request)
 	}
 }
 
-func mount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
+func mount(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -109,7 +109,7 @@ func mount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Mounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(master, tenantName, vr.Name)
+		config, err := requestTenantConfig(master, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -132,7 +132,7 @@ func mount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func unmount(master, tenantName string) func(http.ResponseWriter, *http.Request) {
+func unmount(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -147,7 +147,7 @@ func unmount(master, tenantName string) func(http.ResponseWriter, *http.Request)
 
 		log.Infof("Unmounting volume %q", vr.Name)
 
-		config, err := requestTenantConfig(master, tenantName, vr.Name)
+		config, err := requestTenantConfig(master, vr.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return

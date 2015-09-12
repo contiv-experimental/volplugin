@@ -64,11 +64,6 @@ func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Tenant == "" {
-		httpError(w, "Reading tenant", errors.New("tenant was blank"))
-		return
-	}
-
 	if req.Volume == "" {
 		httpError(w, "Reading tenant", errors.New("volume was blank"))
 		return
@@ -87,11 +82,6 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
-		return
-	}
-
-	if req.Tenant == "" {
-		httpError(w, "Reading tenant", errors.New("tenant was blank"))
 		return
 	}
 
@@ -122,15 +112,10 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req config.Request
+	var req config.RequestCreate
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
-		return
-	}
-
-	if req.Tenant == "" {
-		httpError(w, "Reading tenant", errors.New("tenant was blank"))
 		return
 	}
 
@@ -138,8 +123,6 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Reading tenant", errors.New("volume was blank"))
 		return
 	}
-
-	log.Infof("Request for tenant %q", req.Tenant)
 
 	// ignoring the error deliberately to avoid double-create errors
 	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)

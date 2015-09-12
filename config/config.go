@@ -10,6 +10,11 @@ import (
 // Request provides a request structure for communicating with the
 // volmaster.
 type Request struct {
+	Volume string `json:"volume"`
+}
+
+// RequestCreate provides a request structure for creating new volumes.
+type RequestCreate struct {
 	Tenant string `json:"tenant"`
 	Volume string `json:"volume"`
 }
