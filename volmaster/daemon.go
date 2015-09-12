@@ -51,42 +51,16 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 }
 
 func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
+	_, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "Reading request", err)
-		return
-	}
-
-	var req config.Request
-
-	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
-		return
 	}
-
-	if req.Volume == "" {
-		httpError(w, "Reading tenant", errors.New("volume was blank"))
-		return
-	}
-
 }
 
 func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
+	req, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "Reading request", err)
-		return
-	}
-
-	var req config.Request
-
-	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
-		return
-	}
-
-	if req.Volume == "" {
-		httpError(w, "Reading tenant", errors.New("volume was blank"))
 		return
 	}
 
@@ -116,6 +90,11 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	if req.Tenant == "" {
+		httpError(w, "Reading tenant", errors.New("tenant was blank"))
 		return
 	}
 
