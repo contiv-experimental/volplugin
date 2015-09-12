@@ -6,6 +6,8 @@ import (
 	"path"
 )
 
+// CreateVolume sets the appropriate config metadata for a volume creation
+// operation, and returns the TenantConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(name string, tenant string) (*TenantConfig, error) {
 	if _, err := c.GetVolume(name); err == nil {
 		return nil, fmt.Errorf("Volume %q is already in use", name)
@@ -29,6 +31,7 @@ func (c *TopLevelConfig) CreateVolume(name string, tenant string) (*TenantConfig
 	return ret, nil
 }
 
+// GetVolume returns the TenantConfig for a given volume.
 func (c *TopLevelConfig) GetVolume(name string) (*TenantConfig, error) {
 	resp, err := c.etcdClient.Get(c.prefixed("volumes", name), true, false)
 	if err != nil {
@@ -44,11 +47,13 @@ func (c *TopLevelConfig) GetVolume(name string) (*TenantConfig, error) {
 	return ret, nil
 }
 
+// RemoveVolume removes a volume from configuration.
 func (c *TopLevelConfig) RemoveVolume(name string) error {
 	_, err := c.etcdClient.Delete(c.prefixed("volumes", name), true)
 	return err
 }
 
+// ListVolumes returns a map of volume name -> TenantConfig.
 func (c *TopLevelConfig) ListVolumes() (map[string]*TenantConfig, error) {
 	resp, err := c.etcdClient.Get(c.prefixed("volumes"), true, true)
 	if err != nil {

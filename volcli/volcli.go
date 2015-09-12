@@ -91,6 +91,7 @@ func TenantGet(ctx *cli.Context) {
 	fmt.Println(string(content))
 }
 
+// TenantList provides a list of the tenant names.
 func TenantList(ctx *cli.Context) {
 	if len(ctx.Args()) != 0 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
@@ -107,6 +108,7 @@ func TenantList(ctx *cli.Context) {
 	}
 }
 
+// VolumeGet retrieves the metadata for a volume and prints it.
 func VolumeGet(ctx *cli.Context) {
 	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
@@ -126,6 +128,7 @@ func VolumeGet(ctx *cli.Context) {
 	fmt.Println(string(content))
 }
 
+// VolumeRemove removes a volume forcefully.
 func VolumeRemove(ctx *cli.Context) {
 	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))

@@ -57,6 +57,8 @@ func (c *TopLevelConfig) GetTenant(name string) (string, error) {
 	return resp.Node.Value, nil
 }
 
+// ListTenants provides an array of strings corresponding to the name of each
+// tenant.
 func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
 	if err != nil {
