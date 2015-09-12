@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -19,12 +18,6 @@ import (
 type daemonConfig struct {
 	config *config.TopLevelConfig
 }
-
-var (
-	// FIXME this lock is really coarse and dangerous. Split into r/w mutex.
-	mutex     = new(sync.Mutex)
-	volumeMap = map[string]map[string]config.Request{} // tenant to array of volume names
-)
 
 func daemon(config *config.TopLevelConfig, debug bool, listen string) {
 	d := daemonConfig{config}
@@ -58,7 +51,7 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
-func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
+func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
@@ -82,8 +75,31 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+}
+
+func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, "Reading request", err)
+		return
+	}
+
+	var req config.Request
+
+	if err := json.Unmarshal(content, &req); err != nil {
+		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	if req.Tenant == "" {
+		httpError(w, "Reading tenant", errors.New("tenant was blank"))
+		return
+	}
+
+	if req.Volume == "" {
+		httpError(w, "Reading tenant", errors.New("volume was blank"))
+		return
+	}
 
 	tenConfig, ok := d.config.Tenants[req.Tenant]
 	if ok {
