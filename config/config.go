@@ -10,7 +10,8 @@ import (
 
 var (
 	// ErrExist indicates when a key in etcd exits already. Used for create logic.
-	ErrExist = errors.New("Already exists")
+	ErrExist     = errors.New("Already exists")
+	defaultPaths = []string{"tenants", "volumes", "mounts"}
 )
 
 // Request provides a request structure for communicating with the
@@ -43,8 +44,9 @@ func NewTopLevelConfig(prefix string, etcdHosts []string) *TopLevelConfig {
 	}
 
 	config.etcdClient.SetDir(config.prefix, 0)
-	config.etcdClient.SetDir(config.prefixed("tenants"), 0)
-	config.etcdClient.SetDir(config.prefixed("volumes"), 0)
+	for _, path := range defaultPaths {
+		config.etcdClient.SetDir(config.prefixed(path), 0)
+	}
 
 	return config
 }

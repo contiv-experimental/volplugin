@@ -8,8 +8,8 @@ import (
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the TenantConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(name string, tenant string) (*TenantConfig, error) {
-	if _, err := c.GetVolume(name); err == nil {
-		return nil, ErrExist
+	if tc, err := c.GetVolume(name); err == nil {
+		return tc, ErrExist
 	}
 
 	resp, err := c.GetTenant(tenant)

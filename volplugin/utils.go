@@ -87,3 +87,39 @@ func requestCreate(host, tenantName, volumeName string) error {
 
 	return nil
 }
+
+func reportMount(host string, mt *config.MountConfig) error {
+	content, err := json.Marshal(mt)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/mount", host), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func reportUnmount(host string, mt *config.MountConfig) error {
+	content, err := json.Marshal(mt)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/unmount", host), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
+	return nil
+}

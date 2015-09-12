@@ -44,3 +44,22 @@ func unmarshalRequest(r *http.Request) (config.Request, error) {
 
 	return cfg, nil
 }
+
+func unmarshalMountConfig(r *http.Request) (*config.MountConfig, error) {
+	cfg := &config.MountConfig{}
+
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return cfg, err
+	}
+
+	if err := json.Unmarshal(content, &cfg); err != nil {
+		return cfg, err
+	}
+
+	if cfg.Volume == "" {
+		return cfg, errors.New("volume was blank")
+	}
+
+	return cfg, nil
+}

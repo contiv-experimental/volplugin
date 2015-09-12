@@ -21,8 +21,17 @@ type daemonConfig struct {
 func daemon(config *config.TopLevelConfig, debug bool, listen string) {
 	d := daemonConfig{config}
 	r := mux.NewRouter()
-	r.HandleFunc("/request", logHandler("/request", debug, d.handleRequest)).Methods("POST")
-	r.HandleFunc("/create", logHandler("/create", debug, d.handleCreate)).Methods("POST")
+
+	router := map[string]func(http.ResponseWriter, *http.Request){
+		"/request": d.handleRequest,
+		"/create":  d.handleCreate,
+		"/mount":   d.handleMount,
+		"/unmount": d.handleUnmount,
+	}
+
+	for path, f := range router {
+		r.HandleFunc(path, logHandler("/request", debug, f)).Methods("POST")
+	}
 
 	go scheduleSnapshotPrune(d.config)
 	go scheduleSnapshots(d.config)
@@ -50,10 +59,34 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
-func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
-	_, err := unmarshalRequest(r)
+func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalMountConfig(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	if err := d.config.RemoveMount(req); err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
+	}
+}
+
+func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalMountConfig(r)
+	if err != nil {
+		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	if d.config.ExistsMount(req) {
+		httpError(w, "Mount already exists", nil)
+		return
+	}
+
+	if err := d.config.PublishMount(req); err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
 	}
 }
 
@@ -104,7 +137,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
-	if err != config.ErrExist {
+	if err != config.ErrExist && tenConfig != nil {
 		if err := createImage(tenConfig, req.Volume); err != nil {
 			httpError(w, "Creating volume", err)
 			return
