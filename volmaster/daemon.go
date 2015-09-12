@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -101,8 +100,8 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, ok := d.config.Tenants[req.Tenant]
-	if ok {
+	tenConfig, err := d.config.GetVolume(req.Volume)
+	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
 			httpError(w, "Marshalling response", err)
@@ -142,14 +141,13 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request for tenant %q", req.Tenant)
 
+	// ignoring the error deliberately to avoid double-create errors
 	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
-	if err != nil {
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q, Image %q could not be used: %v", req.Tenant, req.Volume, err))
-		return
-	}
 
-	// FIXME for now, we want to ignore create errors so we can avoid handling deletions properly :)
-	createImage(d.config.Tenants[req.Tenant], req.Volume, d.config.Tenants[req.Tenant].Size)
+	if err == nil {
+		// FIXME for now, we want to ignore create errors so we can avoid handling deletions properly :)
+		createImage(tenConfig, req.Volume)
+	}
 
 	content, err = json.Marshal(tenConfig)
 	if err != nil {

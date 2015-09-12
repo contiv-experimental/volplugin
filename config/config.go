@@ -25,11 +25,17 @@ type TopLevelConfig struct {
 // NewTopLevelConfig creates a TopLevelConfig struct which can drive communication
 // with the configuration store.
 func NewTopLevelConfig(prefix string, etcdHosts []string) *TopLevelConfig {
-	return &TopLevelConfig{
+	config := &TopLevelConfig{
 		Tenants:    map[string]*TenantConfig{},
 		prefix:     prefix,
 		etcdClient: etcd.NewClient(etcdHosts),
 	}
+
+	config.etcdClient.SetDir(config.prefix, 0)
+	config.etcdClient.SetDir(config.prefixed("tenants"), 0)
+	config.etcdClient.SetDir(config.prefixed("volumes"), 0)
+
+	return config
 }
 
 func (c *TopLevelConfig) prefixed(strs ...string) string {

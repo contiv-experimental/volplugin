@@ -5,7 +5,7 @@ import (
 	"github.com/contiv/volplugin/config"
 )
 
-func createImage(config *config.TenantConfig, name string, size uint64) error {
+func createImage(config *config.TenantConfig, name string) error {
 	driver := cephdriver.NewCephDriver(config.Pool)
 
 	if err := driver.NewVolume(name, config.Size).Create(); err != nil {
