@@ -23,7 +23,7 @@ type daemonConfig struct {
 var (
 	// FIXME this lock is really coarse and dangerous. Split into r/w mutex.
 	mutex     = new(sync.Mutex)
-	volumeMap = map[string]map[string]config.RequestCreate{} // tenant to array of volume names
+	volumeMap = map[string]map[string]config.Request{} // tenant to array of volume names
 )
 
 func daemon(config *config.TopLevelConfig, debug bool, listen string) {
@@ -65,7 +65,7 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req config.RequestCreate
+	var req config.Request
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
@@ -107,7 +107,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req config.RequestCreate
+	var req config.Request
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)

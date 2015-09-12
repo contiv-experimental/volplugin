@@ -7,16 +7,9 @@ import (
 	"github.com/contiv/go-etcd/etcd"
 )
 
-// RequestConfig provides a request structure for communicating with the
+// Request provides a request structure for communicating with the
 // volmaster.
-type RequestConfig struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
-}
-
-// RequestCreate provides a request structure for communicating with the
-// volmaster, for create operations only.
-type RequestCreate struct {
+type Request struct {
 	Tenant string `json:"tenant"`
 	Volume string `json:"volume"`
 }
