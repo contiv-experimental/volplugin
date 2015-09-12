@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"path"
 )
 
@@ -10,7 +9,7 @@ import (
 // operation, and returns the TenantConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(name string, tenant string) (*TenantConfig, error) {
 	if _, err := c.GetVolume(name); err == nil {
-		return nil, fmt.Errorf("Volume %q is already in use", name)
+		return nil, ErrExist
 	}
 
 	resp, err := c.GetTenant(tenant)

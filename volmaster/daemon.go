@@ -103,12 +103,15 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ignoring the error deliberately to avoid double-create errors
 	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
-
-	if err == nil {
-		// FIXME for now, we want to ignore create errors so we can avoid handling deletions properly :)
-		createImage(tenConfig, req.Volume)
+	if err != config.ErrExist {
+		if err := createImage(tenConfig, req.Volume); err != nil {
+			httpError(w, "Creating volume", err)
+			return
+		}
+	} else if err != nil && err != config.ErrExist {
+		httpError(w, "Creating volume", err)
+		return
 	}
 
 	content, err = json.Marshal(tenConfig)

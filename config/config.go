@@ -2,9 +2,15 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"path"
 
 	"github.com/contiv/go-etcd/etcd"
+)
+
+var (
+	// ErrExist indicates when a key in etcd exits already. Used for create logic.
+	ErrExist = errors.New("Already exists")
 )
 
 // Request provides a request structure for communicating with the
