@@ -12,7 +12,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	log.SetLevel(log.DebugLevel)
+	if os.Getenv("DEBUG") != "" {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	os.Exit(m.Run())
 }
@@ -46,7 +48,6 @@ func readWriteTest(mountDir string) error {
 		log.Errorf("Error reading back file(Got %s). Err: %v", rbs, err)
 		return errors.New("Failed to read back a file")
 	}
-	log.Infof("Read back: %s", string(rb))
 	file.Close()
 
 	return nil
