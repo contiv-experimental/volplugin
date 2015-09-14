@@ -4,40 +4,37 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/config"
 	"github.com/gorilla/mux"
 )
 
-type configRequest struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
+type daemonConfig struct {
+	config *config.TopLevelConfig
 }
 
-type createRequest struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
-}
-
-var (
-	// FIXME this lock is really coarse and dangerous. Split into r/w mutex.
-	mutex     = new(sync.Mutex)
-	volumeMap = map[string]map[string]createRequest{} // tenant to array of volume names
-)
-
-func daemon(config config, debug bool, listen string) {
+func daemon(config *config.TopLevelConfig, debug bool, listen string) {
+	d := daemonConfig{config}
 	r := mux.NewRouter()
-	r.HandleFunc("/request", logHandler("/request", debug, config.handleRequest)).Methods("POST")
-	r.HandleFunc("/create", logHandler("/create", debug, config.handleCreate)).Methods("POST")
 
-	go scheduleSnapshotPrune(config)
-	go scheduleSnapshots(config)
+	router := map[string]func(http.ResponseWriter, *http.Request){
+		"/request": d.handleRequest,
+		"/create":  d.handleCreate,
+		"/mount":   d.handleMount,
+		"/unmount": d.handleUnmount,
+	}
+
+	for path, f := range router {
+		r.HandleFunc(path, logHandler("/request", debug, f)).Methods("POST")
+	}
+
+	go scheduleSnapshotPrune(d.config)
+	go scheduleSnapshots(d.config)
 
 	http.ListenAndServe(listen, r)
 
@@ -62,35 +59,46 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
-func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
+func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalMountConfig(r)
 	if err != nil {
-		httpError(w, "Reading request", err)
-		return
-	}
-
-	var req createRequest
-
-	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	if req.Tenant == "" {
-		httpError(w, "Reading tenant", errors.New("tenant was blank"))
+	if err := d.config.RemoveMount(req); err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
+	}
+}
+
+func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalMountConfig(r)
+	if err != nil {
+		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	if req.Volume == "" {
-		httpError(w, "Reading tenant", errors.New("volume was blank"))
+	if d.config.ExistsMount(req) {
+		httpError(w, "Mount already exists", nil)
 		return
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	if err := d.config.PublishMount(req); err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
+	}
+}
 
-	tenConfig, ok := conf[req.Tenant]
-	if ok {
+func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalRequest(r)
+	if err != nil {
+		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	tenConfig, err := d.config.GetVolume(req.Volume)
+	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
 			httpError(w, "Marshalling response", err)
@@ -104,14 +112,14 @@ func (conf config) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
-func (conf config) handleCreate(w http.ResponseWriter, r *http.Request) {
+func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
 		return
 	}
 
-	var req createRequest
+	var req config.RequestCreate
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, "Unmarshalling request", err)
@@ -128,28 +136,15 @@ func (conf config) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Request for tenant %q", req.Tenant)
-
-	tenConfig, ok := conf[req.Tenant]
-	if !ok {
-		log.Infof("Request for tenant %q cannot be satisfied: not found", req.Tenant)
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q not found", req.Tenant))
+	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
+	if err != config.ErrExist && tenConfig != nil {
+		if err := createImage(tenConfig, req.Volume); err != nil {
+			httpError(w, "Creating volume", err)
+			return
+		}
+	} else if err != nil && err != config.ErrExist {
+		httpError(w, "Creating volume", err)
 		return
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-	if _, ok := volumeMap[req.Tenant]; !ok {
-		volumeMap[req.Tenant] = map[string]createRequest{}
-	}
-
-	if _, ok := volumeMap[req.Tenant][req.Volume]; ok {
-		httpError(w, "Handling request", fmt.Errorf("Tenant %q, Image %q could not be used: in use", req.Tenant, req.Volume))
-		return
-	}
-
-	if err := createImage(conf[req.Tenant], req.Volume, conf[req.Tenant].Size); err != nil {
-		volumeMap[req.Tenant][req.Volume] = req
 	}
 
 	content, err = json.Marshal(tenConfig)

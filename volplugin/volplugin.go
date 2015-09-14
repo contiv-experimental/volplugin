@@ -29,23 +29,6 @@ type VolumeResponse struct {
 	Err        string
 }
 
-// request to the volmaster
-type request struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
-}
-
-type createRequest struct {
-	Tenant string `json:"tenant"`
-	Volume string `json:"volume"`
-}
-
-// response from the volmaster
-type configTenant struct {
-	Pool string `json:"pool"`
-	Size uint64 `json:"size"`
-}
-
 // Daemon starts the volplugin service.
 func Daemon(tenantName string, debug bool, master string) error {
 	driverPath := path.Join(basePath, tenantName) + ".sock"
@@ -73,9 +56,9 @@ func configureRouter(tenant string, debug bool, master string) *mux.Router {
 		"/Plugin.Deactivate":    nilAction,
 		"/VolumeDriver.Create":  create(master, tenant),
 		"/VolumeDriver.Remove":  nilAction,
-		"/VolumeDriver.Path":    getPath(master, tenant),
-		"/VolumeDriver.Mount":   mount(master, tenant),
-		"/VolumeDriver.Unmount": unmount(master, tenant),
+		"/VolumeDriver.Path":    getPath(master),
+		"/VolumeDriver.Mount":   mount(master),
+		"/VolumeDriver.Unmount": unmount(master),
 	}
 
 	router := mux.NewRouter()

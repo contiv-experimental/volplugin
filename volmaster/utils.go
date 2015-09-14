@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/contiv/volplugin/config"
 )
 
 func errExit(ctx *cli.Context, err error) {
@@ -20,4 +24,42 @@ func httpError(w http.ResponseWriter, message string, err error) {
 
 	log.Warnf("Returning HTTP error handling plugin negotiation: %s", fullError)
 	http.Error(w, fullError, http.StatusInternalServerError)
+}
+
+func unmarshalRequest(r *http.Request) (config.Request, error) {
+	var cfg config.Request
+
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return cfg, err
+	}
+
+	if err := json.Unmarshal(content, &cfg); err != nil {
+		return cfg, err
+	}
+
+	if cfg.Volume == "" {
+		return cfg, errors.New("volume was blank")
+	}
+
+	return cfg, nil
+}
+
+func unmarshalMountConfig(r *http.Request) (*config.MountConfig, error) {
+	cfg := &config.MountConfig{}
+
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return cfg, err
+	}
+
+	if err := json.Unmarshal(content, &cfg); err != nil {
+		return cfg, err
+	}
+
+	if cfg.Volume == "" {
+		return cfg, errors.New("volume was blank")
+	}
+
+	return cfg, nil
 }

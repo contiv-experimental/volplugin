@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/config"
 )
 
 func httpError(w http.ResponseWriter, message string, err error) {
@@ -40,10 +41,10 @@ func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
 }
 
-func requestTenantConfig(host, tenantName, volumeName string) (configTenant, error) {
-	var tenConfig configTenant
+func requestTenantConfig(host, volumeName string) (*config.TenantConfig, error) {
+	var tenConfig *config.TenantConfig
 
-	content, err := json.Marshal(request{tenantName, volumeName})
+	content, err := json.Marshal(config.Request{volumeName})
 	if err != nil {
 		return tenConfig, err
 	}
@@ -70,12 +71,48 @@ func requestTenantConfig(host, tenantName, volumeName string) (configTenant, err
 }
 
 func requestCreate(host, tenantName, volumeName string) error {
-	content, err := json.Marshal(createRequest{tenantName, volumeName})
+	content, err := json.Marshal(config.RequestCreate{tenantName, volumeName})
 	if err != nil {
 		return err
 	}
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/create", host), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func reportMount(host string, mt *config.MountConfig) error {
+	content, err := json.Marshal(mt)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/mount", host), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func reportUnmount(host string, mt *config.MountConfig) error {
+	content, err := json.Marshal(mt)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/unmount", host), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
 	}

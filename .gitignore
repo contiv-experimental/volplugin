@@ -3,3 +3,5 @@ ansible/docker
 .vagrant
 ansible/fetch/*
 volmaster/volmaster
+volplugin/volplugin/volplugin
+volcli/volcli/volcli

@@ -35,9 +35,9 @@ func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 	nodeMap[host].RunCommand("docker volume rm " + name)
 
 	if purgeCeph {
-		if err := nodeMap[host].RunCommand("sudo rbd snap purge " + name + " && sudo rbd rm " + name); err != nil {
-			t.Fatal(err)
-		}
+		// FIXME necessary until the mount etcd stuff is finished
+		nodeMap[host].RunCommand("volcli volume remove " + name)
+		nodeMap[host].RunCommand("sudo rbd snap purge " + name + " && sudo rbd rm " + name)
 	}
 }
 
