@@ -110,12 +110,12 @@ func TenantList(ctx *cli.Context) {
 
 // VolumeGet retrieves the metadata for a volume and prints it.
 func VolumeGet(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
+	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
 	}
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
-	vol, err := cfg.GetVolume(ctx.Args()[0])
+	vol, err := cfg.GetVolume(ctx.Args()[0], ctx.Args()[1])
 	if err != nil {
 		errExit(ctx, err)
 	}
@@ -130,12 +130,12 @@ func VolumeGet(ctx *cli.Context) {
 
 // VolumeRemove removes a volume forcefully.
 func VolumeRemove(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
+	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
 	}
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
-	if err := cfg.RemoveVolume(ctx.Args()[0]); err != nil {
+	if err := cfg.RemoveVolume(ctx.Args()[0], ctx.Args()[1]); err != nil {
 		errExit(ctx, err)
 	}
 }

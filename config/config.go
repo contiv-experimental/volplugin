@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"strings"
 
 	"github.com/contiv/go-etcd/etcd"
 )
@@ -18,12 +19,14 @@ var (
 // volmaster.
 type Request struct {
 	Volume string `json:"volume"`
+	Pool   string `json:"pool"`
 }
 
 // RequestCreate provides a request structure for creating new volumes.
 type RequestCreate struct {
 	Tenant string `json:"tenant"`
 	Volume string `json:"volume"`
+	Pool   string `json:"pool"`
 }
 
 // TopLevelConfig is the top-level struct for communicating with the intent store.
@@ -77,7 +80,9 @@ func (c *TopLevelConfig) Sync() error {
 			return err
 		}
 
-		c.Tenants[path.Base(tenant.Key)] = cfg
+		tenantKey := strings.TrimPrefix(tenant.Key, c.prefixed("tenants"))
+
+		c.Tenants[tenantKey] = cfg
 	}
 
 	return nil

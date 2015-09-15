@@ -6,6 +6,7 @@ import "encoding/json"
 // in etcd and used for comparison.
 type MountConfig struct {
 	Volume     string
+	Pool       string
 	MountPoint string
 	Host       string
 }
@@ -13,7 +14,7 @@ type MountConfig struct {
 // ExistsMount checks if a mount exists
 func (c *TopLevelConfig) ExistsMount(mt *MountConfig) bool {
 	// skipping the error because we don't need it
-	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Volume), true, false)
+	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Pool, mt.Volume), true, false)
 	return err == nil && resp.Node != nil
 }
 
@@ -31,7 +32,7 @@ func (c *TopLevelConfig) PublishMount(mt *MountConfig) error {
 
 	// FIXME the TTL here should be variable and there should be a way to refresh it.
 	// This way if an instance goes down, its mount expires after a while.
-	_, err = c.etcdClient.Set(c.prefixed("mounts", mt.Volume), string(content), 0)
+	_, err = c.etcdClient.Set(c.prefixed("mounts", mt.Pool, mt.Volume), string(content), 0)
 	return err
 }
 
@@ -43,7 +44,7 @@ func (c *TopLevelConfig) RemoveMount(mt *MountConfig) error {
 		return nil
 	}
 
-	_, err := c.etcdClient.Delete(c.prefixed("mounts", mt.Volume), true)
+	_, err := c.etcdClient.Delete(c.prefixed("mounts", mt.Pool, mt.Volume), true)
 	return err
 }
 
@@ -51,7 +52,7 @@ func (c *TopLevelConfig) RemoveMount(mt *MountConfig) error {
 func (c *TopLevelConfig) GetMount(volumeName string) (*MountConfig, error) {
 	mt := &MountConfig{}
 
-	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Volume), true, false)
+	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Pool, mt.Volume), true, false)
 	if err != nil {
 		return nil, err
 	}

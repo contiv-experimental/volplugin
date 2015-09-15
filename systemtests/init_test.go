@@ -61,7 +61,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if err := stopEtcd(); err != nil {
-		log.Errorf("Volmaster could not be stopped: %v", err)
+		log.Errorf("etcd could not be stopped: %v", err)
 		if exitCode == 0 {
 			exitCode = 1
 		}

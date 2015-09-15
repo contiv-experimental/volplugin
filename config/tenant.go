@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"path"
+	"strings"
 )
 
 // TenantConfig is the configuration of the tenant. It includes pool and
@@ -72,7 +72,7 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	tenants := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		tenants = append(tenants, path.Base(node.Key))
+		tenants = append(tenants, strings.TrimPrefix(node.Key, c.prefixed("tenants")))
 	}
 
 	return tenants, nil
