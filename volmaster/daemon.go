@@ -30,13 +30,15 @@ func daemon(config *config.TopLevelConfig, debug bool, listen string) {
 	}
 
 	for path, f := range router {
-		r.HandleFunc(path, logHandler("/request", debug, f)).Methods("POST")
+		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
 	}
 
 	go scheduleSnapshotPrune(d.config)
 	go scheduleSnapshots(d.config)
 
-	http.ListenAndServe(listen, r)
+	if err := http.ListenAndServe(listen, r); err != nil {
+		log.Fatalf("Error starting volmaster: %v", err)
+	}
 
 	select {}
 }
