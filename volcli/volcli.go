@@ -179,3 +179,16 @@ func VolumeList(ctx *cli.Context) {
 		fmt.Println(name)
 	}
 }
+
+// VolumePoolList returns a list of the pools the volmaster knows about.
+func VolumePoolList(ctx *cli.Context) {
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	pools, err := cfg.ListPools()
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	for _, name := range pools {
+		fmt.Println(name)
+	}
+}

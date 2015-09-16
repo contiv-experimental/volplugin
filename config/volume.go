@@ -90,10 +90,6 @@ func (c *TopLevelConfig) ListPools() ([]string, error) {
 	ret := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		if node.Value == "" {
-			continue
-		}
-
 		key := strings.TrimPrefix(node.Key, c.prefixed("volumes"))
 		// trim leading slash
 		ret = append(ret, key[1:])

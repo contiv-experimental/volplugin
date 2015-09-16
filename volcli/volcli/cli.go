@@ -64,6 +64,11 @@ func main() {
 					Action: volcli.VolumeList,
 				},
 				{
+					Name:   "list-pools",
+					Flags:  flags,
+					Action: volcli.VolumePoolList,
+				},
+				{
 					Name:   "force-remove",
 					Flags:  flags,
 					Action: volcli.VolumeForceRemove,
