@@ -162,3 +162,20 @@ func VolumeRemove(ctx *cli.Context) {
 		errExit(ctx, err)
 	}
 }
+
+// VolumeList prints the list of volumes for a pool.
+func VolumeList(ctx *cli.Context) {
+	if len(ctx.Args()) != 1 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	vols, err := cfg.ListVolumes(ctx.Args()[0])
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	for name := range vols {
+		fmt.Println(name)
+	}
+}
