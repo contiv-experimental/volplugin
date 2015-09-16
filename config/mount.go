@@ -53,10 +53,10 @@ func (c *TopLevelConfig) RemoveMount(mt *MountConfig) error {
 }
 
 // GetMount retrieves the MountConfig for the given volume name.
-func (c *TopLevelConfig) GetMount(volumeName string) (*MountConfig, error) {
+func (c *TopLevelConfig) GetMount(pool, name string) (*MountConfig, error) {
 	mt := &MountConfig{}
 
-	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Pool, mt.Volume), true, false)
+	resp, err := c.etcdClient.Get(c.prefixed("mounts", pool, name), true, false)
 	if err != nil {
 		return nil, err
 	}

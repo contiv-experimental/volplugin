@@ -205,3 +205,22 @@ func MountList(ctx *cli.Context) {
 		fmt.Println(name)
 	}
 }
+
+func MountGet(ctx *cli.Context) {
+	if len(ctx.Args()) != 2 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	mount, err := cfg.GetMount(ctx.Args()[0], ctx.Args()[1])
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	content, err := ppJSON(mount)
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	fmt.Println(string(content))
+}

@@ -93,6 +93,11 @@ func main() {
 					Flags:  flags,
 					Action: volcli.MountList,
 				},
+				{
+					Name:   "get",
+					Flags:  flags,
+					Action: volcli.MountGet,
+				},
 			},
 		},
 	}
