@@ -192,3 +192,16 @@ func VolumePoolList(ctx *cli.Context) {
 		fmt.Println(name)
 	}
 }
+
+// MountList returns a list of the mounts the volmaster knows about.
+func MountList(ctx *cli.Context) {
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	mounts, err := cfg.ListMounts()
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	for _, name := range mounts {
+		fmt.Println(name)
+	}
+}

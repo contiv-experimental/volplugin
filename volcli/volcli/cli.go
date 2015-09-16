@@ -85,6 +85,16 @@ func main() {
 				},
 			},
 		},
+		{
+			Name: "mount",
+			Subcommands: []cli.Command{
+				{
+					Name:   "list",
+					Flags:  flags,
+					Action: volcli.MountList,
+				},
+			},
+		},
 	}
 
 	app.Run(os.Args)
