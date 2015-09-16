@@ -33,10 +33,9 @@ func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 
 	// ignore the error here so we get to the purge if we have to
 	nodeMap[host].RunCommand("docker volume rm rbd/" + name)
-	nodeMap[host].RunCommand("volcli volume remove rbd " + name)
 
 	if purgeCeph {
-		nodeMap[host].RunCommand("sudo rbd snap purge " + name + " && sudo rbd rm " + name)
+		nodeMap["mon0"].RunCommand("volcli volume remove rbd " + name)
 	}
 }
 
