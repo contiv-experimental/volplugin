@@ -98,6 +98,11 @@ func main() {
 					Flags:  flags,
 					Action: volcli.MountGet,
 				},
+				{
+					Name:   "force-remove",
+					Flags:  flags,
+					Action: volcli.MountForceRemove,
+				},
 			},
 		},
 	}

@@ -206,6 +206,7 @@ func MountList(ctx *cli.Context) {
 	}
 }
 
+// MountGet retrieves the JSON information for a mount.
 func MountGet(ctx *cli.Context) {
 	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
@@ -223,4 +224,17 @@ func MountGet(ctx *cli.Context) {
 	}
 
 	fmt.Println(string(content))
+}
+
+// MountForceRemove deletes the mount entry from etcd; useful for clearing a
+// stale mount.
+func MountForceRemove(ctx *cli.Context) {
+	if len(ctx.Args()) != 2 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	if err := cfg.RemoveMount(&config.MountConfig{Pool: ctx.Args()[0], Volume: ctx.Args()[1]}); err != nil {
+		errExit(ctx, err)
+	}
 }
