@@ -1,9 +1,11 @@
 package volcli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -110,12 +112,12 @@ func TenantList(ctx *cli.Context) {
 
 // VolumeGet retrieves the metadata for a volume and prints it.
 func VolumeGet(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
+	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
 	}
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
-	vol, err := cfg.GetVolume(ctx.Args()[0])
+	vol, err := cfg.GetVolume(ctx.Args()[0], ctx.Args()[1])
 	if err != nil {
 		errExit(ctx, err)
 	}
@@ -128,14 +130,35 @@ func VolumeGet(ctx *cli.Context) {
 	fmt.Println(string(content))
 }
 
-// VolumeRemove removes a volume forcefully.
-func VolumeRemove(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
+// VolumeForceRemove removes a volume forcefully.
+func VolumeForceRemove(ctx *cli.Context) {
+	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"))
 	}
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
-	if err := cfg.RemoveVolume(ctx.Args()[0]); err != nil {
+	if err := cfg.RemoveVolume(ctx.Args()[0], ctx.Args()[1]); err != nil {
+		errExit(ctx, err)
+	}
+}
+
+// VolumeRemove removes a volume, deleting the image beneath it.
+func VolumeRemove(ctx *cli.Context) {
+	if len(ctx.Args()) != 2 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"))
+	}
+
+	request := config.Request{
+		Pool:   ctx.Args()[0],
+		Volume: ctx.Args()[1],
+	}
+
+	content, err := json.Marshal(request)
+	if err != nil {
+		errExit(ctx, err)
+	}
+
+	if _, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("master")), "application/json", bytes.NewBuffer(content)); err != nil {
 		errExit(ctx, err)
 	}
 }

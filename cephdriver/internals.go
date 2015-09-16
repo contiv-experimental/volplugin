@@ -11,11 +11,11 @@ import (
 )
 
 func (cv *CephVolume) volumeCreate() error {
-	return exec.Command("rbd", "create", cv.VolumeName, "--size", strconv.FormatUint(cv.VolumeSize, 10), "--pool", cv.PoolName()).Run()
+	return exec.Command("rbd", "create", cv.VolumeName, "--size", strconv.FormatUint(cv.VolumeSize, 10), "--pool", cv.PoolName).Run()
 }
 
 func (cv *CephVolume) mapImage() (string, error) {
-	blkdev, err := exec.Command("rbd", "map", cv.VolumeName, "--pool", cv.PoolName()).Output()
+	blkdev, err := exec.Command("rbd", "map", cv.VolumeName, "--pool", cv.PoolName).Output()
 	device := strings.TrimSpace(string(blkdev))
 
 	if err == nil {
@@ -38,7 +38,7 @@ func (cd *CephDriver) mkfsVolume(devicePath string) error {
 }
 
 func (cv *CephVolume) unmapImage() error {
-	output, err := exec.Command("rbd", "showmapped", "--pool", cv.PoolName()).Output()
+	output, err := exec.Command("rbd", "showmapped", "--pool", cv.PoolName).Output()
 	if err != nil {
 		return err
 	}
@@ -55,8 +55,8 @@ func (cv *CephVolume) unmapImage() error {
 		image := parts[2]
 		device := parts[4]
 
-		if strings.TrimSpace(pool) == cv.driver.PoolName && strings.TrimSpace(image) == cv.VolumeName {
-			log.Debugf("Unmapping volume %s/%s at device %q", cv.driver.PoolName, cv.VolumeName, strings.TrimSpace(device))
+		if strings.TrimSpace(pool) == cv.PoolName && strings.TrimSpace(image) == cv.VolumeName {
+			log.Debugf("Unmapping volume %s/%s at device %q", cv.PoolName, cv.VolumeName, strings.TrimSpace(device))
 			if err := exec.Command("rbd", "unmap", device).Run(); err != nil {
 				return err
 			}

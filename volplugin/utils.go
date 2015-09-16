@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -41,37 +42,38 @@ func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
 }
 
-func requestTenantConfig(host, volumeName string) (*config.TenantConfig, error) {
+func requestTenantConfig(host, volumeName, pool string) (*config.TenantConfig, error) {
 	var tenConfig *config.TenantConfig
 
-	content, err := json.Marshal(config.Request{volumeName})
+	content, err := json.Marshal(config.Request{volumeName, pool})
 	if err != nil {
-		return tenConfig, err
+		return nil, err
 	}
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/request", host), "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return tenConfig, err
-	}
-
-	if resp.StatusCode != 200 {
-		return tenConfig, fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+		return nil, err
 	}
 
 	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return tenConfig, err
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+	}
+
+	if err != nil { // error is from the ReadAll above; we just care more about the status code is all
+		return nil, err
 	}
 
 	if err := json.Unmarshal(content, &tenConfig); err != nil {
-		return tenConfig, err
+		return nil, err
 	}
 
 	return tenConfig, nil
 }
 
-func requestCreate(host, tenantName, volumeName string) error {
-	content, err := json.Marshal(config.RequestCreate{tenantName, volumeName})
+func requestCreate(host, tenantName, volumeName, pool string) error {
+	content, err := json.Marshal(config.RequestCreate{tenantName, volumeName, pool})
 	if err != nil {
 		return err
 	}
@@ -81,8 +83,10 @@ func requestCreate(host, tenantName, volumeName string) error {
 		return err
 	}
 
+	content, err = ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
@@ -99,8 +103,10 @@ func reportMount(host string, mt *config.MountConfig) error {
 		return err
 	}
 
+	content, err = ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
@@ -117,9 +123,20 @@ func reportUnmount(host string, mt *config.MountConfig) error {
 		return err
 	}
 
+	content, err = ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d", resp.StatusCode)
+		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
+}
+
+func splitPath(name string) (string, string, error) {
+	parts := strings.SplitN(name, "/", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("Invalid volume name %q", name)
+	}
+
+	return parts[0], parts[1], nil
 }

@@ -41,7 +41,7 @@ func TestVolumeCreateMultiHost(t *testing.T) {
 
 func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 	createVolume(t, "mon0", "test")
-	if out, err := nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`); err != nil {
+	if out, err := nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v rbd/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`); err != nil {
 		t.Log(out)
 		purgeVolume(t, "mon0", "test", true) // cleanup
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 
 	createVolume(t, "mon1", "test")
 
-	out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v rbd/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
 	if err != nil {
 		t.Log(out)
 		purgeVolume(t, "mon1", "test", true) // cleanup
@@ -62,7 +62,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 
 	createVolume(t, "mon1", "test")
 
-	if out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`); err != nil {
+	if out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v rbd/test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`); err != nil {
 		t.Log(out)
 		purgeVolume(t, "mon1", "test", true) // cleanup
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 	createVolume(t, "mon2", "test")
 	defer purgeVolume(t, "mon2", "test", true)
 
-	out, err = nodeMap["mon2"].RunCommandWithOutput(`docker run --rm -i -v test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	out, err = nodeMap["mon2"].RunCommandWithOutput(`docker run --rm -i -v rbd/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
 	if err != nil {
 		t.Log(out)
 		t.Fatal(err)

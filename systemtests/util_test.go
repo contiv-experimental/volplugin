@@ -32,12 +32,10 @@ func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 	t.Logf("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
-	nodeMap[host].RunCommand("docker volume rm " + name)
+	nodeMap[host].RunCommand("docker volume rm rbd/" + name)
 
 	if purgeCeph {
-		// FIXME necessary until the mount etcd stuff is finished
-		nodeMap[host].RunCommand("volcli volume remove " + name)
-		nodeMap[host].RunCommand("sudo rbd snap purge " + name + " && sudo rbd rm " + name)
+		nodeMap["mon0"].RunCommand("volcli volume remove rbd " + name)
 	}
 }
 
@@ -52,11 +50,13 @@ func createVolumeHost(t *testing.T, host string) {
 func createVolume(t *testing.T, host, name string) {
 	t.Logf("Creating %s/%s", host, name)
 
-	if err := nodeMap[host].RunCommand("docker volume create -d tenant1 --name " + name); err != nil {
+	if out, err := nodeMap[host].RunCommandWithOutput("docker volume create -d tenant1 --name rbd/" + name); err != nil {
+		t.Log(string(out))
 		t.Fatal(err)
 	}
 
-	if err := nodeMap[host].RunCommand("sudo rbd list | grep -q " + name); err != nil {
+	if out, err := nodeMap[host].RunCommandWithOutput("sudo rbd ls | grep -q " + name); err != nil {
+		t.Log(string(out))
 		t.Fatal(err)
 	}
 }

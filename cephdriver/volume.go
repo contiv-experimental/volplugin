@@ -13,23 +13,18 @@ import (
 // CephVolume is a struct that communicates volume name and size.
 type CephVolume struct {
 	VolumeName string // Name of the volume
+	PoolName   string
 	VolumeSize uint64 // Size in MBs
 	driver     *CephDriver
 }
 
-// PoolName returns the name of the pool the driver for this CephVolume was
-// configured with.
-func (cv *CephVolume) PoolName() string {
-	return cv.driver.PoolName
-}
-
 func (cv *CephVolume) String() string {
-	return fmt.Sprintf("[name: %s/%s size: %d]", cv.PoolName(), cv.VolumeName, cv.VolumeSize)
+	return fmt.Sprintf("[name: %s/%s size: %d]", cv.PoolName, cv.VolumeName, cv.VolumeSize)
 }
 
 // Exists returns true if the volume already exists.
 func (cv *CephVolume) Exists() (bool, error) {
-	out, err := exec.Command("rbd", "ls", cv.PoolName()).Output()
+	out, err := exec.Command("rbd", "ls", cv.PoolName).Output()
 	if err != nil {
 		return false, err
 	}
@@ -47,6 +42,15 @@ func (cv *CephVolume) Exists() (bool, error) {
 
 // Create creates an RBD image and initialize ext4 filesystem on the image
 func (cv *CephVolume) Create() error {
+	ok, err := cv.driver.PoolExists(cv.PoolName)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return fmt.Errorf("Pool %q does not exist", cv.PoolName)
+	}
+
 	if ok, err := cv.Exists(); ok && err == nil {
 		return nil
 	} else if err != nil {
@@ -78,7 +82,7 @@ func (cv *CephVolume) Create() error {
 func (cv *CephVolume) Mount() error {
 	cd := cv.driver
 	// Directory to mount the volume
-	dataStoreDir := filepath.Join(cd.mountBase, cd.PoolName)
+	dataStoreDir := filepath.Join(cd.mountBase, cv.PoolName)
 	volumeDir := filepath.Join(dataStoreDir, cv.VolumeName)
 
 	devName, err := cv.mapImage()
@@ -87,15 +91,15 @@ func (cv *CephVolume) Mount() error {
 	}
 
 	// Create directory to mount
-	if err := os.Mkdir(cd.mountBase, 0700); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(cd.mountBase, 0700); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("error creating %q directory: %v", cd.mountBase, err)
 	}
 
-	if err := os.Mkdir(dataStoreDir, 0700); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(dataStoreDir, 0700); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("error creating %q directory: %v", dataStoreDir)
 	}
 
-	if err := os.Mkdir(volumeDir, 0777); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(volumeDir, 0777); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("error creating %q directory: %v", volumeDir)
 	}
 
@@ -114,7 +118,7 @@ func (cv *CephVolume) Unmount() error {
 
 	// formatted image name
 	// Directory to mount the volume
-	dataStoreDir := filepath.Join(cd.mountBase, cd.PoolName)
+	dataStoreDir := filepath.Join(cd.mountBase, cv.PoolName)
 	volumeDir := filepath.Join(dataStoreDir, cv.VolumeName)
 
 	// Unmount the RBD
@@ -125,11 +129,13 @@ func (cv *CephVolume) Unmount() error {
 	//
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
+	// FIXME loop over unmount and ensure the unmount finished before removing dir
 	if err := syscall.Unmount(volumeDir, syscall.MNT_DETACH); err != nil && err != syscall.ENOENT {
 		return fmt.Errorf("Failed to unmount %q: %v", volumeDir, err)
 	}
 
 	// Remove the mounted directory
+	// FIXME remove all, but only after the FIXME above.
 	if err := os.Remove(volumeDir); err != nil && !os.IsNotExist(err) {
 		if err, ok := err.(*os.PathError); ok && err.Err == syscall.EBUSY {
 			return nil
@@ -145,30 +151,29 @@ func (cv *CephVolume) Unmount() error {
 	return nil
 }
 
-// Remove removes an RBD volume i.e. rbd image
-func (cv *CephVolume) Remove(snapshots bool) error {
-	if snapshots {
-		if err := exec.Command("rbd", "snap", "purge", cv.VolumeName, "--pool", cv.PoolName()).Run(); err != nil {
-			return err
-		}
+// Remove removes an RBD volume i.e. rbd image, and its snapshots
+func (cv *CephVolume) Remove() error {
+	if err := exec.Command("rbd", "snap", "purge", cv.VolumeName, "--pool", cv.PoolName).Run(); err != nil {
+		return err
 	}
-	return exec.Command("rbd", "rm", cv.VolumeName, "--pool", cv.PoolName()).Run()
+
+	return exec.Command("rbd", "rm", cv.VolumeName, "--pool", cv.PoolName).Run()
 }
 
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (cv *CephVolume) CreateSnapshot(snapName string) error {
-	return exec.Command("rbd", "snap", "create", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName()).Run()
+	return exec.Command("rbd", "snap", "create", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName).Run()
 }
 
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (cv *CephVolume) RemoveSnapshot(snapName string) error {
-	return exec.Command("rbd", "snap", "rm", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName()).Run()
+	return exec.Command("rbd", "snap", "rm", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName).Run()
 }
 
 // ListSnapshots returns an array of snapshot names provided a maximum number
 // of snapshots to be returned. Any error will be returned.
 func (cv *CephVolume) ListSnapshots() ([]string, error) {
-	out, err := exec.Command("rbd", "snap", "ls", cv.VolumeName, "--pool", cv.PoolName()).Output()
+	out, err := exec.Command("rbd", "snap", "ls", cv.VolumeName, "--pool", cv.PoolName).Output()
 	if err != nil {
 		return nil, err
 	}

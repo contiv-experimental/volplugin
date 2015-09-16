@@ -27,6 +27,7 @@ func daemon(config *config.TopLevelConfig, debug bool, listen string) {
 		"/create":  d.handleCreate,
 		"/mount":   d.handleMount,
 		"/unmount": d.handleUnmount,
+		"/remove":  d.handleRemove,
 	}
 
 	for path, f := range router {
@@ -58,6 +59,24 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		}
 
 		actionFunc(w, r)
+	}
+}
+
+func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalRequest(r)
+	if err != nil {
+		httpError(w, "unmarshalling request", err)
+		return
+	}
+
+	if err := removeImage(req.Pool, req.Volume); err != nil {
+		httpError(w, "removing image", err)
+		return
+	}
+
+	if err := d.config.RemoveVolume(req.Pool, req.Volume); err != nil {
+		httpError(w, "clearing volume records", err)
+		return
 	}
 }
 
@@ -99,7 +118,7 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.config.GetVolume(req.Volume)
+	tenConfig, err := d.config.GetVolume(req.Volume, req.Pool)
 	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -133,14 +152,19 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Pool == "" {
+		httpError(w, "Reading tenant", errors.New("pool was blank"))
+		return
+	}
+
 	if req.Volume == "" {
 		httpError(w, "Reading tenant", errors.New("volume was blank"))
 		return
 	}
 
-	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant)
+	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool)
 	if err != config.ErrExist && tenConfig != nil {
-		if err := createImage(tenConfig, req.Volume); err != nil {
+		if err := createImage(tenConfig, req.Pool, req.Volume); err != nil {
 			httpError(w, "Creating volume", err)
 			return
 		}

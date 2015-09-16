@@ -48,7 +48,13 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		if err := requestCreate(master, tenantName, vr.Name); err != nil {
+		pool, name, err := splitPath(vr.Name)
+		if err != nil {
+			httpError(w, "Configuring volume", err)
+			return
+		}
+
+		if err := requestCreate(master, tenantName, name, pool); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
@@ -78,16 +84,16 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
-		config, err := requestTenantConfig(master, vr.Name)
+		pool, name, err := splitPath(vr.Name)
 		if err != nil {
-			httpError(w, "Could not determine tenant configuration", err)
+			httpError(w, "Configuring volume", err)
 			return
 		}
 
 		// FIXME need to ensure that the mount exists before returning to docker
-		driver := cephdriver.NewCephDriver(config.Pool)
+		driver := cephdriver.NewCephDriver()
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -113,15 +119,21 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 		// FIXME check if we're holding the mount already
 		log.Infof("Mounting volume %q", vr.Name)
 
-		tenConfig, err := requestTenantConfig(master, vr.Name)
+		pool, name, err := splitPath(vr.Name)
+		if err != nil {
+			httpError(w, "Configuring volume", err)
+			return
+		}
+
+		tenConfig, err := requestTenantConfig(master, name, pool)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
 
-		driver := cephdriver.NewCephDriver(tenConfig.Pool)
+		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(vr.Name, tenConfig.Size).Mount(); err != nil {
+		if err := driver.NewVolume(pool, name, tenConfig.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
@@ -134,7 +146,7 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 
 		mt := &config.MountConfig{
 			Volume:     vr.Name,
-			MountPoint: driver.MountPath(vr.Name),
+			MountPoint: driver.MountPath(pool, name),
 			Host:       hostname,
 		}
 
@@ -143,7 +155,7 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -168,16 +180,22 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Unmounting volume %q", vr.Name)
 
-		tenConfig, err := requestTenantConfig(master, vr.Name)
+		pool, name, err := splitPath(vr.Name)
+		if err != nil {
+			httpError(w, "Configuring volume", err)
+			return
+		}
+
+		tenConfig, err := requestTenantConfig(master, name, pool)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
 
-		driver := cephdriver.NewCephDriver(tenConfig.Pool)
+		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(vr.Name, tenConfig.Size).Unmount(); err != nil {
-			httpError(w, "Could not mount image", err)
+		if err := driver.NewVolume(pool, name, tenConfig.Size).Unmount(); err != nil {
+			httpError(w, "Could not unmount image", err)
 			return
 		}
 
@@ -188,8 +206,9 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 		}
 
 		mt := &config.MountConfig{
-			Volume:     vr.Name,
-			MountPoint: driver.MountPath(vr.Name),
+			Volume:     name,
+			MountPoint: driver.MountPath(pool, name),
+			Pool:       pool,
 			Host:       hostname,
 		}
 
@@ -198,7 +217,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(vr.Name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
