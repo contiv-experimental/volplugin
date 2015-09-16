@@ -151,13 +151,12 @@ func (cv *CephVolume) Unmount() error {
 	return nil
 }
 
-// Remove removes an RBD volume i.e. rbd image
-func (cv *CephVolume) Remove(snapshots bool) error {
-	if snapshots {
-		if err := exec.Command("rbd", "snap", "purge", cv.VolumeName, "--pool", cv.PoolName).Run(); err != nil {
-			return err
-		}
+// Remove removes an RBD volume i.e. rbd image, and its snapshots
+func (cv *CephVolume) Remove() error {
+	if err := exec.Command("rbd", "snap", "purge", cv.VolumeName, "--pool", cv.PoolName).Run(); err != nil {
+		return err
 	}
+
 	return exec.Command("rbd", "rm", cv.VolumeName, "--pool", cv.PoolName).Run()
 }
 

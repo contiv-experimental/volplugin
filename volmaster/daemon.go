@@ -27,6 +27,7 @@ func daemon(config *config.TopLevelConfig, debug bool, listen string) {
 		"/create":  d.handleCreate,
 		"/mount":   d.handleMount,
 		"/unmount": d.handleUnmount,
+		"/remove":  d.handleRemove,
 	}
 
 	for path, f := range router {
@@ -58,6 +59,24 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		}
 
 		actionFunc(w, r)
+	}
+}
+
+func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalRequest(r)
+	if err != nil {
+		httpError(w, "unmarshalling request", err)
+		return
+	}
+
+	if err := removeImage(req.Pool, req.Volume); err != nil {
+		httpError(w, "removing image", err)
+		return
+	}
+
+	if err := d.config.RemoveVolume(req.Pool, req.Volume); err != nil {
+		httpError(w, "clearing volume records", err)
+		return
 	}
 }
 

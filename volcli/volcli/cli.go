@@ -59,8 +59,18 @@ func main() {
 					Action: volcli.VolumeGet,
 				},
 				{
-					Name:   "remove",
+					Name:   "force-remove",
 					Flags:  flags,
+					Action: volcli.VolumeForceRemove,
+				},
+				{
+					Name: "remove",
+					Flags: append(flags,
+						cli.StringFlag{
+							Name:  "master",
+							Usage: "address of volmaster process",
+							Value: "127.0.0.1:8080",
+						}),
 					Action: volcli.VolumeRemove,
 				},
 			},

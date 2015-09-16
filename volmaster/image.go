@@ -6,11 +6,9 @@ import (
 )
 
 func createImage(config *config.TenantConfig, pool, name string) error {
-	driver := cephdriver.NewCephDriver()
+	return cephdriver.NewCephDriver().NewVolume(pool, name, config.Size).Create()
+}
 
-	if err := driver.NewVolume(pool, name, config.Size).Create(); err != nil {
-		return err
-	}
-
-	return nil
+func removeImage(pool, name string) error {
+	return cephdriver.NewCephDriver().NewVolume(pool, name, 0).Remove()
 }
