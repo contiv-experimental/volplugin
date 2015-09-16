@@ -1,6 +1,10 @@
 package config
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"path"
+	"strings"
+)
 
 // MountConfig is the exchange configuration for mounts. The payload is stored
 // in etcd and used for comparison.
@@ -49,10 +53,10 @@ func (c *TopLevelConfig) RemoveMount(mt *MountConfig) error {
 }
 
 // GetMount retrieves the MountConfig for the given volume name.
-func (c *TopLevelConfig) GetMount(volumeName string) (*MountConfig, error) {
+func (c *TopLevelConfig) GetMount(pool, name string) (*MountConfig, error) {
 	mt := &MountConfig{}
 
-	resp, err := c.etcdClient.Get(c.prefixed("mounts", mt.Pool, mt.Volume), true, false)
+	resp, err := c.etcdClient.Get(c.prefixed("mounts", pool, name), true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -62,4 +66,25 @@ func (c *TopLevelConfig) GetMount(volumeName string) (*MountConfig, error) {
 	}
 
 	return mt, nil
+}
+
+// ListMounts lists the mounts in use.
+func (c *TopLevelConfig) ListMounts() ([]string, error) {
+	resp, err := c.etcdClient.Get(c.prefixed("mounts"), true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+
+	for _, node := range resp.Node.Nodes {
+		for _, inner := range node.Nodes {
+			key := path.Join(strings.TrimPrefix(inner.Key, c.prefixed("mounts")))
+			// trim leading slash
+			key = key[1:]
+			ret = append(ret, key)
+		}
+	}
+
+	return ret, nil
 }

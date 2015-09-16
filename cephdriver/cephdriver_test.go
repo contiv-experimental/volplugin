@@ -60,7 +60,7 @@ func TestMountUnmountVolume(t *testing.T) {
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
 	volumeSpec.Unmount()
-	volumeSpec.Remove(true)
+	volumeSpec.Remove()
 
 	if err := volumeSpec.Create(); err != nil {
 		t.Fatalf("Error creating the volume: %v", err)
@@ -80,7 +80,7 @@ func TestMountUnmountVolume(t *testing.T) {
 		t.Fatalf("Error unmounting the volume. Err: %v", err)
 	}
 
-	if err := volumeSpec.Remove(true); err != nil {
+	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume: %v", err)
 	}
 }
@@ -128,7 +128,7 @@ func TestSnapshots(t *testing.T) {
 	}
 
 	// delete the volume
-	if err := volumeSpec.Remove(false); err != nil {
+	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	}
 
 	// delete the volume
-	if err := volumeSpec.Remove(true); err != nil {
+	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }

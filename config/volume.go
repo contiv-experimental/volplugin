@@ -72,7 +72,8 @@ func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*TenantConfig, err
 		}
 
 		key := strings.TrimPrefix(node.Key, c.prefixed("volumes", pool))
-		configs[key] = config
+		// trim leading slash
+		configs[key[1:]] = config
 	}
 
 	return configs, nil
@@ -89,12 +90,9 @@ func (c *TopLevelConfig) ListPools() ([]string, error) {
 	ret := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		if node.Value == "" {
-			continue
-		}
-
 		key := strings.TrimPrefix(node.Key, c.prefixed("volumes"))
-		ret = append(ret, key)
+		// trim leading slash
+		ret = append(ret, key[1:])
 	}
 
 	return ret, nil

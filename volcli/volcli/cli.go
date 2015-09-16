@@ -59,6 +59,16 @@ func main() {
 					Action: volcli.VolumeGet,
 				},
 				{
+					Name:   "list",
+					Flags:  flags,
+					Action: volcli.VolumeList,
+				},
+				{
+					Name:   "list-pools",
+					Flags:  flags,
+					Action: volcli.VolumePoolList,
+				},
+				{
 					Name:   "force-remove",
 					Flags:  flags,
 					Action: volcli.VolumeForceRemove,
@@ -72,6 +82,26 @@ func main() {
 							Value: "127.0.0.1:8080",
 						}),
 					Action: volcli.VolumeRemove,
+				},
+			},
+		},
+		{
+			Name: "mount",
+			Subcommands: []cli.Command{
+				{
+					Name:   "list",
+					Flags:  flags,
+					Action: volcli.MountList,
+				},
+				{
+					Name:   "get",
+					Flags:  flags,
+					Action: volcli.MountGet,
+				},
+				{
+					Name:   "force-remove",
+					Flags:  flags,
+					Action: volcli.MountForceRemove,
 				},
 			},
 		},
