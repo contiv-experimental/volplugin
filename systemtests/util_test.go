@@ -31,8 +31,16 @@ func runSSH(cmd string) error {
 	})
 }
 
+func mon0cmd(command string) (string, error) {
+	return nodeMap["mon0"].RunCommandWithOutput(command)
+}
+
+func docker(command string) (string, error) {
+	return mon0cmd("docker " + command)
+}
+
 func volcli(command string) (string, error) {
-	return nodeMap["mon0"].RunCommandWithOutput("volcli " + command)
+	return mon0cmd("volcli " + command)
 }
 
 func readIntent(fn string) (*config.TenantConfig, error) {
