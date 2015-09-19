@@ -118,7 +118,7 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.config.GetVolume(req.Volume, req.Pool)
+	tenConfig, err := d.config.GetVolume(req.Pool, req.Volume)
 	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {

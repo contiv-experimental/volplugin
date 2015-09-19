@@ -24,6 +24,12 @@ func TestMain(m *testing.M) {
 	}
 
 	setNodeMap()
+
+	// clean up any stale stuff
+	stopVolplugin()
+	stopVolmaster()
+	stopEtcd()
+
 	if err := startEtcd(); err != nil {
 		log.Fatalf("etcd could not be started: %v", err)
 	}
@@ -126,5 +132,6 @@ func startEtcd() error {
 }
 
 func uploadIntent() error {
-	return nodeMap["mon0"].RunCommand("volcli tenant upload tenant1 < /testdata/intent1.json")
+	_, err := volcli("tenant upload tenant1 < /testdata/intent1.json")
+	return err
 }

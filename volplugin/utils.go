@@ -42,10 +42,10 @@ func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
 }
 
-func requestTenantConfig(host, volumeName, pool string) (*config.TenantConfig, error) {
+func requestTenantConfig(host, pool, name string) (*config.TenantConfig, error) {
 	var tenConfig *config.TenantConfig
 
-	content, err := json.Marshal(config.Request{volumeName, pool})
+	content, err := json.Marshal(config.Request{Volume: name, Pool: pool})
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func requestTenantConfig(host, volumeName, pool string) (*config.TenantConfig, e
 	return tenConfig, nil
 }
 
-func requestCreate(host, tenantName, volumeName, pool string) error {
-	content, err := json.Marshal(config.RequestCreate{tenantName, volumeName, pool})
+func requestCreate(host, tenantName, pool, name string) error {
+	content, err := json.Marshal(config.RequestCreate{Tenant: tenantName, Volume: name, Pool: pool})
 	if err != nil {
 		return err
 	}

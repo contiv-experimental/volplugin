@@ -1,11 +1,14 @@
 package systemtests
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 
 	utils "github.com/contiv/systemtests-utils"
+	"github.com/contiv/volplugin/config"
 )
 
 func iterateNodes(fn func(utils.TestbedNode) error) error {
@@ -28,6 +31,33 @@ func runSSH(cmd string) error {
 	})
 }
 
+func mon0cmd(command string) (string, error) {
+	return nodeMap["mon0"].RunCommandWithOutput(command)
+}
+
+func docker(command string) (string, error) {
+	return mon0cmd("docker " + command)
+}
+
+func volcli(command string) (string, error) {
+	return mon0cmd("volcli " + command)
+}
+
+func readIntent(fn string) (*config.TenantConfig, error) {
+	content, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &config.TenantConfig{}
+
+	if err := json.Unmarshal(content, cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
 func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 	t.Logf("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
@@ -35,7 +65,7 @@ func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 	nodeMap[host].RunCommand("docker volume rm rbd/" + name)
 
 	if purgeCeph {
-		nodeMap["mon0"].RunCommand("volcli volume remove rbd " + name)
+		volcli("volume remove rbd " + name)
 	}
 }
 

@@ -2,6 +2,7 @@ package volplugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -54,7 +55,7 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		if err := requestCreate(master, tenantName, name, pool); err != nil {
+		if err := requestCreate(master, tenantName, pool, name); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
@@ -125,7 +126,9 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		tenConfig, err := requestTenantConfig(master, name, pool)
+		fmt.Println(master, pool, name)
+
+		tenConfig, err := requestTenantConfig(master, pool, name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -145,7 +148,8 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 		}
 
 		mt := &config.MountConfig{
-			Volume:     vr.Name,
+			Volume:     name,
+			Pool:       pool,
 			MountPoint: driver.MountPath(pool, name),
 			Host:       hostname,
 		}
@@ -186,7 +190,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		tenConfig, err := requestTenantConfig(master, name, pool)
+		tenConfig, err := requestTenantConfig(master, pool, name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return

@@ -31,7 +31,7 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*TenantConfig,
 }
 
 // GetVolume returns the TenantConfig for a given volume.
-func (c *TopLevelConfig) GetVolume(name, pool string) (*TenantConfig, error) {
+func (c *TopLevelConfig) GetVolume(pool, name string) (*TenantConfig, error) {
 	resp, err := c.etcdClient.Get(c.prefixed("volumes", pool, name), true, false)
 	if err != nil {
 		return nil, err
