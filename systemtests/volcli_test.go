@@ -170,4 +170,59 @@ func TestVolCLIVolume(t *testing.T) {
 	}
 }
 
-func TestVolCLIMount(t *testing.T) {}
+func TestVolCLIMount(t *testing.T) {
+	if err := uploadIntent(); err != nil {
+		t.Fatal(err)
+	}
+
+	id, err := docker("run -itd --volume-driver tenant1 -v rbd/foo:/mnt ubuntu sleep infinity")
+	if err != nil {
+		t.Log(id) // error output
+		t.Fatal(err)
+	}
+
+	defer volcli("volume remove rbd foo")
+	defer docker("volume rm rbd/foo")
+	defer docker("rm -f " + id)
+
+	out, err := volcli("mount list")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out, "foo") {
+		t.Fatal("could not find mount")
+	}
+
+	out, err = volcli("mount get rbd foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mt := &config.MountConfig{}
+
+	if err := json.Unmarshal([]byte(out), mt); err != nil {
+		t.Fatal(err)
+	}
+
+	if mt.Volume != "foo" ||
+		mt.Pool != "rbd" ||
+		mt.Host != "ceph-mon0" ||
+		mt.MountPoint != "/mnt/ceph/rbd/foo" {
+		t.Log(mt)
+		t.Fatal("Data from mount did not match expectation")
+	}
+
+	if _, err := volcli("mount force-remove rbd foo"); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err = volcli("mount list")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(out, "foo") {
+		t.Fatal("mount should not exist, still does")
+	}
+}

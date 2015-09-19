@@ -148,7 +148,8 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 		}
 
 		mt := &config.MountConfig{
-			Volume:     vr.Name,
+			Volume:     name,
+			Pool:       pool,
 			MountPoint: driver.MountPath(pool, name),
 			Host:       hostname,
 		}
