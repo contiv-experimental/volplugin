@@ -2,7 +2,6 @@ package volplugin
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -125,8 +124,6 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 			httpError(w, "Configuring volume", err)
 			return
 		}
-
-		fmt.Println(master, pool, name)
 
 		tenConfig, err := requestTenantConfig(master, pool, name)
 		if err != nil {
