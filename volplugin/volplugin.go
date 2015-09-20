@@ -30,7 +30,7 @@ type VolumeResponse struct {
 }
 
 // Daemon starts the volplugin service.
-func Daemon(tenantName string, debug bool, master string) error {
+func Daemon(tenantName string, debug bool, master, host string) error {
 	driverPath := path.Join(basePath, tenantName) + ".sock"
 	os.Remove(driverPath)
 	if err := os.MkdirAll(basePath, 0700); err != nil {
@@ -46,18 +46,18 @@ func Daemon(tenantName string, debug bool, master string) error {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, configureRouter(tenantName, debug, master))
+	http.Serve(l, configureRouter(tenantName, debug, master, host))
 	return l.Close()
 }
 
-func configureRouter(tenant string, debug bool, master string) *mux.Router {
+func configureRouter(tenant string, debug bool, master, host string) *mux.Router {
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":      activate,
 		"/Plugin.Deactivate":    nilAction,
 		"/VolumeDriver.Create":  create(master, tenant),
 		"/VolumeDriver.Remove":  nilAction,
 		"/VolumeDriver.Path":    getPath(master),
-		"/VolumeDriver.Mount":   mount(master),
+		"/VolumeDriver.Mount":   mount(master, host),
 		"/VolumeDriver.Unmount": unmount(master),
 	}
 
