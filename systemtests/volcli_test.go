@@ -93,20 +93,11 @@ func TestVolCLITenant(t *testing.T) {
 }
 
 func TestVolCLIVolume(t *testing.T) {
-	// FIXME ensure sanity here, since we're not ready to support dynamic updates in the code
-	//       remove once watches are in place.
-	stopVolmaster()
-	stopVolplugin()
-
-	if err := uploadIntent(); err != nil {
+	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := startVolmaster(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := startVolplugin(); err != nil {
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -171,7 +162,7 @@ func TestVolCLIVolume(t *testing.T) {
 }
 
 func TestVolCLIMount(t *testing.T) {
-	if err := uploadIntent(); err != nil {
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		t.Fatal(err)
 	}
 

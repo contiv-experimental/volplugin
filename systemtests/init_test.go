@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("etcd could not be started: %v", err)
 	}
 
-	if err := uploadIntent(); err != nil {
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		log.Fatalf("Intent could not be uploaded: %v", err)
 	}
 
@@ -128,10 +128,5 @@ func stopEtcd() error {
 func startEtcd() error {
 	_, err := nodeMap["mon0"].RunCommandBackground("etcd -data-dir /tmp/etcd")
 	time.Sleep(1 * time.Second)
-	return err
-}
-
-func uploadIntent() error {
-	_, err := volcli("tenant upload tenant1 < /testdata/intent1.json")
 	return err
 }

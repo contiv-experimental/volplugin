@@ -90,3 +90,28 @@ func createVolume(t *testing.T, host, name string) {
 		t.Fatal(err)
 	}
 }
+
+func rebootstrap() error {
+	stopVolplugin()
+	stopVolmaster()
+	stopEtcd()
+
+	if err := startEtcd(); err != nil {
+		return err
+	}
+
+	if err := startVolmaster(); err != nil {
+		return err
+	}
+
+	if err := startVolplugin(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func uploadIntent(tenantName, fileName string) error {
+	_, err := volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
+	return err
+}
