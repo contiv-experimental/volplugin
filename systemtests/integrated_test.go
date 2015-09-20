@@ -1,6 +1,10 @@
 package systemtests
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestEtcdUpdate(t *testing.T) {
 	// this not-very-obvious test ensures that the tenant can be uploaded after
@@ -13,10 +17,32 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := docker("volume create -d tenant1 --name rbd/foo"); err != nil {
+	createVolume(t, "mon0", "foo")
+	purgeVolume(t, "mon0", "foo", true)
+}
+
+func TestSnapshotSchedule(t *testing.T) {
+	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
 
-	defer volcli("volume remove rbd foo")
-	defer docker("volume rm rbd/foo")
+	if err := uploadIntent("tenant1", "fastsnap"); err != nil {
+		t.Fatal(err)
+	}
+
+	createVolume(t, "mon0", "foo")
+	defer purgeVolume(t, "mon0", "foo", true)
+	defer rebootstrap()
+
+	time.Sleep(2 * time.Second)
+
+	out, err := nodeMap["mon0"].RunCommandWithOutput("sudo rbd snap ls foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(strings.TrimSpace(out)) == 0 {
+		t.Log(out)
+		t.Fatal("Could not find the right number of snapshots for the volume")
+	}
 }

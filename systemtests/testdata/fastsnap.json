@@ -1,0 +1,10 @@
+{ 
+  "pool": "rbd",
+  "size": 10,
+  "snapshots": true,
+  "snapshot": {
+    "frequency": "1s",
+    "keep": 1
+  }
+}
+
