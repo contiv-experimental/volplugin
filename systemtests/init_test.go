@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,8 @@ func TestMain(m *testing.M) {
 	if os.Getenv("HOST_TEST") != "" {
 		os.Exit(0)
 	}
+
+	log.Infof("Bootstrapping system tests")
 
 	if err := vagrant.Setup(false, "", 6); err != nil {
 		log.Fatalf("Vagrant is not working or nodes are not available: %v", err)
@@ -46,11 +49,34 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Volplugin could not be started: %v", err)
 	}
 
+	if err := restartDocker(); err != nil {
+		log.Fatalf("Could not restart docker")
+	}
+
+	if err := clearContainers(); err != nil && !strings.Contains(err.Error(), "Process exited with: 123") {
+		log.Fatalf("Could not clean up containers: %#v", err)
+	}
+
+	if err := clearVolumes(); err != nil && !strings.Contains(err.Error(), "Process exited with: 1") {
+		log.Fatalf("Could not clear volumes for docker")
+	}
+
 	if err := pullUbuntu(); err != nil {
 		log.Fatalf("Could not pull necessary ubuntu docker image")
 	}
 
+	// rebootstrap to avoid leaving state around from cleanups
+	if err := rebootstrap(); err != nil {
+		log.Fatalf("Could not rebootstrap: %v", err)
+	}
+
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
+		log.Fatalf("Could not upload tenant1 intent: %v", err)
+	}
+
 	exitCode := m.Run()
+
+	log.Infof("Tearing down system test facilities")
 
 	if err := stopVolplugin(); err != nil {
 		log.Errorf("Volplugin could not be stopped: %v", err)
@@ -129,4 +155,26 @@ func startEtcd() error {
 	_, err := nodeMap["mon0"].RunCommandBackground("etcd -data-dir /tmp/etcd")
 	time.Sleep(1 * time.Second)
 	return err
+}
+
+func restartDocker() error {
+	return iterateNodes(func(node utils.TestbedNode) error {
+		return node.RunCommand("sudo service docker restart")
+	})
+}
+
+func clearContainers() error {
+	return iterateNodes(func(node utils.TestbedNode) error {
+		return node.RunCommand("docker ps -aq | xargs docker rm -f")
+	})
+}
+
+func clearVolumes() error {
+	return iterateNodes(func(node utils.TestbedNode) error {
+		return node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
+	})
+}
+
+func clearRBD() error {
+	return nodeMap["mon0"].RunCommand("set -e; for img in $(sudo rbd ls); do sudo rbd snap purge $img && sudo rbd rm $img; done")
 }
