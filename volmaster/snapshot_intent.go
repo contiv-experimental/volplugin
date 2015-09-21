@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/contiv/volplugin/cephdriver"
@@ -13,27 +12,31 @@ import (
 func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *config.TopLevelConfig, pool, volName string, volume *config.TenantConfig)) {
 	pools, err := config.ListPools()
 	if err != nil {
-		panic(fmt.Sprintf("Runtime configuration incorrect: %v", err))
+		log.Errorf("Runtime configuration incorrect: %v", err)
+		return
 	}
 
 	for _, pool := range pools {
 		volumes, err := config.ListVolumes(pool)
 		if err != nil {
-			panic(fmt.Sprintf("Runtime configuration incorrect: %v", err))
+			log.Errorf("Runtime configuration incorrect: %v", err)
+			return
 		}
 
 		for volName, volume := range volumes {
 			if volume.Pool != pool {
-				panic(fmt.Sprintf("Volume pool prefix %q is not the same as JSON imported %q", volume.Pool, pool))
+				log.Errorf("Volume pool prefix %q is not the same as JSON imported %q", volume.Pool, pool)
+				return
 			}
 
 			duration, err := time.ParseDuration(volume.Snapshot.Frequency)
 			if err != nil {
-				panic(fmt.Sprintf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Snapshot.Frequency))
+				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Snapshot.Frequency)
+				return
 			}
 
 			if volume.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				go action(config, pool, volName, volume)
+				action(config, pool, volName, volume)
 			}
 		}
 	}
