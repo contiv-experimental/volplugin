@@ -8,6 +8,16 @@ import (
 	"github.com/contiv/volplugin/volplugin"
 )
 
+var host string
+
+func init() {
+	var err error
+	host, err = os.Hostname()
+	if err != nil {
+		panic("Could not retrieve hostname")
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "volplugin"
@@ -24,6 +34,12 @@ func main() {
 			EnvVar: "MASTER",
 			Value:  "localhost:8080",
 		},
+		cli.StringFlag{
+			Name:   "host-label",
+			Usage:  "Set the internal hostname",
+			EnvVar: "HOSTLABEL",
+			Value:  host,
+		},
 	}
 	app.Action = run
 
@@ -37,5 +53,5 @@ func run(ctx *cli.Context) {
 		os.Exit(1)
 	}
 
-	volplugin.Daemon(ctx.Args()[0], ctx.Bool("debug"), ctx.String("master"))
+	volplugin.Daemon(ctx.Args()[0], ctx.Bool("debug"), ctx.String("master"), ctx.String("host-label"))
 }

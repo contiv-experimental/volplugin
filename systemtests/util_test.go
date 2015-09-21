@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+	"time"
 
 	utils "github.com/contiv/systemtests-utils"
 	"github.com/contiv/volplugin/config"
@@ -66,6 +67,7 @@ func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
 
 	if purgeCeph {
 		volcli("volume remove rbd " + name)
+		nodeMap["mon0"].RunCommand("sudo rbd rm rbd/" + name)
 	}
 }
 
@@ -96,6 +98,8 @@ func rebootstrap() error {
 	stopVolmaster()
 	stopEtcd()
 
+	time.Sleep(1 * time.Second)
+
 	if err := startEtcd(); err != nil {
 		return err
 	}
@@ -107,6 +111,8 @@ func rebootstrap() error {
 	if err := startVolplugin(); err != nil {
 		return err
 	}
+
+	time.Sleep(1 * time.Second)
 
 	return nil
 }

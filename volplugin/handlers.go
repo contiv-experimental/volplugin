@@ -103,7 +103,7 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func mount(master string) func(http.ResponseWriter, *http.Request) {
+func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -138,17 +138,11 @@ func mount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		hostname, err := os.Hostname()
-		if err != nil {
-			httpError(w, "Retrieving hostname", err)
-			return
-		}
-
 		mt := &config.MountConfig{
 			Volume:     name,
 			Pool:       pool,
 			MountPoint: driver.MountPath(pool, name),
-			Host:       hostname,
+			Host:       host,
 		}
 
 		if err := reportMount(master, mt); err != nil {
