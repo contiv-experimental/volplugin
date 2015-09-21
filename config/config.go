@@ -1,10 +1,8 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"path"
-	"strings"
 
 	"github.com/contiv/go-etcd/etcd"
 )
@@ -37,8 +35,6 @@ type RequestCreate struct {
 
 // TopLevelConfig is the top-level struct for communicating with the intent store.
 type TopLevelConfig struct {
-	Tenants map[string]*TenantConfig
-
 	etcdClient *etcd.Client
 	prefix     string
 }
@@ -47,7 +43,6 @@ type TopLevelConfig struct {
 // with the configuration store.
 func NewTopLevelConfig(prefix string, etcdHosts []string) *TopLevelConfig {
 	config := &TopLevelConfig{
-		Tenants:    map[string]*TenantConfig{},
 		prefix:     prefix,
 		etcdClient: etcd.NewClient(etcdHosts),
 	}
@@ -67,29 +62,4 @@ func (c *TopLevelConfig) prefixed(strs ...string) string {
 	}
 
 	return str
-}
-
-// Sync populates all tenants from the configuration store.
-func (c *TopLevelConfig) Sync() error {
-	resp, err := c.etcdClient.Get(c.prefixed(rootTenant), true, true)
-	if err != nil {
-		return err
-	}
-
-	for _, tenant := range resp.Node.Nodes {
-		cfg := &TenantConfig{}
-		if err := json.Unmarshal([]byte(tenant.Value), cfg); err != nil {
-			return err
-		}
-
-		if err := cfg.Validate(tenant.Key); err != nil {
-			return err
-		}
-
-		tenantKey := strings.TrimPrefix(tenant.Key, c.prefixed(rootTenant))
-
-		c.Tenants[tenantKey] = cfg
-	}
-
-	return nil
 }

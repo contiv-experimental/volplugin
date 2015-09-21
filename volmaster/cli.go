@@ -19,10 +19,6 @@ func start(ctx *cli.Context) {
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 
-	if err := cfg.Sync(); err != nil {
-		errExit(ctx, err)
-	}
-
 	daemon(cfg, ctx.Bool("debug"), ctx.String("listen"))
 }
 

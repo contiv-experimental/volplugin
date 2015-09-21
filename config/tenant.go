@@ -41,7 +41,6 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	c.Tenants[name] = cfg
 	return nil
 }
 
