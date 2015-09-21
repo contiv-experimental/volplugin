@@ -40,6 +40,14 @@ func TestVolumeCreateMultiHost(t *testing.T) {
 }
 
 func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Fatal(err)
+	}
+
 	createVolume(t, "mon0", "test")
 	if out, err := nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v rbd/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`); err != nil {
 		t.Log(out)

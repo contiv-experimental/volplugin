@@ -87,9 +87,17 @@ func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := d.config.RemoveMount(req); err != nil {
-		httpError(w, "Could not publish mount information", err)
+	mt, err := d.config.GetMount(req.Pool, req.Volume)
+	if err != nil {
+		httpError(w, "Could not retrieve mount information", err)
 		return
+	}
+
+	if mt.Host == req.Host {
+		if err := d.config.RemoveMount(req); err != nil {
+			httpError(w, "Could not publish mount information", err)
+			return
+		}
 	}
 }
 

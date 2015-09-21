@@ -96,3 +96,48 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal("host-label did not propogate")
 	}
 }
+
+func TestMountLock(t *testing.T) {
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Fatal(err)
+	}
+
+	createVolume(t, "mon0", "test")
+	defer purgeVolume(t, "mon0", "test", true)
+	defer purgeVolume(t, "mon1", "test", false)
+	defer purgeVolume(t, "mon2", "test", false)
+	defer clearContainers()
+
+	dockerCmd := "docker run -d --volume-driver tenant1 -v rbd/test:/mnt ubuntu sleep infinity"
+	if err := nodeMap["mon0"].RunCommand(dockerCmd); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, nodeName := range []string{"mon1", "mon2"} {
+		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
+			t.Log(out)
+			t.Fatalf("%s was able to mount while mon0 held the mount", nodeName)
+		}
+	}
+
+	if err := clearContainers(); err != nil {
+		t.Fatal(err)
+	}
+
+	purgeVolume(t, "mon0", "test", false)
+
+	// Repeat the test to ensure it's working cross-host.
+
+	if err := nodeMap["mon1"].RunCommand(dockerCmd); err != nil {
+		t.Fatal(err)
+	}
+
+	defer purgeVolume(t, "mon1", "test", false)
+
+	for _, nodeName := range []string{"mon0", "mon2"} {
+		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
+			t.Log(out)
+			t.Fatalf("%s was able to mount while mon0 held the mount", nodeName)
+		}
+	}
+}

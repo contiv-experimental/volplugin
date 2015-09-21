@@ -28,25 +28,12 @@ func TestMain(m *testing.M) {
 
 	setNodeMap()
 
-	// clean up any stale stuff
-	stopVolplugin()
-	stopVolmaster()
-	stopEtcd()
-
-	if err := startEtcd(); err != nil {
-		log.Fatalf("etcd could not be started: %v", err)
+	if err := rebootstrap(); err != nil {
+		log.Fatalf("Could not bootstrap cluster: %v", err)
 	}
 
 	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		log.Fatalf("Intent could not be uploaded: %v", err)
-	}
-
-	if err := startVolmaster(); err != nil {
-		log.Fatalf("Volmaster could not be started: %v", err)
-	}
-
-	if err := startVolplugin(); err != nil {
-		log.Fatalf("Volplugin could not be started: %v", err)
 	}
 
 	if err := restartDocker(); err != nil {

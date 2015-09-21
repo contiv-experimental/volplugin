@@ -133,11 +133,6 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 
 		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(pool, name, tenConfig.Size).Mount(); err != nil {
-			httpError(w, "Volume could not be mounted", err)
-			return
-		}
-
 		mt := &config.MountConfig{
 			Volume:     name,
 			Pool:       pool,
@@ -147,6 +142,11 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 
 		if err := reportMount(master, mt); err != nil {
 			httpError(w, "Reporting mount to master", err)
+			return
+		}
+
+		if err := driver.NewVolume(pool, name, tenConfig.Size).Mount(); err != nil {
+			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
