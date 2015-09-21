@@ -20,8 +20,8 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "foo")
-	purgeVolume(t, "mon0", "foo", true)
+	createVolume(t, "mon0", "rbd", "foo")
+	purgeVolume(t, "mon0", "rbd", "foo", true)
 }
 
 func TestSnapshotSchedule(t *testing.T) {
@@ -33,8 +33,8 @@ func TestSnapshotSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "foo")
-	defer purgeVolume(t, "mon0", "foo", true)
+	createVolume(t, "mon0", "rbd", "foo")
+	defer purgeVolume(t, "mon0", "rbd", "foo", true)
 	defer rebootstrap()
 
 	time.Sleep(2 * time.Second)
@@ -77,7 +77,7 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume(t, "mon0", "foo", true)
+	defer purgeVolume(t, "mon0", "rbd", "foo", true)
 	defer docker("rm -f " + out)
 
 	mt := &config.MountConfig{}
@@ -102,10 +102,10 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "test")
-	defer purgeVolume(t, "mon0", "test", true)
-	defer purgeVolume(t, "mon1", "test", false)
-	defer purgeVolume(t, "mon2", "test", false)
+	createVolume(t, "mon0", "rbd", "test")
+	defer purgeVolume(t, "mon0", "rbd", "test", true)
+	defer purgeVolume(t, "mon1", "rbd", "test", false)
+	defer purgeVolume(t, "mon2", "rbd", "test", false)
 	defer clearContainers()
 
 	dockerCmd := "docker run -d --volume-driver tenant1 -v rbd/test:/mnt ubuntu sleep infinity"
@@ -124,7 +124,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	purgeVolume(t, "mon0", "test", false)
+	purgeVolume(t, "mon0", "rbd", "test", false)
 
 	// Repeat the test to ensure it's working cross-host.
 
@@ -132,12 +132,48 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume(t, "mon1", "test", false)
+	defer purgeVolume(t, "mon1", "rbd", "test", false)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
 			t.Log(out)
 			t.Fatalf("%s was able to mount while mon0 held the mount", nodeName)
 		}
+	}
+}
+
+func TestMultiPool(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := mon0cmd("sudo ceph osd pool create test 1 1"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	defer mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
+
+	createVolume(t, "mon0", "test", "test")
+	defer purgeVolume(t, "mon0", "test", "test", true)
+
+	out, err := volcli("volume get test test")
+	if err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	tc := &config.TenantConfig{}
+	if err := json.Unmarshal([]byte(out), tc); err != nil {
+		t.Fatal(err)
+	}
+
+	if tc.Pool != "test" {
+		t.Logf("%#v", *tc)
+		t.Fatal("Could not retrieve properties from volume")
 	}
 }

@@ -27,7 +27,14 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*TenantConfig,
 		return nil, err
 	}
 
-	if _, err := c.etcdClient.Set(c.volume(pool, name), resp, 0); err != nil {
+	ret.Pool = pool
+
+	remarshal, err := json.Marshal(ret)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := c.etcdClient.Set(c.volume(pool, name), string(remarshal), 0); err != nil {
 		return nil, err
 	}
 

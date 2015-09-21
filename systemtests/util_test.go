@@ -59,35 +59,35 @@ func readIntent(fn string) (*config.TenantConfig, error) {
 	return cfg, nil
 }
 
-func purgeVolume(t *testing.T, host, name string, purgeCeph bool) {
+func purgeVolume(t *testing.T, host, pool, name string, purgeCeph bool) {
 	t.Logf("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
-	nodeMap[host].RunCommand("docker volume rm rbd/" + name)
+	nodeMap[host].RunCommand(fmt.Sprintf("docker volume rm %s/%s", pool, name))
 
 	if purgeCeph {
-		volcli("volume remove rbd " + name)
-		nodeMap["mon0"].RunCommand("sudo rbd rm rbd/" + name)
+		volcli(fmt.Sprintf("volume remove %s %s", pool, name))
+		nodeMap["mon0"].RunCommand(fmt.Sprintf("sudo rbd rm %s/%s", pool, name))
 	}
 }
 
-func purgeVolumeHost(t *testing.T, host string, purgeCeph bool) {
-	purgeVolume(t, host, host, purgeCeph)
+func purgeVolumeHost(t *testing.T, pool, host string, purgeCeph bool) {
+	purgeVolume(t, host, pool, host, purgeCeph)
 }
 
-func createVolumeHost(t *testing.T, host string) {
-	createVolume(t, host, host)
+func createVolumeHost(t *testing.T, pool, host string) {
+	createVolume(t, host, pool, host)
 }
 
-func createVolume(t *testing.T, host, name string) {
+func createVolume(t *testing.T, host, pool, name string) {
 	t.Logf("Creating %s/%s", host, name)
 
-	if out, err := nodeMap[host].RunCommandWithOutput("docker volume create -d tenant1 --name rbd/" + name); err != nil {
+	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("docker volume create -d tenant1 --name %s/%s", pool, name)); err != nil {
 		t.Log(string(out))
 		t.Fatal(err)
 	}
 
-	if out, err := nodeMap[host].RunCommandWithOutput("sudo rbd ls | grep -q " + name); err != nil {
+	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("sudo rbd ls %s | grep -q %s", pool, name)); err != nil {
 		t.Log(string(out))
 		t.Fatal(err)
 	}
