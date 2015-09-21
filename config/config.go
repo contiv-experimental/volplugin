@@ -9,10 +9,16 @@ import (
 	"github.com/contiv/go-etcd/etcd"
 )
 
+const (
+	rootVolume = "volumes"
+	rootMount  = "mounts"
+	rootTenant = "tenants"
+)
+
 var (
 	// ErrExist indicates when a key in etcd exits already. Used for create logic.
 	ErrExist     = errors.New("Already exists")
-	defaultPaths = []string{"tenants", "volumes", "mounts"}
+	defaultPaths = []string{rootVolume, rootMount, rootTenant}
 )
 
 // Request provides a request structure for communicating with the
@@ -65,7 +71,7 @@ func (c *TopLevelConfig) prefixed(strs ...string) string {
 
 // Sync populates all tenants from the configuration store.
 func (c *TopLevelConfig) Sync() error {
-	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
+	resp, err := c.etcdClient.Get(c.prefixed(rootTenant), true, true)
 	if err != nil {
 		return err
 	}
@@ -80,7 +86,7 @@ func (c *TopLevelConfig) Sync() error {
 			return err
 		}
 
-		tenantKey := strings.TrimPrefix(tenant.Key, c.prefixed("tenants"))
+		tenantKey := strings.TrimPrefix(tenant.Key, c.prefixed(rootTenant))
 
 		c.Tenants[tenantKey] = cfg
 	}

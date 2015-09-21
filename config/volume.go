@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+func (c *TopLevelConfig) volume(pool, name string) string {
+	return c.prefixed(rootVolume, pool, name)
+}
+
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the TenantConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*TenantConfig, error) {
@@ -23,7 +27,7 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*TenantConfig,
 		return nil, err
 	}
 
-	if _, err := c.etcdClient.Set(c.prefixed("volumes", pool, name), resp, 0); err != nil {
+	if _, err := c.etcdClient.Set(c.volume(pool, name), resp, 0); err != nil {
 		return nil, err
 	}
 
@@ -32,7 +36,7 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*TenantConfig,
 
 // GetVolume returns the TenantConfig for a given volume.
 func (c *TopLevelConfig) GetVolume(pool, name string) (*TenantConfig, error) {
-	resp, err := c.etcdClient.Get(c.prefixed("volumes", pool, name), true, false)
+	resp, err := c.etcdClient.Get(c.volume(pool, name), true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -48,13 +52,15 @@ func (c *TopLevelConfig) GetVolume(pool, name string) (*TenantConfig, error) {
 
 // RemoveVolume removes a volume from configuration.
 func (c *TopLevelConfig) RemoveVolume(pool, name string) error {
-	_, err := c.etcdClient.Delete(c.prefixed("volumes", pool, name), true)
+	_, err := c.etcdClient.Delete(c.prefixed(rootVolume, pool, name), true)
 	return err
 }
 
 // ListVolumes returns a map of volume name -> TenantConfig.
 func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*TenantConfig, error) {
-	resp, err := c.etcdClient.Get(c.prefixed("volumes", pool), true, true)
+	poolPath := c.prefixed(rootVolume, pool)
+
+	resp, err := c.etcdClient.Get(poolPath, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +77,7 @@ func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*TenantConfig, err
 			return nil, err
 		}
 
-		key := strings.TrimPrefix(node.Key, c.prefixed("volumes", pool))
+		key := strings.TrimPrefix(node.Key, poolPath)
 		// trim leading slash
 		configs[key[1:]] = config
 	}
@@ -82,7 +88,7 @@ func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*TenantConfig, err
 // ListPools returns an array with all the named pools the volmaster knows
 // about.
 func (c *TopLevelConfig) ListPools() ([]string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed("volumes"), true, true)
+	resp, err := c.etcdClient.Get(c.prefixed(rootVolume), true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +96,7 @@ func (c *TopLevelConfig) ListPools() ([]string, error) {
 	ret := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		key := strings.TrimPrefix(node.Key, c.prefixed("volumes"))
+		key := strings.TrimPrefix(node.Key, c.prefixed(rootVolume))
 		// trim leading slash
 		ret = append(ret, key[1:])
 	}

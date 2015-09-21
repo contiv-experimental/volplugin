@@ -21,6 +21,10 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep"`
 }
 
+func (c *TopLevelConfig) tenant(name string) string {
+	return c.prefixed(rootTenant, name)
+}
+
 // PublishTenant publishes tenant intent to the configuration store.
 func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 	if err := cfg.Validate(name); err != nil {
@@ -32,7 +36,7 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	_, err = c.etcdClient.Set(c.prefixed("tenants", name), string(value), 0)
+	_, err = c.etcdClient.Set(c.tenant(name), string(value), 0)
 	if err != nil {
 		return err
 	}
@@ -43,13 +47,13 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 
 // DeleteTenant removes a tenant from the configuration store.
 func (c *TopLevelConfig) DeleteTenant(name string) error {
-	_, err := c.etcdClient.Delete(c.prefixed("tenants", name), true)
+	_, err := c.etcdClient.Delete(c.tenant(name), true)
 	return err
 }
 
 // GetTenant retrieves a tenant from the configuration store.
 func (c *TopLevelConfig) GetTenant(name string) (string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed("tenants", name), true, false)
+	resp, err := c.etcdClient.Get(c.tenant(name), true, false)
 	if err != nil {
 		return "", err
 	}
@@ -60,7 +64,7 @@ func (c *TopLevelConfig) GetTenant(name string) (string, error) {
 // ListTenants provides an array of strings corresponding to the name of each
 // tenant.
 func (c *TopLevelConfig) ListTenants() ([]string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed("tenants"), true, true)
+	resp, err := c.etcdClient.Get(c.prefixed(rootTenant), true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +76,7 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	tenants := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		tenants = append(tenants, strings.TrimPrefix(node.Key, c.prefixed("tenants")))
+		tenants = append(tenants, strings.TrimPrefix(node.Key, c.prefixed(rootTenant)))
 	}
 
 	return tenants, nil
