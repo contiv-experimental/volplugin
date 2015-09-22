@@ -7,6 +7,14 @@ import (
 	"github.com/contiv/volplugin/volcli"
 )
 
+var volmasterFlags = []cli.Flag{
+	cli.StringFlag{
+		Name:  "master",
+		Usage: "address of volmaster process",
+		Value: "127.0.0.1:8080",
+	},
+}
+
 var flags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "prefix",
@@ -54,6 +62,11 @@ func main() {
 			Name: "volume",
 			Subcommands: []cli.Command{
 				{
+					Name:   "create",
+					Flags:  append(flags, volmasterFlags...),
+					Action: volcli.VolumeCreate,
+				},
+				{
 					Name:   "get",
 					Flags:  flags,
 					Action: volcli.VolumeGet,
@@ -74,13 +87,8 @@ func main() {
 					Action: volcli.VolumeForceRemove,
 				},
 				{
-					Name: "remove",
-					Flags: append(flags,
-						cli.StringFlag{
-							Name:  "master",
-							Usage: "address of volmaster process",
-							Value: "127.0.0.1:8080",
-						}),
+					Name:   "remove",
+					Flags:  append(flags, volmasterFlags...),
 					Action: volcli.VolumeRemove,
 				},
 			},
