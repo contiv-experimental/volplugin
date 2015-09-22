@@ -27,7 +27,7 @@ func (c *TopLevelConfig) tenant(name string) string {
 
 // PublishTenant publishes tenant intent to the configuration store.
 func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
-	if err := cfg.Validate(name); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return err
 	}
 
@@ -82,13 +82,13 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 }
 
 // Validate validates a tenant configuration, returning error on any issue.
-func (cfg *TenantConfig) Validate(tenantName string) error {
+func (cfg *TenantConfig) Validate() error {
 	if cfg.Pool == "" {
-		return fmt.Errorf("Config for tenant %q has a blank pool name", tenantName)
+		return fmt.Errorf("Config for tenant has a blank pool name")
 	}
 
 	if cfg.Size == 0 {
-		return fmt.Errorf("Config for tenant %q has a zero size", tenantName)
+		return fmt.Errorf("Config for tenant has a zero size")
 	}
 
 	if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
