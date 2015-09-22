@@ -112,6 +112,29 @@ func TenantList(ctx *cli.Context) {
 	}
 }
 
+// VolumeCreate creates a new volume with a JSON specification to store its
+// information.
+func VolumeCreate(ctx *cli.Context) {
+	if len(ctx.Args()) != 3 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
+	}
+
+	tc := &config.RequestCreate{
+		Tenant: ctx.Args()[0],
+		Pool:   ctx.Args()[1],
+		Volume: ctx.Args()[2],
+	}
+
+	content, err := json.Marshal(tc)
+	if err != nil {
+		errExit(ctx, fmt.Errorf("Could not create request JSON: %v", err), false)
+	}
+
+	if _, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("master")), "application/json", bytes.NewBuffer(content)); err != nil {
+		errExit(ctx, err, false)
+	}
+}
+
 // VolumeGet retrieves the metadata for a volume and prints it.
 func VolumeGet(ctx *cli.Context) {
 	if len(ctx.Args()) != 2 {
