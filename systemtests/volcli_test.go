@@ -216,4 +216,27 @@ func TestVolCLIMount(t *testing.T) {
 	if strings.Contains(out, "foo") {
 		t.Fatal("mount should not exist, still does")
 	}
+
+	// the defer comes ahead of time here because of concerns that volume create
+	// will half-create a volume
+	defer purgeVolume(t, "mon0", "rbd", "foo", true)
+	if _, err := volcli("volume create tenant1 rbd foo"); err != nil {
+		t.Fatal(err)
+	}
+
+	// ensure that double-create does nothing (for now, at least)
+	if _, err := volcli("volume create tenant1 rbd foo"); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err = volcli("volume get rbd foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// this test should never fail; we should always fail because of an exit code
+	// instead, which would happen above.
+	if out == "" {
+		t.Fatal("Received no infomration")
+	}
 }
