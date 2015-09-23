@@ -139,7 +139,7 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := &config.TenantConfig{}
+	cfg := &config.VolumeConfig{}
 
 	if err := json.Unmarshal([]byte(out), cfg); err != nil {
 		t.Fatal(err)
@@ -150,8 +150,8 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(intent1, cfg) {
-		t.Log(intent1)
+	if !reflect.DeepEqual(intent1.DefaultVolume, cfg) {
+		t.Log(intent1.DefaultVolume)
 		t.Log(cfg)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
 	}

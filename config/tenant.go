@@ -6,13 +6,11 @@ import (
 	"strings"
 )
 
-// TenantConfig is the configuration of the tenant. It includes pool and
-// snapshot information.
+// TenantConfig is the configuration of the tenant. It includes default
+// information for items such as pool and volume configuration.
 type TenantConfig struct {
-	Pool         string         `json:"pool"`
-	Size         uint64         `json:"size"`
-	UseSnapshots bool           `json:"snapshots"`
-	Snapshot     SnapshotConfig `json:"snapshot"`
+	DefaultVolume *VolumeConfig `json:"default"`
+	DefaultPool   string        `json:"default-pool"`
 }
 
 // SnapshotConfig is the configuration for snapshots.
@@ -51,13 +49,16 @@ func (c *TopLevelConfig) DeleteTenant(name string) error {
 }
 
 // GetTenant retrieves a tenant from the configuration store.
-func (c *TopLevelConfig) GetTenant(name string) (string, error) {
+func (c *TopLevelConfig) GetTenant(name string) (*TenantConfig, error) {
 	resp, err := c.etcdClient.Get(c.tenant(name), true, false)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return resp.Node.Value, nil
+	tc := &TenantConfig{}
+	err = json.Unmarshal([]byte(resp.Node.Value), tc)
+
+	return tc, err
 }
 
 // ListTenants provides an array of strings corresponding to the name of each
@@ -81,18 +82,14 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	return tenants, nil
 }
 
-// Validate validates a tenant configuration, returning error on any issue.
+// Validate ensures the structure of the tenant is sane.
 func (cfg *TenantConfig) Validate() error {
-	if cfg.Pool == "" {
-		return fmt.Errorf("Config for tenant has a blank pool name")
+	if cfg.DefaultVolume == nil {
+		return fmt.Errorf("Default volume does not exist in new tenant")
 	}
 
-	if cfg.Size == 0 {
-		return fmt.Errorf("Config for tenant has a zero size")
-	}
-
-	if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
-		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
+	if cfg.DefaultPool == "" {
+		return fmt.Errorf("Default pool does not exist in new tenant")
 	}
 
 	return nil

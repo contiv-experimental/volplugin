@@ -167,13 +167,13 @@ func TestMultiPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tc := &config.TenantConfig{}
-	if err := json.Unmarshal([]byte(out), tc); err != nil {
+	vc := &config.VolumeConfig{}
+	if err := json.Unmarshal([]byte(out), vc); err != nil {
 		t.Fatal(err)
 	}
 
-	if tc.Pool != "test" {
-		t.Logf("%#v", *tc)
+	if vc.Size != 10 {
+		t.Logf("%#v", *vc)
 		t.Fatal("Could not retrieve properties from volume")
 	}
 }

@@ -170,9 +170,9 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool)
-	if err != config.ErrExist && tenConfig != nil {
-		if err := createImage(tenConfig, req.Pool, req.Volume); err != nil {
+	volConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool)
+	if err != config.ErrExist && volConfig != nil {
+		if err := createImage(volConfig, req.Pool, req.Volume); err != nil {
 			httpError(w, "Creating volume", err)
 			return
 		}
@@ -181,7 +181,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err = json.Marshal(tenConfig)
+	content, err = json.Marshal(volConfig)
 	if err != nil {
 		httpError(w, "Marshalling response", err)
 		return
