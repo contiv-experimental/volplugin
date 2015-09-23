@@ -1,3 +1,5 @@
+<img src="http://1cea435f.ngrok.com/buildStatus/icon?job=volplugin_CI" />
+
 ## volplugin: cluster-wide volume management for container ecosystems
 
 volplugin uses a master/slave model to dynamically mount and maintain ceph RBD
