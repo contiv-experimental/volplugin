@@ -34,7 +34,7 @@ ansible_provision = proc do |ansible|
 
   proxy_env = { }
 
-  %w[http_proxy https_proxy].each do |name|
+  %w[HTTP_PROXY HTTPS_PROXY http_proxy https_proxy].each do |name|
     if ENV[name]
       proxy_env[name] = ENV[name]
     end
