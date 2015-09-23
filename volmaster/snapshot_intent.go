@@ -9,7 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *config.TopLevelConfig, pool, volName string, volume *config.TenantConfig)) {
+func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig)) {
 	pools, err := config.ListPools()
 	if err != nil {
 		log.Errorf("Runtime configuration incorrect: %v", err)
@@ -24,11 +24,6 @@ func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *confi
 		}
 
 		for volName, volume := range volumes {
-			if volume.Pool != pool {
-				log.Errorf("Volume pool prefix %q is not the same as JSON imported %q", volume.Pool, pool)
-				return
-			}
-
 			duration, err := time.ParseDuration(volume.Snapshot.Frequency)
 			if err != nil {
 				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Snapshot.Frequency)
@@ -52,7 +47,7 @@ func scheduleSnapshotPrune(config *config.TopLevelConfig) {
 	}
 }
 
-func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volume *config.TenantConfig) {
+func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
 	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Size)
 	log.Debugf("starting snapshot prune for %q", volName)
 	list, err := cephVol.ListSnapshots()
@@ -74,7 +69,7 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volum
 	}
 }
 
-func runSnapshot(config *config.TopLevelConfig, pool, volName string, volume *config.TenantConfig) {
+func runSnapshot(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
 	now := time.Now()
 	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Size)
 	log.Infof("Snapping volume %q at %v", volume, now)

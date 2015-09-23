@@ -1,9 +1,11 @@
 { 
-  "pool": "rbd",
-  "size": 100,
-  "snapshots": true,
-  "snapshot": {
-    "frequency": "1m",
-    "keep": 10
+  "default-pool": "rbd",
+  "default": {
+    "size": 100,
+    "snapshots": true,
+    "snapshot": {
+      "frequency": "1m",
+      "keep": 10
+    }
   }
 }

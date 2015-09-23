@@ -79,15 +79,7 @@ func TenantGet(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	// The following lines pretty-print the json by re-evaluating it. This is
-	// purely a nicety for the CLI and is not necessary to use the tool.
-	tenantObj := &config.TenantConfig{}
-
-	if err := json.Unmarshal([]byte(value), tenantObj); err != nil {
-		errExit(ctx, err, false)
-	}
-
-	content, err := ppJSON(tenantObj)
+	content, err := ppJSON(value)
 	if err != nil {
 		errExit(ctx, err, false)
 	}
