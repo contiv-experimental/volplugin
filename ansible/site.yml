@@ -14,22 +14,24 @@
     - file: path=/opt/golang/src/github.com/contiv state=directory
     - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
     - file: path=/usr/share/docker/plugins state=directory
-    - copy: src=../volmaster.json dest=/etc/volmaster.json
   roles:
   - ceph-mon
   - ceph-restapi
 
 - hosts: osds
   sudo: True
+  environment: proxy_env
   roles:
   - ceph-osd
 
 - hosts: mdss
   sudo: True
+  environment: proxy_env
   roles:
   - ceph-mds
 
 - hosts: rgws
   sudo: True
+  environment: proxy_env
   roles:
   - ceph-radosgw
