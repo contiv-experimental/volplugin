@@ -18,6 +18,19 @@ BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
 MEMORY       = settings['memory']
 
+shell_provision = <<-EOF
+echo "export http_proxy='$1'" >> /etc/profile.d/envvar.sh
+echo "export https_proxy='$2'" >> /etc/profile.d/envvar.sh
+echo "export no_proxy=192.168.0.0/16,localhost,127.0.0.0/8" >> /etc/profile.d/envvar.sh
+
+mkdir /etc/systemd/system/docker.service.d
+echo "[Service]" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
+echo "Environment=\\\"no_proxy=192.168.0.0/16,localhost,127.0.0.0/8\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
+sudo systemctl daemon-reload
+sudo systemctl stop docker
+sudo systemctl start docker
+EOF
+
 ansible_provision = proc do |ansible|
   ansible.playbook = 'ansible/site.yml'
   # Note: Can't do ranges like mon[0-2] in groups because
@@ -116,6 +129,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       mon.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      mon.vm.provision "shell" do |s|
+        s.inline = shell_provision
+        s.args = [ ENV["http_proxy"] || "", ENV["https_proxy"] || "" ]
       end
     end
   end
