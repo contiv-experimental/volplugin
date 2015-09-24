@@ -29,7 +29,7 @@ install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
 
 ci:
-	GOPATH=/tmp/volplugin PATH="/usr/local/go/bin:${PATH}" make test
+	GOPATH=/tmp/volplugin PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
 
 godep:
 	[ -n "`which godep`" ] || go get github.com/kr/godep
