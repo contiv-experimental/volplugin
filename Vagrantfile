@@ -21,13 +21,14 @@ MEMORY       = settings['memory']
 shell_provision = <<-EOF
 echo "export http_proxy='$1'" >> /etc/profile.d/envvar.sh
 echo "export https_proxy='$2'" >> /etc/profile.d/envvar.sh
-echo "export no_proxy=192.168.0.0/16,localhost,127.0.0.0/8" >> /etc/profile.d/envvar.sh
+no_proxy='192.168.24.10,192.168.24.11,192.168.24.12,172.17.42.1,127.0.0.1,localhost'
+echo "export 'no_proxy=$no_proxy'" >> /etc/profile.d/envvar.sh
 
 . /etc/profile.d/envvar.sh
 
 mkdir /etc/systemd/system/docker.service.d
 echo "[Service]" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
-echo "Environment=\\\"no_proxy=192.168.0.0/16,localhost,127.0.0.0/8\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
+echo "Environment=\\\"no_proxy=$no_proxy\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
 sudo systemctl daemon-reload
 sudo systemctl stop docker
 sudo systemctl start docker
