@@ -15,9 +15,12 @@ provision: download-docker
 ssh:
 	vagrant ssh mon0
 
-golint:
+golint-host:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	golint ./...
+
+golint:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; make golint-host'"
 
 download-docker:
 	curl https://master.dockerproject.org/linux/amd64/docker -o ansible/docker
