@@ -28,7 +28,13 @@ download-docker:
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
 
-test: unit-test system-test
+ci:
+	GOPATH=/tmp/volplugin PATH="/usr/local/go/bin:${PATH}" make test
+
+godep:
+	[ -n "`which godep`" ] || go get github.com/kr/godep
+
+test: godep unit-test system-test
 
 unit-test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./..."'
@@ -48,8 +54,8 @@ run-volmaster:
 run-build:
 	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster
 
-system-test: build
-	go test -v ./systemtests
+system-test: build godep
+	godep go test -v ./systemtests
 
 container:
 	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
