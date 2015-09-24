@@ -20,7 +20,7 @@ golint-host:
 	golint ./...
 
 golint:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; make golint-host'"
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
 
 download-docker:
 	curl https://master.dockerproject.org/linux/amd64/docker -o ansible/docker
