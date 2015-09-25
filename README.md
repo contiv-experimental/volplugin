@@ -1,4 +1,4 @@
-<img src="http://1cea435f.ngrok.com/buildStatus/icon?job=volplugin_CI" />
+<a href="http://1cea435f.ngrok.com/job/volplugin_CI/lastBuild/"><img src="http://1cea435f.ngrok.com/buildStatus/icon?job=volplugin_CI" /></a>
 
 ## volplugin: cluster-wide volume management for container ecosystems
 
