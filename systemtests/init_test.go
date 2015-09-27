@@ -33,14 +33,6 @@ func TestMain(m *testing.M) {
 
 	setNodeMap()
 
-	if err := rebootstrap(); err != nil {
-		log.Fatalf("Could not bootstrap cluster: %v", err)
-	}
-
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
-		log.Fatalf("Intent could not be uploaded: %v", err)
-	}
-
 	if err := restartDocker(); err != nil {
 		log.Fatalf("Could not restart docker")
 	}
