@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
-	"testing"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -60,8 +59,8 @@ func readIntent(fn string) (*config.TenantConfig, error) {
 	return cfg, nil
 }
 
-func purgeVolume(t *testing.T, host, pool, name string, purgeCeph bool) {
-	t.Logf("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
+func purgeVolume(host, pool, name string, purgeCeph bool) {
+	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
 	nodeMap[host].RunCommand(fmt.Sprintf("docker volume rm %s/%s", pool, name))
@@ -72,26 +71,28 @@ func purgeVolume(t *testing.T, host, pool, name string, purgeCeph bool) {
 	}
 }
 
-func purgeVolumeHost(t *testing.T, pool, host string, purgeCeph bool) {
-	purgeVolume(t, host, pool, host, purgeCeph)
+func purgeVolumeHost(pool, host string, purgeCeph bool) {
+	purgeVolume(host, pool, host, purgeCeph)
 }
 
-func createVolumeHost(t *testing.T, pool, host string) {
-	createVolume(t, host, pool, host)
+func createVolumeHost(pool, host string) error {
+	return createVolume(host, pool, host)
 }
 
-func createVolume(t *testing.T, host, pool, name string) {
-	t.Logf("Creating %s/%s", host, name)
+func createVolume(host, pool, name string) error {
+	log.Infof("Creating %s/%s", host, name)
 
 	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("docker volume create -d tenant1 --name %s/%s", pool, name)); err != nil {
-		t.Log(string(out))
-		t.Fatal(err)
+		log.Info(string(out))
+		return err
 	}
 
 	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("sudo rbd ls %s | grep -q %s", pool, name)); err != nil {
-		t.Log(string(out))
-		t.Fatal(err)
+		log.Info(string(out))
+		return err
 	}
+
+	return nil
 }
 
 func rebootstrap() error {
