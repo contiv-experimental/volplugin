@@ -20,8 +20,10 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "rbd", "foo")
-	purgeVolume(t, "mon0", "rbd", "foo", true)
+	if err := createVolume("mon0", "rbd", "foo"); err != nil {
+		t.Fatal(err)
+	}
+	purgeVolume("mon0", "rbd", "foo", true)
 }
 
 func TestSnapshotSchedule(t *testing.T) {
@@ -33,8 +35,10 @@ func TestSnapshotSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "rbd", "foo")
-	defer purgeVolume(t, "mon0", "rbd", "foo", true)
+	if err := createVolume("mon0", "rbd", "foo"); err != nil {
+		t.Fatal(err)
+	}
+	defer purgeVolume("mon0", "rbd", "foo", true)
 	defer rebootstrap()
 
 	time.Sleep(2 * time.Second)
@@ -77,7 +81,7 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume(t, "mon0", "rbd", "foo", true)
+	defer purgeVolume("mon0", "rbd", "foo", true)
 	defer docker("rm -f " + out)
 
 	mt := &config.MountConfig{}
@@ -102,10 +106,12 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	createVolume(t, "mon0", "rbd", "test")
-	defer purgeVolume(t, "mon0", "rbd", "test", true)
-	defer purgeVolume(t, "mon1", "rbd", "test", false)
-	defer purgeVolume(t, "mon2", "rbd", "test", false)
+	if err := createVolume("mon0", "rbd", "test"); err != nil {
+		t.Fatal(err)
+	}
+	defer purgeVolume("mon0", "rbd", "test", true)
+	defer purgeVolume("mon1", "rbd", "test", false)
+	defer purgeVolume("mon2", "rbd", "test", false)
 	defer clearContainers()
 
 	dockerCmd := "docker run -d --volume-driver tenant1 -v rbd/test:/mnt ubuntu sleep infinity"
@@ -124,7 +130,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	purgeVolume(t, "mon0", "rbd", "test", false)
+	purgeVolume("mon0", "rbd", "test", false)
 
 	// Repeat the test to ensure it's working cross-host.
 
@@ -132,7 +138,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume(t, "mon1", "rbd", "test", false)
+	defer purgeVolume("mon1", "rbd", "test", false)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
@@ -158,8 +164,10 @@ func TestMultiPool(t *testing.T) {
 
 	defer mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 
-	createVolume(t, "mon0", "test", "test")
-	defer purgeVolume(t, "mon0", "test", "test", true)
+	if err := createVolume("mon0", "test", "test"); err != nil {
+		t.Fatal(err)
+	}
+	defer purgeVolume("mon0", "test", "test", true)
 
 	out, err := volcli("volume get test test")
 	if err != nil {

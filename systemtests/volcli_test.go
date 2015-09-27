@@ -219,7 +219,7 @@ func TestVolCLIMount(t *testing.T) {
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
-	defer purgeVolume(t, "mon0", "rbd", "foo", true)
+	defer purgeVolume("mon0", "rbd", "foo", true)
 	if _, err := volcli("volume create tenant1 rbd foo"); err != nil {
 		t.Fatal(err)
 	}
