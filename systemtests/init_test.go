@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	utils "github.com/contiv/systemtests-utils"
@@ -14,6 +13,12 @@ var (
 	vagrant = utils.Vagrant{}
 	nodeMap = map[string]utils.TestbedNode{}
 )
+
+func setNodeMap() {
+	for _, node := range vagrant.GetNodes() {
+		nodeMap[node.GetName()] = node
+	}
+}
 
 func TestMain(m *testing.M) {
 	if os.Getenv("HOST_TEST") != "" {
@@ -87,81 +92,4 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(exitCode)
-}
-
-func setNodeMap() {
-	for _, node := range vagrant.GetNodes() {
-		nodeMap[node.GetName()] = node
-	}
-}
-
-func pullUbuntu() error {
-	for _, host := range []string{"mon0", "mon1", "mon2"} {
-		if err := nodeMap[host].RunCommand("docker pull ubuntu"); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func startVolmaster() error {
-	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E `which volmaster` --debug &>/tmp/volmaster.log &")
-	time.Sleep(10 * time.Second)
-	return err
-}
-
-func stopVolmaster() error {
-	return nodeMap["mon0"].RunCommand("sudo pkill volmaster")
-}
-
-func startVolplugin() error {
-	return iterateNodes(volpluginStart)
-}
-
-func stopVolplugin() error {
-	return iterateNodes(volpluginStop)
-}
-
-func volpluginStart(node utils.TestbedNode) error {
-	// FIXME this is hardcoded because it's simpler. If we move to
-	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --master 192.168.24.10:8080 tenant1 &>/tmp/volplugin.log &")
-	return err
-}
-
-func volpluginStop(node utils.TestbedNode) error {
-	return node.RunCommand("sudo pkill volplugin")
-}
-
-func stopEtcd() error {
-	return nodeMap["mon0"].RunCommand("pkill etcd && rm -rf /tmp/etcd")
-}
-
-func startEtcd() error {
-	_, err := nodeMap["mon0"].RunCommandBackground("etcd -data-dir /tmp/etcd")
-	time.Sleep(1 * time.Second)
-	return err
-}
-
-func restartDocker() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		return node.RunCommand("sudo service docker restart")
-	})
-}
-
-func clearContainers() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		return node.RunCommand("docker ps -aq | xargs docker rm -f")
-	})
-}
-
-func clearVolumes() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		return node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
-	})
-}
-
-func clearRBD() error {
-	return nodeMap["mon0"].RunCommand("set -e; for img in $(sudo rbd ls); do sudo rbd snap purge $img && sudo rbd rm $img; done")
 }
