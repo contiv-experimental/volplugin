@@ -96,6 +96,9 @@ func createVolume(host, pool, name string) error {
 }
 
 func rebootstrap() error {
+	clearContainers()
+	clearVolumes()
+	clearRBD()
 	stopVolplugin()
 	stopVolmaster()
 	stopEtcd()
@@ -113,8 +116,6 @@ func rebootstrap() error {
 	if err := startVolplugin(); err != nil {
 		return err
 	}
-
-	time.Sleep(1 * time.Second)
 
 	return nil
 }
@@ -140,7 +141,7 @@ func startVolmaster() error {
 	log.Infof("Starting the volmaster")
 	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E `which volmaster` --debug &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
-	time.Sleep(10 * time.Second)
+	time.Sleep(1 * time.Second)
 	return err
 }
 
@@ -184,25 +185,36 @@ func startEtcd() error {
 	return err
 }
 
+func restartDockerHost(node utils.TestbedNode) error {
+	log.Infof("Restarting docker on %q", node.GetName())
+	// note that for all these restart tasks we error out quietly to avoid other
+	// hosts being cleaned up
+	node.RunCommand("sudo service docker restart")
+	return nil
+}
+
 func restartDocker() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		log.Infof("Restarting docker on %q", node.GetName())
-		return node.RunCommand("sudo service docker restart")
-	})
+	return iterateNodes(restartDockerHost)
+}
+
+func clearContainerHost(node utils.TestbedNode) error {
+	log.Infof("Clearing containers on %q", node.GetName())
+	node.RunCommand("docker ps -aq | xargs docker rm -f")
+	return nil
 }
 
 func clearContainers() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		log.Infof("Clearing containers on %q", node.GetName())
-		return node.RunCommand("docker ps -aq | xargs docker rm -f")
-	})
+	return iterateNodes(clearContainerHost)
+}
+
+func clearVolumeHost(node utils.TestbedNode) error {
+	log.Infof("Clearing volumes on %q", node.GetName())
+	node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
+	return nil
 }
 
 func clearVolumes() error {
-	return iterateNodes(func(node utils.TestbedNode) error {
-		log.Infof("Clearing volumes on %q", node.GetName())
-		return node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
-	})
+	return iterateNodes(clearVolumeHost)
 }
 
 func clearRBD() error {

@@ -170,7 +170,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool)
+	volConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool, req.Opts)
 	if err != config.ErrExist && volConfig != nil {
 		if err := createImage(volConfig, req.Pool, req.Volume); err != nil {
 			httpError(w, "Creating volume", err)

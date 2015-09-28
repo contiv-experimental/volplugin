@@ -62,6 +62,10 @@ func TestMain(m *testing.M) {
 
 	log.Infof("Tearing down system test facilities")
 
+	clearContainers()
+	clearVolumes()
+	restartDocker()
+
 	if err := stopVolplugin(); err != nil {
 		log.Errorf("Volplugin could not be stopped: %v", err)
 		if exitCode == 0 {

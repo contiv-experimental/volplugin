@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/optionmerger"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -54,7 +55,13 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		if err := requestCreate(master, tenantName, pool, name); err != nil {
+		opts, err := optionmerger.Merge(vr.Opts)
+		if err != nil {
+			httpError(w, "Could not merge options", err)
+			return
+		}
+
+		if err := requestCreate(master, tenantName, pool, name, opts); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}

@@ -21,7 +21,7 @@ func (c *TopLevelConfig) volume(pool, name string) string {
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
-func (c *TopLevelConfig) CreateVolume(name, tenant, pool string) (*VolumeConfig, error) {
+func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]interface{}) (*VolumeConfig, error) {
 	if tc, err := c.GetVolume(name, pool); err == nil {
 		return tc, ErrExist
 	}
