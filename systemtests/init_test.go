@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 
 	log.Infof("Bootstrapping system tests")
 
-	if err := vagrant.Setup(false, "", 6); err != nil {
+	if err := vagrant.Setup(false, "", 3); err != nil {
 		log.Fatalf("Vagrant is not working or nodes are not available: %v", err)
 	}
 
