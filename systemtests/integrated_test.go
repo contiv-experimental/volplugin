@@ -59,8 +59,6 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer rebootstrap()
-
 	if err := stopVolplugin(); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +67,7 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		t.Fatal(err)
@@ -102,6 +100,10 @@ func TestHostLabel(t *testing.T) {
 }
 
 func TestMountLock(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := uploadIntent("tenant1", "intent1"); err != nil {
 		t.Fatal(err)
 	}
