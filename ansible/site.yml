@@ -17,6 +17,7 @@
   roles:
   - ceph-mon
   - ceph-restapi
+  - ceph-osd
 
 - hosts: osds
   sudo: True

@@ -59,6 +59,8 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	time.Sleep(100 * time.Millisecond)
+
 	if err := stopVolplugin(); err != nil {
 		t.Fatal(err)
 	}
