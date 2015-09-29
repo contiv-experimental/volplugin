@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,17 +14,34 @@ import (
 )
 
 func iterateNodes(fn func(utils.TestbedNode) error) error {
+	wg := sync.WaitGroup{}
+	errChan := make(chan error, 3)
+
 	for _, node := range vagrant.GetNodes() {
-		// note that we do all of our work on the monitor instances, so the osd's
-		// are left alone
 		if strings.HasPrefix(node.GetName(), "mon") {
-			if err := fn(node); err != nil {
-				return fmt.Errorf(`Error: "%v" on host: %q"`, err, node.GetName())
-			}
+			// this is to prevent the goroutines from spinning too fast, which is
+			// necessary for managing ssh connections. Typically, this would be a
+			// poor pattern to manage concurrency and should not be used if
+			// avoidable.
+			time.Sleep(50 * time.Millisecond)
+			go func(node utils.TestbedNode) {
+				wg.Add(1)
+				if err := fn(node); err != nil {
+					errChan <- fmt.Errorf(`Error: "%v" on host: %q"`, err, node.GetName())
+				}
+				wg.Done()
+			}(node)
 		}
 	}
 
-	return nil
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
 
 func runSSH(cmd string) error {
@@ -103,7 +121,7 @@ func rebootstrap() error {
 	stopVolmaster()
 	stopEtcd()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(1000 * time.Millisecond)
 
 	if err := startEtcd(); err != nil {
 		return err
@@ -127,21 +145,34 @@ func uploadIntent(tenantName, fileName string) error {
 }
 
 func pullUbuntu() error {
+	wg := sync.WaitGroup{}
+	errChan := make(chan error, 3)
 	for _, host := range []string{"mon0", "mon1", "mon2"} {
-		log.Infof("Pulling ubuntu image on host %q", host)
-		if err := nodeMap[host].RunCommand("docker pull ubuntu"); err != nil {
-			return err
-		}
+		go func(host string) {
+			wg.Add(1)
+			log.Infof("Pulling ubuntu image on host %q", host)
+			if err := nodeMap[host].RunCommand("docker pull ubuntu"); err != nil {
+				errChan <- err
+			}
+			wg.Done()
+		}(host)
 	}
 
-	return nil
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
 
 func startVolmaster() error {
 	log.Infof("Starting the volmaster")
-	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E `which volmaster` --debug &>/tmp/volmaster.log &")
+	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
-	time.Sleep(1 * time.Second)
+	time.Sleep(1000 * time.Millisecond)
 	return err
 }
 
@@ -179,9 +210,9 @@ func stopEtcd() error {
 
 func startEtcd() error {
 	log.Infof("Starting etcd")
-	_, err := nodeMap["mon0"].RunCommandBackground("etcd -data-dir /tmp/etcd")
+	_, err := nodeMap["mon0"].RunCommandBackground("nohup etcd -data-dir /tmp/etcd </dev/null &>/dev/null &")
 	log.Infof("Waiting for etcd to finish starting")
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	return err
 }
 
