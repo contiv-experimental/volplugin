@@ -20,8 +20,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/contiv/netplugin/core"
-
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -66,7 +64,7 @@ func (v *Vagrant) Setup(start bool, env string, numNodes int) error {
 	}
 	nodeNamesBytes := re.FindAll(output, -1)
 	if nodeNamesBytes == nil {
-		err = core.Errorf("No running nodes found in vagrant status output: \n%s\n",
+		err = fmt.Errorf("No running nodes found in vagrant status output: \n%s\n",
 			output)
 		return err
 	}
@@ -76,7 +74,7 @@ func (v *Vagrant) Setup(start bool, env string, numNodes int) error {
 		nodeNames = append(nodeNames, nodeName)
 	}
 	if len(nodeNames) != numNodes {
-		err = core.Errorf("Number of running node(s) (%d) is not equal to number of expected node(s) (%d) in vagrant status output: \n%s\n",
+		err = fmt.Errorf("Number of running node(s) (%d) is not equal to number of expected node(s) (%d) in vagrant status output: \n%s\n",
 			len(nodeNames), numNodes, output)
 		return err
 	}
@@ -86,7 +84,7 @@ func (v *Vagrant) Setup(start bool, env string, numNodes int) error {
 	// correctly filter the output based on passed host-name. So filtering
 	// the output ourselves below.
 	if output, err = vCmd.RunWithOutput("ssh-config"); err != nil {
-		return core.Errorf("Error running vagrant ssh-config. Error: %s. Output: \n%s\n", err, output)
+		return fmt.Errorf("Error running vagrant ssh-config. Error: %s. Output: \n%s\n", err, output)
 	}
 
 	if re, err = regexp.Compile("Host [a-zA-Z0-9_-]+|Port [0-9]+|IdentityFile .*"); err != nil {
@@ -95,7 +93,7 @@ func (v *Vagrant) Setup(start bool, env string, numNodes int) error {
 
 	nodeInfosBytes := re.FindAll(output, -1)
 	if nodeInfosBytes == nil {
-		return core.Errorf("Failed to find node info in vagrant ssh-config output: \n%s\n", output)
+		return fmt.Errorf("Failed to find node info in vagrant ssh-config output: \n%s\n", output)
 	}
 
 	// got the names, now fill up the vagrant-nodes structure
@@ -109,16 +107,16 @@ func (v *Vagrant) Setup(start bool, env string, numNodes int) error {
 			}
 		}
 		if nodeInfoPos == -1 {
-			return core.Errorf("Failed to find %q info in vagrant ssh-config output: \n%s\n", nodeName, output)
+			return fmt.Errorf("Failed to find %q info in vagrant ssh-config output: \n%s\n", nodeName, output)
 		}
 		port := ""
 		if n, err := fmt.Sscanf(string(nodeInfosBytes[nodeInfoPos+1]), "Port %s", &port); n == 0 || err != nil {
-			return core.Errorf("Failed to find %q port info in vagrant ssh-config output: \n%s\n. Error: %s",
+			return fmt.Errorf("Failed to find %q port info in vagrant ssh-config output: \n%s\n. Error: %s",
 				nodeName, nodeInfosBytes[nodeInfoPos+1], err)
 		}
 		privKeyFile := ""
 		if n, err := fmt.Sscanf(string(nodeInfosBytes[nodeInfoPos+2]), "IdentityFile %s", &privKeyFile); n == 0 || err != nil {
-			return core.Errorf("Failed to find %q identity file info in vagrant ssh-config output: \n%s\n. Error: %s",
+			return fmt.Errorf("Failed to find %q identity file info in vagrant ssh-config output: \n%s\n. Error: %s",
 				nodeName, nodeInfosBytes[nodeInfoPos+2], err)
 		}
 		log.Infof("Adding node: %q(%s:%s)", nodeName, port, privKeyFile)
