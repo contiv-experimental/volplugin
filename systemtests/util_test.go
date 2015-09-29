@@ -121,7 +121,7 @@ func rebootstrap() error {
 	stopVolmaster()
 	stopEtcd()
 
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	if err := startEtcd(); err != nil {
 		return err
@@ -172,7 +172,7 @@ func startVolmaster() error {
 	log.Infof("Starting the volmaster")
 	_, err := nodeMap["mon0"].RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	return err
 }
 
