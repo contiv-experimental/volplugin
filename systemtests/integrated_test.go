@@ -184,7 +184,7 @@ func TestMultiPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if vc.Size != 10 {
+	if vc.Options.Size != 10 {
 		t.Logf("%#v", *vc)
 		t.Fatal("Could not retrieve properties from volume")
 	}

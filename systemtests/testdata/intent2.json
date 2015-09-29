@@ -1,6 +1,6 @@
 { 
   "default-pool": "rbd",
-  "default": {
+  "default-options": {
     "size": 100,
     "snapshots": true,
     "snapshot": {

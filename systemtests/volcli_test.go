@@ -150,9 +150,9 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(intent1.DefaultVolume, cfg) {
-		t.Log(intent1.DefaultVolume)
-		t.Log(cfg)
+	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, cfg.Options) {
+		t.Log(intent1.DefaultVolumeOptions)
+		t.Log(cfg.Options)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
 	}
 

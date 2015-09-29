@@ -152,7 +152,7 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(pool, name, tenConfig.Size).Mount(); err != nil {
+		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
@@ -196,7 +196,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(pool, name, tenConfig.Size).Unmount(); err != nil {
+		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Unmount(); err != nil {
 			httpError(w, "Could not unmount image", err)
 			return
 		}

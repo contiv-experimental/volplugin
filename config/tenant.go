@@ -9,8 +9,8 @@ import (
 // TenantConfig is the configuration of the tenant. It includes default
 // information for items such as pool and volume configuration.
 type TenantConfig struct {
-	DefaultVolume *VolumeConfig `json:"default"`
-	DefaultPool   string        `json:"default-pool"`
+	DefaultVolumeOptions VolumeOptions `json:"default-options"`
+	DefaultPool          string        `json:"default-pool"`
 }
 
 // SnapshotConfig is the configuration for snapshots.
@@ -84,10 +84,6 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 
 // Validate ensures the structure of the tenant is sane.
 func (cfg *TenantConfig) Validate() error {
-	if cfg.DefaultVolume == nil {
-		return fmt.Errorf("Default volume does not exist in new tenant")
-	}
-
 	if cfg.DefaultPool == "" {
 		return fmt.Errorf("Default pool does not exist in new tenant")
 	}
