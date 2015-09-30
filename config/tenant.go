@@ -13,12 +13,6 @@ type TenantConfig struct {
 	DefaultPool          string        `json:"default-pool"`
 }
 
-// SnapshotConfig is the configuration for snapshots.
-type SnapshotConfig struct {
-	Frequency string `json:"frequency"`
-	Keep      uint   `json:"keep"`
-}
-
 func (c *TopLevelConfig) tenant(name string) string {
 	return c.prefixed(rootTenant, name)
 }

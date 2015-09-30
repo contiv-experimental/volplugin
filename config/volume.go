@@ -17,9 +17,15 @@ type VolumeConfig struct {
 
 // VolumeOptions comprises the optional paramters a volume can accept.
 type VolumeOptions struct {
-	Size         uint64         `json:"size"`
-	UseSnapshots bool           `json:"snapshots"`
+	Size         uint64         `json:"size" merge:"size"`
+	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
+}
+
+// SnapshotConfig is the configuration for snapshots.
+type SnapshotConfig struct {
+	Frequency string `json:"frequency" merge:"snapshots.frequency"`
+	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
 func (c *TopLevelConfig) volume(pool, name string) string {
@@ -28,13 +34,17 @@ func (c *TopLevelConfig) volume(pool, name string) string {
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
-func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]interface{}) (*VolumeConfig, error) {
+func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]string) (*VolumeConfig, error) {
 	if tc, err := c.GetVolume(name, pool); err == nil {
 		return tc, ErrExist
 	}
 
 	resp, err := c.GetTenant(tenant)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := mergeOpts(&resp.DefaultVolumeOptions, opts); err != nil {
 		return nil, err
 	}
 

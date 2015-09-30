@@ -72,7 +72,7 @@ func requestTenantConfig(host, pool, name string) (*config.VolumeConfig, error) 
 	return volConfig, nil
 }
 
-func requestCreate(host, tenantName, pool, name string, opts map[string]interface{}) error {
+func requestCreate(host, tenantName, pool, name string, opts map[string]string) error {
 	content, err := json.Marshal(config.RequestCreate{Tenant: tenantName, Volume: name, Pool: pool, Opts: opts})
 	if err != nil {
 		return err
