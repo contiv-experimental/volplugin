@@ -23,7 +23,7 @@ func TestSSH(t *testing.T) {
 
 func TestVolumeCreate(t *testing.T) {
 	defer purgeVolumeHost("rbd", "mon0", true)
-	if err := createVolumeHost("rbd", "mon0"); err != nil {
+	if err := createVolumeHost("rbd", "mon0", nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -37,7 +37,7 @@ func TestVolumeCreateMultiHost(t *testing.T) {
 	}()
 
 	for _, host := range []string{"mon0", "mon1", "mon2"} {
-		if err := createVolumeHost("rbd", host); err != nil {
+		if err := createVolumeHost("rbd", host, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -52,7 +52,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "test"); err != nil {
+	if err := createVolume("mon0", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,7 +62,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon1", "rbd", "test"); err != nil {
+	if err := createVolume("mon1", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,7 +77,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 		t.Fatalf("output did not equal expected result: %q", out)
 	}
 
-	if err := createVolume("mon1", "rbd", "test"); err != nil {
+	if err := createVolume("mon1", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,7 +87,7 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon2", "rbd", "test"); err != nil {
+	if err := createVolume("mon2", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 	defer purgeVolume("mon2", "rbd", "test", true)
