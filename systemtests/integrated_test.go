@@ -75,7 +75,11 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := docker("run -d --volume-driver tenant1 -v rbd/foo:/mnt ubuntu sleep infinity")
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := docker("run -d -v rbd/foo:/mnt ubuntu sleep infinity")
 	if err != nil {
 		t.Log(out)
 		t.Fatal(err)
@@ -113,12 +117,19 @@ func TestMountLock(t *testing.T) {
 	if err := createVolume("mon0", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
+
 	defer purgeVolume("mon0", "rbd", "test", true)
-	defer purgeVolume("mon1", "rbd", "test", false)
-	defer purgeVolume("mon2", "rbd", "test", false)
+
+	for _, name := range []string{"mon1", "mon2"} {
+		if err := createVolume(name, "rbd", "test", nil); err != nil {
+			t.Fatal(err)
+		}
+		defer purgeVolume(name, "rbd", "test", false)
+	}
+
 	defer clearContainers()
 
-	dockerCmd := "docker run -d --volume-driver tenant1 -v rbd/test:/mnt ubuntu sleep infinity"
+	dockerCmd := "docker run -d -v rbd/test:/mnt ubuntu sleep infinity"
 	if err := nodeMap["mon0"].RunCommand(dockerCmd); err != nil {
 		t.Fatal(err)
 	}
@@ -134,10 +145,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	purgeVolume("mon0", "rbd", "test", false)
-
 	// Repeat the test to ensure it's working cross-host.
-
 	if err := nodeMap["mon1"].RunCommand(dockerCmd); err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +155,7 @@ func TestMountLock(t *testing.T) {
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
 			t.Log(out)
-			t.Fatalf("%s was able to mount while mon0 held the mount", nodeName)
+			t.Fatalf("%s was able to mount while mon1 held the mount", nodeName)
 		}
 	}
 }
