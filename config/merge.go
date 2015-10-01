@@ -111,6 +111,14 @@ func setValueWithType(field *reflect.Value, val string) error {
 
 		field.Set(reflect.ValueOf(out))
 		return nil
+	case reflect.Bool:
+		out, err := strconv.ParseBool(val)
+		if err != nil {
+			return err
+		}
+
+		field.Set(reflect.ValueOf(out))
+		return nil
 	case reflect.Ptr:
 		// in this case we have a pointer; we call the Elem() method and recurse to
 		// (hopefully) avoid a panic.

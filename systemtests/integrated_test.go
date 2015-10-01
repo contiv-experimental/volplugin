@@ -209,6 +209,7 @@ func TestDriverOptions(t *testing.T) {
 
 	opts := map[string]string{
 		"size":                "200",
+		"snapshots":           "true",
 		"snapshots.frequency": "100m",
 		"snapshots.keep":      "20",
 	}
