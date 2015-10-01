@@ -3,7 +3,8 @@
 ## volplugin: cluster-wide volume management for container ecosystems
 
 volplugin uses a master/slave model to dynamically mount and maintain ceph RBD
-devices. It is still very alpha as of this writing.
+images for containers, and manages actions to take on those images, such as
+snapshots and filesystem types. It is still very alpha as of this writing.
 
 ### Prerequisites:
 
@@ -13,13 +14,13 @@ On the host, equivalent or greater:
 * Vagrant 1.7.4
 * Ansible 1.9.2
   * install with pip; you'll want to install `python-pip` and `python-dev` on
-    ubuntu machines, then `sudo pip install ansible`.
+    ubuntu machines, then `sudo pip install ansible`. `brew install ansible`
+    should do the right thing on OS X.
   * The make tooling in this repository will install it for you if it is not
-    already installed. If you are not root, it may fail to perform this
-    operation. The solution to this problem is to install ansible
-    independently as described above.
-* build-essential
-* golang 1.4.x
+    already installed, which requires `pip`. If you are not root, it may fail
+    to perform this operation. The solution to this problem is to install
+    ansible independently as described above.
+* golang to run the system tests
 
 Your guests will configure themselves.
 
@@ -29,48 +30,33 @@ Be sure to start the environment with `make start` before you continue with
 these steps. You must have working vagrant, virtualbox, and ansible.
 
 You will also want to `make ssh` to ssh into the `mon0` VM to follow along.
+Eventually, this will be scripted/supervised and no longer necessary.
 
-1. Start the volmaster and volplugin: `make run`. This will hang until you hit
-   ^C which will stop the started processes.
-1. Start a container with `make container`, or specify one manually:
- * `docker run -it -v <volname>:<volpath> --volume-driver tenant1 <image> <command>`
-   * Example: `docker run -it -v tmp:/mnt --volume-driver tenant1 ubuntu bash`
-1. You should have a volume mounted at your path, pointing at a `/dev/rbd#`
-   device. Exit the shell to unmap the device.
+If you wish to test the cross-host functionality, ssh into `mon1` or `mon2`
+with `vagrant ssh`. Then start at the "starting volplugin" (not volmaster)
+step.
 
-### Build Instructions
+1. Start etcd: `etcd &>/dev/null &`
+1. Upload tenant information: `volcli tenant upload tenant1 < /testdata/intent1.json`
+1. Start the volmaster and volplugin:
+  * <code>sudo \`which volmaster\` &</code>
+  * <code>sudo \`which volplugin\` --master 192.168.24.10:8080 tenant1 &</code>
+1. Add a docker volume with `pool/name` syntax:
+  * `docker volume create -d tenant1 --name rbd/foo`
+1. Run a container with the volume attached:
+  * `docker run -it -v rbd/foo:/mnt ubuntu bash`
+1. You should have a volume mounted at `/mnt`, pointing at a `/dev/rbd#`
+   device. Exit the shell to unmount the device.
 
-```
-# builds and provisions VMs
-$ make start
+`volcli` has many applications including volume and mount management. Check it
+out!
 
-# tears down VMs.
-$ make stop
+### Development Instructions 
 
-# provisions VMs with ansible
-$ make provision
+Please read the `Makefile` for most targets. If you `make build` you will get
+volmaster/volplugin/volcli installed on the guests, so `make run-build` if you
+want a `go install`'d version of these programs on your host.
 
-# ssh into the monitor host for volplugin testing
-$ make ssh
-
-# build the binaries in the guest
-$ make build
-
-# install ansible on the host (required for vagrant)
-$ make install-ansible
-
-# run the unit tests
-$ make test
-
-# start the volplugin on the monitor host and hang (for logging)
-$ make run-volplugin
-
-# start the volplugin on the local host
-$ make volplugin-start
-
-# start the volmaster on the monitor host and hang (for logging)
-$ make run-volmaster
-
-# start the volmaster on the local host
-$ make volmaster-start
-```
+If you wish to run the tests, `make test`. The unit tests (`make unit-test`)
+live throughout the codebase as `*_test` files. The system tests / integration
+tests (`make system-test`) live in the `systemtests` directory.
