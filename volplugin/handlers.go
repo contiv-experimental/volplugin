@@ -9,7 +9,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
-	"github.com/contiv/volplugin/optionmerger"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -55,13 +54,7 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		opts, err := optionmerger.Merge(vr.Opts)
-		if err != nil {
-			httpError(w, "Could not merge options", err)
-			return
-		}
-
-		if err := requestCreate(master, tenantName, pool, name, opts); err != nil {
+		if err := requestCreate(master, tenantName, pool, name, vr.Opts); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
@@ -152,7 +145,7 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(pool, name, tenConfig.Size).Mount(); err != nil {
+		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
@@ -196,7 +189,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(pool, name, tenConfig.Size).Unmount(); err != nil {
+		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Unmount(); err != nil {
 			httpError(w, "Could not unmount image", err)
 			return
 		}

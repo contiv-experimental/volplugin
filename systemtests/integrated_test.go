@@ -20,7 +20,7 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo"); err != nil {
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
 	purgeVolume("mon0", "rbd", "foo", true)
@@ -35,7 +35,7 @@ func TestSnapshotSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo"); err != nil {
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
 	defer purgeVolume("mon0", "rbd", "foo", true)
@@ -75,7 +75,11 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := docker("run -d --volume-driver tenant1 -v rbd/foo:/mnt ubuntu sleep infinity")
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := docker("run -d -v rbd/foo:/mnt ubuntu sleep infinity")
 	if err != nil {
 		t.Log(out)
 		t.Fatal(err)
@@ -110,15 +114,22 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "test"); err != nil {
+	if err := createVolume("mon0", "rbd", "test", nil); err != nil {
 		t.Fatal(err)
 	}
+
 	defer purgeVolume("mon0", "rbd", "test", true)
-	defer purgeVolume("mon1", "rbd", "test", false)
-	defer purgeVolume("mon2", "rbd", "test", false)
+
+	for _, name := range []string{"mon1", "mon2"} {
+		if err := createVolume(name, "rbd", "test", nil); err != nil {
+			t.Fatal(err)
+		}
+		defer purgeVolume(name, "rbd", "test", false)
+	}
+
 	defer clearContainers()
 
-	dockerCmd := "docker run -d --volume-driver tenant1 -v rbd/test:/mnt ubuntu sleep infinity"
+	dockerCmd := "docker run -d -v rbd/test:/mnt ubuntu sleep infinity"
 	if err := nodeMap["mon0"].RunCommand(dockerCmd); err != nil {
 		t.Fatal(err)
 	}
@@ -134,10 +145,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	purgeVolume("mon0", "rbd", "test", false)
-
 	// Repeat the test to ensure it's working cross-host.
-
 	if err := nodeMap["mon1"].RunCommand(dockerCmd); err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +155,7 @@ func TestMountLock(t *testing.T) {
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
 			t.Log(out)
-			t.Fatalf("%s was able to mount while mon0 held the mount", nodeName)
+			t.Fatalf("%s was able to mount while mon1 held the mount", nodeName)
 		}
 	}
 }
@@ -168,7 +176,7 @@ func TestMultiPool(t *testing.T) {
 
 	defer mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 
-	if err := createVolume("mon0", "test", "test"); err != nil {
+	if err := createVolume("mon0", "test", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 	defer purgeVolume("mon0", "test", "test", true)
@@ -184,8 +192,56 @@ func TestMultiPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if vc.Size != 10 {
+	if vc.Options.Size != 10 {
 		t.Logf("%#v", *vc)
 		t.Fatal("Could not retrieve properties from volume")
+	}
+}
+
+func TestDriverOptions(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := map[string]string{
+		"size":                "200",
+		"snapshots":           "true",
+		"snapshots.frequency": "100m",
+		"snapshots.keep":      "20",
+	}
+
+	if err := createVolume("mon0", "rbd", "test", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	defer purgeVolume("mon0", "rbd", "test", true)
+
+	out, err := volcli("volume get rbd test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vc := &config.VolumeConfig{}
+	if err := json.Unmarshal([]byte(out), vc); err != nil {
+		t.Fatal(err)
+	}
+
+	if vc.Options.Size != 200 {
+		t.Logf("%#v", *vc)
+		t.Fatal("Size option passed to docker volume create did not propagate to volume options")
+	}
+
+	if vc.Options.Snapshot.Frequency != "100m" {
+		t.Logf("%#v", *vc)
+		t.Fatal("Snapshot Frequency option passed to docker volume create did not propagate to volume options")
+	}
+
+	if vc.Options.Snapshot.Keep != 20 {
+		t.Logf("%#v", *vc)
+		t.Fatal("Size option passed to docker volume create did not propagate to volume options")
 	}
 }

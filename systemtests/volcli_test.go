@@ -111,7 +111,11 @@ func TestVolCLIVolume(t *testing.T) {
 	// so we don't check it.
 	defer volcli("volume remove rbd foo")
 
-	if out, err := docker("run --rm --volume-driver tenant1 -v rbd/foo:/mnt ubuntu ls"); err != nil {
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := docker("run --rm -v rbd/foo:/mnt ubuntu ls"); err != nil {
 		t.Log(out)
 		t.Fatal(err)
 	}
@@ -150,9 +154,9 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(intent1.DefaultVolume, cfg) {
-		t.Log(intent1.DefaultVolume)
-		t.Log(cfg)
+	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, cfg.Options) {
+		t.Log(intent1.DefaultVolumeOptions)
+		t.Log(cfg.Options)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
 	}
 
@@ -166,7 +170,11 @@ func TestVolCLIMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id, err := docker("run -itd --volume-driver tenant1 -v rbd/foo:/mnt ubuntu sleep infinity")
+	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	id, err := docker("run -itd -v rbd/foo:/mnt ubuntu sleep infinity")
 	if err != nil {
 		t.Log(id) // error output
 		t.Fatal(err)

@@ -57,9 +57,6 @@ run-build:
 system-test: build godep
 	godep go test -v ./systemtests
 
-container:
-	vagrant ssh mon0 -c 'sudo docker run -it --volume-driver tenant1 -v tmp:/mnt ubuntu bash'
-
 volplugin-start:
 	pkill volplugin || exit 0
 	sleep 1

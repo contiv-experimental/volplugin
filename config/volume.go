@@ -9,10 +9,23 @@ import (
 // VolumeConfig is the configuration of the tenant. It includes pool and
 // snapshot information.
 type VolumeConfig struct {
-	Tenant       string         `json:"tenant"`
-	Size         uint64         `json:"size"`
-	UseSnapshots bool           `json:"snapshots"`
+	Name       string        `json:"name"`
+	Pool       string        `json:"pool"`
+	VolumeName string        `json:"name"`
+	Options    VolumeOptions `json:"options"`
+}
+
+// VolumeOptions comprises the optional paramters a volume can accept.
+type VolumeOptions struct {
+	Size         uint64         `json:"size" merge:"size"`
+	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
+}
+
+// SnapshotConfig is the configuration for snapshots.
+type SnapshotConfig struct {
+	Frequency string `json:"frequency" merge:"snapshots.frequency"`
+	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
 func (c *TopLevelConfig) volume(pool, name string) string {
@@ -21,7 +34,7 @@ func (c *TopLevelConfig) volume(pool, name string) string {
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
-func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]interface{}) (*VolumeConfig, error) {
+func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]string) (*VolumeConfig, error) {
 	if tc, err := c.GetVolume(name, pool); err == nil {
 		return tc, ErrExist
 	}
@@ -31,7 +44,18 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string
 		return nil, err
 	}
 
-	remarshal, err := json.Marshal(resp.DefaultVolume)
+	if err := mergeOpts(&resp.DefaultVolumeOptions, opts); err != nil {
+		return nil, err
+	}
+
+	vc := VolumeConfig{
+		Name:       name,
+		Options:    resp.DefaultVolumeOptions,
+		VolumeName: name,
+		Pool:       pool,
+	}
+
+	remarshal, err := json.Marshal(vc)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +64,7 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string
 		return nil, err
 	}
 
-	return resp.DefaultVolume, nil
+	return &vc, nil
 }
 
 // GetVolume returns the VolumeConfig for a given volume.
@@ -115,11 +139,11 @@ func (c *TopLevelConfig) ListPools() ([]string, error) {
 
 // Validate validates a tenant configuration, returning error on any issue.
 func (cfg *VolumeConfig) Validate() error {
-	if cfg.Size == 0 {
+	if cfg.Options.Size == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}
 
-	if cfg.UseSnapshots && (cfg.Snapshot.Frequency == "" || cfg.Snapshot.Keep == 0) {
+	if cfg.Options.UseSnapshots && (cfg.Options.Snapshot.Frequency == "" || cfg.Options.Snapshot.Keep == 0) {
 		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 

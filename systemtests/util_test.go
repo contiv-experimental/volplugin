@@ -89,19 +89,32 @@ func purgeVolumeHost(pool, host string, purgeCeph bool) {
 	purgeVolume(host, pool, host, purgeCeph)
 }
 
-func createVolumeHost(pool, host string) error {
-	return createVolume(host, pool, host)
+func createVolumeHost(pool, host string, opts map[string]string) error {
+	return createVolume(host, pool, host, opts)
 }
 
-func createVolume(host, pool, name string) error {
+func createVolume(host, pool, name string, opts map[string]string) error {
 	log.Infof("Creating %s/%s", host, name)
 
-	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("docker volume create -d tenant1 --name %s/%s", pool, name)); err != nil {
+	optsStr := []string{}
+
+	if opts != nil {
+		for key, value := range opts {
+			optsStr = append(optsStr, "--opt")
+			optsStr = append(optsStr, key+"="+value)
+		}
+	}
+
+	cmd := fmt.Sprintf("docker volume create -d tenant1 --name %s/%s %s", pool, name, strings.Join(optsStr, " "))
+
+	if out, err := nodeMap[host].RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))
 		return err
 	}
 
-	if out, err := nodeMap[host].RunCommandWithOutput(fmt.Sprintf("sudo rbd ls %s | grep -q %s", pool, name)); err != nil {
+	cmd = fmt.Sprintf("sudo rbd ls %s | grep -q %s", pool, name)
+
+	if out, err := nodeMap[host].RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))
 		return err
 	}
@@ -245,6 +258,11 @@ func clearVolumes() error {
 }
 
 func clearRBD() error {
-	log.Infof("Clearing rbd images")
+	log.Info("Clearing rbd images")
+	if out, err := nodeMap["mon0"].RunCommandWithOutput("set -e; for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo rbd unmap $img; done"); err != nil {
+		log.Info(out)
+		return err
+	}
+
 	return nodeMap["mon0"].RunCommand("set -e; for img in $(sudo rbd ls); do sudo rbd snap purge $img && sudo rbd rm $img; done")
 }

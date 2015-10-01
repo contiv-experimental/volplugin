@@ -24,13 +24,13 @@ func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *confi
 		}
 
 		for volName, volume := range volumes {
-			duration, err := time.ParseDuration(volume.Snapshot.Frequency)
+			duration, err := time.ParseDuration(volume.Options.Snapshot.Frequency)
 			if err != nil {
-				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Snapshot.Frequency)
+				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Options.Snapshot.Frequency)
 				return
 			}
 
-			if volume.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
+			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
 				action(config, pool, volName, volume)
 			}
 		}
@@ -48,7 +48,7 @@ func scheduleSnapshotPrune(config *config.TopLevelConfig) {
 }
 
 func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Size)
+	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Options.Size)
 	log.Debugf("starting snapshot prune for %q", volName)
 	list, err := cephVol.ListSnapshots()
 	if err != nil {
@@ -56,7 +56,7 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volum
 		return
 	}
 
-	toDeleteCount := len(list) - int(volume.Snapshot.Keep)
+	toDeleteCount := len(list) - int(volume.Options.Snapshot.Keep)
 	if toDeleteCount < 0 {
 		return
 	}
@@ -71,7 +71,7 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volum
 
 func runSnapshot(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
 	now := time.Now()
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Size)
+	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Options.Size)
 	log.Infof("Snapping volume %q at %v", volume, now)
 	if err := cephVol.CreateSnapshot(now.String()); err != nil {
 		log.Errorf("Cannot snap volume: %q: %v", volName, err)

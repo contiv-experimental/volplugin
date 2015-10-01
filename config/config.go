@@ -28,10 +28,10 @@ type Request struct {
 
 // RequestCreate provides a request structure for creating new volumes.
 type RequestCreate struct {
-	Tenant string                 `json:"tenant"`
-	Volume string                 `json:"volume"`
-	Pool   string                 `json:"pool"`
-	Opts   map[string]interface{} `json:"opts"`
+	Tenant string            `json:"tenant"`
+	Volume string            `json:"volume"`
+	Pool   string            `json:"pool"`
+	Opts   map[string]string `json:"opts"`
 }
 
 // TopLevelConfig is the top-level struct for communicating with the intent store.
