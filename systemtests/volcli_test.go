@@ -109,18 +109,18 @@ func TestVolCLIVolume(t *testing.T) {
 
 	// XXX note that this is removed as a standard part of the tests and may error,
 	// so we don't check it.
-	defer volcli("volume remove rbd foo")
+	defer volcli("volume remove tenant1 foo")
 
-	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
 
-	if out, err := docker("run --rm -v rbd/foo:/mnt ubuntu ls"); err != nil {
+	if out, err := docker("run --rm -v tenant1/foo:/mnt ubuntu ls"); err != nil {
 		t.Log(out)
 		t.Fatal(err)
 	}
 
-	out, err := volcli("volume list rbd")
+	out, err := volcli("volume list tenant1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,16 +129,16 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal("Did not find volume after creation")
 	}
 
-	out, err = volcli("volume list-pools")
+	out, err = volcli("volume list-all")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(out, "rbd") {
+	if !strings.Contains(out, "tenant1") {
 		t.Fatal(err)
 	}
 
-	out, err = volcli("volume get rbd foo")
+	out, err = volcli("volume get tenant1 foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,13 +154,15 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
+
 	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, cfg.Options) {
 		t.Log(intent1.DefaultVolumeOptions)
 		t.Log(cfg.Options)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
 	}
 
-	if _, err := volcli("volume remove rbd foo"); err != nil {
+	if _, err := volcli("volume remove tenant1 foo"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -170,18 +172,18 @@ func TestVolCLIMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
 
-	id, err := docker("run -itd -v rbd/foo:/mnt ubuntu sleep infinity")
+	id, err := docker("run -itd -v tenant1/foo:/mnt ubuntu sleep infinity")
 	if err != nil {
 		t.Log(id) // error output
 		t.Fatal(err)
 	}
 
-	defer volcli("volume remove rbd foo")
-	defer docker("volume rm rbd/foo")
+	defer volcli("volume remove tenant1 foo")
+	defer docker("volume rm tenant1/foo")
 	defer docker("rm -f " + id)
 
 	out, err := volcli("mount list")
@@ -227,17 +229,18 @@ func TestVolCLIMount(t *testing.T) {
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
-	defer purgeVolume("mon0", "rbd", "foo", true)
-	if _, err := volcli("volume create tenant1 rbd foo"); err != nil {
+	defer purgeVolume("mon0", "tenant1", "foo", true)
+	if out, err := volcli("volume create tenant1 foo"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
 	// ensure that double-create does nothing (for now, at least)
-	if _, err := volcli("volume create tenant1 rbd foo"); err != nil {
+	if _, err := volcli("volume create tenant1 foo"); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err = volcli("volume get rbd foo")
+	out, err = volcli("volume get tenant1 foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,6 +248,6 @@ func TestVolCLIMount(t *testing.T) {
 	// this test should never fail; we should always fail because of an exit code
 	// instead, which would happen above.
 	if out == "" {
-		t.Fatal("Received no infomration")
+		t.Fatal("Received no information")
 	}
 }

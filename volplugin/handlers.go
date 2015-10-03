@@ -35,7 +35,7 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func create(master, tenantName string) func(http.ResponseWriter, *http.Request) {
+func create(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {
@@ -48,13 +48,13 @@ func create(master, tenantName string) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		pool, name, err := splitPath(vr.Name)
+		tenant, name, err := splitPath(vr.Name)
 		if err != nil {
 			httpError(w, "Configuring volume", err)
 			return
 		}
 
-		if err := requestCreate(master, tenantName, pool, name, vr.Opts); err != nil {
+		if err := requestCreate(master, tenant, name, vr.Opts); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
@@ -84,16 +84,22 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
 
-		pool, name, err := splitPath(vr.Name)
+		tenant, name, err := splitPath(vr.Name)
 		if err != nil {
 			httpError(w, "Configuring volume", err)
+			return
+		}
+
+		volConfig, err := requestVolumeConfig(master, tenant, name)
+		if err != nil {
+			httpError(w, "Requesting tenant configuration", err)
 			return
 		}
 
 		// FIXME need to ensure that the mount exists before returning to docker
 		driver := cephdriver.NewCephDriver()
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -119,13 +125,13 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 		// FIXME check if we're holding the mount already
 		log.Infof("Mounting volume %q", vr.Name)
 
-		pool, name, err := splitPath(vr.Name)
+		tenant, name, err := splitPath(vr.Name)
 		if err != nil {
 			httpError(w, "Configuring volume", err)
 			return
 		}
 
-		tenConfig, err := requestTenantConfig(master, pool, name)
+		volConfig, err := requestVolumeConfig(master, tenant, name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -134,9 +140,9 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 		driver := cephdriver.NewCephDriver()
 
 		mt := &config.MountConfig{
-			Volume:     name,
-			Pool:       pool,
-			MountPoint: driver.MountPath(pool, name),
+			Volume:     volConfig.VolumeName,
+			Pool:       volConfig.Options.Pool,
+			MountPoint: driver.MountPath(volConfig.Options.Pool, name),
 			Host:       host,
 		}
 
@@ -145,12 +151,12 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Mount(); err != nil {
+		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Mount(); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -175,13 +181,13 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Unmounting volume %q", vr.Name)
 
-		pool, name, err := splitPath(vr.Name)
+		tenant, name, err := splitPath(vr.Name)
 		if err != nil {
 			httpError(w, "Configuring volume", err)
 			return
 		}
 
-		tenConfig, err := requestTenantConfig(master, pool, name)
+		volConfig, err := requestVolumeConfig(master, tenant, name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -189,7 +195,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(pool, name, tenConfig.Options.Size).Unmount(); err != nil {
+		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Unmount(); err != nil {
 			httpError(w, "Could not unmount image", err)
 			return
 		}
@@ -202,8 +208,8 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		mt := &config.MountConfig{
 			Volume:     name,
-			MountPoint: driver.MountPath(pool, name),
-			Pool:       pool,
+			MountPoint: driver.MountPath(volConfig.Options.Pool, name),
+			Pool:       volConfig.Options.Pool,
 			Host:       hostname,
 		}
 
@@ -212,7 +218,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(pool, name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, name)})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return

@@ -23,14 +23,13 @@ var (
 // volmaster.
 type Request struct {
 	Volume string `json:"volume"`
-	Pool   string `json:"pool"`
+	Tenant string `json:"tenant"`
 }
 
 // RequestCreate provides a request structure for creating new volumes.
 type RequestCreate struct {
 	Tenant string            `json:"tenant"`
 	Volume string            `json:"volume"`
-	Pool   string            `json:"pool"`
 	Opts   map[string]string `json:"opts"`
 }
 

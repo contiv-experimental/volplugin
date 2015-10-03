@@ -9,14 +9,13 @@ import (
 // VolumeConfig is the configuration of the tenant. It includes pool and
 // snapshot information.
 type VolumeConfig struct {
-	Name       string        `json:"name"`
-	Pool       string        `json:"pool"`
 	VolumeName string        `json:"name"`
 	Options    VolumeOptions `json:"options"`
 }
 
 // VolumeOptions comprises the optional paramters a volume can accept.
 type VolumeOptions struct {
+	Pool         string         `json:"pool" merge:"pool"`
 	Size         uint64         `json:"size" merge:"size"`
 	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
@@ -28,31 +27,33 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
-func (c *TopLevelConfig) volume(pool, name string) string {
-	return c.prefixed(rootVolume, pool, name)
+func (c *TopLevelConfig) volume(tenant, name string) string {
+	return c.prefixed(rootVolume, tenant, name)
 }
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
-func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string]string) (*VolumeConfig, error) {
-	if tc, err := c.GetVolume(name, pool); err == nil {
+func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
+	if tc, err := c.GetVolume(rc.Tenant, rc.Volume); err == nil {
 		return tc, ErrExist
 	}
 
-	resp, err := c.GetTenant(tenant)
+	resp, err := c.GetTenant(rc.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := mergeOpts(&resp.DefaultVolumeOptions, opts); err != nil {
+	if err := mergeOpts(&resp.DefaultVolumeOptions, rc.Opts); err != nil {
 		return nil, err
 	}
 
 	vc := VolumeConfig{
-		Name:       name,
 		Options:    resp.DefaultVolumeOptions,
-		VolumeName: name,
-		Pool:       pool,
+		VolumeName: rc.Volume,
+	}
+
+	if vc.Options.Pool == "" {
+		vc.Options.Pool = resp.DefaultPool
 	}
 
 	remarshal, err := json.Marshal(vc)
@@ -60,7 +61,7 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string
 		return nil, err
 	}
 
-	if _, err := c.etcdClient.Set(c.volume(pool, name), string(remarshal), 0); err != nil {
+	if _, err := c.etcdClient.Set(c.volume(rc.Tenant, rc.Volume), string(remarshal), 0); err != nil {
 		return nil, err
 	}
 
@@ -68,8 +69,8 @@ func (c *TopLevelConfig) CreateVolume(name, tenant, pool string, opts map[string
 }
 
 // GetVolume returns the VolumeConfig for a given volume.
-func (c *TopLevelConfig) GetVolume(pool, name string) (*VolumeConfig, error) {
-	resp, err := c.etcdClient.Get(c.volume(pool, name), true, false)
+func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
+	resp, err := c.etcdClient.Get(c.volume(tenant, name), true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -84,16 +85,16 @@ func (c *TopLevelConfig) GetVolume(pool, name string) (*VolumeConfig, error) {
 }
 
 // RemoveVolume removes a volume from configuration.
-func (c *TopLevelConfig) RemoveVolume(pool, name string) error {
-	_, err := c.etcdClient.Delete(c.prefixed(rootVolume, pool, name), true)
+func (c *TopLevelConfig) RemoveVolume(tenant, name string) error {
+	_, err := c.etcdClient.Delete(c.prefixed(rootVolume, tenant, name), true)
 	return err
 }
 
 // ListVolumes returns a map of volume name -> VolumeConfig.
-func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*VolumeConfig, error) {
-	poolPath := c.prefixed(rootVolume, pool)
+func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, error) {
+	tenantPath := c.prefixed(rootVolume, tenant)
 
-	resp, err := c.etcdClient.Get(poolPath, true, true)
+	resp, err := c.etcdClient.Get(tenantPath, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*VolumeConfig, err
 			return nil, err
 		}
 
-		key := strings.TrimPrefix(node.Key, poolPath)
+		key := strings.TrimPrefix(node.Key, tenantPath)
 		// trim leading slash
 		configs[key[1:]] = config
 	}
@@ -118,9 +119,10 @@ func (c *TopLevelConfig) ListVolumes(pool string) (map[string]*VolumeConfig, err
 	return configs, nil
 }
 
-// ListPools returns an array with all the named pools the volmaster knows
-// about.
-func (c *TopLevelConfig) ListPools() ([]string, error) {
+// ListAllVolumes returns an array with all the named tenants and volumes the
+// volmaster knows about. Volumes have syntax: tenant/volumeName which will be
+// reflected in the returned string.
+func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(c.prefixed(rootVolume), true, true)
 	if err != nil {
 		return nil, err
@@ -139,6 +141,10 @@ func (c *TopLevelConfig) ListPools() ([]string, error) {
 
 // Validate validates a tenant configuration, returning error on any issue.
 func (cfg *VolumeConfig) Validate() error {
+	if cfg.Options.Pool == "" {
+		return fmt.Errorf("No pool specified")
+	}
+
 	if cfg.Options.Size == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}

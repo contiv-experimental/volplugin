@@ -1,17 +1,14 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
 )
 
-func createImage(config *config.VolumeConfig, pool, name string) error {
-	log.Printf("Opts: %d", config.Options.Size)
-	return cephdriver.NewCephDriver().NewVolume(pool, name, config.Options.Size).Create()
+func createImage(config *config.VolumeConfig) error {
+	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, config.VolumeName, config.Options.Size).Create()
 }
 
-func removeImage(pool, name string) error {
-	return cephdriver.NewCephDriver().NewVolume(pool, name, 0).Remove()
+func removeImage(config *config.VolumeConfig) error {
+	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, config.VolumeName, 0).Remove()
 }

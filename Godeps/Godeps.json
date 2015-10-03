@@ -50,6 +50,10 @@
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "342d6a85aa15bcd2ec54803cdffe90d52b6f35a7"
 		}
 	]
 }

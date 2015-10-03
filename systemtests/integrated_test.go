@@ -20,10 +20,10 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
-	purgeVolume("mon0", "rbd", "foo", true)
+	purgeVolume("mon0", "tenant1", "foo", true)
 }
 
 func TestSnapshotSchedule(t *testing.T) {
@@ -35,10 +35,10 @@ func TestSnapshotSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
-	defer purgeVolume("mon0", "rbd", "foo", true)
+	defer purgeVolume("mon0", "tenant1", "foo", true)
 	defer rebootstrap()
 
 	time.Sleep(2 * time.Second)
@@ -75,21 +75,22 @@ func TestHostLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "foo", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err := docker("run -d -v rbd/foo:/mnt ubuntu sleep infinity")
+	out, err := docker("run -d -v tenant1/foo:/mnt ubuntu sleep infinity")
 	if err != nil {
 		t.Log(out)
 		t.Fatal(err)
 	}
 
-	defer purgeVolume("mon0", "rbd", "foo", true)
+	defer purgeVolume("mon0", "tenant1", "foo", true)
 	defer docker("rm -f " + out)
 
 	mt := &config.MountConfig{}
 
+	// we know the pool is rbd here, so cheat a little.
 	out, err = volcli("mount get rbd foo")
 	if err != nil {
 		t.Log(out)
@@ -101,7 +102,7 @@ func TestHostLabel(t *testing.T) {
 	}
 
 	if mt.Host != "quux" {
-		t.Fatal("host-label did not propogate")
+		t.Fatal("host-label did not propagate")
 	}
 }
 
@@ -114,22 +115,22 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createVolume("mon0", "rbd", "test", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume("mon0", "rbd", "test", true)
+	defer purgeVolume("mon0", "tenant1", "test", true)
 
 	for _, name := range []string{"mon1", "mon2"} {
-		if err := createVolume(name, "rbd", "test", nil); err != nil {
+		if err := createVolume(name, "tenant1", "test", nil); err != nil {
 			t.Fatal(err)
 		}
-		defer purgeVolume(name, "rbd", "test", false)
+		defer purgeVolume(name, "tenant1", "test", false)
 	}
 
 	defer clearContainers()
 
-	dockerCmd := "docker run -d -v rbd/test:/mnt ubuntu sleep infinity"
+	dockerCmd := "docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"
 	if err := nodeMap["mon0"].RunCommand(dockerCmd); err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,7 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume("mon1", "rbd", "test", false)
+	defer purgeVolume("mon1", "tenant1", "test", false)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		if out, err := nodeMap[nodeName].RunCommandWithOutput(dockerCmd); err == nil {
@@ -176,12 +177,12 @@ func TestMultiPool(t *testing.T) {
 
 	defer mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 
-	if err := createVolume("mon0", "test", "test", nil); err != nil {
+	if err := createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}); err != nil {
 		t.Fatal(err)
 	}
-	defer purgeVolume("mon0", "test", "test", true)
+	defer purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := volcli("volume get test test")
+	out, err := volcli("volume get tenant1 test")
 	if err != nil {
 		t.Log(out)
 		t.Fatal(err)
@@ -214,13 +215,13 @@ func TestDriverOptions(t *testing.T) {
 		"snapshots.keep":      "20",
 	}
 
-	if err := createVolume("mon0", "rbd", "test", opts); err != nil {
+	if err := createVolume("mon0", "tenant1", "test", opts); err != nil {
 		t.Fatal(err)
 	}
 
-	defer purgeVolume("mon0", "rbd", "test", true)
+	defer purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := volcli("volume get rbd test")
+	out, err := volcli("volume get tenant1 test")
 	if err != nil {
 		t.Fatal(err)
 	}
