@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/contiv/go-etcd/etcd"
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
 
@@ -10,15 +11,25 @@ import (
 )
 
 func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig)) {
-	pools, err := config.ListPools()
+	tenants, err := config.ListTenants()
 	if err != nil {
+		if conv, ok := err.(*etcd.EtcdError); ok && conv.ErrorCode == 100 {
+			// should never be hit because we create it at volmaster boot, but yeah.
+			return
+		}
+
 		log.Errorf("Runtime configuration incorrect: %v", err)
 		return
 	}
 
-	for _, pool := range pools {
-		volumes, err := config.ListVolumes(pool)
+	for _, tenant := range tenants {
+		volumes, err := config.ListVolumes(tenant)
+		conv, ok := err.(*etcd.EtcdError)
 		if err != nil {
+			if ok && conv.ErrorCode == 100 {
+				continue
+			}
+
 			log.Errorf("Runtime configuration incorrect: %v", err)
 			return
 		}
@@ -31,7 +42,7 @@ func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *confi
 			}
 
 			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				action(config, pool, volName, volume)
+				action(config, volume.Options.Pool, volName, volume)
 			}
 		}
 	}

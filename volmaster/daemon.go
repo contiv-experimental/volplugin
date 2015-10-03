@@ -69,12 +69,18 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := removeImage(req.Pool, req.Volume); err != nil {
+	vc, err := d.config.GetVolume(req.Tenant, req.Volume)
+	if err != nil {
+		httpError(w, "obtaining volume configuration", err)
+		return
+	}
+
+	if err := removeImage(vc); err != nil {
 		httpError(w, "removing image", err)
 		return
 	}
 
-	if err := d.config.RemoveVolume(req.Pool, req.Volume); err != nil {
+	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
 		httpError(w, "clearing volume records", err)
 		return
 	}
@@ -126,7 +132,7 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.config.GetVolume(req.Pool, req.Volume)
+	tenConfig, err := d.config.GetVolume(req.Tenant, req.Volume)
 	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -160,19 +166,14 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Pool == "" {
-		httpError(w, "Reading tenant", errors.New("pool was blank"))
-		return
-	}
-
 	if req.Volume == "" {
 		httpError(w, "Reading tenant", errors.New("volume was blank"))
 		return
 	}
 
-	volConfig, err := d.config.CreateVolume(req.Volume, req.Tenant, req.Pool, req.Opts)
+	volConfig, err := d.config.CreateVolume(req)
 	if err != config.ErrExist && volConfig != nil {
-		if err := createImage(volConfig, req.Pool, req.Volume); err != nil {
+		if err := createImage(volConfig); err != nil {
 			httpError(w, "Creating volume", err)
 			return
 		}

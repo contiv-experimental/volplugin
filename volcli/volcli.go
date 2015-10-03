@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/config"
@@ -107,14 +108,23 @@ func TenantList(ctx *cli.Context) {
 // VolumeCreate creates a new volume with a JSON specification to store its
 // information.
 func VolumeCreate(ctx *cli.Context) {
-	if len(ctx.Args()) != 3 {
+	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
+	}
+
+	opts := map[string]string{}
+
+	for _, str := range ctx.StringSlice("opt") {
+		pair := strings.SplitN(str, "=", 2)
+		if len(pair) < 2 {
+			errExit(ctx, fmt.Errorf("Mismatched option pair %q", pair), false)
+		}
 	}
 
 	tc := &config.RequestCreate{
 		Tenant: ctx.Args()[0],
-		Pool:   ctx.Args()[1],
-		Volume: ctx.Args()[2],
+		Volume: ctx.Args()[1],
+		Opts:   opts,
 	}
 
 	content, err := json.Marshal(tc)
@@ -122,8 +132,13 @@ func VolumeCreate(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Could not create request JSON: %v", err), false)
 	}
 
-	if _, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("master")), "application/json", bytes.NewBuffer(content)); err != nil {
+	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("master")), "application/json", bytes.NewBuffer(content))
+	if err != nil {
 		errExit(ctx, err, false)
+	}
+
+	if resp.StatusCode != 200 {
+		errExit(ctx, fmt.Errorf("Response Status Code was %d, not 200", resp.StatusCode), false)
 	}
 }
 
@@ -166,7 +181,7 @@ func VolumeRemove(ctx *cli.Context) {
 	}
 
 	request := config.Request{
-		Pool:   ctx.Args()[0],
+		Tenant: ctx.Args()[0],
 		Volume: ctx.Args()[1],
 	}
 
@@ -197,10 +212,10 @@ func VolumeList(ctx *cli.Context) {
 	}
 }
 
-// VolumePoolList returns a list of the pools the volmaster knows about.
-func VolumePoolList(ctx *cli.Context) {
+// VolumeListAll returns a list of the pools the volmaster knows about.
+func VolumeListAll(ctx *cli.Context) {
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
-	pools, err := cfg.ListPools()
+	pools, err := cfg.ListAllVolumes()
 	if err != nil {
 		errExit(ctx, err, false)
 	}

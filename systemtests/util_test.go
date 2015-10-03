@@ -73,27 +73,27 @@ func readIntent(fn string) (*config.TenantConfig, error) {
 	return cfg, nil
 }
 
-func purgeVolume(host, pool, name string, purgeCeph bool) {
+func purgeVolume(host, tenant, name string, purgeCeph bool) {
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
-	nodeMap[host].RunCommand(fmt.Sprintf("docker volume rm %s/%s", pool, name))
+	nodeMap[host].RunCommand(fmt.Sprintf("docker volume rm %s/%s", tenant, name))
 
 	if purgeCeph {
-		volcli(fmt.Sprintf("volume remove %s %s", pool, name))
-		nodeMap["mon0"].RunCommand(fmt.Sprintf("sudo rbd rm %s/%s", pool, name))
+		volcli(fmt.Sprintf("volume remove %s %s", tenant, name))
+		nodeMap["mon0"].RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s", tenant, name))
 	}
 }
 
-func purgeVolumeHost(pool, host string, purgeCeph bool) {
-	purgeVolume(host, pool, host, purgeCeph)
+func purgeVolumeHost(tenant, host string, purgeCeph bool) {
+	purgeVolume(host, tenant, host, purgeCeph)
 }
 
-func createVolumeHost(pool, host string, opts map[string]string) error {
-	return createVolume(host, pool, host, opts)
+func createVolumeHost(tenant, host string, opts map[string]string) error {
+	return createVolume(host, tenant, host, opts)
 }
 
-func createVolume(host, pool, name string, opts map[string]string) error {
+func createVolume(host, tenant, name string, opts map[string]string) error {
 	log.Infof("Creating %s/%s", host, name)
 
 	optsStr := []string{}
@@ -105,14 +105,17 @@ func createVolume(host, pool, name string, opts map[string]string) error {
 		}
 	}
 
-	cmd := fmt.Sprintf("docker volume create -d tenant1 --name %s/%s %s", pool, name, strings.Join(optsStr, " "))
+	cmd := fmt.Sprintf("docker volume create -d tenant1 --name %s/%s %s", tenant, name, strings.Join(optsStr, " "))
 
 	if out, err := nodeMap[host].RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))
 		return err
 	}
 
-	cmd = fmt.Sprintf("sudo rbd ls %s | grep -q %s", pool, name)
+	if out, err := volcli(fmt.Sprintf("volume get %s %s", tenant, name)); err != nil {
+		log.Error(out)
+		return err
+	}
 
 	if out, err := nodeMap[host].RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))
