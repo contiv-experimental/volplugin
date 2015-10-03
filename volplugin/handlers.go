@@ -35,7 +35,7 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func create(master, tenantName string) func(http.ResponseWriter, *http.Request) {
+func create(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
 		if err != nil {

@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // CephVolume is a struct that communicates volume name and size.
@@ -104,7 +105,7 @@ func (cv *CephVolume) Mount() error {
 	}
 
 	// Mount the RBD
-	if err := syscall.Mount(devName, volumeDir, "ext4", 0, ""); err != nil && err != syscall.EBUSY {
+	if err := unix.Mount(devName, volumeDir, "ext4", 0, ""); err != nil && err != unix.EBUSY {
 		return fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
 	}
 
@@ -130,14 +131,14 @@ func (cv *CephVolume) Unmount() error {
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
 	// FIXME loop over unmount and ensure the unmount finished before removing dir
-	if err := syscall.Unmount(volumeDir, syscall.MNT_DETACH); err != nil && err != syscall.ENOENT {
+	if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
 		return fmt.Errorf("Failed to unmount %q: %v", volumeDir, err)
 	}
 
 	// Remove the mounted directory
 	// FIXME remove all, but only after the FIXME above.
 	if err := os.Remove(volumeDir); err != nil && !os.IsNotExist(err) {
-		if err, ok := err.(*os.PathError); ok && err.Err == syscall.EBUSY {
+		if err, ok := err.(*os.PathError); ok && err.Err == unix.EBUSY {
 			return nil
 		}
 

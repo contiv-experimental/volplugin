@@ -105,7 +105,7 @@ func createVolume(host, tenant, name string, opts map[string]string) error {
 		}
 	}
 
-	cmd := fmt.Sprintf("docker volume create -d tenant1 --name %s/%s %s", tenant, name, strings.Join(optsStr, " "))
+	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", tenant, name, strings.Join(optsStr, " "))
 
 	if out, err := nodeMap[host].RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -47,11 +46,5 @@ func main() {
 }
 
 func run(ctx *cli.Context) {
-	if len(ctx.Args()) != 1 {
-		fmt.Printf("\nUsage: %s [tenant/driver name]\n\n", os.Args[0])
-		cli.ShowAppHelp(ctx)
-		os.Exit(1)
-	}
-
-	volplugin.Daemon(ctx.Args()[0], ctx.Bool("debug"), ctx.String("master"), ctx.String("host-label"))
+	volplugin.Daemon(ctx.Bool("debug"), ctx.String("master"), ctx.String("host-label"))
 }
