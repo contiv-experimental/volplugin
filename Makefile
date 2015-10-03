@@ -69,4 +69,9 @@ volmaster-start:
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
-	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test system-test
+
+reflex-build: reflex
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make build
+
+reflex-test: reflex
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
