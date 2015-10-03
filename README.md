@@ -42,9 +42,9 @@ step.
   * <code>sudo \`which volmaster\` &</code>
   * <code>sudo \`which volplugin\` --master 192.168.24.10:8080 tenant1 &</code>
 1. Add a docker volume with `pool/name` syntax:
-  * `docker volume create -d tenant1 --name rbd/foo`
+  * `docker volume create -d volplugin --name tenant1/foo`
 1. Run a container with the volume attached:
-  * `docker run -it -v rbd/foo:/mnt ubuntu bash`
+  * `docker run -it -v tenant1/foo:/mnt ubuntu bash`
 1. You should have a volume mounted at `/mnt`, pointing at a `/dev/rbd#`
    device. Exit the shell to unmount the device.
 
