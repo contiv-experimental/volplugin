@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 	"strings"
+	"sync"
 )
 
 // MountConfig is the exchange configuration for mounts. The payload is stored
@@ -14,6 +15,8 @@ type MountConfig struct {
 	MountPoint string
 	Host       string
 }
+
+var mountLock = sync.Mutex{}
 
 func (c *TopLevelConfig) mount(pool, name string) string {
 	return c.prefixed(rootMount, pool, name)
@@ -28,7 +31,9 @@ func (c *TopLevelConfig) ExistsMount(mt *MountConfig) bool {
 
 // PublishMount pushes the mount to etcd. Fails with ErrExist if the mount exists.
 func (c *TopLevelConfig) PublishMount(mt *MountConfig) error {
-	// FIXME this should use CompareAndSwap to avoid using a necessary mutex
+	mountLock.Lock()
+	defer mountLock.Unlock()
+
 	if c.ExistsMount(mt) {
 		return ErrExist
 	}
@@ -47,6 +52,9 @@ func (c *TopLevelConfig) PublishMount(mt *MountConfig) error {
 // RemoveMount will remove a mount from etcd. Does not fail if the mount does
 // not exist.
 func (c *TopLevelConfig) RemoveMount(mt *MountConfig) error {
+	mountLock.Lock()
+	defer mountLock.Unlock()
+
 	if !c.ExistsMount(mt) {
 		// if we don't exist, do nothing!
 		return nil
