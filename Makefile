@@ -55,6 +55,7 @@ run-build:
 	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster
 
 system-test: build godep
+	rm -rf Godeps/_workspace/pkg
 	godep go test -v ./systemtests
 
 volplugin-start:
