@@ -16,7 +16,8 @@ func TestEtcdUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -31,7 +32,8 @@ func TestSnapshotSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "fastsnap"); err != nil {
+	if out, err := uploadIntent("tenant1", "fastsnap"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -71,7 +73,8 @@ func TestHostLabel(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -111,7 +114,8 @@ func TestMountLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -166,7 +170,8 @@ func TestMultiPool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -204,7 +209,8 @@ func TestDriverOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 

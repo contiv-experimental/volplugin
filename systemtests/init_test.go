@@ -54,7 +54,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not rebootstrap: %v", err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		log.Error(out)
 		log.Fatalf("Could not upload tenant1 intent: %v", err)
 	}
 

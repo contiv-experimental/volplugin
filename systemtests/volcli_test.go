@@ -97,7 +97,8 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
@@ -168,7 +169,8 @@ func TestVolCLIVolume(t *testing.T) {
 }
 
 func TestVolCLIMount(t *testing.T) {
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 

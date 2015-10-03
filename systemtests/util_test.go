@@ -150,10 +150,9 @@ func rebootstrap() error {
 	return nil
 }
 
-func uploadIntent(tenantName, fileName string) error {
+func uploadIntent(tenantName, fileName string) (string, error) {
 	log.Infof("Uploading intent %q as tenant %q", fileName, tenantName)
-	_, err := volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
-	return err
+	return volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
 }
 
 func pullUbuntu() error {

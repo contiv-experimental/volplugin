@@ -48,7 +48,8 @@ func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := uploadIntent("tenant1", "intent1"); err != nil {
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
 		t.Fatal(err)
 	}
 
