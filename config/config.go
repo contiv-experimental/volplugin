@@ -13,11 +13,10 @@ const (
 	rootTenant = "tenants"
 )
 
-var (
-	// ErrExist indicates when a key in etcd exits already. Used for create logic.
-	ErrExist     = errors.New("Already exists")
-	defaultPaths = []string{rootVolume, rootMount, rootTenant}
-)
+var defaultPaths = []string{rootVolume, rootMount, rootTenant}
+
+// ErrExist indicates when a key in etcd exits already. Used for create logic.
+var ErrExist = errors.New("Already exists")
 
 // Request provides a request structure for communicating with the
 // volmaster.
