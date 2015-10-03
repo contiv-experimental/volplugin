@@ -39,8 +39,8 @@ step.
 1. Start etcd: `etcd &>/dev/null &`
 1. Upload tenant information: `volcli tenant upload tenant1 < /testdata/intent1.json`
 1. Start the volmaster and volplugin:
-  * <code>sudo \`which volmaster\` &</code>
-  * <code>sudo \`which volplugin\` --master 192.168.24.10:8080 tenant1 &</code>
+  * <code>sudo -i volmaster &</code>
+  * <code>sudo -i volplugin --master 192.168.24.10:8080 &</code>
 1. Add a docker volume with `pool/name` syntax:
   * `docker volume create -d volplugin --name tenant1/foo`
 1. Run a container with the volume attached:
