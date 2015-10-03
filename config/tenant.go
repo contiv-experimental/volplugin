@@ -82,5 +82,5 @@ func (cfg *TenantConfig) Validate() error {
 		return fmt.Errorf("Default pool does not exist in new tenant")
 	}
 
-	return nil
+	return cfg.DefaultVolumeOptions.Validate()
 }

@@ -139,19 +139,21 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	return ret, nil
 }
 
-// Validate validates a tenant configuration, returning error on any issue.
-func (cfg *VolumeConfig) Validate() error {
-	if cfg.Options.Pool == "" {
-		return fmt.Errorf("No pool specified")
-	}
-
-	if cfg.Options.Size == 0 {
+// Validate options for a volume. Should be called anytime options are
+// considered.
+func (opts VolumeOptions) Validate() error {
+	if opts.Size == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}
 
-	if cfg.Options.UseSnapshots && (cfg.Options.Snapshot.Frequency == "" || cfg.Options.Snapshot.Keep == 0) {
+	if opts.UseSnapshots && (opts.Snapshot.Frequency == "" || opts.Snapshot.Keep == 0) {
 		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
 	return nil
+}
+
+// Validate validates a volume configuration, returning error on any issue.
+func (cfg *VolumeConfig) Validate() error {
+	return cfg.Options.Validate()
 }
