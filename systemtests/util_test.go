@@ -94,7 +94,7 @@ func createVolumeHost(tenant, host string, opts map[string]string) error {
 }
 
 func createVolume(host, tenant, name string, opts map[string]string) error {
-	log.Infof("Creating %s/%s", host, name)
+	log.Infof("Creating %s/%s on %s", tenant, name, host)
 
 	optsStr := []string{}
 

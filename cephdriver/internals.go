@@ -25,13 +25,13 @@ func (cv *CephVolume) mapImage() (string, error) {
 	return device, err
 }
 
-func (cd *CephDriver) mkfsVolume(devicePath string) error {
+func (cd *CephDriver) mkfsVolume(fscmd, devicePath string) error {
 	// Create ext4 filesystem on the device. this will take a while
-	out, err := exec.Command("mkfs.ext4", "-m0", devicePath).CombinedOutput()
+	out, err := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath)).CombinedOutput()
 
 	if err != nil {
 		log.Debug(string(out))
-		return fmt.Errorf("Error creating ext4 filesystem on %s. Error: %v", devicePath, err)
+		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v", devicePath, fscmd, err)
 	}
 
 	return nil

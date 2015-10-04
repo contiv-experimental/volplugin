@@ -62,12 +62,12 @@ func TestMountUnmountVolume(t *testing.T) {
 	volumeSpec.Unmount()
 	volumeSpec.Remove()
 
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume: %v", err)
 	}
 
 	// mount the volume
-	if err := volumeSpec.Mount(); err != nil {
+	if err := volumeSpec.Mount("ext4"); err != nil {
 		t.Fatalf("Error mounting the volume. Err: %v", err)
 	}
 
@@ -89,7 +89,7 @@ func TestSnapshots(t *testing.T) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	// Create a volume
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
 	}
 
@@ -137,14 +137,14 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	// Create a volume
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
 	}
 
 	// Repeatedly perform mount unmount test
 	for i := 0; i < 10; i++ {
 		// mount the volume
-		if err := volumeSpec.Mount(); err != nil {
+		if err := volumeSpec.Mount("ext4"); err != nil {
 			t.Fatalf("Error mounting the volume. Err: %v", err)
 		}
 
@@ -161,5 +161,33 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	// delete the volume
 	if err := volumeSpec.Remove(); err != nil {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
+	}
+}
+
+func TestTemplateFSCmd(t *testing.T) {
+	if templateFSCmd("%", "foo") != "foo" {
+		t.Fatal("basic templating")
+	}
+
+	if templateFSCmd("%%", "foo") != "%%" {
+		t.Log(templateFSCmd("%%", "foo"))
+		t.Fatal("%% support")
+	}
+
+	if templateFSCmd("%%%", "foo") != "%%foo" {
+		t.Log(templateFSCmd("%%", "foo"))
+		t.Fatal("%%% sanity check")
+	}
+
+	if templateFSCmd("% test % test %", "foo") != "foo test foo test foo" {
+		t.Fatal("multiple substitution")
+	}
+
+	if templateFSCmd("% %% %", "foo") != "foo %% foo" {
+		t.Fatal("escaped plus regular %")
+	}
+
+	if templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1") != "mkfs.ext4 -m0 /dev/sda1" {
+		t.Fatal("'real' command test")
 	}
 }

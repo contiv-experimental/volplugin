@@ -9,8 +9,8 @@ import (
 // VolumeConfig is the configuration of the tenant. It includes pool and
 // snapshot information.
 type VolumeConfig struct {
-	VolumeName string        `json:"name"`
-	Options    VolumeOptions `json:"options"`
+	VolumeName string         `json:"name"`
+	Options    *VolumeOptions `json:"options"`
 }
 
 // VolumeOptions comprises the optional paramters a volume can accept.
@@ -19,6 +19,7 @@ type VolumeOptions struct {
 	Size         uint64         `json:"size" merge:"size"`
 	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
+	FileSystem   string         `json:"filesystem" merge:"filesystem"`
 }
 
 // SnapshotConfig is the configuration for snapshots.
@@ -47,9 +48,21 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		return nil, err
 	}
 
-	vc := VolumeConfig{
-		Options:    resp.DefaultVolumeOptions,
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	vc := &VolumeConfig{
+		Options:    &resp.DefaultVolumeOptions,
 		VolumeName: rc.Volume,
+	}
+
+	if err := vc.Validate(); err != nil {
+		return nil, err
+	}
+
+	if vc.Options.FileSystem == "" {
+		vc.Options.FileSystem = defaultFilesystem
 	}
 
 	if vc.Options.Pool == "" {
@@ -65,7 +78,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		return nil, err
 	}
 
-	return &vc, nil
+	return vc, nil
 }
 
 // GetVolume returns the VolumeConfig for a given volume.
@@ -141,7 +154,7 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 
 // Validate options for a volume. Should be called anytime options are
 // considered.
-func (opts VolumeOptions) Validate() error {
+func (opts *VolumeOptions) Validate() error {
 	if opts.Size == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}

@@ -1,0 +1,16 @@
+{ 
+  "default-pool": "rbd",
+  "default-options": {
+    "size": 10,
+    "snapshots": true,
+    "snapshot": {
+      "frequency": "30m",
+      "keep": 20
+    },
+    "filesystem": "btrfs"
+  },
+  "filesystems": {
+    "ext4": "mkfs.ext4 -m0 %",
+    "btrfs": "mkfs.btrfs %"
+  }
+}
