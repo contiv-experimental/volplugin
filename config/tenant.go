@@ -11,8 +11,14 @@ import (
 type TenantConfig struct {
 	DefaultVolumeOptions VolumeOptions     `json:"default-options"`
 	DefaultPool          string            `json:"default-pool"`
-	FileSystems          map[string]string `json:"filesystems,omitempty"`
+	FileSystems          map[string]string `json:"filesystems"`
 }
+
+var defaultFilesystems = map[string]string{
+	"ext4": "mkfs.ext4 -m0 %",
+}
+
+const defaultFilesystem = "ext4"
 
 func (c *TopLevelConfig) tenant(name string) string {
 	return c.prefixed(rootTenant, name)
@@ -80,6 +86,10 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 func (cfg *TenantConfig) Validate() error {
 	if cfg.DefaultPool == "" {
 		return fmt.Errorf("Default pool does not exist in new tenant")
+	}
+
+	if cfg.FileSystems == nil {
+		cfg.FileSystems = defaultFilesystems
 	}
 
 	return cfg.DefaultVolumeOptions.Validate()

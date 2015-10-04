@@ -67,7 +67,7 @@ func templateFSCmd(fscmd, devicePath string) string {
 	for idx := 0; idx < len(fscmd); idx++ {
 		if fscmd[idx] == '%' {
 			if idx < len(fscmd)-1 && fscmd[idx+1] == '%' {
-				idx += 1
+				idx++
 				continue
 			}
 			var lhs, rhs string

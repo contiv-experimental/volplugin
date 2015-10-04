@@ -59,6 +59,8 @@ func TestVolCLITenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	intent1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+
 	if !reflect.DeepEqual(intent1, intentTarget) {
 		t.Fatal("Intent #1 did not equal retrieved value from etcd")
 	}
@@ -73,6 +75,8 @@ func TestVolCLITenant(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), intentTarget); err != nil {
 		t.Fatal(err)
 	}
+
+	intent2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
 	if !reflect.DeepEqual(intent2, intentTarget) {
 		t.Fatal("Intent #2 did not equal retrieved value from etcd")
@@ -150,14 +154,17 @@ func TestVolCLIVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	cfg.Options.FileSystem = "ext4"
+
 	intent1, err := readIntent("testdata/intent1.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
+	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 
-	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, cfg.Options) {
+	if !reflect.DeepEqual(&intent1.DefaultVolumeOptions, cfg.Options) {
 		t.Log(intent1.DefaultVolumeOptions)
 		t.Log(cfg.Options)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
