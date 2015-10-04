@@ -61,6 +61,10 @@ func TestMain(m *testing.M) {
 
 	exitCode := m.Run()
 
+	if os.Getenv("NO_TEARDOWN") != "" {
+		os.Exit(exitCode)
+	}
+
 	log.Infof("Tearing down system test facilities")
 
 	clearContainers()
