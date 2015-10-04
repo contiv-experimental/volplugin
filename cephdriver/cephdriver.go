@@ -63,17 +63,13 @@ func (cd *CephDriver) NewVolume(poolName, volumeName string, size uint64) *CephV
 	}
 }
 
-func templateFsCmd(fscmd, devicePath string) string {
-	insidePercent := false
-
+func templateFSCmd(fscmd, devicePath string) string {
 	for idx := 0; idx < len(fscmd); idx++ {
 		if fscmd[idx] == '%' {
-			if insidePercent {
-				insidePercent = false
+			if idx < len(fscmd)-1 && fscmd[idx+1] == '%' {
+				idx += 1
 				continue
 			}
-
-			insidePercent = true
 			var lhs, rhs string
 
 			switch {
@@ -89,8 +85,6 @@ func templateFsCmd(fscmd, devicePath string) string {
 			}
 
 			fscmd = fmt.Sprintf("%s%s%s", lhs, devicePath, rhs)
-		} else {
-			insidePercent = false
 		}
 	}
 

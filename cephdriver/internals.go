@@ -27,7 +27,7 @@ func (cv *CephVolume) mapImage() (string, error) {
 
 func (cd *CephDriver) mkfsVolume(fscmd, devicePath string) error {
 	// Create ext4 filesystem on the device. this will take a while
-	out, err := exec.Command("/bin/sh", "-c", templateFsCmd(fscmd, devicePath)).CombinedOutput()
+	out, err := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath)).CombinedOutput()
 
 	if err != nil {
 		log.Debug(string(out))

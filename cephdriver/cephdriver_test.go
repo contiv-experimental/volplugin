@@ -163,3 +163,31 @@ func TestRepeatedMountUnmount(t *testing.T) {
 		t.Fatalf("Error deleting the volume. Err: %v", err)
 	}
 }
+
+func TestTemplateFSCmd(t *testing.T) {
+	if templateFSCmd("%", "foo") != "foo" {
+		t.Fatal("basic templating")
+	}
+
+	if templateFSCmd("%%", "foo") != "%%" {
+		t.Log(templateFSCmd("%%", "foo"))
+		t.Fatal("%% support")
+	}
+
+	if templateFSCmd("%%%", "foo") != "%%foo" {
+		t.Log(templateFSCmd("%%", "foo"))
+		t.Fatal("%%% sanity check")
+	}
+
+	if templateFSCmd("% test % test %", "foo") != "foo test foo test foo" {
+		t.Fatal("multiple substitution")
+	}
+
+	if templateFSCmd("% %% %", "foo") != "foo %% foo" {
+		t.Fatal("escaped plus regular %")
+	}
+
+	if templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1") != "mkfs.ext4 -m0 /dev/sda1" {
+		t.Fatal("'real' command test")
+	}
+}
