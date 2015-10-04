@@ -62,7 +62,7 @@ func TestMountUnmountVolume(t *testing.T) {
 	volumeSpec.Unmount()
 	volumeSpec.Remove()
 
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume: %v", err)
 	}
 
@@ -89,7 +89,7 @@ func TestSnapshots(t *testing.T) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	// Create a volume
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
 	}
 
@@ -137,7 +137,7 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	// Create a volume
-	if err := volumeSpec.Create(); err != nil {
+	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
 		t.Fatalf("Error creating the volume. Err: %v", err)
 	}
 

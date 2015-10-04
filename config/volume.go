@@ -19,6 +19,7 @@ type VolumeOptions struct {
 	Size         uint64         `json:"size" merge:"size"`
 	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
+	FileSystem   string         `json:"filesystem" merge:"filesystem"`
 }
 
 // SnapshotConfig is the configuration for snapshots.

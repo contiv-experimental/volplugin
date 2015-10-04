@@ -9,8 +9,9 @@ import (
 // TenantConfig is the configuration of the tenant. It includes default
 // information for items such as pool and volume configuration.
 type TenantConfig struct {
-	DefaultVolumeOptions VolumeOptions `json:"default-options"`
-	DefaultPool          string        `json:"default-pool"`
+	DefaultVolumeOptions VolumeOptions     `json:"default-options"`
+	DefaultPool          string            `json:"default-pool"`
+	FileSystems          map[string]string `json:"filesystems,omitempty"`
 }
 
 func (c *TopLevelConfig) tenant(name string) string {
@@ -28,8 +29,7 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	_, err = c.etcdClient.Set(c.tenant(name), string(value), 0)
-	if err != nil {
+	if _, err := c.etcdClient.Set(c.tenant(name), string(value), 0); err != nil {
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	}
 
 	if resp.Node == nil {
-		return nil, fmt.Errorf("Tenants root is missing")
+		return nil, fmt.Errorf("Tenant's root is missing")
 	}
 
 	tenants := []string{}

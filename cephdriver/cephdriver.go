@@ -1,6 +1,7 @@
 package cephdriver
 
 import (
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -54,5 +55,44 @@ func (cd *CephDriver) MountPath(poolName, volumeName string) string {
 
 // NewVolume returns a *CephVolume ready for use with volume operations.
 func (cd *CephDriver) NewVolume(poolName, volumeName string, size uint64) *CephVolume {
-	return &CephVolume{VolumeName: volumeName, PoolName: poolName, VolumeSize: size, driver: cd}
+	return &CephVolume{
+		VolumeName: volumeName,
+		PoolName:   poolName,
+		VolumeSize: size,
+		driver:     cd,
+	}
+}
+
+func templateFsCmd(fscmd, devicePath string) string {
+	insidePercent := false
+
+	for idx := 0; idx < len(fscmd); idx++ {
+		if fscmd[idx] == '%' {
+			if insidePercent {
+				insidePercent = false
+				continue
+			}
+
+			insidePercent = true
+			var lhs, rhs string
+
+			switch {
+			case idx == 0:
+				lhs = ""
+				rhs = fscmd[1:]
+			case idx == len(fscmd)-1:
+				lhs = fscmd[:idx]
+				rhs = ""
+			default:
+				lhs = fscmd[:idx]
+				rhs = fscmd[idx+1:]
+			}
+
+			fscmd = fmt.Sprintf("%s%s%s", lhs, devicePath, rhs)
+		} else {
+			insidePercent = false
+		}
+	}
+
+	return fscmd
 }

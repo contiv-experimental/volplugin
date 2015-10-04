@@ -42,7 +42,7 @@ func (cv *CephVolume) Exists() (bool, error) {
 }
 
 // Create creates an RBD image and initialize ext4 filesystem on the image
-func (cv *CephVolume) Create() error {
+func (cv *CephVolume) Create(fscmd string) error {
 	ok, err := cv.driver.PoolExists(cv.PoolName)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (cv *CephVolume) Create() error {
 		return err
 	}
 
-	if err := cv.driver.mkfsVolume(blkdev); err != nil {
+	if err := cv.driver.mkfsVolume(fscmd, blkdev); err != nil {
 		return err
 	}
 
