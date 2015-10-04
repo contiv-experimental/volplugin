@@ -67,7 +67,7 @@ func TestMountUnmountVolume(t *testing.T) {
 	}
 
 	// mount the volume
-	if err := volumeSpec.Mount(); err != nil {
+	if err := volumeSpec.Mount("ext4"); err != nil {
 		t.Fatalf("Error mounting the volume. Err: %v", err)
 	}
 
@@ -144,7 +144,7 @@ func TestRepeatedMountUnmount(t *testing.T) {
 	// Repeatedly perform mount unmount test
 	for i := 0; i < 10; i++ {
 		// mount the volume
-		if err := volumeSpec.Mount(); err != nil {
+		if err := volumeSpec.Mount("ext4"); err != nil {
 			t.Fatalf("Error mounting the volume. Err: %v", err)
 		}
 

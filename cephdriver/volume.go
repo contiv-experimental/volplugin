@@ -80,7 +80,7 @@ func (cv *CephVolume) Create(fscmd string) error {
 
 // Mount maps an RBD image and mount it on /mnt/ceph/<datastore>/<volume> directory
 // FIXME: Figure out how to use rbd locks
-func (cv *CephVolume) Mount() error {
+func (cv *CephVolume) Mount(fstype string) error {
 	cd := cv.driver
 	// Directory to mount the volume
 	dataStoreDir := filepath.Join(cd.mountBase, cv.PoolName)
@@ -105,7 +105,7 @@ func (cv *CephVolume) Mount() error {
 	}
 
 	// Mount the RBD
-	if err := unix.Mount(devName, volumeDir, "ext4", 0, ""); err != nil && err != unix.EBUSY {
+	if err := unix.Mount(devName, volumeDir, fstype, 0, ""); err != nil && err != unix.EBUSY {
 		return fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
 	}
 

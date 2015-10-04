@@ -252,3 +252,74 @@ func TestDriverOptions(t *testing.T) {
 		t.Fatal("Size option passed to docker volume create did not propagate to volume options")
 	}
 }
+
+func TestMultipleFileSystems(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := uploadIntent("tenant1", "fs"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	opts := map[string]string{
+		"size": "1000",
+	}
+
+	if err := createVolume("mon0", "tenant1", "test", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	defer purgeVolume("mon0", "tenant1", "test", true)
+
+	if err := nodeMap["mon0"].RunCommand("docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"); err != nil {
+		t.Fatal(err)
+	}
+
+	defer clearContainers()
+
+	out, err := nodeMap["mon0"].RunCommandWithOutput("mount -l -t btrfs")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(out, "\n")
+	pass := false
+	for _, line := range lines {
+		// cheat.
+		if strings.Contains(line, "/dev/rbd") {
+			pass = true
+			break
+		}
+	}
+
+	if !pass {
+		t.Fatal("could not find the mounted volume as btrfs")
+	}
+
+	if err := createVolume("mon0", "tenant1", "testext4", map[string]string{"filesystem": "ext4"}); err != nil {
+		t.Fatal(err)
+	}
+
+	defer purgeVolume("mon0", "tenant1", "testext4", true)
+
+	if err := nodeMap["mon0"].RunCommand("docker run -d -v tenant1/testext4:/mnt ubuntu sleep infinity"); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err = nodeMap["mon0"].RunCommandWithOutput("mount -l -t ext4")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines = strings.Split(out, "\n")
+	pass = false
+	for _, line := range lines {
+		// cheat.
+		if strings.Contains(line, "/dev/rbd") {
+			pass = true
+			break
+		}
+	}
+}

@@ -151,7 +151,7 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Mount(); err != nil {
+		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Mount(volConfig.Options.FileSystem); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
