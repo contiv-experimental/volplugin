@@ -2,11 +2,11 @@
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
-volplugin controls [Ceph](http://ceph.com/) with a master/slave model to
-orchestrate the mounting (and cross-host remounting) of volumes scheduled with
-containers. You can control docker to mount these volumes with a plugin, or you
-can (soon) use schedulers, as well as docker-compose to manage your application
-alongside Ceph volumes.
+volplugin controls [Ceph](http://ceph.com/) RBD devices with a master/slave
+model to orchestrate the mounting (and cross-host remounting) of volumes
+scheduled with containers. You can control docker to mount these volumes with a
+plugin, or you can (soon) use schedulers, as well as docker-compose to manage
+your application alongside Ceph volumes.
 
 volplugin currently only supports Docker volume plugins. First class scheduler support for:
 [Kubernetes](https://github.com/kubernetes/kubernetes), [Swarm](https://github.com/docker/swarm),
