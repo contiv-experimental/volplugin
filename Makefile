@@ -51,7 +51,7 @@ run-volplugin:
 run-volmaster:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volmaster-start"'
 
-run-build:
+run-build: godep
 	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster
 
 system-test: build godep
@@ -76,3 +76,23 @@ reflex-build: reflex
 
 reflex-test: reflex
 	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
+
+reflex-docs: reflex install-docs
+	# for some reason reflex and the build-docs task don't play nicely
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r 'docs/.*\.md' node docs.js
+
+install-docs:
+	@echo "To install the packages required for documentation generation, you need npm."
+	npm install mdoc
+
+start-doc-server:
+	go run docs/docs-server.go dist &
+
+stop-doc-server:
+	pkill -f docs-server
+
+build-docs:
+	@echo "To build the documentation, run install-docs first."
+	rm -rf dist
+	mkdir -p dist
+	node docs.js

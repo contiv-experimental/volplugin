@@ -5,3 +5,7 @@ ansible/fetch/*
 volmaster/volmaster
 volplugin/volplugin/volplugin
 volcli/volcli/volcli
+node_modules
+dist
+docs/docs
+.DS_Store
