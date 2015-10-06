@@ -99,4 +99,4 @@ build-docs:
 	node docs.js
 
 publish-docs: build-docs
-	cd dist && s3cmd put --recursive * s3://volplugin-docs
+	cd dist && s3cmd sync --delete-removed --recursive * s3://volplugin-docs
