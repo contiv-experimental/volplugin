@@ -87,6 +87,7 @@ install-docs:
 
 start-doc-server:
 	go run docs/docs-server.go dist &
+	@echo "You should now be able to generate and view the docs at http://localhost:8080
 
 stop-doc-server:
 	pkill -f docs-server
@@ -96,3 +97,6 @@ build-docs:
 	rm -rf dist
 	mkdir -p dist
 	node docs.js
+
+publish-docs: build-docs
+	cd dist && s3cmd put --recursive * s3://volplugin-docs
