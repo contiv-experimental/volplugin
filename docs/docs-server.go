@@ -7,9 +7,9 @@ import (
 	"path"
 )
 
-type FileServer string
+type fileServer string
 
-func (fs FileServer) Open(name string) (http.File, error) {
+func (fs fileServer) Open(name string) (http.File, error) {
 	return os.Open(path.Join(string(fs), name))
 }
 
@@ -19,6 +19,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := http.FileServer(FileServer(os.Args[1]))
+	handler := http.FileServer(fileServer(os.Args[1]))
 	http.ListenAndServe(":8080", handler)
 }
