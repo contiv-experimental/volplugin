@@ -40,8 +40,8 @@ Ensure ceph is fully operational, and that the `rbd` tool works as root.
    policy from stdin.
    * You can find some examples of policy in
      [systemtests/testdata](https://github.com/contiv/volplugin/tree/master/systemtests/testdata).
-   * If you just want a quick start without configuring it yourself:
-     `volcli tenant upload tenant1 < systemtests/testdata/intent1.json`
+   * If you just want a quick start without configuring it yourself: 
+     * `cat systemtests/testdata/intent1.json | volcli tenant upload tenant1`
 1. Start volmaster (as root): `volmaster &`
    * volmaster has a debug mode as well, but it's really noisy, so avoid using
      it with background processes. Volplugin currently runs on port 8080, but
