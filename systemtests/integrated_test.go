@@ -323,3 +323,50 @@ func TestMultipleFileSystems(t *testing.T) {
 		}
 	}
 }
+
+func TestMultiTenantVolumeCreate(t *testing.T) {
+	if err := rebootstrap(); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if out, err := uploadIntent("tenant2", "intent2"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if err := createVolume("mon0", "tenant1", "test", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := createVolume("mon0", "tenant2", "test", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	defer purgeVolume("mon0", "tenant1", "test", true)
+	defer purgeVolume("mon0", "tenant2", "test", true)
+
+	if out, err := docker("run -v tenant1/test:/mnt ubuntu sh -c \"echo foo > /mnt/bar\""); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if err := clearContainers(); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := docker("run -v tenant2/test:/mnt ubuntu sh -c \"cat /mnt/bar\"")
+	if err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if strings.TrimSpace(out) != "foo" {
+		t.Log(out)
+		t.Fatal("Could not retrieve value set by other tenant")
+	}
+}
