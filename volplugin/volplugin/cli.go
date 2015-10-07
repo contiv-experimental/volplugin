@@ -19,8 +19,8 @@ func init() {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "volplugin"
-	app.Version = "0.0.1"
+	app.Version = ""
+	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:   "debug",
