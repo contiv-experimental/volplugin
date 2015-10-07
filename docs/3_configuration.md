@@ -19,8 +19,13 @@ Here is an example:
     "snapshot": {
       "frequency": "30m",
       "keep": 20
-    }
-  }
+    },
+		"filesystem": "btrfs"
+  },
+	"filesystems": {
+		"btrfs": "mkfs.btrfs %",
+		"ext4": "mkfs.ext4 -m0 %"
+	}
 }
 ```
 
@@ -35,6 +40,16 @@ Let's go through what these parameters mean.
 		* `frequency`: the frequency between snapshots in Go's
 			 [duration notation](https://golang.org/pkg/time/#ParseDuration)
 		* `keep`: how many snapshots to keep
+	* `filesystem`: which filesystem to use. See below for how this works.
+* `filesystems`: Provides a map of filesystem -> command for volumes to use in
+	the `filesystem` option.
+	* Commands are run when the filesystem is specified and the volume has not
+		been created already.
+	* Each command must contain a `%`, which will be replaced with the block
+		device to be used. Supply `%%` to use a literal `%`.
+	* Commands run in a POSIX (not bash, zsh) shell.
+	* If the `filesystems` block is omitted, `mkfs.ext4 -m0 %` will be applied to
+		all volumes within this tenant.
 
 You supply them with `volcli tenant upload <tenant name>`. The JSON itself is
 provided via standard input, so for example if your file is `tenant2.json`:
@@ -63,3 +78,5 @@ The options are as follows:
 * `snapshots.frequency`: as above in the previous chapter, the frequency which we
   take snapshots.
 * `snapshots.keep`: as above in the previous chapter, the number of snapshots to keep.
+* `filesystem`: the named filesystem to create. See the JSON Configuration
+  section for more information on this.
