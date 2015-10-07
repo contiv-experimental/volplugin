@@ -2,6 +2,9 @@
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
+**Note:** we have extended documentation for users
+[here](http://volplugin-docs.s3-website-us-west-1.amazonaws.com/)
+
 volplugin controls [Ceph](http://ceph.com/) RBD devices with a master/slave
 model to orchestrate the mounting (and cross-host remounting) of volumes
 scheduled with containers. You can control docker to mount these volumes with a
@@ -17,6 +20,7 @@ The master/slave model allows us to support a number of features, such as:
 * On-the-fly image creation and (re)mount from any Ceph source, by referencing
   a tenant and volume name.
 * Multiple pool management
+* Manage many kinds of filesystems, including providing mkfs commands.
 * Snapshot frequency and pruning
 
 Currently planned, but unfinished features:
