@@ -112,6 +112,7 @@ func VolumeCreate(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
+	// FIXME wtf? Apparently this opts hash isn't even being used right now.
 	opts := map[string]string{}
 
 	for _, str := range ctx.StringSlice("opt") {
