@@ -14,7 +14,7 @@ import (
 )
 
 func errExit(ctx *cli.Context, err error, help bool) {
-	fmt.Printf("\nError: %v\n\n", err)
+	fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)
 	if help {
 		cli.ShowAppHelp(ctx)
 	}
