@@ -80,8 +80,11 @@ func main() {
 			Usage: "Manage Volumes",
 			Subcommands: []cli.Command{
 				{
-					Name:        "create",
-					Flags:       append(flags, volmasterFlags...),
+					Name: "create",
+					Flags: append(flags, append(volmasterFlags, cli.StringSliceFlag{
+						Name:  "opt",
+						Usage: "Provide key=value options to create the volume",
+					})...),
 					ArgsUsage:   "[tenant name] [volume name]",
 					Description: "This creates a logical volume. Calls out to the volmaster and sets the policy based on the tenant name provided.",
 					Usage:       "Create a volume for a given tenant",
