@@ -112,7 +112,6 @@ func VolumeCreate(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	// FIXME wtf? Apparently this opts hash isn't even being used right now.
 	opts := map[string]string{}
 
 	for _, str := range ctx.StringSlice("opt") {
@@ -120,6 +119,8 @@ func VolumeCreate(ctx *cli.Context) {
 		if len(pair) < 2 {
 			errExit(ctx, fmt.Errorf("Mismatched option pair %q", pair), false)
 		}
+
+		opts[pair[0]] = pair[1]
 	}
 
 	tc := &config.RequestCreate{

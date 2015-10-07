@@ -164,7 +164,7 @@ func TestVolCLIVolume(t *testing.T) {
 	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
 	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 
-	if !reflect.DeepEqual(&intent1.DefaultVolumeOptions, cfg.Options) {
+	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, *cfg.Options) {
 		t.Log(intent1.DefaultVolumeOptions)
 		t.Log(cfg.Options)
 		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
@@ -172,6 +172,54 @@ func TestVolCLIVolume(t *testing.T) {
 
 	if _, err := volcli("volume remove tenant1 foo"); err != nil {
 		t.Fatal(err)
+	}
+
+	if out, err := volcli("volume create tenant1 foo"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if out, err := volcli("volume remove tenant1 foo"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	if _, err := volcli("volume get tenant1 foo"); err == nil {
+		t.Fatal("No error getting removed volume")
+	}
+
+	if out, _ := volcli("volume create tenant1 foo --opt snapshots=false"); err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	out, err = volcli("volume get tenant1 foo")
+	if err != nil {
+		t.Log(out)
+		t.Fatal(err)
+	}
+
+	cfg = &config.VolumeConfig{}
+
+	if err := json.Unmarshal([]byte(out), cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg.Options.FileSystem = "ext4"
+
+	intent1, err = readIntent("testdata/intent1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
+	intent1.DefaultVolumeOptions.FileSystem = "ext4"
+	intent1.DefaultVolumeOptions.UseSnapshots = false
+
+	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, *cfg.Options) {
+		t.Log(intent1.DefaultVolumeOptions)
+		t.Log(cfg.Options)
+		t.Fatal("Tenant configuration did not equal volume configuration after passing volume options")
 	}
 }
 
