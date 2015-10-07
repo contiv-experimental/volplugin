@@ -27,9 +27,10 @@ The build and each binary will be on the VM in `/opt/golang/bin`.
 * [etcd release notes and install instructions](https://github.com/coreos/etcd/releases/tag/v2.2.0)
   * We currently support versions 2.0 and up.
 * [Ceph](http://docs.ceph.com/docs/master/start/)
+  * If you have not installed Ceph before, a quick installation guide [is here](http://docs.ceph.com/docs/master/start/)
   * Ceph can be a complicated beast to install. If this is your first time
     using the project, please be aware there are pre-baked VMs that will work
-    for you on any operating system. [See the README for more information](https://github.com/contiv/volplugin/blob/master/README.md#running-the-processes).
+    for you on any unix operating system. [See the README for more information](https://github.com/contiv/volplugin/blob/master/README.md#running-the-processes).
 
 ## Configure Services
 

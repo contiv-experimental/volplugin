@@ -3,6 +3,23 @@
 This section describes various ways to manipulate volplugin through
 configuration and options.
 
+## Volume Formatting
+
+Because of limitations in the docker volume implementation, we use a *pattern*
+to describe volumes to docker. This pattern is `tenant-name/volume-name`, and
+is supplied to `docker volume create --name` and transfers to `docker run -v`.
+
+For example, a typical use of volplugin might work like this presuming we have
+a tenant uploaded named `tenant1`:
+
+```
+$ docker volume create -d volplugin --name tenant1/foo
+$ docker run -it -v tenant1/foo:/mnt ubuntu bash
+```
+
+This pattern creates a volume called `foo` in `tenant1`'s default ceph pool. If
+you wish to change the pool (or other options), see "Driver Options" below.
+
 ## JSON Tenant Configuration
 
 Tenant configuration uses JSON to configure the default volume parameters such

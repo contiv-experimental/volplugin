@@ -12,6 +12,10 @@ These four commands present CRUD options on their respective sub-sections:
 * `volcli volume` manipulates volumes. 
 * `volcli mount` manipulates mounts.
 * `volcli help` prints the help.
+  * Note that for each subcommand, `volcli help [subcommand]` will print the
+    help for that command. For multi-level commands, `volcli [subcommand] help
+    [subcommand]` will work. Appending `--help` to any command will print the
+    help as well.
 
 ## Tenant Commands
 
@@ -49,4 +53,6 @@ pushing operations down to the volplugin, but not yet.
 * `volcli mount list` lists all known mounts in etcd.
 * `volcli mount get` obtains specific information about a mount from etcd.
 * `volcli mount force-remove` removes the contents from etcd, but does not
-  attempt to perform any unmounting.
+  attempt to perform any unmounting. This is useful for removing mounts that
+  for some reason (e.g., host failure, which is not currently satsified by
+  volplugin)
