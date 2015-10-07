@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"os"
-	"path"
 
 	"github.com/contiv/volplugin/config"
 
@@ -23,12 +21,9 @@ func start(ctx *cli.Context) {
 }
 
 func main() {
-	basePath := path.Base(os.Args[0])
-
 	app := cli.NewApp()
-	app.Version = "0.0.1"
-	app.Usage = fmt.Sprintf("Control many volplugins", basePath)
-	app.Name = basePath
+	app.Version = ""
+	app.Usage = "Control many volplugins"
 	app.Action = start
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
@@ -44,6 +39,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "prefix",
+			Usage: "prefix key used in etcd for namespacing",
 			Value: "/volplugin",
 		},
 		cli.StringSliceFlag{

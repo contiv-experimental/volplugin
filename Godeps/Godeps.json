@@ -12,8 +12,8 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-127-gad48024",
-			"Rev": "ad480243a8a6cda30acf7cd999ea3e5142154fde"
+			"Comment": "1.2.0-155-g96f1fed",
+			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
 		},
 		{
 			"ImportPath": "github.com/contiv/go-etcd/etcd",
