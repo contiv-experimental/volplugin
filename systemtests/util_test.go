@@ -22,6 +22,7 @@ func iterateNodes(fn func(utils.TestbedNode) error) error {
 			wg.Add(1)
 
 			go func(node utils.TestbedNode) {
+				time.Sleep(100 * time.Millisecond)
 				if err := fn(node); err != nil {
 					errChan <- fmt.Errorf(`Error: "%v" on host: %q"`, err, node.GetName())
 				}
@@ -193,7 +194,13 @@ func stopVolmaster() error {
 }
 
 func startVolplugin() error {
-	return iterateNodes(volpluginStart)
+	// don't sleep if we error, but wait for volplugin to bootstrap if we don't.
+	if err := iterateNodes(volpluginStart); err != nil {
+		return err
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	return nil
 }
 
 func stopVolplugin() error {
@@ -206,6 +213,7 @@ func volpluginStart(node utils.TestbedNode) error {
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
 	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --master 192.168.24.10:8080 tenant1 &>/tmp/volplugin.log &")
+	time.Sleep(100 * time.Millisecond)
 	return err
 }
 
