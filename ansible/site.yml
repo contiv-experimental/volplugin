@@ -16,7 +16,6 @@
     - file: path=/usr/share/docker/plugins state=directory
   roles:
   - ceph-mon
-  - ceph-restapi
   - ceph-osd
 
 - hosts: osds
