@@ -2,10 +2,10 @@ package systemtests
 
 import (
 	"strings"
-	"testing"
+	. "testing"
 )
 
-func TestStarted(t *testing.T) {
+func TestStarted(t *T) {
 	if err := nodeMap["mon0"].RunCommand("pgrep -c volmaster"); err != nil {
 		t.Fatal(err)
 	}
@@ -15,20 +15,20 @@ func TestStarted(t *testing.T) {
 	}
 }
 
-func TestSSH(t *testing.T) {
+func TestSSH(t *T) {
 	if err := runSSH("/bin/echo"); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestVolumeCreate(t *testing.T) {
+func TestVolumeCreate(t *T) {
 	defer purgeVolumeHost("tenant1", "mon0", true)
 	if err := createVolumeHost("tenant1", "mon0", nil); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestVolumeCreateMultiHost(t *testing.T) {
+func TestVolumeCreateMultiHost(t *T) {
 	hosts := []string{"mon0", "mon1", "mon2"}
 	defer func() {
 		for _, host := range hosts {
@@ -43,7 +43,7 @@ func TestVolumeCreateMultiHost(t *testing.T) {
 	}
 }
 
-func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
+func TestVolumeCreateMultiHostCrossHostMount(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}

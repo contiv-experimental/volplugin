@@ -3,13 +3,13 @@ package systemtests
 import (
 	"encoding/json"
 	"strings"
-	"testing"
+	. "testing"
 	"time"
 
 	"github.com/contiv/volplugin/config"
 )
 
-func TestEtcdUpdate(t *testing.T) {
+func TestEtcdUpdate(t *T) {
 	// this not-very-obvious test ensures that the tenant can be uploaded after
 	// the volplugin/volmaster pair are started.
 	if err := rebootstrap(); err != nil {
@@ -27,7 +27,7 @@ func TestEtcdUpdate(t *testing.T) {
 	purgeVolume("mon0", "tenant1", "foo", true)
 }
 
-func TestSnapshotSchedule(t *testing.T) {
+func TestSnapshotSchedule(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestSnapshotSchedule(t *testing.T) {
 	}
 }
 
-func TestHostLabel(t *testing.T) {
+func TestHostLabel(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestHostLabel(t *testing.T) {
 	}
 }
 
-func TestMountLock(t *testing.T) {
+func TestMountLock(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestMountLock(t *testing.T) {
 	}
 }
 
-func TestMultiPool(t *testing.T) {
+func TestMultiPool(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestMultiPool(t *testing.T) {
 	}
 }
 
-func TestDriverOptions(t *testing.T) {
+func TestDriverOptions(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestDriverOptions(t *testing.T) {
 	}
 }
 
-func TestMultipleFileSystems(t *testing.T) {
+func TestMultipleFileSystems(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +324,7 @@ func TestMultipleFileSystems(t *testing.T) {
 	}
 }
 
-func TestMultiTenantVolumeCreate(t *testing.T) {
+func TestMultiTenantVolumeCreate(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}

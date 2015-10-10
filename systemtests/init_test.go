@@ -3,7 +3,7 @@ package systemtests
 import (
 	"os"
 	"strings"
-	"testing"
+	. "testing"
 
 	log "github.com/Sirupsen/logrus"
 	utils "github.com/contiv/systemtests-utils"
@@ -20,7 +20,7 @@ func setNodeMap() {
 	}
 }
 
-func TestMain(m *testing.M) {
+func TestMain(m *M) {
 	if os.Getenv("HOST_TEST") != "" {
 		os.Exit(0)
 	}

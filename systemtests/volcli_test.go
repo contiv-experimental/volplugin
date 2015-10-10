@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
-	"testing"
+	. "testing"
 
 	"github.com/contiv/volplugin/config"
 )
 
-func TestVolCLITenant(t *testing.T) {
+func TestVolCLITenant(t *T) {
 	intent1, err := readIntent("testdata/intent1.json")
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestVolCLITenant(t *testing.T) {
 	}
 }
 
-func TestVolCLIVolume(t *testing.T) {
+func TestVolCLIVolume(t *T) {
 	if err := rebootstrap(); err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestVolCLIVolume(t *testing.T) {
 	}
 }
 
-func TestVolCLIMount(t *testing.T) {
+func TestVolCLIMount(t *T) {
 	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
 		t.Log(out)
 		t.Fatal(err)
