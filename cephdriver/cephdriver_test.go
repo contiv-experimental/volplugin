@@ -1,59 +1,52 @@
 package cephdriver
 
 import (
-	"errors"
 	"io"
 	"os"
-	"reflect"
 	"strings"
-	"testing"
+	. "testing"
+
+	. "gopkg.in/check.v1"
 
 	log "github.com/Sirupsen/logrus"
 )
 
-func TestMain(m *testing.M) {
+type cephSuite struct{}
+
+var _ = Suite(&cephSuite{})
+
+func TestCeph(t *T) { TestingT(t) }
+
+func (s cephSuite) SetUpTest(c *C) {
 	if os.Getenv("DEBUG") != "" {
 		log.SetLevel(log.DebugLevel)
 	}
-
-	os.Exit(m.Run())
 }
 
-func readWriteTest(mountDir string) error {
+func (s cephSuite) readWriteTest(c *C, mountDir string) {
 	// Write a file and verify you can read it
 	file, err := os.Create(mountDir + "/test.txt")
-	if err != nil {
-		log.Errorf("Error creating file. Err: %v", err)
-		return errors.New("Failed to create a file")
-	}
+	c.Assert(err, IsNil)
 
-	num, err := file.WriteString("Test string\n")
-	if err != nil {
-		log.Errorf("Error writing file. Err: %v", err)
-		return errors.New("Failed to write a file")
-	}
+	_, err = file.WriteString("Test string\n")
+	c.Assert(err, IsNil)
 
 	file.Close()
 
 	file, err = os.Open(mountDir + "/test.txt")
-	if err != nil {
-		log.Errorf("Error opening file. Err: %v", err)
-		return errors.New("Failed to open a file")
-	}
+	c.Assert(err, IsNil)
 
-	rb := make([]byte, 200)
-	_, err = io.ReadAtLeast(file, rb, num)
-	var rbs = string(rb)
-	if (err != nil) || (!strings.Contains(rbs, "Test string")) {
-		log.Errorf("Error reading back file(Got %s). Err: %v", rbs, err)
-		return errors.New("Failed to read back a file")
-	}
+	rb := make([]byte, 11)
+	_, err = io.ReadAtLeast(file, rb, 11)
+	c.Assert(err, IsNil)
+
 	file.Close()
 
-	return nil
+	var rbs = strings.TrimSpace(string(rb))
+	c.Assert(rbs, Equals, strings.TrimSpace("Test string"))
 }
 
-func TestMountUnmountVolume(t *testing.T) {
+func (s cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 
@@ -62,132 +55,50 @@ func TestMountUnmountVolume(t *testing.T) {
 	volumeSpec.Unmount()
 	volumeSpec.Remove()
 
-	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
-		t.Fatalf("Error creating the volume: %v", err)
-	}
-
-	// mount the volume
-	if err := volumeSpec.Mount("ext4"); err != nil {
-		t.Fatalf("Error mounting the volume. Err: %v", err)
-	}
-
-	if err := readWriteTest("/mnt/ceph/rbd/pithos1234"); err != nil {
-		t.Fatalf("Error during read/write test. Err: %v", err)
-	}
-
-	// unmount the volume
-	if err := volumeSpec.Unmount(); err != nil {
-		t.Fatalf("Error unmounting the volume. Err: %v", err)
-	}
-
-	if err := volumeSpec.Remove(); err != nil {
-		t.Fatalf("Error deleting the volume: %v", err)
-	}
+	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
+	c.Assert(volumeSpec.Mount("ext4"), IsNil)
+	s.readWriteTest(c, "/mnt/ceph/rbd/pithos1234")
+	c.Assert(volumeSpec.Unmount(), IsNil)
+	c.Assert(volumeSpec.Remove(), IsNil)
 }
 
-func TestSnapshots(t *testing.T) {
-	// Create a new driver
+func (s *cephSuite) TestSnapshots(c *C) {
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
-	// Create a volume
-	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
-		t.Fatalf("Error creating the volume. Err: %v", err)
-	}
-
-	if err := volumeSpec.CreateSnapshot("hello"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := volumeSpec.CreateSnapshot("hello"); err == nil {
-		t.Fatal("Was able to create same snapshot name twice")
-	}
+	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
+	defer volumeSpec.Remove()
+	c.Assert(volumeSpec.CreateSnapshot("hello"), IsNil)
+	c.Assert(volumeSpec.CreateSnapshot("hello"), NotNil)
 
 	list, err := volumeSpec.ListSnapshots()
-	if err != nil {
-		t.Fatal(err)
-	}
+	c.Assert(err, IsNil)
+	c.Assert(len(list), Equals, 1)
+	c.Assert(list, DeepEquals, []string{"hello"})
 
-	if len(list) != 1 || !reflect.DeepEqual(list, []string{"hello"}) {
-		t.Fatal("Did not see snapshot created earlier in list")
-	}
-
-	if err := volumeSpec.RemoveSnapshot("hello"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := volumeSpec.RemoveSnapshot("hello"); err == nil {
-		t.Fatal("Was able to remove same snapshot name twice")
-	}
+	c.Assert(volumeSpec.RemoveSnapshot("hello"), IsNil)
+	c.Assert(volumeSpec.RemoveSnapshot("hello"), NotNil)
 
 	list, err = volumeSpec.ListSnapshots()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(list) != 0 {
-		t.Fatal("Snapshot list is not empty and should be")
-	}
-
-	// delete the volume
-	if err := volumeSpec.Remove(); err != nil {
-		t.Fatalf("Error deleting the volume. Err: %v", err)
-	}
+	c.Assert(err, IsNil)
+	c.Assert(len(list), Equals, 0)
+	c.Assert(volumeSpec.Remove(), IsNil)
 }
 
-func TestRepeatedMountUnmount(t *testing.T) {
-	// Create a new driver
+func (s cephSuite) TestRepeatedMountUnmount(c *C) {
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
-	// Create a volume
-	if err := volumeSpec.Create("mkfs.ext4 -m0 %"); err != nil {
-		t.Fatalf("Error creating the volume. Err: %v", err)
-	}
-
-	// Repeatedly perform mount unmount test
+	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
 	for i := 0; i < 10; i++ {
-		// mount the volume
-		if err := volumeSpec.Mount("ext4"); err != nil {
-			t.Fatalf("Error mounting the volume. Err: %v", err)
-		}
-
-		if err := readWriteTest("/mnt/ceph/rbd/pithos1234"); err != nil {
-			t.Fatalf("Error during read/write test. Err: %v", err)
-		}
-
-		// unmount the volume
-		if err := volumeSpec.Unmount(); err != nil {
-			t.Fatalf("Error unmounting the volume. Err: %v", err)
-		}
+		c.Assert(volumeSpec.Mount("ext4"), IsNil)
+		s.readWriteTest(c, "/mnt/ceph/rbd/pithos1234")
+		c.Assert(volumeSpec.Unmount(), IsNil)
 	}
-
-	// delete the volume
-	if err := volumeSpec.Remove(); err != nil {
-		t.Fatalf("Error deleting the volume. Err: %v", err)
-	}
+	c.Assert(volumeSpec.Remove(), IsNil)
 }
 
-func TestTemplateFSCmd(t *testing.T) {
-	if templateFSCmd("%", "foo") != "foo" {
-		t.Fatal("basic templating")
-	}
-
-	if templateFSCmd("%%", "foo") != "%%" {
-		t.Log(templateFSCmd("%%", "foo"))
-		t.Fatal("%% support")
-	}
-
-	if templateFSCmd("%%%", "foo") != "%%foo" {
-		t.Log(templateFSCmd("%%", "foo"))
-		t.Fatal("%%% sanity check")
-	}
-
-	if templateFSCmd("% test % test %", "foo") != "foo test foo test foo" {
-		t.Fatal("multiple substitution")
-	}
-
-	if templateFSCmd("% %% %", "foo") != "foo %% foo" {
-		t.Fatal("escaped plus regular %")
-	}
-
-	if templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1") != "mkfs.ext4 -m0 /dev/sda1" {
-		t.Fatal("'real' command test")
-	}
+func (s cephSuite) TestTemplateFSCmd(c *C) {
+	c.Assert(templateFSCmd("%", "foo"), Equals, "foo")
+	c.Assert(templateFSCmd("%%", "foo"), Equals, "%%")
+	c.Assert(templateFSCmd("%%%", "foo"), Equals, "%%foo")
+	c.Assert(templateFSCmd("% test % test %", "foo"), Equals, "foo test foo test foo")
+	c.Assert(templateFSCmd("% %% %", "foo"), Equals, "foo %% foo")
+	c.Assert(templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1"), Equals, "mkfs.ext4 -m0 /dev/sda1")
 }
