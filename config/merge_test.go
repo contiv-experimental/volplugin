@@ -1,8 +1,18 @@
 package config
 
-import "testing"
+import (
+	. "testing"
 
-func TestMerge(t *testing.T) {
+	. "gopkg.in/check.v1"
+)
+
+type mergeSuite struct{}
+
+var _ = Suite(&mergeSuite{})
+
+func TestMerge(t *T) { TestingT(t) }
+
+func (s mergeSuite) TestMerge(c *C) {
 	v := VolumeOptions{}
 	opts := map[string]string{
 		"size":                "10",
@@ -11,23 +21,9 @@ func TestMerge(t *testing.T) {
 		"snapshots.keep":      "20",
 	}
 
-	if err := mergeOpts(&v, opts); err != nil {
-		t.Fatal(err)
-	}
-
-	if v.UseSnapshots {
-		t.Fatal("snapshots was not populated according to schema")
-	}
-
-	if v.Size != 10 {
-		t.Fatal("size was not populated according to schema")
-	}
-
-	if v.Snapshot.Keep != 20 {
-		t.Fatal("snapshots.keep was not populated according to schema")
-	}
-
-	if v.Snapshot.Frequency != "10m" {
-		t.Fatal("snapshots.frequency was not populated according to schema")
-	}
+	c.Assert(mergeOpts(&v, opts), IsNil)
+	c.Assert(v.UseSnapshots, Equals, false)
+	c.Assert(v.Size, Equals, uint64(10))
+	c.Assert(v.Snapshot.Keep, Equals, uint(20))
+	c.Assert(v.Snapshot.Frequency, Equals, "10m")
 }
