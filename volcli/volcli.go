@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -101,7 +102,7 @@ func TenantList(ctx *cli.Context) {
 	}
 
 	for _, tenant := range tenants {
-		fmt.Println(tenant)
+		fmt.Println(path.Base(tenant))
 	}
 }
 

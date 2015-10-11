@@ -56,7 +56,7 @@ run-build: godep
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
-	godep go test -v ./systemtests
+	godep go test -v ./systemtests -check.vv
 
 volplugin-start:
 	pkill volplugin || exit 0

@@ -2,104 +2,58 @@ package systemtests
 
 import (
 	"strings"
-	"testing"
+
+	. "gopkg.in/check.v1"
 )
 
-func TestStarted(t *testing.T) {
-	if err := nodeMap["mon0"].RunCommand("pgrep -c volmaster"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := runSSH("pgrep -c volplugin"); err != nil {
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestStarted(c *C) {
+	c.Assert(s.nodeMap["mon0"].RunCommand("pgrep -c volmaster"), IsNil)
+	c.Assert(s.runSSH("pgrep -c volplugin"), IsNil)
 }
 
-func TestSSH(t *testing.T) {
-	if err := runSSH("/bin/echo"); err != nil {
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestSSH(c *C) {
+	c.Assert(s.runSSH("/bin/echo"), IsNil)
 }
 
-func TestVolumeCreate(t *testing.T) {
-	defer purgeVolumeHost("tenant1", "mon0", true)
-	if err := createVolumeHost("tenant1", "mon0", nil); err != nil {
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestVolumeCreate(c *C) {
+	defer s.purgeVolumeHost("tenant1", "mon0", true)
+	c.Assert(s.createVolumeHost("tenant1", "mon0", nil), IsNil)
 }
 
-func TestVolumeCreateMultiHost(t *testing.T) {
+func (s *systemtestSuite) TestVolumeCreateMultiHost(c *C) {
 	hosts := []string{"mon0", "mon1", "mon2"}
 	defer func() {
 		for _, host := range hosts {
-			purgeVolumeHost("tenant1", host, true)
+			s.purgeVolumeHost("tenant1", host, true)
 		}
 	}()
 
 	for _, host := range []string{"mon0", "mon1", "mon2"} {
-		if err := createVolumeHost("tenant1", host, nil); err != nil {
-			t.Fatal(err)
-		}
+		c.Assert(s.createVolumeHost("tenant1", host, nil), IsNil)
 	}
 }
 
-func TestVolumeCreateMultiHostCrossHostMount(t *testing.T) {
-	if err := rebootstrap(); err != nil {
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestVolumeCreateMultiHostCrossHostMount(c *C) {
+	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 
-	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	_, err := s.nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`)
+	c.Assert(err, IsNil)
+	defer s.purgeVolume("mon0", "tenant1", "test", true) // cleanup
+	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	if err := createVolume("mon0", "tenant1", "test", nil); err != nil {
-		t.Fatal(err)
-	}
+	out, err := s.nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "bar")
 
-	if out, err := nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`); err != nil {
-		t.Log(out)
-		purgeVolume("mon0", "tenant1", "test", true) // cleanup
-		t.Fatal(err)
-	}
+	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	if err := createVolume("mon1", "tenant1", "test", nil); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`)
+	c.Assert(err, IsNil)
 
-	out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
-	if err != nil {
-		t.Log(out)
-		purgeVolume("mon1", "tenant1", "test", true) // cleanup
-		t.Fatal(err)
-	}
+	c.Assert(s.createVolume("mon2", "tenant1", "test", nil), IsNil)
+	defer s.purgeVolume("mon2", "tenant1", "test", true)
 
-	if strings.TrimSpace(out) != "bar" {
-		t.Fatalf("output did not equal expected result: %q", out)
-	}
-
-	if err := createVolume("mon1", "tenant1", "test", nil); err != nil {
-		t.Fatal(err)
-	}
-
-	if out, err := nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`); err != nil {
-		t.Log(out)
-		purgeVolume("mon1", "tenant1", "test", true) // cleanup
-		t.Fatal(err)
-	}
-
-	if err := createVolume("mon2", "tenant1", "test", nil); err != nil {
-		t.Fatal(err)
-	}
-	defer purgeVolume("mon2", "tenant1", "test", true)
-
-	out, err = nodeMap["mon2"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
-	if err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
-
-	if strings.TrimSpace(out) != "quux" {
-		t.Fatalf("output did not equal expected result: %q", out)
-	}
+	out, err = s.nodeMap["mon2"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "quux")
 }

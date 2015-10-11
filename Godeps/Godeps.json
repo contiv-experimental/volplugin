@@ -54,6 +54,10 @@
 		{
 			"ImportPath": "golang.org/x/sys/unix",
 			"Rev": "342d6a85aa15bcd2ec54803cdffe90d52b6f35a7"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "11d3bc7aa68e238947792f30573146a3231fc0f1"
 		}
 	]
 }
