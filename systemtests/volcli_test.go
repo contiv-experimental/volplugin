@@ -2,309 +2,179 @@ package systemtests
 
 import (
 	"encoding/json"
-	"reflect"
 	"strings"
-	. "testing"
+
+	. "gopkg.in/check.v1"
 
 	"github.com/contiv/volplugin/config"
 )
 
-func TestVolCLITenant(t *T) {
-	intent1, err := readIntent("testdata/intent1.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestVolCLITenant(c *C) {
+	intent1, err := s.readIntent("testdata/intent1.json")
+	c.Assert(err, IsNil)
 
-	intent2, err := readIntent("testdata/intent2.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	intent2, err := s.readIntent("testdata/intent2.json")
+	c.Assert(err, IsNil)
 
-	if _, err := volcli("tenant upload test1 < /testdata/intent1.json"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("tenant upload test1 < /testdata/intent1.json")
+	c.Assert(err, IsNil)
 
 	defer func() {
-		if _, err := volcli("tenant delete test1"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := s.volcli("tenant delete test1")
+		c.Assert(err, IsNil)
 
-		if _, err := volcli("tenant get test1"); err == nil {
-			t.Fatal("Tenant #1 was not actually deleted after deletion command")
-		}
+		_, err = s.volcli("tenant get test1")
+		c.Assert(err, NotNil)
 	}()
 
-	if _, err := volcli("tenant upload test2 < /testdata/intent2.json"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("tenant upload test2 < /testdata/intent2.json")
+	c.Assert(err, IsNil)
 
 	defer func() {
-		if _, err := volcli("tenant delete test2"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := s.volcli("tenant delete test2")
+		c.Assert(err, IsNil)
 
-		if _, err := volcli("tenant get test2"); err == nil {
-			t.Fatal("Tenant #2 was not actually deleted after deletion command")
-		}
+		_, err = s.volcli("tenant get test2")
+		c.Assert(err, NotNil)
 	}()
 
-	out, err := volcli("tenant get test1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	out, err := s.volcli("tenant get test1")
+	c.Assert(err, IsNil)
 
 	intentTarget := &config.TenantConfig{}
-
-	if err := json.Unmarshal([]byte(out), intentTarget); err != nil {
-		t.Fatal(err)
-	}
-
+	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
-	if !reflect.DeepEqual(intent1, intentTarget) {
-		t.Fatal("Intent #1 did not equal retrieved value from etcd")
-	}
+	c.Assert(intent1, DeepEquals, intentTarget)
+	c.Assert(err, IsNil)
 
-	out, err = volcli("tenant get test2")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	out, err = s.volcli("tenant get test2")
+	c.Assert(err, IsNil)
 	intentTarget = &config.TenantConfig{}
 
-	if err := json.Unmarshal([]byte(out), intentTarget); err != nil {
-		t.Fatal(err)
-	}
-
+	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+	c.Assert(intent2, DeepEquals, intentTarget)
 
-	if !reflect.DeepEqual(intent2, intentTarget) {
-		t.Fatal("Intent #2 did not equal retrieved value from etcd")
-	}
+	out, err = s.volcli("tenant list")
+	c.Assert(err, IsNil)
 
-	out, err = volcli("tenant list")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// matches assertion below doesn't handle newlines too well
+	out = strings.Replace(out, "\n", " ", -1)
 
-	if !strings.Contains(out, "test1") {
-		t.Fatal("Output from `tenant list` did not include tenant test1")
-	}
-
-	if !strings.Contains(out, "test2") {
-		t.Fatal("Output from `tenant list` did not include tenant test2")
-	}
+	c.Assert(out, Matches, ".*test1.*")
+	c.Assert(out, Matches, ".*test2.*")
 }
 
-func TestVolCLIVolume(t *T) {
-	if err := rebootstrap(); err != nil {
-		t.Fatal(err)
-	}
-
-	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if _, err := volcli("tenant delete tenant1"); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
+func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	// XXX note that this is removed as a standard part of the tests and may error,
 	// so we don't check it.
-	defer volcli("volume remove tenant1 foo")
+	defer s.volcli("volume remove tenant1 foo")
 
-	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
-		t.Fatal(err)
-	}
+	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
-	if out, err := docker("run --rm -v tenant1/foo:/mnt ubuntu ls"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	_, err := s.docker("run --rm -v tenant1/foo:/mnt ubuntu ls")
+	c.Assert(err, IsNil)
 
-	out, err := volcli("volume list tenant1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	out, err := s.volcli("volume list tenant1")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "foo")
 
-	if !strings.Contains(out, "foo") {
-		t.Fatal("Did not find volume after creation")
-	}
+	out, err = s.volcli("volume list-all")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1")
 
-	out, err = volcli("volume list-all")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !strings.Contains(out, "tenant1") {
-		t.Fatal(err)
-	}
-
-	out, err = volcli("volume get tenant1 foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	out, err = s.volcli("volume get tenant1 foo")
+	c.Assert(err, IsNil)
 
 	cfg := &config.VolumeConfig{}
 
-	if err := json.Unmarshal([]byte(out), cfg); err != nil {
-		t.Fatal(err)
-	}
+	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 
 	cfg.Options.FileSystem = "ext4"
 
-	intent1, err := readIntent("testdata/intent1.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	intent1, err := s.readIntent("testdata/intent1.json")
+	c.Assert(err, IsNil)
 
 	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
 	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 
-	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, *cfg.Options) {
-		t.Log(intent1.DefaultVolumeOptions)
-		t.Log(cfg.Options)
-		t.Fatal("Tenant configuration did not equal volume configuration, yet no tenant changes were made")
-	}
+	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 
-	if _, err := volcli("volume remove tenant1 foo"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume remove tenant1 foo")
+	c.Assert(err, IsNil)
 
-	if out, err := volcli("volume create tenant1 foo"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume create tenant1 foo")
+	c.Assert(err, IsNil)
 
-	if out, err := volcli("volume remove tenant1 foo"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume remove tenant1 foo")
+	c.Assert(err, IsNil)
 
-	if _, err := volcli("volume get tenant1 foo"); err == nil {
-		t.Fatal("No error getting removed volume")
-	}
+	_, err = s.volcli("volume get tenant1 foo")
+	c.Assert(err, NotNil)
 
-	if out, _ := volcli("volume create tenant1 foo --opt snapshots=false"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume create tenant1 foo --opt snapshots=false")
+	c.Assert(err, IsNil)
 
-	out, err = volcli("volume get tenant1 foo")
-	if err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	out, err = s.volcli("volume get tenant1 foo")
+	c.Assert(err, IsNil)
 
 	cfg = &config.VolumeConfig{}
-
-	if err := json.Unmarshal([]byte(out), cfg); err != nil {
-		t.Fatal(err)
-	}
-
+	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 	cfg.Options.FileSystem = "ext4"
-
-	intent1, err = readIntent("testdata/intent1.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	intent1, err = s.readIntent("testdata/intent1.json")
+	c.Assert(err, IsNil)
 	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
 	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 	intent1.DefaultVolumeOptions.UseSnapshots = false
-
-	if !reflect.DeepEqual(intent1.DefaultVolumeOptions, *cfg.Options) {
-		t.Log(intent1.DefaultVolumeOptions)
-		t.Log(cfg.Options)
-		t.Fatal("Tenant configuration did not equal volume configuration after passing volume options")
-	}
+	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 }
 
-func TestVolCLIMount(t *T) {
-	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+func (s *systemtestSuite) TestVolCLIMount(c *C) {
+	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
-	if err := createVolume("mon0", "tenant1", "foo", nil); err != nil {
-		t.Fatal(err)
-	}
+	id, err := s.docker("run -itd -v tenant1/foo:/mnt ubuntu sleep infinity")
+	c.Assert(err, IsNil)
 
-	id, err := docker("run -itd -v tenant1/foo:/mnt ubuntu sleep infinity")
-	if err != nil {
-		t.Log(id) // error output
-		t.Fatal(err)
-	}
+	defer s.volcli("volume remove tenant1 foo")
+	defer s.docker("volume rm tenant1/foo")
+	defer s.docker("rm -f " + id)
 
-	defer volcli("volume remove tenant1 foo")
-	defer docker("volume rm tenant1/foo")
-	defer docker("rm -f " + id)
+	out, err := s.volcli("mount list")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "rbd/foo")
 
-	out, err := volcli("mount list")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !strings.Contains(out, "foo") {
-		t.Fatal("could not find mount")
-	}
-
-	out, err = volcli("mount get rbd foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	out, err = s.volcli("mount get rbd foo")
+	c.Assert(err, IsNil)
 
 	mt := &config.MountConfig{}
+	c.Assert(json.Unmarshal([]byte(out), mt), IsNil)
+	c.Assert(mt.Volume, Equals, "foo")
+	c.Assert(mt.Pool, Equals, "rbd")
+	c.Assert(mt.Host, Equals, "ceph-mon0")
+	c.Assert(mt.MountPoint, Equals, "/mnt/ceph/rbd/foo")
 
-	if err := json.Unmarshal([]byte(out), mt); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("mount force-remove rbd foo")
+	c.Assert(err, IsNil)
 
-	if mt.Volume != "foo" ||
-		mt.Pool != "rbd" ||
-		mt.Host != "ceph-mon0" ||
-		mt.MountPoint != "/mnt/ceph/rbd/foo" {
-		t.Log(mt)
-		t.Fatal("Data from mount did not match expectation")
-	}
-
-	if _, err := volcli("mount force-remove rbd foo"); err != nil {
-		t.Fatal(err)
-	}
-
-	out, err = volcli("mount list")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if strings.Contains(out, "foo") {
-		t.Fatal("mount should not exist, still does")
-	}
+	out, err = s.volcli("mount list")
+	c.Assert(err, IsNil)
+	c.Assert(out, Equals, "")
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
-	defer purgeVolume("mon0", "tenant1", "foo", true)
-	if out, err := volcli("volume create tenant1 foo"); err != nil {
-		t.Log(out)
-		t.Fatal(err)
-	}
+	defer s.purgeVolume("mon0", "tenant1", "foo", true)
+	_, err = s.volcli("volume create tenant1 foo")
+	c.Assert(err, IsNil)
 
 	// ensure that double-create does nothing (for now, at least)
-	if _, err := volcli("volume create tenant1 foo"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume create tenant1 foo")
+	c.Assert(err, IsNil)
 
-	out, err = volcli("volume get tenant1 foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err = s.volcli("volume get tenant1 foo")
+	c.Assert(err, IsNil)
 
 	// this test should never fail; we should always fail because of an exit code
 	// instead, which would happen above.
-	if out == "" {
-		t.Fatal("Received no information")
-	}
+	c.Assert(out, Equals, "")
 }

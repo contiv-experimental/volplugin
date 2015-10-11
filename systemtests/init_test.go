@@ -5,92 +5,73 @@ import (
 	"strings"
 	. "testing"
 
+	. "gopkg.in/check.v1"
+
 	log "github.com/Sirupsen/logrus"
 	utils "github.com/contiv/systemtests-utils"
 )
 
-var (
-	vagrant = utils.Vagrant{}
-	nodeMap = map[string]utils.TestbedNode{}
-)
-
-func setNodeMap() {
-	for _, node := range vagrant.GetNodes() {
-		nodeMap[node.GetName()] = node
-	}
+type systemtestSuite struct {
+	vagrant utils.Vagrant
+	nodeMap map[string]utils.TestbedNode
 }
 
-func TestMain(m *M) {
+var _ = Suite(&systemtestSuite{})
+
+func TestSystem(t *T) {
 	if os.Getenv("HOST_TEST") != "" {
 		os.Exit(0)
 	}
 
-	log.Infof("Bootstrapping system tests")
+	TestingT(t)
+}
 
-	if err := vagrant.Setup(false, "", 3); err != nil {
-		log.Fatalf("Vagrant is not working or nodes are not available: %v", err)
+func (s *systemtestSuite) SetUpTest(c *C) {
+	c.Assert(s.rebootstrap(), IsNil)
+}
+
+func (s *systemtestSuite) TearDownTest(c *C) {
+	if os.Getenv("CONTIV_SOE") != "" {
+		log.Infof("SOE set. Terminating immediately")
+		os.Exit(1)
 	}
+}
 
-	setNodeMap()
-
-	if err := restartDocker(); err != nil {
-		log.Fatalf("Could not restart docker")
-	}
-
-	if err := clearContainers(); err != nil && !strings.Contains(err.Error(), "Process exited with: 123") {
-		log.Fatalf("Could not clean up containers: %#v", err)
-	}
-
-	if err := clearVolumes(); err != nil && !strings.Contains(err.Error(), "Process exited with: 1") {
-		log.Fatalf("Could not clear volumes for docker")
-	}
-
-	if err := pullUbuntu(); err != nil {
-		log.Fatalf("Could not pull necessary ubuntu docker image")
-	}
-
-	// rebootstrap to avoid leaving state around from cleanups
-	if err := rebootstrap(); err != nil {
-		log.Fatalf("Could not rebootstrap: %v", err)
-	}
-
-	if out, err := uploadIntent("tenant1", "intent1"); err != nil {
-		log.Error(out)
-		log.Fatalf("Could not upload tenant1 intent: %v", err)
-	}
-
-	exitCode := m.Run()
-
+func (s *systemtestSuite) TearDownSuite(c *C) {
 	if os.Getenv("NO_TEARDOWN") != "" {
-		os.Exit(exitCode)
+		os.Exit(0)
 	}
 
 	log.Infof("Tearing down system test facilities")
 
-	clearContainers()
-	clearVolumes()
-	restartDocker()
+	s.clearContainers()
+	s.clearVolumes()
+	s.restartDocker()
 
-	if err := stopVolplugin(); err != nil {
-		log.Errorf("Volplugin could not be stopped: %v", err)
-		if exitCode == 0 {
-			exitCode = 1
-		}
+	c.Assert(s.stopVolplugin(), IsNil)
+	c.Assert(s.stopVolmaster(), IsNil)
+	c.Assert(s.stopEtcd(), IsNil)
+}
+
+func (s *systemtestSuite) SetUpSuite(c *C) {
+	log.Infof("Bootstrapping system tests")
+
+	s.nodeMap = map[string]utils.TestbedNode{}
+	s.vagrant = utils.Vagrant{}
+	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
+	for _, node := range s.vagrant.GetNodes() {
+		s.nodeMap[node.GetName()] = node
 	}
 
-	if err := stopVolmaster(); err != nil {
-		log.Errorf("Volmaster could not be stopped: %v", err)
-		if exitCode == 0 {
-			exitCode = 1
-		}
+	c.Assert(s.restartDocker(), IsNil)
+	err := s.clearContainers()
+	if err != nil && !strings.Contains(err.Error(), "Process exited with: 123") {
+		c.Fatal(err)
 	}
 
-	if err := stopEtcd(); err != nil {
-		log.Errorf("etcd could not be stopped: %v", err)
-		if exitCode == 0 {
-			exitCode = 1
-		}
-	}
+	c.Assert(s.pullUbuntu(), IsNil)
+	c.Assert(s.rebootstrap(), IsNil)
 
-	os.Exit(exitCode)
+	_, err = s.uploadIntent("tenant1", "intent1")
+	c.Assert(err, IsNil)
 }
