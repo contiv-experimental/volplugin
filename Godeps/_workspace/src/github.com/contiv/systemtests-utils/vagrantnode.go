@@ -18,14 +18,16 @@ package utils
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 
 	"golang.org/x/crypto/ssh"
 )
 
 // VagrantNode implements a node in vagrant testbed
 type VagrantNode struct {
-	Name   string
-	client *ssh.Client
+	Name      string
+	primaryIP net.IP
+	client    *ssh.Client
 }
 
 //NewVagrantNode intializes a node in vagrant testbed
