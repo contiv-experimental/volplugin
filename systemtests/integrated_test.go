@@ -25,7 +25,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 
 	time.Sleep(2 * time.Second)
 
-	out, err := s.nodeMap["mon0"].RunCommandWithOutput("sudo rbd snap ls foo")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls foo")
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.Split(out, "\n")), Not(Equals), 0)
 }
@@ -33,7 +33,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 func (s *systemtestSuite) TestHostLabel(c *C) {
 	c.Assert(s.stopVolplugin(), IsNil)
 
-	_, err := s.nodeMap["mon0"].RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug tenant1")
+	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug tenant1")
 	c.Assert(err, IsNil)
 
 	time.Sleep(10 * time.Millisecond)
@@ -67,20 +67,20 @@ func (s *systemtestSuite) TestMountLock(c *C) {
 	defer s.clearContainers()
 
 	dockerCmd := "docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"
-	c.Assert(s.nodeMap["mon0"].RunCommand(dockerCmd), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
 
 	for _, nodeName := range []string{"mon1", "mon2"} {
-		_, err := s.nodeMap[nodeName].RunCommandWithOutput(dockerCmd)
+		_, err := s.vagrant.GetNode(nodeName).RunCommandWithOutput(dockerCmd)
 		c.Assert(err, NotNil)
 	}
 
 	c.Assert(s.clearContainers(), IsNil)
-	c.Assert(s.nodeMap["mon1"].RunCommand(dockerCmd), IsNil)
+	c.Assert(s.vagrant.GetNode("mon1").RunCommand(dockerCmd), IsNil)
 
 	defer s.purgeVolume("mon1", "tenant1", "test", false)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
-		_, err := s.nodeMap[nodeName].RunCommandWithOutput(dockerCmd)
+		_, err := s.vagrant.GetNode(nodeName).RunCommandWithOutput(dockerCmd)
 		c.Assert(err, NotNil)
 	}
 }
@@ -134,11 +134,11 @@ func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
 	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
-	c.Assert(s.nodeMap["mon0"].RunCommand("docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
 
 	defer s.clearContainers()
 
-	out, err := s.nodeMap["mon0"].RunCommandWithOutput("mount -l -t btrfs")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
 	c.Assert(err, IsNil)
 
 	lines := strings.Split(out, "\n")
@@ -156,9 +156,9 @@ func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
 
 	defer s.purgeVolume("mon0", "tenant1", "testext4", true)
 
-	c.Assert(s.nodeMap["mon0"].RunCommand("docker run -d -v tenant1/testext4:/mnt ubuntu sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant1/testext4:/mnt ubuntu sleep infinity"), IsNil)
 
-	out, err = s.nodeMap["mon0"].RunCommandWithOutput("mount -l -t ext4")
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
 	c.Assert(err, IsNil)
 
 	lines = strings.Split(out, "\n")

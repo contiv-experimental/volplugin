@@ -7,12 +7,12 @@ import (
 )
 
 func (s *systemtestSuite) TestStarted(c *C) {
-	c.Assert(s.nodeMap["mon0"].RunCommand("pgrep -c volmaster"), IsNil)
-	c.Assert(s.runSSH("pgrep -c volplugin"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("pgrep -c volmaster"), IsNil)
+	c.Assert(s.vagrant.SSHAllNodes("pgrep -c volplugin"), IsNil)
 }
 
 func (s *systemtestSuite) TestSSH(c *C) {
-	c.Assert(s.runSSH("/bin/echo"), IsNil)
+	c.Assert(s.vagrant.SSHAllNodes("/bin/echo"), IsNil)
 }
 
 func (s *systemtestSuite) TestVolumeCreate(c *C) {
@@ -36,24 +36,24 @@ func (s *systemtestSuite) TestVolumeCreateMultiHost(c *C) {
 func (s *systemtestSuite) TestVolumeCreateMultiHostCrossHostMount(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 
-	_, err := s.nodeMap["mon0"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`)
+	_, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo bar >/mnt/foo"`)
 	c.Assert(err, IsNil)
 	defer s.purgeVolume("mon0", "tenant1", "test", true) // cleanup
 	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	out, err := s.nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	out, err := s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "bar")
 
 	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	_, err = s.nodeMap["mon1"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`)
+	_, err = s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "echo quux >/mnt/foo"`)
 	c.Assert(err, IsNil)
 
 	c.Assert(s.createVolume("mon2", "tenant1", "test", nil), IsNil)
 	defer s.purgeVolume("mon2", "tenant1", "test", true)
 
-	out, err = s.nodeMap["mon2"].RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
+	out, err = s.vagrant.GetNode("mon2").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt ubuntu sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "quux")
 }

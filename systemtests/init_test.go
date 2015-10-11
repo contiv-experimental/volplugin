@@ -50,7 +50,7 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 
 	c.Assert(s.stopVolplugin(), IsNil)
 	c.Assert(s.stopVolmaster(), IsNil)
-	c.Assert(s.stopEtcd(), IsNil)
+	c.Assert(utils.StopEtcd(s.vagrant.GetNode("mon0")), IsNil)
 }
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
