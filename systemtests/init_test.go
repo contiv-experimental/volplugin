@@ -40,7 +40,7 @@ func (s *systemtestSuite) TearDownTest(c *C) {
 }
 
 func (s *systemtestSuite) TearDownSuite(c *C) {
-	if os.Getenv("NO_TEARDOWN") != "" {
+	if os.Getenv("NO_TEARDOWN") != "" || os.Getenv("CONTIV_SOE") != "" {
 		os.Exit(0)
 	}
 
@@ -55,7 +55,7 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 
 	reversedNodes := []utils.TestbedNode{}
 
-	for i := len(orderedNodes); i > 0; i-- {
+	for i := len(orderedNodes) - 1; i > -1; i-- {
 		reversedNodes = append(reversedNodes, orderedNodes[i])
 	}
 
