@@ -10,7 +10,7 @@ import (
 // StopEtcd stops etcd on a specific host
 func StopEtcd(nodes []TestbedNode) error {
 	for _, node := range nodes {
-		log.Infof("Stopping etcd")
+		log.Infof("Stopping etcd on node %s", node.GetName())
 
 		if err := node.RunCommand("sudo systemctl stop etcd; rm -rf /var/lib/etcd"); err != nil {
 			return err
