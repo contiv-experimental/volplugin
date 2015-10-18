@@ -1,10 +1,6 @@
 package config
 
-import (
-	"fmt"
-
-	. "gopkg.in/check.v1"
-)
+import . "gopkg.in/check.v1"
 
 var testTenantConfigs = map[string]*TenantConfig{
 	"basic": &TenantConfig{
@@ -23,6 +19,14 @@ var testTenantConfigs = map[string]*TenantConfig{
 			FileSystem:   defaultFilesystem,
 		},
 		DefaultPool: "rbd",
+		FileSystems: defaultFilesystems,
+	},
+	"nopool": &TenantConfig{
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         20,
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
 		FileSystems: defaultFilesystems,
 	},
 }
@@ -44,7 +48,6 @@ func (s *configSuite) TestBasicTenant(c *C) {
 	c.Assert(err, IsNil)
 
 	for _, tenant := range tenants {
-		fmt.Println(tenant)
 		found := false
 		for _, name := range []string{"bar", "quux"} {
 			if tenant == name {
@@ -62,4 +65,12 @@ func (s *configSuite) TestBasicTenant(c *C) {
 	cfg, err = s.tlc.GetTenant("quux")
 	c.Assert(err, IsNil)
 	c.Assert(cfg, DeepEquals, testTenantConfigs["basic"])
+}
+
+func (s *configSuite) TestTenantValidate(c *C) {
+	for _, key := range []string{"basic", "basic2"} {
+		c.Assert(testTenantConfigs[key].Validate(), IsNil)
+	}
+
+	c.Assert(testTenantConfigs["nopool"].Validate(), NotNil)
 }
