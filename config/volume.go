@@ -168,5 +168,13 @@ func (opts *VolumeOptions) Validate() error {
 
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *VolumeConfig) Validate() error {
+	if cfg.VolumeName == "" {
+		return fmt.Errorf("Volume Name was omitted")
+	}
+
+	if cfg.Options == nil {
+		return fmt.Errorf("Options were omitted from volume creation")
+	}
+
 	return cfg.Options.Validate()
 }
