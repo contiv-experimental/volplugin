@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"path"
 )
 
 // TenantConfig is the configuration of the tenant. It includes default
@@ -76,7 +76,7 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	tenants := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		tenants = append(tenants, strings.TrimPrefix(node.Key, c.prefixed(rootTenant)))
+		tenants = append(tenants, path.Base(node.Key))
 	}
 
 	return tenants, nil
