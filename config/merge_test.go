@@ -1,18 +1,10 @@
 package config
 
 import (
-	. "testing"
-
 	. "gopkg.in/check.v1"
 )
 
-type mergeSuite struct{}
-
-var _ = Suite(&mergeSuite{})
-
-func TestMerge(t *T) { TestingT(t) }
-
-func (s mergeSuite) TestMerge(c *C) {
+func (s *configSuite) TestMerge(c *C) {
 	v := VolumeOptions{}
 	opts := map[string]string{
 		"size":                "10",
