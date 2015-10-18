@@ -1,0 +1,11 @@
+---
+# This role contains tasks for configuring and starting etcd service
+
+- name: copy the etcd start/stop script
+  template: src=etcd.j2 dest=/usr/bin/etcd.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for etcd
+  copy: src=etcd.service dest=/etc/systemd/system/etcd.service
+
+- name: start etcd
+  shell: systemctl daemon-reload && systemctl start etcd

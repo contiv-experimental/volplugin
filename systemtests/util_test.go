@@ -95,22 +95,22 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
 	s.clearVolumes()
+	s.vagrant.IterateNodes(stopVolplugin)
+	s.vagrant.IterateNodes(stopVolmaster)
 	s.clearRBD()
-	s.stopVolplugin()
-	s.stopVolmaster()
-	utils.StopEtcd(s.vagrant.GetNode("mon0"))
+	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
 
-	if err := utils.StartEtcd(s.vagrant.GetNode("mon0")); err != nil {
+	if err := startVolmaster(s.vagrant.GetNode("mon0")); err != nil {
 		return err
 	}
 
-	if err := s.startVolmaster(); err != nil {
+	time.Sleep(100 * time.Millisecond)
+
+	if err := s.vagrant.IterateNodes(startVolplugin); err != nil {
 		return err
 	}
 
-	if err := s.startVolplugin(); err != nil {
-		return err
-	}
+	time.Sleep(100 * time.Millisecond)
 
 	_, err := s.uploadIntent("tenant1", "intent1")
 	if err != nil {
@@ -149,49 +149,35 @@ func (s *systemtestSuite) pullUbuntu() error {
 	}
 }
 
-func (s *systemtestSuite) startVolmaster() error {
-	log.Infof("Starting the volmaster")
-	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
-
+func startVolmaster(node utils.TestbedNode) error {
+	log.Infof("Starting the volmaster on %s", node.GetName())
+	_, err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
 	time.Sleep(10 * time.Millisecond)
 	return err
 }
 
-func (s *systemtestSuite) stopVolmaster() error {
-	log.Infof("Stopping the volmaster")
-	return s.vagrant.GetNode("mon0").RunCommand("sudo pkill volmaster")
+func stopVolmaster(node utils.TestbedNode) error {
+	log.Infof("Stopping the volmaster on %s", node.GetName())
+	return node.RunCommand("sudo pkill volmaster")
 }
 
-func (s *systemtestSuite) startVolplugin() error {
-	// don't sleep if we error, but wait for volplugin to bootstrap if we don't.
-	if err := s.vagrant.IterateNodes(s.volpluginStart); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *systemtestSuite) stopVolplugin() error {
-	return s.vagrant.IterateNodes(s.volpluginStop)
-}
-
-func (s *systemtestSuite) volpluginStart(node utils.TestbedNode) error {
+func startVolplugin(node utils.TestbedNode) error {
 	log.Infof("Starting the volplugin on %q", node.GetName())
 	defer time.Sleep(10 * time.Millisecond)
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --master 192.168.24.10:8080 tenant1 &>/tmp/volplugin.log &")
+	_, err := node.RunCommandBackground("sudo -E `which volplugin` --master 192.168.24.10:8080 --debug tenant1 &>/tmp/volplugin.log &")
 	return err
 }
 
-func (s *systemtestSuite) volpluginStop(node utils.TestbedNode) error {
+func stopVolplugin(node utils.TestbedNode) error {
 	log.Infof("Stopping the volplugin on %q", node.GetName())
 	return node.RunCommand("sudo pkill volplugin")
 }
 
-func (s *systemtestSuite) restartDockerHost(node utils.TestbedNode) error {
+func restartDockerHost(node utils.TestbedNode) error {
 	log.Infof("Restarting docker on %q", node.GetName())
 	// note that for all these restart tasks we error out quietly to avoid other
 	// hosts being cleaned up
@@ -200,7 +186,7 @@ func (s *systemtestSuite) restartDockerHost(node utils.TestbedNode) error {
 }
 
 func (s *systemtestSuite) restartDocker() error {
-	return s.vagrant.IterateNodes(s.restartDockerHost)
+	return s.vagrant.IterateNodes(restartDockerHost)
 }
 
 func (s *systemtestSuite) clearContainerHost(node utils.TestbedNode) error {

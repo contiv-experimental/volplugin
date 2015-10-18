@@ -5,6 +5,10 @@
 # Dummy variable to avoid error because ansible does not recognize the file as a good configuration file when no variable in it.
 dummy:
 
+node_name: "{{ ansible_hostname }}"
+node_addr: "{{ ansible_enp0s8.ipv4.address }}" 
+online_master_addr: "192.168.24.10"
+
 ###########
 # GENERAL #
 ###########

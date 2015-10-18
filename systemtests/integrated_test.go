@@ -31,7 +31,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 }
 
 func (s *systemtestSuite) TestHostLabel(c *C) {
-	c.Assert(s.stopVolplugin(), IsNil)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 
 	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug tenant1")
 	c.Assert(err, IsNil)
