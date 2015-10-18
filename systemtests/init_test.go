@@ -52,7 +52,14 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 
 	c.Assert(s.vagrant.IterateNodes(stopVolplugin), IsNil)
 	c.Assert(stopVolmaster(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(utils.StopEtcd(orderedNodes), IsNil)
+
+	reversedNodes := []utils.TestbedNode{}
+
+	for i := len(orderedNodes); i > 0; i-- {
+		reversedNodes = append(reversedNodes, orderedNodes[i])
+	}
+
+	c.Assert(utils.StopEtcd(reversedNodes), IsNil)
 }
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
