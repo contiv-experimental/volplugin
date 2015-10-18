@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 )
 
@@ -144,9 +145,9 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	ret := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		key := strings.TrimPrefix(node.Key, c.prefixed(rootVolume))
-		// trim leading slash
-		ret = append(ret, key[1:])
+		for _, innerNode := range node.Nodes {
+			ret = append(ret, path.Join(path.Base(node.Key), path.Base(innerNode.Key)))
+		}
 	}
 
 	return ret, nil
