@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"path"
 	. "testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 )
@@ -17,17 +18,19 @@ var _ = Suite(&configSuite{})
 func TestConfig(t *T) { TestingT(t) }
 
 func (s *configSuite) SetUpTest(c *C) {
-	cmd := exec.Command("/bin/sh", "-c", "etcd -data-dir /tmp/etcd")
-	c.Assert(cmd.Start(), IsNil)
+	cmd := exec.Command("/bin/sh", "-c", "sudo systemctl start etcd")
+	c.Assert(cmd.Run(), IsNil)
+	time.Sleep(200 * time.Millisecond)
 }
 
 func (s *configSuite) TearDownTest(c *C) {
 	cmd := exec.Command("/bin/sh", "-c", "pkill etcd; rm -rf /tmp/etcd")
 	c.Assert(cmd.Run(), IsNil)
+	time.Sleep(200 * time.Millisecond)
 }
 
 func (s *configSuite) SetUpSuite(c *C) {
-	s.tlc = NewTopLevelConfig("/volplugin", []string{"127.0.0.1:2379"})
+	s.tlc = NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
 }
 
 func (s *configSuite) TestPrefixed(c *C) {
