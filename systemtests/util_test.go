@@ -96,7 +96,7 @@ func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
 	s.clearVolumes()
 	s.vagrant.IterateNodes(stopVolplugin)
-	s.vagrant.IterateNodes(stopVolmaster)
+	stopVolmaster(s.vagrant.GetNode("mon0"))
 	s.clearRBD()
 	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
 
