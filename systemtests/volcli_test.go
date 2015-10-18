@@ -82,7 +82,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	out, err = s.volcli("volume list-all")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1")
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
 
 	out, err = s.volcli("volume get tenant1 foo")
 	c.Assert(err, IsNil)
