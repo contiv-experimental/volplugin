@@ -24,7 +24,7 @@ func (s *configSuite) SetUpTest(c *C) {
 }
 
 func (s *configSuite) TearDownTest(c *C) {
-	cmd := exec.Command("/bin/sh", "-c", "pkill etcd; rm -rf /tmp/etcd")
+	cmd := exec.Command("/bin/sh", "-c", "pkill etcd; rm -rf /var/lib/etcd")
 	c.Assert(cmd.Run(), IsNil)
 	time.Sleep(200 * time.Millisecond)
 }

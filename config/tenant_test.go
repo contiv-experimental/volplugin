@@ -3,7 +3,7 @@ package config
 import . "gopkg.in/check.v1"
 
 var testTenantConfigs = map[string]*TenantConfig{
-	"basic": &TenantConfig{
+	"basic": {
 		DefaultVolumeOptions: VolumeOptions{
 			Size:         10,
 			UseSnapshots: false,
@@ -12,7 +12,7 @@ var testTenantConfigs = map[string]*TenantConfig{
 		DefaultPool: "rbd",
 		FileSystems: defaultFilesystems,
 	},
-	"basic2": &TenantConfig{
+	"basic2": {
 		DefaultVolumeOptions: VolumeOptions{
 			Size:         20,
 			UseSnapshots: false,
@@ -21,7 +21,7 @@ var testTenantConfigs = map[string]*TenantConfig{
 		DefaultPool: "rbd",
 		FileSystems: defaultFilesystems,
 	},
-	"nopool": &TenantConfig{
+	"nopool": {
 		DefaultVolumeOptions: VolumeOptions{
 			Size:         20,
 			UseSnapshots: false,
