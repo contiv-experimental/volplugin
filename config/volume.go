@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 )
 
@@ -144,9 +145,9 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	ret := []string{}
 
 	for _, node := range resp.Node.Nodes {
-		key := strings.TrimPrefix(node.Key, c.prefixed(rootVolume))
-		// trim leading slash
-		ret = append(ret, key[1:])
+		for _, innerNode := range node.Nodes {
+			ret = append(ret, path.Join(path.Base(node.Key), path.Base(innerNode.Key)))
+		}
 	}
 
 	return ret, nil
@@ -168,5 +169,13 @@ func (opts *VolumeOptions) Validate() error {
 
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *VolumeConfig) Validate() error {
+	if cfg.VolumeName == "" {
+		return fmt.Errorf("Volume Name was omitted")
+	}
+
+	if cfg.Options == nil {
+		return fmt.Errorf("Options were omitted from volume creation")
+	}
+
 	return cfg.Options.Validate()
 }

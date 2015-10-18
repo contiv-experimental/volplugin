@@ -37,7 +37,7 @@ godep:
 test: godep unit-test system-test
 
 unit-test: golint
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./..."'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./... -check.v"'
 
 build: golint
 	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
@@ -56,7 +56,7 @@ run-build: godep
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
-	godep go test -v ./systemtests -check.vv
+	godep go test -v ./systemtests -check.v
 
 volplugin-start:
 	pkill volplugin || exit 0
@@ -76,6 +76,9 @@ reflex-build: reflex
 
 reflex-test: reflex
 	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
+
+reflex-unit-test: reflex
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make unit-test
 
 reflex-docs: reflex install-docs
 	# for some reason reflex and the build-docs task don't play nicely
