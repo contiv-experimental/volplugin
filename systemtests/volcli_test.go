@@ -96,7 +96,6 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	intent1, err := s.readIntent("testdata/intent1.json")
 	c.Assert(err, IsNil)
 
-	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
 	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
@@ -124,7 +123,6 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	cfg.Options.FileSystem = "ext4"
 	intent1, err = s.readIntent("testdata/intent1.json")
 	c.Assert(err, IsNil)
-	intent1.DefaultVolumeOptions.Pool = intent1.DefaultPool
 	intent1.DefaultVolumeOptions.FileSystem = "ext4"
 	intent1.DefaultVolumeOptions.UseSnapshots = false
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)

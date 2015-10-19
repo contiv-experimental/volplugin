@@ -10,7 +10,6 @@ import (
 // information for items such as pool and volume configuration.
 type TenantConfig struct {
 	DefaultVolumeOptions VolumeOptions     `json:"default-options"`
-	DefaultPool          string            `json:"default-pool"`
 	FileSystems          map[string]string `json:"filesystems"`
 }
 
@@ -84,10 +83,6 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 
 // Validate ensures the structure of the tenant is sane.
 func (cfg *TenantConfig) Validate() error {
-	if cfg.DefaultPool == "" {
-		return fmt.Errorf("Default pool does not exist in new tenant")
-	}
-
 	if cfg.FileSystems == nil {
 		cfg.FileSystems = defaultFilesystems
 	}

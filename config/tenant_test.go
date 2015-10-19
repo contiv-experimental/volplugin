@@ -5,20 +5,20 @@ import . "gopkg.in/check.v1"
 var testTenantConfigs = map[string]*TenantConfig{
 	"basic": {
 		DefaultVolumeOptions: VolumeOptions{
+			Pool:         "rbd",
 			Size:         10,
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
 		},
-		DefaultPool: "rbd",
 		FileSystems: defaultFilesystems,
 	},
 	"basic2": {
 		DefaultVolumeOptions: VolumeOptions{
+			Pool:         "rbd",
 			Size:         20,
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
 		},
-		DefaultPool: "rbd",
 		FileSystems: defaultFilesystems,
 	},
 	"nopool": {

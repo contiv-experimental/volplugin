@@ -67,10 +67,6 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		vc.Options.FileSystem = defaultFilesystem
 	}
 
-	if vc.Options.Pool == "" {
-		vc.Options.Pool = resp.DefaultPool
-	}
-
 	remarshal, err := json.Marshal(vc)
 	if err != nil {
 		return nil, err
@@ -157,6 +153,10 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 // Validate options for a volume. Should be called anytime options are
 // considered.
 func (opts *VolumeOptions) Validate() error {
+	if opts.Pool == "" {
+		return fmt.Errorf("No Pool specified")
+	}
+
 	if opts.Size == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}

@@ -15,14 +15,14 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &VolumeConfig{
-		Options:    &VolumeOptions{Size: 10, UseSnapshots: false},
+		Options:    &VolumeOptions{Size: 10, UseSnapshots: false, Pool: "rbd"},
 		VolumeName: "",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &VolumeConfig{
-		Options:    &VolumeOptions{Size: 10, UseSnapshots: false},
+		Options:    &VolumeOptions{Size: 10, UseSnapshots: false, Pool: "rbd"},
 		VolumeName: "foo",
 	}
 
@@ -35,18 +35,18 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 
 	opts = &VolumeOptions{Size: 0}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: 10}
+	opts = &VolumeOptions{Size: 10, Pool: "rbd"}
 	c.Assert(opts.Validate(), IsNil)
 
-	opts = &VolumeOptions{Size: 10, UseSnapshots: true}
+	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Pool: "rbd"}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{}}
+	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{}, Pool: "rbd"}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}}
+	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}, Pool: "rbd"}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}}
+	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}, Pool: "rbd"}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}}
+	opts = &VolumeOptions{Size: 10, UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}, Pool: "rbd"}
 	c.Assert(opts.Validate(), IsNil)
 }
 
