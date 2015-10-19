@@ -72,6 +72,26 @@ func requestVolumeConfig(host, tenant, name string) (*config.VolumeConfig, error
 	return volConfig, nil
 }
 
+func requestRemove(host, tenant, name string) error {
+	content, err := json.Marshal(config.Request{Tenant: tenant, Volume: name})
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/remove", host), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return err
+	}
+
+	content, err = ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+	}
+
+	return nil
+}
+
 func requestCreate(host, tenantName, name string, opts map[string]string) error {
 	content, err := json.Marshal(config.RequestCreate{Tenant: tenantName, Volume: name, Opts: opts})
 	if err != nil {
