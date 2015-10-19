@@ -98,3 +98,4 @@ The options are as follows:
 * `snapshots.keep`: as above in the previous chapter, the number of snapshots to keep.
 * `filesystem`: the named filesystem to create. See the JSON Configuration
   section for more information on this.
+* `ephemeral`: delete this volume after `docker volume rm` occurs.
