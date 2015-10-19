@@ -22,7 +22,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
-			"Rev": "7bad8d9bbc1f6e1a678222acac4a6a82cef58769"
+			"Rev": "1215f757c6f4d45ed26fc17b855aca561b72536b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/etcdserver/etcdhttp/httptypes",
