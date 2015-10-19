@@ -22,10 +22,10 @@ The master/slave model allows us to support a number of features, such as:
 * Multiple pool management
 * Manage many kinds of filesystems, including providing mkfs commands.
 * Snapshot frequency and pruning
+* Ephemeral (removed on container teardown) volumes
 
 Currently planned, but unfinished features:
 
-* Ephemeral (removed on container teardown) volumes
 * IOPS limiting (via blkio cgroup)
 * Backup management (via shell commands/scripts with parameters)
 
