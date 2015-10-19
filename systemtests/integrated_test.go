@@ -193,3 +193,28 @@ func (s *systemtestSuite) TestMultiTenantVolumeCreate(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "foo")
 }
+
+func (s *systemtestSuite) TestEphemeralVolumes(c *C) {
+	_, err := s.uploadIntent("tenant1", "intent1")
+	c.Assert(err, IsNil)
+
+	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "true"}), IsNil)
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "test")
+
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Not(Equals), "test")
+
+	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "false"}), IsNil)
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "test")
+
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "test")
+}

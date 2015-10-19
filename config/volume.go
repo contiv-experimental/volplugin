@@ -21,6 +21,7 @@ type VolumeOptions struct {
 	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig `json:"snapshot"`
 	FileSystem   string         `json:"filesystem" merge:"filesystem"`
+	Ephemeral    bool           `json:"ephemeral,omitempty" merge:"ephemeral"`
 }
 
 // SnapshotConfig is the configuration for snapshots.

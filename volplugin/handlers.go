@@ -35,6 +35,48 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
+func remove(master string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vr, err := unmarshalRequest(r.Body)
+		if err != nil {
+			httpError(w, "Could not unmarshal request", err)
+			return
+		}
+
+		if vr.Name == "" {
+			httpError(w, "Image name is empty", nil)
+			return
+		}
+
+		tenant, name, err := splitPath(vr.Name)
+		if err != nil {
+			httpError(w, "Configuring volume", err)
+			return
+		}
+
+		vc, err := requestVolumeConfig(master, tenant, name)
+		if err != nil {
+			httpError(w, "Getting volume properties", err)
+			return
+		}
+
+		if vc.Options.Ephemeral {
+			if err := requestRemove(master, tenant, name); err != nil {
+				httpError(w, "Removing ephemeral volume", err)
+				return
+			}
+		}
+
+		content, err := marshalResponse(VolumeResponse{Mountpoint: vr.Name, Err: ""})
+		if err != nil {
+			httpError(w, "Could not marshal response", err)
+			return
+		}
+
+		w.Write(content)
+	}
+}
+
 func create(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vr, err := unmarshalRequest(r.Body)
