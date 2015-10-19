@@ -29,7 +29,6 @@ Here is an example:
 
 ```javascript
 {
-  "default-pool": "rbd",
   "default-options": {
     "size": 10,
     "snapshots": true,
@@ -37,7 +36,8 @@ Here is an example:
       "frequency": "30m",
       "keep": 20
     },
-		"filesystem": "btrfs"
+		"filesystem": "btrfs",
+    "ephemeral": false,
   },
 	"filesystems": {
 		"btrfs": "mkfs.btrfs %",
@@ -48,16 +48,17 @@ Here is an example:
 
 Let's go through what these parameters mean.
 
-* `default-pool`: the default ceph pool to install the images.
 * `default-options`: the options that will be persisted unless overridden (see
 	"Driver Options" below)
+  * `pool`: this option is **required**. It specifies the ceph pool volumes
+    will be added to by default.
   * `size`: the size of the volume, in MB.
   * `snapshots`: use the snapshots facility.
   * `snapshot`: sub-level configuration for snapshots
-		* `frequency`: the frequency between snapshots in Go's
-			 [duration notation](https://golang.org/pkg/time/#ParseDuration)
-		* `keep`: how many snapshots to keep
+    * `frequency`: the frequency between snapshots in Go's [duration notation](https://golang.org/pkg/time/#ParseDuration)
+    * `keep`: how many snapshots to keep
 	* `filesystem`: which filesystem to use. See below for how this works.
+  * `ephemeral`: when `true`, deletes volumes upon `docker volume rm`.
 * `filesystems`: Provides a map of filesystem -> command for volumes to use in
 	the `filesystem` option.
 	* Commands are run when the filesystem is specified and the volume has not
