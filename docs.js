@@ -8,5 +8,6 @@ require('mdoc').run({
   mapTocName: function(filename, tocObj, title) {
     strings = filename.split('_')
     return strings[0] + ". " + title
-  }
+  },
+  parsingFunction: require('marked')
 })

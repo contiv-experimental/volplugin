@@ -87,6 +87,7 @@ reflex-docs: reflex install-docs
 install-docs:
 	@echo "To install the packages required for documentation generation, you need npm."
 	npm install mdoc
+	npm install marked
 
 start-doc-server:
 	go run docs/docs-server.go dist &
