@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/volmaster"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -17,7 +18,7 @@ func start(ctx *cli.Context) {
 
 	cfg := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 
-	daemon(cfg, ctx.Bool("debug"), ctx.String("listen"))
+	volmaster.Daemon(cfg, ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {
