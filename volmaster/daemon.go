@@ -1,4 +1,4 @@
-package main
+package volmaster
 
 import (
 	"bytes"
@@ -18,7 +18,8 @@ type daemonConfig struct {
 	config *config.TopLevelConfig
 }
 
-func daemon(config *config.TopLevelConfig, debug bool, listen string) {
+// Daemon initializes the daemon for use.
+func Daemon(config *config.TopLevelConfig, debug bool, listen string) {
 	d := daemonConfig{config}
 	r := mux.NewRouter()
 

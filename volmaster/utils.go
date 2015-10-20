@@ -1,4 +1,4 @@
-package main
+package volmaster
 
 import (
 	"encoding/json"
