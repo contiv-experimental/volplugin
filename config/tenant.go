@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+
+	"github.com/coreos/etcd/client"
+
+	"golang.org/x/net/context"
 )
 
 // TenantConfig is the configuration of the tenant. It includes default
@@ -34,7 +38,7 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	if _, err := c.etcdClient.Set(c.tenant(name), string(value), 0); err != nil {
+	if _, err := c.etcdClient.Set(context.Background(), c.tenant(name), string(value), nil); err != nil {
 		return err
 	}
 
@@ -43,13 +47,13 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 
 // DeleteTenant removes a tenant from the configuration store.
 func (c *TopLevelConfig) DeleteTenant(name string) error {
-	_, err := c.etcdClient.Delete(c.tenant(name), true)
+	_, err := c.etcdClient.Delete(context.Background(), c.tenant(name), nil)
 	return err
 }
 
 // GetTenant retrieves a tenant from the configuration store.
 func (c *TopLevelConfig) GetTenant(name string) (*TenantConfig, error) {
-	resp, err := c.etcdClient.Get(c.tenant(name), true, false)
+	resp, err := c.etcdClient.Get(context.Background(), c.tenant(name), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (c *TopLevelConfig) GetTenant(name string) (*TenantConfig, error) {
 // ListTenants provides an array of strings corresponding to the name of each
 // tenant.
 func (c *TopLevelConfig) ListTenants() ([]string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed(rootTenant), true, true)
+	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootTenant), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
 	}

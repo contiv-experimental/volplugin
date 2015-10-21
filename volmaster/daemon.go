@@ -101,7 +101,7 @@ func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mt.Host == req.Host {
-		if err := d.config.RemoveMount(req); err != nil {
+		if err := d.config.RemoveMount(req, false); err != nil {
 			httpError(w, "Could not publish mount information", err)
 			return
 		}
@@ -112,11 +112,6 @@ func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalMountConfig(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
-		return
-	}
-
-	if d.config.ExistsMount(req) {
-		httpError(w, "Mount already exists", nil)
 		return
 	}
 

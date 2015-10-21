@@ -30,7 +30,12 @@ func (s *configSuite) TearDownTest(c *C) {
 }
 
 func (s *configSuite) SetUpSuite(c *C) {
-	s.tlc = NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
+	tlc, err := NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	s.tlc = tlc
 }
 
 func (s *configSuite) TestPrefixed(c *C) {

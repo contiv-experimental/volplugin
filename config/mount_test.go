@@ -23,24 +23,18 @@ var testMountConfigs = map[string]*MountConfig{
 
 func (s configSuite) TestMountCRUD(c *C) {
 	c.Assert(s.tlc.PublishMount(testMountConfigs["basic"]), IsNil)
-	c.Assert(s.tlc.ExistsMount(testMountConfigs["basic"]), Equals, true)
-
-	defer func() {
-		c.Assert(s.tlc.RemoveMount(testMountConfigs["basic"]), IsNil)
-		c.Assert(s.tlc.ExistsMount(testMountConfigs["basic"]), Equals, false)
-	}()
+	c.Assert(s.tlc.PublishMount(testMountConfigs["basic"]), NotNil)
+	c.Assert(s.tlc.RemoveMount(testMountConfigs["basic"], false), IsNil)
+	c.Assert(s.tlc.PublishMount(testMountConfigs["basic"]), IsNil)
 
 	mt, err := s.tlc.GetMount("rbd", "quux")
 	c.Assert(err, IsNil)
 	c.Assert(testMountConfigs["basic"], DeepEquals, mt)
 
 	c.Assert(s.tlc.PublishMount(testMountConfigs["basic2"]), IsNil)
-	c.Assert(s.tlc.ExistsMount(testMountConfigs["basic2"]), Equals, true)
-
-	defer func() {
-		c.Assert(s.tlc.RemoveMount(testMountConfigs["basic2"]), IsNil)
-		c.Assert(s.tlc.ExistsMount(testMountConfigs["basic2"]), Equals, false)
-	}()
+	c.Assert(s.tlc.PublishMount(testMountConfigs["basic2"]), NotNil)
+	c.Assert(s.tlc.RemoveMount(testMountConfigs["basic2"], false), IsNil)
+	c.Assert(s.tlc.PublishMount(testMountConfigs["basic2"]), IsNil)
 
 	mt, err = s.tlc.GetMount("rbd", "baz")
 	c.Assert(err, IsNil)
