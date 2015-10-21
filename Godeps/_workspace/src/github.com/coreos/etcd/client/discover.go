@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
-Package httptypes defines how etcd's HTTP API entities are serialized to and deserialized from JSON.
-*/
+package client
 
-package httptypes
+// Discoverer is an interface that wraps the Discover method.
+type Discoverer interface {
+	// Dicover looks up the etcd servers for the domain.
+	Discover(domain string) ([]string, error)
+}
