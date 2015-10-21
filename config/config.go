@@ -4,7 +4,8 @@ import (
 	"errors"
 	"path"
 
-	"github.com/contiv/go-etcd/etcd"
+	"github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -34,24 +35,33 @@ type RequestCreate struct {
 
 // TopLevelConfig is the top-level struct for communicating with the intent store.
 type TopLevelConfig struct {
-	etcdClient *etcd.Client
+	etcdClient client.KeysAPI
 	prefix     string
 }
 
 // NewTopLevelConfig creates a TopLevelConfig struct which can drive communication
 // with the configuration store.
-func NewTopLevelConfig(prefix string, etcdHosts []string) *TopLevelConfig {
+func NewTopLevelConfig(prefix string, etcdHosts []string) (*TopLevelConfig, error) {
+	etcdCfg := client.Config{
+		Endpoints: etcdHosts,
+	}
+
+	etcdClient, err := client.New(etcdCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	config := &TopLevelConfig{
 		prefix:     prefix,
-		etcdClient: etcd.NewClient(etcdHosts),
+		etcdClient: client.NewKeysAPI(etcdClient),
 	}
 
-	config.etcdClient.SetDir(config.prefix, 0)
+	config.etcdClient.Set(context.Background(), config.prefix, "", &client.SetOptions{Dir: true})
 	for _, path := range defaultPaths {
-		config.etcdClient.SetDir(config.prefixed(path), 0)
+		config.etcdClient.Set(context.Background(), config.prefixed(path), "", &client.SetOptions{Dir: true})
 	}
 
-	return config
+	return config, nil
 }
 
 func (c *TopLevelConfig) prefixed(strs ...string) string {

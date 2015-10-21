@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"path"
 	"strings"
+
+	"github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 )
 
 // VolumeConfig is the configuration of the tenant. It includes pool and
@@ -72,7 +75,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		return nil, err
 	}
 
-	if _, err := c.etcdClient.Set(c.volume(rc.Tenant, rc.Volume), string(remarshal), 0); err != nil {
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(rc.Tenant, rc.Volume), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return nil, err
 	}
 
@@ -81,7 +84,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 
 // GetVolume returns the VolumeConfig for a given volume.
 func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
-	resp, err := c.etcdClient.Get(c.volume(tenant, name), true, false)
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(tenant, name), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +100,8 @@ func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
 
 // RemoveVolume removes a volume from configuration.
 func (c *TopLevelConfig) RemoveVolume(tenant, name string) error {
-	_, err := c.etcdClient.Delete(c.prefixed(rootVolume, tenant, name), true)
+	// FIXME might be a consistency issue here; pass around volume structs instead.
+	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, tenant, name), &client.DeleteOptions{})
 	return err
 }
 
@@ -105,7 +109,7 @@ func (c *TopLevelConfig) RemoveVolume(tenant, name string) error {
 func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, error) {
 	tenantPath := c.prefixed(rootVolume, tenant)
 
-	resp, err := c.etcdClient.Get(tenantPath, true, true)
+	resp, err := c.etcdClient.Get(context.Background(), tenantPath, &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +138,7 @@ func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, e
 // volmaster knows about. Volumes have syntax: tenant/volumeName which will be
 // reflected in the returned string.
 func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
-	resp, err := c.etcdClient.Get(c.prefixed(rootVolume), true, true)
+	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
 	}
