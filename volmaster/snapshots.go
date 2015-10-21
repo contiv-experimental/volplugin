@@ -3,38 +3,15 @@ package volmaster
 import (
 	"time"
 
-	"github.com/contiv/go-etcd/etcd"
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
 
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig)) {
-	tenants, err := config.ListTenants()
-	if err != nil {
-		if conv, ok := err.(*etcd.EtcdError); ok && conv.ErrorCode == 100 {
-			// should never be hit because we create it at volmaster boot, but yeah.
-			return
-		}
-
-		log.Errorf("Runtime configuration incorrect: %v", err)
-		return
-	}
-
-	for _, tenant := range tenants {
-		volumes, err := config.ListVolumes(tenant)
-		conv, ok := err.(*etcd.EtcdError)
-		if err != nil {
-			if ok && conv.ErrorCode == 100 {
-				continue
-			}
-
-			log.Errorf("Runtime configuration incorrect: %v", err)
-			return
-		}
-
-		for volName, volume := range volumes {
+func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig)) func(*volumeDispatch) {
+	return func(v *volumeDispatch) {
+		for volName, volume := range v.volumes {
 			duration, err := time.ParseDuration(volume.Options.Snapshot.Frequency)
 			if err != nil {
 				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Options.Snapshot.Frequency)
@@ -42,7 +19,7 @@ func wrapSnapshotAction(config *config.TopLevelConfig, action func(config *confi
 			}
 
 			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				action(config, volume.Options.Pool, volName, volume)
+				action(v.config, volume.Options.Pool, volName, volume)
 			}
 		}
 	}
@@ -52,7 +29,7 @@ func scheduleSnapshotPrune(config *config.TopLevelConfig) {
 	for {
 		log.Debug("Running snapshot prune supervisor")
 
-		wrapSnapshotAction(config, runSnapshotPrune)
+		iterateVolumes(config, wrapSnapshotAction(runSnapshotPrune))
 
 		time.Sleep(1 * time.Second)
 	}
@@ -93,7 +70,7 @@ func scheduleSnapshots(config *config.TopLevelConfig) {
 	for {
 		log.Debug("Running snapshot supervisor")
 
-		wrapSnapshotAction(config, runSnapshot)
+		iterateVolumes(config, wrapSnapshotAction(runSnapshot))
 
 		time.Sleep(1 * time.Second)
 	}
