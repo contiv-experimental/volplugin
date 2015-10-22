@@ -22,7 +22,7 @@ echo "export 'no_proxy=$no_proxy'" >> /etc/profile.d/envvar.sh
 
 . /etc/profile.d/envvar.sh
 
-mkdir /etc/systemd/system/docker.service.d
+mkdir -p /etc/systemd/system/docker.service.d
 echo "[Service]" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf &>/dev/null
 echo "Environment=\\\"no_proxy=$no_proxy\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf &>/dev/null
 sudo systemctl daemon-reload

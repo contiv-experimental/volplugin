@@ -10,9 +10,15 @@
     - yum-plugin-priorities.noarch
     - epel-release
 
+- name: write Ceph stable repository key
+  copy: >
+    src=cephstable.asc
+    dest=/tmp/cephstable.asc
+  when: ceph_stable
+
 - name: install the Ceph stable repository key
   rpm_key: >
-    key={{ ceph_stable_key }}
+    key=/tmp/cephstable.asc
     state=present
   when: ceph_stable
 
@@ -37,6 +43,10 @@
 - name: add Ceph stable repository
   yum: name=http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
   changed_when: false
+  when: ceph_stable
+
+- name: edit Ceph stable repository to eliminate GPG check
+  shell: "sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/ceph.repo"
   when: ceph_stable
 
 - name: add Ceph development repository
