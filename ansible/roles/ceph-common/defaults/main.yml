@@ -18,7 +18,7 @@ restapi_group_name: restapis
 
 # COMMUNITY VERSION
 ceph_stable: true # use ceph stable branch
-ceph_stable_key: https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+ceph_stable_key: /tmp/cephstable.asc
 ceph_stable_release: hammer # ceph stable release
 
 # This option is needed for _both_ stable and dev version, so please always fill the right version

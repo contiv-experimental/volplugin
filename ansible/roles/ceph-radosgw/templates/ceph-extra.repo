@@ -7,7 +7,7 @@ enabled=1
 priority=2
 gpgcheck=1
 type=rpm-md
-gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+gpgkey=/tmp/cephstable.asc
 
 {% if (redhat_distro_ceph_extra != "centos6.4" and redhat_distro_ceph_extra !=  "rhel6.4" and redhat_distro_ceph_extra !=  "rhel6.5") %}
 [ceph-extras-noarch]
@@ -17,7 +17,7 @@ enabled=1
 priority=2
 gpgcheck=1
 type=rpm-md
-gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+gpgkey=/tmp/cephstable.asc
 {% endif %}
 
 [ceph-extras-source]
@@ -27,4 +27,4 @@ enabled=1
 priority=2
 gpgcheck=1
 type=rpm-md
-gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+gpgkey=/tmp/cephstable.asc
