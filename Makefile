@@ -43,13 +43,19 @@ build: golint
 	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
 
 run:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build; (make volplugin-start &); make volmaster-start"'
+	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volplugin'; done
+	vagrant ssh mon0 -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volmaster'
 
-run-volplugin:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volplugin-start"'
+run-etcd:
+	sudo systemctl start etcd
+
+run-volplugin: run-etcd
+	sudo pkill volplugin || exit 0
+	sudo -E setsid bash -c '/opt/golang/bin/volplugin --master 192.168.24.10:8080 &>/tmp/volplugin.log &'
 
 run-volmaster:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build volmaster-start"'
+	sudo pkill volmaster || exit 0
+	sudo -E setsid bash -c '/opt/golang/bin/volmaster &>/tmp/volmaster.log &'
 
 run-build: godep
 	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/
@@ -57,16 +63,6 @@ run-build: godep
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
 	godep go test -v ./systemtests -check.v
-
-volplugin-start:
-	pkill volplugin || exit 0
-	sleep 1
-	volplugin --debug tenant1
-
-volmaster-start:
-	pkill volmaster || exit 0
-	sleep 1
-	volmaster /etc/volmaster.json
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
