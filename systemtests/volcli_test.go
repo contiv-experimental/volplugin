@@ -150,7 +150,7 @@ func (s *systemtestSuite) TestVolCLIMount(c *C) {
 	c.Assert(mt.Volume, Equals, "foo")
 	c.Assert(mt.Pool, Equals, "rbd")
 	c.Assert(mt.Host, Equals, "ceph-mon0")
-	c.Assert(mt.MountPoint, Equals, "/mnt/ceph/rbd/foo")
+	c.Assert(mt.MountPoint, Equals, "/mnt/ceph/rbd/tenant1.foo")
 
 	_, err = s.volcli("mount force-remove rbd foo")
 	c.Assert(err, IsNil)

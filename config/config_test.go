@@ -18,18 +18,13 @@ var _ = Suite(&configSuite{})
 func TestConfig(t *T) { TestingT(t) }
 
 func (s *configSuite) SetUpTest(c *C) {
-	cmd := exec.Command("/bin/sh", "-c", "sudo systemctl start etcd")
-	c.Assert(cmd.Run(), IsNil)
-	time.Sleep(200 * time.Millisecond)
-}
-
-func (s *configSuite) TearDownTest(c *C) {
-	cmd := exec.Command("/bin/sh", "-c", "pkill etcd; rm -rf /var/lib/etcd")
-	c.Assert(cmd.Run(), IsNil)
-	time.Sleep(200 * time.Millisecond)
+	exec.Command("/bin/sh", "-c", "etcdctl rm --recursive /volplugin").Run()
 }
 
 func (s *configSuite) SetUpSuite(c *C) {
+	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
+	time.Sleep(200 * time.Millisecond)
+
 	tlc, err := NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
 	if err != nil {
 		c.Fatal(err)

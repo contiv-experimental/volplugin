@@ -2,12 +2,17 @@ package volmaster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
+
+func joinVolumeName(config *config.VolumeConfig) string {
+	return strings.Join([]string{config.TenantName, config.VolumeName}, ".")
+}
 
 func createImage(tenant *config.TenantConfig, config *config.VolumeConfig) error {
 	var (
@@ -24,9 +29,9 @@ func createImage(tenant *config.TenantConfig, config *config.VolumeConfig) error
 		}
 	}
 
-	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, config.VolumeName, config.Options.Size).Create(fscmd)
+	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, joinVolumeName(config), config.Options.Size).Create(fscmd)
 }
 
 func removeImage(config *config.VolumeConfig) error {
-	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, config.VolumeName, 0).Remove()
+	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, joinVolumeName(config), 0).Remove()
 }

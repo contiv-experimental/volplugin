@@ -184,7 +184,7 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 		mt := &config.MountConfig{
 			Volume:     volConfig.VolumeName,
 			Pool:       volConfig.Options.Pool,
-			MountPoint: driver.MountPath(volConfig.Options.Pool, name),
+			MountPoint: driver.MountPath(volConfig.Options.Pool, joinPath(tenant, name)),
 			Host:       host,
 		}
 
@@ -193,12 +193,12 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Mount(volConfig.Options.FileSystem); err != nil {
+		if err := driver.NewVolume(volConfig.Options.Pool, joinPath(tenant, name), volConfig.Options.Size).Mount(volConfig.Options.FileSystem); err != nil {
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, joinPath(tenant, name))})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
@@ -237,7 +237,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		driver := cephdriver.NewCephDriver()
 
-		if err := driver.NewVolume(volConfig.Options.Pool, name, volConfig.Options.Size).Unmount(); err != nil {
+		if err := driver.NewVolume(volConfig.Options.Pool, joinPath(tenant, name), volConfig.Options.Size).Unmount(); err != nil {
 			httpError(w, "Could not unmount image", err)
 			return
 		}
@@ -250,7 +250,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 
 		mt := &config.MountConfig{
 			Volume:     name,
-			MountPoint: driver.MountPath(volConfig.Options.Pool, name),
+			MountPoint: driver.MountPath(volConfig.Options.Pool, joinPath(tenant, name)),
 			Pool:       volConfig.Options.Pool,
 			Host:       hostname,
 		}
@@ -260,7 +260,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, name)})
+		content, err := marshalResponse(VolumeResponse{Mountpoint: driver.MountPath(volConfig.Options.Pool, joinPath(tenant, name))})
 		if err != nil {
 			httpError(w, "Reply could not be marshalled", err)
 			return
