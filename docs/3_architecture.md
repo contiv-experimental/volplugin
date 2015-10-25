@@ -14,11 +14,12 @@ into the volmaster and additionally can write directly to etcd.
 
 ## Organizational Architecture
 
-`volmaster` should be a set of processes that ideally share a Virtual IP.
-While the volmaster is completely stateless, it has a few locks still which
-prevent it from being deployed multi-host. This will be resolved in the near
-future. `volmaster` needs both root permissions, and capability to manipulate
-RBD images with the `rbd` tool.
+`volmaster` is completely stateless, and can be run multi-host for redundancy.
+`volmaster` needs both root permissions, and capability to manipulate RBD
+images with the `rbd` tool.
+
+`volsupervisor` handles scheduled and supervised tasks such as snapshotting. It
+may only be deployed on one host at a time.
 
 `volplugin` needs to run on every host that will be running containers. Upon
 start, it will create a unix socket in the appropriate plugin path so that
@@ -38,6 +39,9 @@ target.
 interface to each of its operations that are used both by `volplugin` and
 `volcli`. It connects to etcd at `127.0.0.1:2379`, which you can change by
 supplying `--etcd` one or more times.
+
+`volsupervisor` needs root, connections to etcd, and access to ceph `rbd` tools
+as admin.
 
 `volplugin` contacts the volmaster but listens on no network ports (it uses a
 unix socket as described above, to talk to docker). It by default connects to

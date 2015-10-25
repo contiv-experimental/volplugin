@@ -1,6 +1,6 @@
 start: download-docker install-ansible
 	vagrant up
-	make build run
+	make build
 
 stop:
 	vagrant destroy -f
