@@ -35,9 +35,6 @@ func Daemon(config *config.TopLevelConfig, debug bool, listen string) {
 		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
 	}
 
-	go scheduleSnapshotPrune(d.config)
-	go scheduleSnapshots(d.config)
-
 	if err := http.ListenAndServe(listen, r); err != nil {
 		log.Fatalf("Error starting volmaster: %v", err)
 	}

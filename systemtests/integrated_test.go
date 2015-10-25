@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -27,7 +28,15 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls tenant1.foo")
 	c.Assert(err, IsNil)
-	c.Assert(len(strings.Split(out, "\n")), Not(Equals), 0)
+	c.Assert(len(strings.Split(out, "\n")) > 2, Equals, true)
+
+	time.Sleep(15 * time.Second)
+
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls tenant1.foo")
+	c.Assert(err, IsNil)
+	mylen := len(strings.Split(out, "\n"))
+	fmt.Println(mylen)
+	c.Assert(mylen >= 5 && mylen <= 10, Equals, true)
 }
 
 func (s *systemtestSuite) TestHostLabel(c *C) {

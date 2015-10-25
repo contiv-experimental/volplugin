@@ -99,12 +99,19 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
+	stopVolsupervisor(s.vagrant.GetNode("mon0"))
 	s.vagrant.IterateNodes(stopVolplugin)
-	stopVolmaster(s.vagrant.GetNode("mon0"))
+	s.vagrant.IterateNodes(stopVolmaster)
 	s.clearRBD()
 	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
 
-	if err := startVolmaster(s.vagrant.GetNode("mon0")); err != nil {
+	if err := s.vagrant.IterateNodes(startVolmaster); err != nil {
+		return err
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if err := startVolsupervisor(s.vagrant.GetNode("mon0")); err != nil {
 		return err
 	}
 
@@ -153,6 +160,17 @@ func (s *systemtestSuite) pullUbuntu() error {
 	}
 }
 
+func startVolsupervisor(node utils.TestbedNode) error {
+	log.Infof("Starting the volsupervisor on %s", node.GetName())
+	_, err := node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>/tmp/volsupervisor.log &")
+	return err
+}
+
+func stopVolsupervisor(node utils.TestbedNode) error {
+	log.Infof("Stopping the volsupervisor on %s", node.GetName())
+	return node.RunCommand("sudo pkill volsupervisor")
+}
+
 func startVolmaster(node utils.TestbedNode) error {
 	log.Infof("Starting the volmaster on %s", node.GetName())
 	_, err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
@@ -172,7 +190,7 @@ func startVolplugin(node utils.TestbedNode) error {
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --master 192.168.24.10:8080 --debug tenant1 &>/tmp/volplugin.log &")
+	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug &>/tmp/volplugin.log &")
 	return err
 }
 
