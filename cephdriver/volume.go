@@ -163,6 +163,7 @@ func (cv *CephVolume) Remove() error {
 
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (cv *CephVolume) CreateSnapshot(snapName string) error {
+	snapName = strings.Replace(snapName, " ", "-", -1)
 	return exec.Command("rbd", "snap", "create", cv.VolumeName, "--snap", snapName, "--pool", cv.PoolName).Run()
 }
 
@@ -185,7 +186,7 @@ func (cv *CephVolume) ListSnapshots() ([]string, error) {
 	if len(lines) > 1 {
 		for _, line := range lines[1:] {
 			parts := regexp.MustCompile(`\s+`).Split(line, -1)
-			if len(parts) < 2 {
+			if len(parts) < 3 {
 				continue
 			}
 

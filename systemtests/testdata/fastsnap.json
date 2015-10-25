@@ -5,7 +5,7 @@
     "snapshots": true,
     "snapshot": {
       "frequency": "1s",
-      "keep": 1
+      "keep": 5
     }
   }
 }

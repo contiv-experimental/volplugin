@@ -1,6 +1,7 @@
-package volmaster
+package volsupervisor
 
 import (
+	"strings"
 	"time"
 
 	"github.com/contiv/volplugin/cephdriver"
@@ -9,9 +10,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig)) func(*volumeDispatch) {
+func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig)) func(*volumeDispatch) {
 	return func(v *volumeDispatch) {
-		for volName, volume := range v.volumes {
+		for _, volume := range v.volumes {
 			duration, err := time.ParseDuration(volume.Options.Snapshot.Frequency)
 			if err != nil {
 				log.Errorf("Runtime configuration incorrect; cannot use %q as a snapshot frequency", volume.Options.Snapshot.Frequency)
@@ -19,7 +20,7 @@ func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool, volName
 			}
 
 			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				action(v.config, volume.Options.Pool, volName, volume)
+				action(v.config, volume.Options.Pool, volume)
 			}
 		}
 	}
@@ -35,9 +36,9 @@ func scheduleSnapshotPrune(config *config.TopLevelConfig) {
 	}
 }
 
-func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Options.Size)
-	log.Debugf("starting snapshot prune for %q", volName)
+func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
+	cephVol := cephdriver.NewCephDriver().NewVolume(pool, strings.Join([]string{volume.TenantName, volume.VolumeName}, "."), volume.Options.Size)
+	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
 	list, err := cephVol.ListSnapshots()
 	if err != nil {
 		log.Errorf("Could not list snapshots for volume %q", volume)
@@ -57,12 +58,12 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool, volName string, volum
 	}
 }
 
-func runSnapshot(config *config.TopLevelConfig, pool, volName string, volume *config.VolumeConfig) {
+func runSnapshot(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
 	now := time.Now()
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, volName, volume.Options.Size)
+	cephVol := cephdriver.NewCephDriver().NewVolume(pool, strings.Join([]string{volume.TenantName, volume.VolumeName}, "."), volume.Options.Size)
 	log.Infof("Snapping volume %q at %v", volume, now)
 	if err := cephVol.CreateSnapshot(now.String()); err != nil {
-		log.Errorf("Cannot snap volume: %q: %v", volName, err)
+		log.Errorf("Cannot snap volume: %q: %v", volume.VolumeName, err)
 	}
 }
 

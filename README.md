@@ -54,27 +54,27 @@ Your guests will configure themselves.
 
 ### Running the processes
 
-Be sure to start the environment with `make start` before you continue with
-these steps. You must have working vagrant, virtualbox, and ansible.
+Be sure to start and run the environment with `make start` before you
+continue with these steps. You must have working vagrant, virtualbox, and
+ansible.
 
-You will also want to `make ssh` to ssh into the `mon0` VM to follow along.
-Eventually, this will be scripted/supervised and no longer necessary.
+These instructions ssh you into the `mon0` vm. If you wish to test the
+cross-host functionality, ssh into `mon1` or `mon2` with `vagrant ssh`. Then
+start at the "starting volplugin" (not volmaster) step.
 
-If you wish to test the cross-host functionality, ssh into `mon1` or `mon2`
-with `vagrant ssh`. Then start at the "starting volplugin" (not volmaster)
-step.
-
-1. Start etcd: `etcd &>/dev/null &`
+1. Run the suite: `make run`.
+1. SSH into the host: `make ssh`.
 1. Upload tenant information: `volcli tenant upload tenant1 < /testdata/intent1.json`
-1. Start the volmaster and volplugin:
-  * <code>sudo -i volmaster &</code>
-  * <code>sudo -i volplugin --master 192.168.24.10:8080 &</code>
 1. Add a docker volume with `pool/name` syntax:
   * `docker volume create -d volplugin --name tenant1/foo`
 1. Run a container with the volume attached:
   * `docker run -it -v tenant1/foo:/mnt ubuntu bash`
 1. You should have a volume mounted at `/mnt`, pointing at a `/dev/rbd#`
    device. Exit the shell to unmount the device.
+
+To use the volume again, either `docker volume create` it on another host and
+start a container, or just do it again with a different container on the same
+host. Your data will be there!
 
 `volcli` has many applications including volume and mount management. Check it
 out!

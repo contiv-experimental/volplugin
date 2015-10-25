@@ -1,4 +1,4 @@
-package volmaster
+package volsupervisor
 
 import (
 	"github.com/contiv/volplugin/config"

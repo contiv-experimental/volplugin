@@ -1,5 +1,6 @@
 start: download-docker install-ansible
 	vagrant up
+	make build
 
 stop:
 	vagrant destroy -f
@@ -40,25 +41,29 @@ unit-test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./... -check.v"'
 
 build: golint
-	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
+	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
 
 run:
-	@for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volplugin'; done
-	vagrant ssh mon0 -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volmaster'
+	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volplugin run-volmaster'; done
+	vagrant ssh mon0 -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volsupervisor'
 
 run-etcd:
 	sudo systemctl start etcd
 
 run-volplugin: run-etcd
 	sudo pkill volplugin || exit 0
-	sudo -E setsid bash -c '/opt/golang/bin/volplugin --master 192.168.24.10:8080 &>/tmp/volplugin.log &'
+	sudo -E setsid bash -c '/opt/golang/bin/volplugin --debug &>/tmp/volplugin.log &'
+
+run-volsupervisor:
+	sudo pkill volsupervisor || exit 0
+	sudo -E setsid bash -c '/opt/golang/bin/volsupervisor --debug &>/tmp/volsupervisor.log &'
 
 run-volmaster:
 	sudo pkill volmaster || exit 0
-	sudo -E setsid bash -c '/opt/golang/bin/volmaster &>/tmp/volmaster.log &'
+	sudo -E setsid bash -c '/opt/golang/bin/volmaster --debug &>/tmp/volmaster.log &'
 
 run-build: godep
-	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/
+	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
