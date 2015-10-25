@@ -25,7 +25,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 
 	time.Sleep(2 * time.Second)
 
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls foo")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls tenant1.foo")
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.Split(out, "\n")), Not(Equals), 0)
 }
@@ -124,17 +124,17 @@ func (s *systemtestSuite) TestDriverOptions(c *C) {
 }
 
 func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
-	_, err := s.uploadIntent("tenant1", "fs")
+	_, err := s.uploadIntent("tenant2", "fs")
 	c.Assert(err, IsNil)
 
 	opts := map[string]string{
 		"size": "1000",
 	}
 
-	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
+	c.Assert(s.createVolume("mon0", "tenant2", "test", opts), IsNil)
+	defer s.purgeVolume("mon0", "tenant2", "test", true)
 
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/test:/mnt ubuntu sleep infinity"), IsNil)
 
 	defer s.clearContainers()
 
@@ -152,11 +152,11 @@ func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(pass, Equals, true)
-	c.Assert(s.createVolume("mon0", "tenant1", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
+	c.Assert(s.createVolume("mon0", "tenant2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
 
-	defer s.purgeVolume("mon0", "tenant1", "testext4", true)
+	defer s.purgeVolume("mon0", "tenant2", "testext4", true)
 
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant1/testext4:/mnt ubuntu sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/testext4:/mnt ubuntu sleep infinity"), IsNil)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
 	c.Assert(err, IsNil)
@@ -189,32 +189,41 @@ func (s *systemtestSuite) TestMultiTenantVolumeCreate(c *C) {
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	out, err := s.docker("run -v tenant2/test:/mnt ubuntu sh -c \"cat /mnt/bar\"")
+	_, err = s.docker("run -v tenant2/test:/mnt ubuntu sh -c \"cat /mnt/bar\"")
+	c.Assert(err, NotNil)
+
+	c.Assert(s.clearContainers(), IsNil)
+
+	_, err = s.docker("run -v tenant2/test:/mnt ubuntu sh -c \"echo bar > /mnt/foo\"")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "foo")
+
+	c.Assert(s.clearContainers(), IsNil)
+
+	_, err = s.docker("run -v tenant1/test:/mnt ubuntu sh -c \"cat /mnt/foo\"")
+	c.Assert(err, NotNil)
 }
 
 func (s *systemtestSuite) TestEphemeralVolumes(c *C) {
-	_, err := s.uploadIntent("tenant1", "intent1")
-	c.Assert(err, IsNil)
+	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "true"}), IsNil)
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "test")
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
 
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Not(Equals), "test")
+	c.Assert(strings.TrimSpace(out), Not(Equals), "tenant1.test")
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "false"}), IsNil)
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "test")
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
 
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "test")
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
+
 }

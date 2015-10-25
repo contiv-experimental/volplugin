@@ -13,6 +13,7 @@ import (
 // VolumeConfig is the configuration of the tenant. It includes pool and
 // snapshot information.
 type VolumeConfig struct {
+	TenantName string         `json:"tenant"`
 	VolumeName string         `json:"name"`
 	Options    *VolumeOptions `json:"options"`
 }
@@ -40,8 +41,9 @@ func (c *TopLevelConfig) volume(tenant, name string) string {
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
-	if tc, err := c.GetVolume(rc.Tenant, rc.Volume); err == nil {
-		return tc, ErrExist
+	v, _ := c.GetVolume(rc.Tenant, rc.Volume)
+	if v != nil {
+		return v, ErrExist
 	}
 
 	resp, err := c.GetTenant(rc.Tenant)
@@ -59,6 +61,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 
 	vc := &VolumeConfig{
 		Options:    &resp.DefaultVolumeOptions,
+		TenantName: rc.Tenant,
 		VolumeName: rc.Volume,
 	}
 
@@ -74,6 +77,8 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, rc.Tenant), "", &client.SetOptions{Dir: true})
 
 	if _, err := c.etcdClient.Set(context.Background(), c.volume(rc.Tenant, rc.Volume), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return nil, err
@@ -176,6 +181,10 @@ func (opts *VolumeOptions) Validate() error {
 func (cfg *VolumeConfig) Validate() error {
 	if cfg.VolumeName == "" {
 		return fmt.Errorf("Volume Name was omitted")
+	}
+
+	if cfg.TenantName == "" {
+		return fmt.Errorf("Tenant name was omitted")
 	}
 
 	if cfg.Options == nil {

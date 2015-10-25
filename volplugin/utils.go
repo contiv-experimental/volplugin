@@ -160,3 +160,7 @@ func splitPath(name string) (string, string, error) {
 
 	return parts[0], parts[1], nil
 }
+
+func joinPath(tenant, name string) string {
+	return strings.Join([]string{tenant, name}, ".")
+}

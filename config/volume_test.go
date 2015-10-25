@@ -11,12 +11,14 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	vc := &VolumeConfig{
 		Options:    nil,
 		VolumeName: "foo",
+		TenantName: "tenant1",
 	}
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &VolumeConfig{
 		Options:    &VolumeOptions{Size: 10, UseSnapshots: false, Pool: "rbd"},
 		VolumeName: "",
+		TenantName: "tenant1",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
@@ -24,6 +26,15 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	vc = &VolumeConfig{
 		Options:    &VolumeOptions{Size: 10, UseSnapshots: false, Pool: "rbd"},
 		VolumeName: "foo",
+		TenantName: "",
+	}
+
+	c.Assert(vc.Validate(), NotNil)
+
+	vc = &VolumeConfig{
+		Options:    &VolumeOptions{Size: 10, UseSnapshots: false, Pool: "rbd"},
+		VolumeName: "foo",
+		TenantName: "tenant1",
 	}
 
 	c.Assert(vc.Validate(), IsNil)

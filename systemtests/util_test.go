@@ -48,7 +48,7 @@ func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool)
 
 	if purgeCeph {
 		s.volcli(fmt.Sprintf("volume remove %s %s", tenant, name))
-		s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s", tenant, name))
+		s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", tenant, name))
 	}
 }
 
@@ -94,7 +94,11 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
-	s.clearVolumes()
+
+	if err := s.restartDocker(); err != nil {
+		return err
+	}
+
 	s.vagrant.IterateNodes(stopVolplugin)
 	stopVolmaster(s.vagrant.GetNode("mon0"))
 	s.clearRBD()
