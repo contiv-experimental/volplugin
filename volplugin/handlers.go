@@ -193,8 +193,14 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := driver.NewVolume(volConfig.Options.Pool, joinPath(tenant, name), volConfig.Options.Size).Mount(volConfig.Options.FileSystem); err != nil {
+		mc, err := driver.NewVolume(volConfig.Options.Pool, joinPath(tenant, name), volConfig.Options.Size).Mount(volConfig.Options.FileSystem)
+		if err != nil {
 			httpError(w, "Volume could not be mounted", err)
+			return
+		}
+
+		if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+			httpError(w, "Applying cgroups", err)
 			return
 		}
 

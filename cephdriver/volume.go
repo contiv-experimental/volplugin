@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,6 +18,15 @@ type CephVolume struct {
 	PoolName   string
 	VolumeSize uint64 // Size in MBs
 	driver     *CephDriver
+}
+
+// CephMount is an informational struct returned by the Mount call to yield
+// data on the mounted object.
+type CephMount struct {
+	DevMajor   uint
+	DevMinor   uint
+	DeviceName string
+	MountPath  string
 }
 
 func (cv *CephVolume) String() string {
@@ -80,7 +90,7 @@ func (cv *CephVolume) Create(fscmd string) error {
 
 // Mount maps an RBD image and mount it on /mnt/ceph/<datastore>/<volume> directory
 // FIXME: Figure out how to use rbd locks
-func (cv *CephVolume) Mount(fstype string) error {
+func (cv *CephVolume) Mount(fstype string) (*CephMount, error) {
 	cd := cv.driver
 	// Directory to mount the volume
 	dataStoreDir := filepath.Join(cd.mountBase, cv.PoolName)
@@ -88,28 +98,41 @@ func (cv *CephVolume) Mount(fstype string) error {
 
 	devName, err := cv.mapImage()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create directory to mount
 	if err := os.MkdirAll(cd.mountBase, 0700); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("error creating %q directory: %v", cd.mountBase, err)
+		return nil, fmt.Errorf("error creating %q directory: %v", cd.mountBase, err)
 	}
 
-	if err := os.MkdirAll(dataStoreDir, 0700); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("error creating %q directory: %v", dataStoreDir)
+	if err := os.MkdirAll(volumeDir, 0700); err != nil && !os.IsExist(err) {
+		return nil, fmt.Errorf("error creating %q directory: %v", dataStoreDir)
 	}
 
-	if err := os.MkdirAll(volumeDir, 0777); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("error creating %q directory: %v", volumeDir)
+	// Obtain the major and minor node information about the device we're mounting.
+	// This is critical for tuning cgroups and obtaining metrics for this device only.
+	fi, err := os.Stat(devName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to stat rbd device %q: %v", devName, err)
 	}
+
+	rdev := fi.Sys().(*syscall.Stat_t).Rdev
+
+	major := rdev >> 8
+	minor := rdev & 0xFF
 
 	// Mount the RBD
 	if err := unix.Mount(devName, volumeDir, fstype, 0, ""); err != nil && err != unix.EBUSY {
-		return fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
+		return nil, fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
 	}
 
-	return nil
+	return &CephMount{
+		DeviceName: devName,
+		MountPath:  volumeDir,
+		DevMajor:   uint(major),
+		DevMinor:   uint(minor),
+	}, nil
 }
 
 // Unmount unmounts a Ceph volume, remove the mount directory and unmap

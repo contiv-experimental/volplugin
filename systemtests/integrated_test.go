@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -233,4 +234,52 @@ func (s *systemtestSuite) TestEphemeralVolumes(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
 
+}
+
+func (s *systemtestSuite) TestRateLimiting(c *C) {
+	// FIXME find a better place for these
+	var (
+		writeIOPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_iops_device"
+		readIOPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_iops_device"
+		writeBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
+		readBPSFile   = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
+	)
+
+	opts := map[string]string{
+		"rate-limit.write.bps":  "100000",
+		"rate-limit.write.iops": "110000",
+		"rate-limit.read.bps":   "120000",
+		"rate-limit.read.iops":  "130000",
+	}
+
+	optMap := map[string]string{
+		"rate-limit.write.bps":  writeBPSFile,
+		"rate-limit.write.iops": writeIOPSFile,
+		"rate-limit.read.bps":   readBPSFile,
+		"rate-limit.read.iops":  readIOPSFile,
+	}
+
+	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
+	_, err := s.docker("run -itd -v tenant1/test:/mnt ubuntu sleep infinity")
+	c.Assert(err, IsNil)
+
+	for key, fn := range optMap {
+		out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(fmt.Sprintf("sudo cat '%s'", fn))
+		c.Assert(err, IsNil)
+		var found bool
+
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.Split(line, " ")
+
+			if len(parts) < 2 {
+				continue
+			}
+
+			if parts[1] == opts[key] {
+				found = true
+			}
+		}
+
+		c.Assert(found, Equals, true)
+	}
 }

@@ -56,7 +56,11 @@ func (s cephSuite) TestMountUnmountVolume(c *C) {
 	volumeSpec.Remove()
 
 	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
-	c.Assert(volumeSpec.Mount("ext4"), IsNil)
+	ms, err := volumeSpec.Mount("ext4")
+	c.Assert(err, IsNil)
+	c.Assert(ms.DevMajor, Equals, uint(252))
+	c.Assert(ms.DevMinor, Equals, uint(0))
+	c.Assert(strings.HasPrefix(ms.DeviceName, "/dev/rbd"), Equals, true)
 	s.readWriteTest(c, "/mnt/ceph/rbd/pithos1234")
 	c.Assert(volumeSpec.Unmount(), IsNil)
 	c.Assert(volumeSpec.Remove(), IsNil)
@@ -87,7 +91,8 @@ func (s cephSuite) TestRepeatedMountUnmount(c *C) {
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
 	for i := 0; i < 10; i++ {
-		c.Assert(volumeSpec.Mount("ext4"), IsNil)
+		_, err := volumeSpec.Mount("ext4")
+		c.Assert(err, IsNil)
 		s.readWriteTest(c, "/mnt/ceph/rbd/pithos1234")
 		c.Assert(volumeSpec.Unmount(), IsNil)
 	}
