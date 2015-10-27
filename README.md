@@ -23,10 +23,10 @@ The master/slave model allows us to support a number of features, such as:
 * Manage many kinds of filesystems, including providing mkfs commands.
 * Snapshot frequency and pruning
 * Ephemeral (removed on container teardown) volumes
+* IOPS limiting (via blkio cgroup)
 
 Currently planned, but unfinished features:
 
-* IOPS limiting (via blkio cgroup)
 * Backup management (via shell commands/scripts with parameters)
 
 volplugin is still alpha at the time of this writing; features and the API may
