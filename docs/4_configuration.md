@@ -36,8 +36,14 @@ Here is an example:
       "frequency": "30m",
       "keep": 20
     },
-		"filesystem": "btrfs",
+    "filesystem": "btrfs",
     "ephemeral": false,
+    "rate-limit": {
+      "write-iops": 1000,
+      "read-iops": 1000,
+      "write-bps": 100000000,
+      "read-bps": 100000000
+    }
   },
 	"filesystems": {
 		"btrfs": "mkfs.btrfs %",
@@ -59,6 +65,11 @@ Let's go through what these parameters mean.
     * `keep`: how many snapshots to keep
 	* `filesystem`: which filesystem to use. See below for how this works.
   * `ephemeral`: when `true`, deletes volumes upon `docker volume rm`.
+  * `rate-limit`: sub-level configuration for rate limiting.
+    * `write-iops`: Write IOPS
+    * `read-iops`: Read IOPS
+    * `read-bps`: Read b/s
+    * `write-bps`: Write b/s
 * `filesystems`: Provides a map of filesystem -> command for volumes to use in
 	the `filesystem` option.
 	* Commands are run when the filesystem is specified and the volume has not
@@ -99,3 +110,7 @@ The options are as follows:
 * `filesystem`: the named filesystem to create. See the JSON Configuration
   section for more information on this.
 * `ephemeral`: delete this volume after `docker volume rm` occurs.
+* `rate-limit.write.iops`: Write IOPS
+* `rate-limit.read.iops`: Read IOPS
+* `rate-limit.read.bps`: Read b/s
+* `rate-limit.write.bps`: Write b/s

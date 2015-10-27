@@ -20,12 +20,21 @@ type VolumeConfig struct {
 
 // VolumeOptions comprises the optional paramters a volume can accept.
 type VolumeOptions struct {
-	Pool         string         `json:"pool" merge:"pool"`
-	Size         uint64         `json:"size" merge:"size"`
-	UseSnapshots bool           `json:"snapshots" merge:"snapshots"`
-	Snapshot     SnapshotConfig `json:"snapshot"`
-	FileSystem   string         `json:"filesystem" merge:"filesystem"`
-	Ephemeral    bool           `json:"ephemeral,omitempty" merge:"ephemeral"`
+	Pool         string          `json:"pool" merge:"pool"`
+	Size         uint64          `json:"size" merge:"size"`
+	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
+	Snapshot     SnapshotConfig  `json:"snapshot"`
+	FileSystem   string          `json:"filesystem" merge:"filesystem"`
+	Ephemeral    bool            `json:"ephemeral,omitempty" merge:"ephemeral"`
+	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
+}
+
+// RateLimitConfig is the configuration for limiting the rate of disk access.
+type RateLimitConfig struct {
+	WriteIOPS uint   `json:"write-iops" merge:"rate-limit.write.iops"`
+	ReadIOPS  uint   `json:"read-iops" merge:"rate-limit.read.iops"`
+	WriteBPS  uint64 `json:"write-bps" merge:"rate-limit.write.bps"`
+	ReadBPS   uint64 `json:"read-bps" merge:"rate-limit.read.bps"`
 }
 
 // SnapshotConfig is the configuration for snapshots.
