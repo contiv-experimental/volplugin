@@ -21,7 +21,7 @@ var testMountConfigs = map[string]*MountConfig{
 	},
 }
 
-func (s configSuite) TestMountCRUD(c *C) {
+func (s *configSuite) TestMountCRUD(c *C) {
 	c.Assert(s.tlc.PublishMount(testMountConfigs["basic"]), IsNil)
 	c.Assert(s.tlc.PublishMount(testMountConfigs["basic"]), NotNil)
 	c.Assert(s.tlc.RemoveMount(testMountConfigs["basic"], false), IsNil)

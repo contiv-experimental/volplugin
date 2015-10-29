@@ -17,13 +17,13 @@ var _ = Suite(&cephSuite{})
 
 func TestCeph(t *T) { TestingT(t) }
 
-func (s cephSuite) SetUpTest(c *C) {
+func (s *cephSuite) SetUpTest(c *C) {
 	if os.Getenv("DEBUG") != "" {
 		log.SetLevel(log.DebugLevel)
 	}
 }
 
-func (s cephSuite) readWriteTest(c *C, mountDir string) {
+func (s *cephSuite) readWriteTest(c *C, mountDir string) {
 	// Write a file and verify you can read it
 	file, err := os.Create(mountDir + "/test.txt")
 	c.Assert(err, IsNil)
@@ -46,7 +46,7 @@ func (s cephSuite) readWriteTest(c *C, mountDir string) {
 	c.Assert(rbs, Equals, strings.TrimSpace("Test string"))
 }
 
-func (s cephSuite) TestMountUnmountVolume(c *C) {
+func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 
@@ -87,7 +87,7 @@ func (s *cephSuite) TestSnapshots(c *C) {
 	c.Assert(volumeSpec.Remove(), IsNil)
 }
 
-func (s cephSuite) TestRepeatedMountUnmount(c *C) {
+func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
 	volumeSpec := NewCephDriver().NewVolume("rbd", "pithos1234", 10)
 	c.Assert(volumeSpec.Create("mkfs.ext4 -m0 %"), IsNil)
 	for i := 0; i < 10; i++ {
@@ -99,7 +99,7 @@ func (s cephSuite) TestRepeatedMountUnmount(c *C) {
 	c.Assert(volumeSpec.Remove(), IsNil)
 }
 
-func (s cephSuite) TestTemplateFSCmd(c *C) {
+func (s *cephSuite) TestTemplateFSCmd(c *C) {
 	c.Assert(templateFSCmd("%", "foo"), Equals, "foo")
 	c.Assert(templateFSCmd("%%", "foo"), Equals, "%%")
 	c.Assert(templateFSCmd("%%%", "foo"), Equals, "%%foo")

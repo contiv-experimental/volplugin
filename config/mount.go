@@ -23,7 +23,7 @@ func (c *TopLevelConfig) mount(pool, name string) string {
 	return c.prefixed(rootMount, pool, name)
 }
 
-// PublishMount pushes the mount to etcd. Fails with ErrExist if the mount exists.
+// PublishMount pushes the mount to etcd.
 func (c *TopLevelConfig) PublishMount(mt *MountConfig) error {
 	content, err := json.Marshal(mt)
 	if err != nil {
