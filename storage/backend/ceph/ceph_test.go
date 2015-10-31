@@ -83,7 +83,7 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	c.Assert(ms.DevMajor, Equals, uint(252))
 	c.Assert(ms.DevMinor, Equals, uint(0))
 	c.Assert(strings.HasPrefix(ms.Device, "/dev/rbd"), Equals, true)
-	s.readWriteTest(c, mountPath(ms.Volume.Params["pool"], ms.Volume.Name))
+	s.readWriteTest(c, MountPath(ms.Volume.Params["pool"], ms.Volume.Name))
 	c.Assert(driver.Unmount(driverOpts), IsNil)
 	c.Assert(driver.Destroy(driverOpts), IsNil)
 }

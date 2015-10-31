@@ -25,7 +25,8 @@ func (c *Driver) poolExists(poolName string) (bool, error) {
 	return false, nil
 }
 
-func mountPath(poolName, volumeName string) string {
+// MountPath returns the path of a mount for a pool/volume.
+func MountPath(poolName, volumeName string) string {
 	return filepath.Join(mountBase, poolName, volumeName)
 }
 
