@@ -4,8 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -37,11 +38,22 @@ func scheduleSnapshotPrune(config *config.TopLevelConfig) {
 }
 
 func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, strings.Join([]string{volume.TenantName, volume.VolumeName}, "."), volume.Options.Size)
 	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
-	list, err := cephVol.ListSnapshots()
+
+	driver := ceph.NewDriver()
+
+	driverOpts := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: strings.Join([]string{volume.TenantName, volume.VolumeName}, "."),
+			Params: storage.Params{
+				"pool": pool,
+			},
+		},
+	}
+
+	list, err := driver.ListSnapshots(driverOpts)
 	if err != nil {
-		log.Errorf("Could not list snapshots for volume %q", volume)
+		log.Errorf("Could not list snapshots for volume %q: %v", volume.VolumeName, err)
 		return
 	}
 
@@ -51,18 +63,27 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config
 	}
 
 	for i := 0; i < toDeleteCount; i++ {
-		log.Infof("Removing snapshot %q for  volume %q", list[i], volume)
-		if err := cephVol.RemoveSnapshot(list[i]); err != nil {
-			log.Errorf("Removing snapshot %q for volume %q failed: %v", list[i], volume, err)
+		log.Infof("Removing snapshot %q for volume %q", list[i], volume.VolumeName)
+		if err := driver.RemoveSnapshot(list[i], driverOpts); err != nil {
+			log.Errorf("Removing snapshot %q for volume %q failed: %v", list[i], volume.VolumeName, err)
 		}
 	}
 }
 
 func runSnapshot(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
 	now := time.Now()
-	cephVol := cephdriver.NewCephDriver().NewVolume(pool, strings.Join([]string{volume.TenantName, volume.VolumeName}, "."), volume.Options.Size)
 	log.Infof("Snapping volume %q at %v", volume, now)
-	if err := cephVol.CreateSnapshot(now.String()); err != nil {
+	driver := ceph.NewDriver()
+	driverOpts := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: strings.Join([]string{volume.TenantName, volume.VolumeName}, "."),
+			Params: storage.Params{
+				"pool": pool,
+			},
+		},
+	}
+
+	if err := driver.CreateSnapshot(now.String(), driverOpts); err != nil {
 		log.Errorf("Cannot snap volume: %q: %v", volume.VolumeName, err)
 	}
 }

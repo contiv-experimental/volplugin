@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
@@ -29,9 +30,38 @@ func createImage(tenant *config.TenantConfig, config *config.VolumeConfig) error
 		}
 	}
 
-	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, joinVolumeName(config), config.Options.Size).Create(fscmd)
+	driver := ceph.NewDriver()
+	driverOpts := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: joinVolumeName(config),
+			Size: config.Options.Size,
+			Params: storage.Params{
+				"pool": config.Options.Pool,
+			},
+		},
+		FSOptions: storage.FSOptions{
+			Type:          config.Options.FileSystem,
+			CreateCommand: fscmd,
+		},
+	}
+
+	if err := driver.Create(driverOpts); err != nil {
+		return err
+	}
+
+	return driver.Format(driverOpts)
 }
 
 func removeImage(config *config.VolumeConfig) error {
-	return cephdriver.NewCephDriver().NewVolume(config.Options.Pool, joinVolumeName(config), 0).Remove()
+	driver := ceph.NewDriver()
+	driverOpts := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: joinVolumeName(config),
+			Params: storage.Params{
+				"pool": config.Options.Pool,
+			},
+		},
+	}
+
+	return driver.Destroy(driverOpts)
 }
