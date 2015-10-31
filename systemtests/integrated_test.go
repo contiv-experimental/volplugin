@@ -35,6 +35,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls tenant1.foo")
 	c.Assert(err, IsNil)
 	mylen := len(strings.Split(out, "\n"))
+	c.Assert(mylen, Not(Equals), 0)
 	c.Assert(mylen >= 5 && mylen <= 10, Equals, true)
 }
 
