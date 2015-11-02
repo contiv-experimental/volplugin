@@ -66,6 +66,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
+  config.vm.synced_folder "bin", "/opt/golang/bin"
 
   (0..NMONS - 1).each do |i|
     config.vm.define "mon#{i}" do |mon|
