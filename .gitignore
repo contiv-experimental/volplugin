@@ -1,3 +1,4 @@
+bin/*
 ansible/docker
 *.vdi
 .vagrant
