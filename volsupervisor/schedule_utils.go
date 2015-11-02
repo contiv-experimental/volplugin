@@ -15,7 +15,7 @@ type volumeDispatch struct {
 func iterateVolumes(config *config.TopLevelConfig, dispatch func(v *volumeDispatch)) {
 	tenants, err := config.ListTenants()
 	if err != nil {
-		log.Warn("Could not locate any tenant information; sleeping.")
+		log.Warnf("Could not locate any tenant information; sleeping from error: %v.", err)
 		return
 	}
 

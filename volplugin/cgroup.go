@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/contiv/volplugin/cephdriver"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
 )
 
 // FIXME find a better place for these
@@ -16,11 +16,11 @@ const (
 	readBPSFile   = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
 )
 
-func makeLimit(mc *cephdriver.CephMount, limit uint64) []byte {
+func makeLimit(mc *storage.Mount, limit uint64) []byte {
 	return []byte(fmt.Sprintf("%d:%d %d\n", mc.DevMajor, mc.DevMinor, limit))
 }
 
-func applyCGroupRateLimit(vc *config.VolumeConfig, mc *cephdriver.CephMount) error {
+func applyCGroupRateLimit(vc *config.VolumeConfig, mc *storage.Mount) error {
 	opMap := map[string]uint64{
 		writeIOPSFile: uint64(vc.Options.RateLimit.WriteIOPS),
 		readIOPSFile:  uint64(vc.Options.RateLimit.ReadIOPS),
