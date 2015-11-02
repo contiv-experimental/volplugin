@@ -105,3 +105,34 @@ build-docs:
 
 publish-docs: build-docs
 	cd dist && s3cmd sync --delete-removed --recursive * s3://volplugin-docs
+
+# We are using date based versioning, so for consistent version during a build
+# we evaluate and set the value of version once in a file and use it in 'tar'
+# and 'release' targets.
+NAME := volplugin
+VERSION_FILE := /tmp/$(NAME)-version
+VERSION := `cat $(VERSION_FILE)`
+TAR_EXT := tar.bz2
+TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
+TAR_LOC := .
+TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
+
+tar: clean-tar run-build
+	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
+	@tar -jcf $(TAR_FILE) -C $(GOPATH)/bin volcli volmaster volplugin volsupervisor
+
+clean-tar:
+	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
+
+# GITHUB_USER and GITHUB_TOKEN are needed be set to run github-release
+release: tar
+	@go get github.com/aktau/github-release
+	@latest_tag=$$(git describe --tags `git rev-list --tags --max-count=1`); \
+		comparison="$$latest_tag..HEAD"; \
+		changelog=$$(git log $$comparison --oneline --no-merges --reverse); \
+		if [ -z "$$changelog" ]; then echo "No new changes to release!"; exit 0; fi; \
+		set -x; \
+		( ( github-release -v release -p -r volplugin -t $(VERSION) -d "**Changelog**<br/>$$changelog" ) && \
+		( github-release -v upload -r volplugin -t $(VERSION) -n $(TAR_FILENAME) -f $(TAR_FILE) || \
+		github-release -v delete -r volplugin -t $(VERSION) ) ) || exit 1
+	@make clean-tar
