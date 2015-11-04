@@ -2,16 +2,6 @@
   sudo: true
   environment: proxy_env
   tasks:
-    - service:
-        name: docker
-        state: stopped
-    - shell: sleep 10
-    - copy: src=docker dest=/usr/bin/docker
-    - service:
-        name: docker
-        state: started
-    - shell: creates=/usr/local/go/bin/go curl -L https://storage.googleapis.com/golang/go1.5.1.linux-amd64.tar.gz | tar -xvz -C /usr/local
-    - file: path=/opt/golang/src/github.com/contiv state=directory
     - shell: creates=/opt/golang/bin/godep bash -c "source /etc/profile.d/00golang.sh; go get github.com/kr/godep"
     - file: path=/usr/share/docker/plugins state=directory
   roles:

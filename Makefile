@@ -1,4 +1,4 @@
-start: download-docker install-ansible
+start: install-ansible
 	vagrant up
 	make build
 
@@ -8,9 +8,9 @@ stop:
 update:
 	vagrant box update
 
-restart: stop update download-docker start
+restart: stop update start
 
-provision: download-docker
+provision:
 	vagrant provision
 
 ssh:
@@ -22,9 +22,6 @@ golint-host:
 
 golint:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
-
-download-docker:
-	curl https://master.dockerproject.org/linux/amd64/docker -o ansible/docker
 
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
