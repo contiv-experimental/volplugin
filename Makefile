@@ -6,7 +6,7 @@ stop:
 	vagrant destroy -f
 
 update:
-	vagrant box update
+	vagrant box update || exit 0
 
 restart: stop update start
 

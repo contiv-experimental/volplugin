@@ -1,4 +1,4 @@
-<!-- <a href="http://1cea435f.ngrok.com/job/volplugin_CI/lastBuild/"><img src="http://1cea435f.ngrok.com/buildStatus/icon?job=volplugin_CI" /></a> -->
+<a href="http://1cea435f.ngrok.com/job/volplugin_CI/lastBuild/"><img src="http://1cea435f.ngrok.com/buildStatus/icon?job=volplugin_CI" /></a>
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
