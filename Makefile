@@ -6,7 +6,7 @@ stop:
 	vagrant destroy -f
 
 update:
-	vagrant box update
+	vagrant box update || exit 0
 
 restart: stop update start
 
@@ -38,7 +38,7 @@ unit-test: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./... -check.v"'
 
 build: golint
-	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'; done
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
 
 run:
 	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volplugin run-volmaster'; done
