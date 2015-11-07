@@ -32,7 +32,7 @@ func TenantUpload(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -61,7 +61,7 @@ func TenantDelete(ctx *cli.Context) {
 
 	tenant := ctx.Args()[0]
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -82,7 +82,7 @@ func TenantGet(ctx *cli.Context) {
 
 	tenant := ctx.Args()[0]
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -106,7 +106,7 @@ func TenantList(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -166,7 +166,7 @@ func VolumeGet(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -190,7 +190,7 @@ func VolumeForceRemove(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -227,7 +227,7 @@ func VolumeList(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -244,7 +244,7 @@ func VolumeList(ctx *cli.Context) {
 
 // VolumeListAll returns a list of the pools the volmaster knows about.
 func VolumeListAll(ctx *cli.Context) {
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -261,7 +261,7 @@ func VolumeListAll(ctx *cli.Context) {
 
 // MountList returns a list of the mounts the volmaster knows about.
 func MountList(ctx *cli.Context) {
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -282,7 +282,7 @@ func MountGet(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -307,7 +307,7 @@ func MountForceRemove(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
