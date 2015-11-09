@@ -150,7 +150,7 @@ func VolumeCreate(ctx *cli.Context) {
 		errExit(ctx, fmt.Errorf("Could not create request JSON: %v", err), false)
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("master")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -216,7 +216,7 @@ func VolumeRemove(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	if _, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("master")), "application/json", bytes.NewBuffer(content)); err != nil {
+	if _, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content)); err != nil {
 		errExit(ctx, err, false)
 	}
 }

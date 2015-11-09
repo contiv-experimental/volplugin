@@ -36,12 +36,6 @@ func main() {
 			EnvVar: "DEBUG",
 		},
 		cli.StringFlag{
-			Name:   "listen",
-			Usage:  "listen address for volmaster",
-			EnvVar: "LISTEN",
-			Value:  ":8080",
-		},
-		cli.StringFlag{
 			Name:  "prefix",
 			Usage: "prefix key used in etcd for namespacing",
 			Value: "/volplugin",

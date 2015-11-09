@@ -31,7 +31,7 @@ func main() {
 			Name:   "master",
 			Usage:  "Set the volmaster host:port",
 			EnvVar: "MASTER",
-			Value:  "localhost:8080",
+			Value:  "localhost:9005",
 		},
 		cli.StringFlag{
 			Name:   "host-label",
