@@ -39,7 +39,7 @@ func main() {
 			Name:   "listen",
 			Usage:  "listen address for volmaster",
 			EnvVar: "LISTEN",
-			Value:  ":8080",
+			Value:  ":9005",
 		},
 		cli.StringFlag{
 			Name:  "prefix",
