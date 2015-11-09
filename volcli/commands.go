@@ -2,7 +2,8 @@ package volcli
 
 import "github.com/codegangsta/cli"
 
-var volmasterFlags = []cli.Flag{
+// VolmasterFlags contains the flags specific to volmasters
+var VolmasterFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "volmaster",
 		Usage: "address of volmaster process",
@@ -67,7 +68,7 @@ var Commands = []cli.Command{
 		Subcommands: []cli.Command{
 			{
 				Name: "create",
-				Flags: append(volmasterFlags, cli.StringSliceFlag{
+				Flags: append(VolmasterFlags, cli.StringSliceFlag{
 					Name:  "opt",
 					Usage: "Provide key=value options to create the volume",
 				}),
@@ -109,7 +110,7 @@ var Commands = []cli.Command{
 				ArgsUsage:   "[tenant name] [volume name]",
 				Description: "Remove the volume for a tenant, deleting its contents.",
 				Usage:       "Remove a volume and its contents",
-				Flags:       volmasterFlags,
+				Flags:       VolmasterFlags,
 				Action:      VolumeRemove,
 			},
 		},
