@@ -4,7 +4,7 @@ import "github.com/codegangsta/cli"
 
 var volmasterFlags = []cli.Flag{
 	cli.StringFlag{
-		Name:  "master",
+		Name:  "volmaster",
 		Usage: "address of volmaster process",
 		Value: "127.0.0.1:8080",
 	},
