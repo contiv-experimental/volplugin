@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -73,6 +74,23 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Retrieving hostname", err)
+		return
+	}
+
+	uc := &config.UseConfig{
+		Volume:   vc,
+		Reason:   "Remove",
+		Hostname: hostname,
+	}
+
+	if err := d.config.PublishUse(uc); err != nil {
+		httpError(w, "Creating use lock", err)
+		return
+	}
+
 	if err := removeImage(vc); err != nil {
 		httpError(w, "removing image", err)
 		return
@@ -80,6 +98,11 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
 		httpError(w, "clearing volume records", err)
+		return
+	}
+
+	if err := d.config.RemoveUse(uc, false); err != nil {
+		httpError(w, "Removing use lock", err)
 		return
 	}
 }
@@ -168,19 +191,53 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volConfig, err := d.config.CreateVolume(req)
-	if err != config.ErrExist && volConfig != nil {
-		tenant, err := d.config.GetTenant(req.Tenant)
-		if err != nil {
-			httpError(w, "Creating volume", err)
-		}
-
-		if err := createImage(tenant, volConfig); err != nil {
-			httpError(w, "Creating volume", err)
-			return
-		}
-	} else if err != nil && err != config.ErrExist {
+	if err != nil {
 		httpError(w, "Creating volume", err)
 		return
+	}
+
+	tenant, err := d.config.GetTenant(req.Tenant)
+	if err != nil {
+		httpError(w, "Retrieving tenant", err)
+		return
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Creating volume", err)
+		return
+	}
+
+	uc := &config.UseConfig{
+		Volume:   volConfig,
+		Reason:   "create",
+		Hostname: hostname,
+	}
+
+	// FIXME I think the use of v here is a racy thing, but I'm not sure yet.
+	v, _ := d.config.GetVolume(req.Tenant, req.Volume)
+
+	if err := d.config.PublishUse(uc); err == nil {
+		if v == nil {
+			if err := createImage(tenant, volConfig); err != nil {
+				httpError(w, "Creating volume", err)
+				return
+			}
+
+			if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+				httpError(w, "Publishing volume", err)
+				return
+			}
+		} else {
+			volConfig = v
+		}
+
+		if err := d.config.RemoveUse(uc, false); err != nil {
+			httpError(w, "Removing Use Lock", err)
+			return
+		}
+	} else {
+		volConfig = v
 	}
 
 	content, err = json.Marshal(volConfig)

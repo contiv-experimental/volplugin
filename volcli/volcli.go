@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -216,7 +217,13 @@ func VolumeRemove(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	if _, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content)); err != nil {
+	resp, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	if resp.StatusCode != 200 {
+		io.Copy(os.Stderr, resp.Body)
 		errExit(ctx, err, false)
 	}
 }

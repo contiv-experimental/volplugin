@@ -8,6 +8,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
+	"github.com/contiv/systemtests-utils"
 	"github.com/contiv/volplugin/config"
 )
 
@@ -64,16 +65,9 @@ func (s *systemtestSuite) TestHostLabel(c *C) {
 }
 
 func (s *systemtestSuite) TestUseMountLock(c *C) {
-	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
-
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
-
-	for _, name := range []string{"mon1", "mon2"} {
+	for _, name := range []string{"mon0", "mon1", "mon2"} {
 		c.Assert(s.createVolume(name, "tenant1", "test", nil), IsNil)
-		defer s.purgeVolume(name, "tenant1", "test", false)
 	}
-
-	defer s.clearContainers()
 
 	dockerCmd := "docker run -d -v tenant1/test:/mnt ubuntu sleep infinity"
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
@@ -85,8 +79,6 @@ func (s *systemtestSuite) TestUseMountLock(c *C) {
 
 	c.Assert(s.clearContainers(), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand(dockerCmd), IsNil)
-
-	defer s.purgeVolume("mon1", "tenant1", "test", false)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
 		_, err := s.vagrant.GetNode(nodeName).RunCommandWithOutput(dockerCmd)
@@ -283,4 +275,32 @@ func (s *systemtestSuite) TestRateLimiting(c *C) {
 
 		c.Assert(found, Equals, true)
 	}
+}
+
+func (s *systemtestSuite) TestParallelCreate(c *C) {
+	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
+		return node.RunCommand("docker volume create -d volplugin --name tenant1/test")
+	}), IsNil)
+
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
+
+	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
+		return node.RunCommand("docker volume rm tenant1/test")
+	}), IsNil)
+}
+
+func (s *systemtestSuite) TestRemoveWhileMount(c *C) {
+	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
+	_, err := s.docker("run -itd -v tenant1/test:/mnt ubuntu sleep infinity")
+	c.Assert(err, IsNil)
+
+	_, err = s.volcli("volume remove tenant1 test")
+	c.Assert(err, NotNil)
+
+	s.clearContainers()
+
+	_, err = s.volcli("volume remove tenant1 test")
+	c.Assert(err, IsNil)
 }

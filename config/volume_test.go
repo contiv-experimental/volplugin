@@ -72,6 +72,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 		for _, volume := range volumeNames {
 			vcfg, err := s.tlc.CreateVolume(RequestCreate{Tenant: tenant, Volume: volume})
 			c.Assert(err, IsNil)
+			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
 
 			defer func(tenant, volume string) { c.Assert(s.tlc.RemoveVolume(tenant, volume), IsNil) }(tenant, volume)
 
