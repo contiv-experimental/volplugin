@@ -35,7 +35,7 @@ func (s *configSuite) SetUpSuite(c *C) {
 
 func (s *configSuite) TestPrefixed(c *C) {
 	c.Assert(s.tlc.prefixed("foo"), Equals, path.Join(s.tlc.prefix, "foo"))
-	c.Assert(s.tlc.mount("bar", "baz"), Equals, s.tlc.prefixed(rootMount, "bar", "baz"))
+	c.Assert(s.tlc.use(&VolumeConfig{TenantName: "bar", VolumeName: "baz"}), Equals, s.tlc.prefixed(rootUse, "bar", "baz"))
 	c.Assert(s.tlc.tenant("quux"), Equals, s.tlc.prefixed(rootTenant, "quux"))
 	c.Assert(s.tlc.volume("foo", "bar"), Equals, s.tlc.prefixed(rootVolume, "foo", "bar"))
 }

@@ -54,16 +54,16 @@ func (s *systemtestSuite) TestHostLabel(c *C) {
 	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 	defer s.docker("rm -f " + out)
 
-	mt := &config.MountConfig{}
+	ut := &config.UseConfig{}
 
 	// we know the pool is rbd here, so cheat a little.
-	out, err = s.volcli("mount get rbd foo")
+	out, err = s.volcli("use get tenant1 foo")
 	c.Assert(err, IsNil)
-	c.Assert(json.Unmarshal([]byte(out), mt), IsNil)
-	c.Assert(mt.Host, Equals, "quux")
+	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
+	c.Assert(ut.Hostname, Equals, "quux")
 }
 
-func (s *systemtestSuite) TestMountLock(c *C) {
+func (s *systemtestSuite) TestUseMountLock(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 
 	defer s.purgeVolume("mon0", "tenant1", "test", true)

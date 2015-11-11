@@ -128,7 +128,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 }
 
-func (s *systemtestSuite) TestVolCLIMount(c *C) {
+func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
 	id, err := s.docker("run -itd -v tenant1/foo:/mnt ubuntu sleep infinity")
@@ -138,24 +138,22 @@ func (s *systemtestSuite) TestVolCLIMount(c *C) {
 	defer s.docker("volume rm tenant1/foo")
 	defer s.docker("rm -f " + id)
 
-	out, err := s.volcli("mount list")
+	out, err := s.volcli("use list")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "rbd/foo")
+	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
 
-	out, err = s.volcli("mount get rbd foo")
-	c.Assert(err, IsNil)
-
-	mt := &config.MountConfig{}
-	c.Assert(json.Unmarshal([]byte(out), mt), IsNil)
-	c.Assert(mt.Volume, Equals, "foo")
-	c.Assert(mt.Pool, Equals, "rbd")
-	c.Assert(mt.Host, Equals, "ceph-mon0")
-	c.Assert(mt.MountPoint, Equals, "/mnt/ceph/rbd/tenant1.foo")
-
-	_, err = s.volcli("mount force-remove rbd foo")
+	out, err = s.volcli("use get tenant1 foo")
 	c.Assert(err, IsNil)
 
-	out, err = s.volcli("mount list")
+	ut := &config.UseConfig{}
+	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
+	c.Assert(ut.Volume, NotNil)
+	c.Assert(ut.Hostname, Equals, "ceph-mon0")
+
+	_, err = s.volcli("use force-remove tenant1 foo")
+	c.Assert(err, IsNil)
+
+	out, err = s.volcli("use list")
 	c.Assert(err, IsNil)
 	c.Assert(out, Equals, "")
 

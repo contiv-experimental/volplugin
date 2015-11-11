@@ -10,11 +10,11 @@ import (
 
 const (
 	rootVolume = "volumes"
-	rootMount  = "mounts"
+	rootUse    = "users"
 	rootTenant = "tenants"
 )
 
-var defaultPaths = []string{rootVolume, rootMount, rootTenant}
+var defaultPaths = []string{rootVolume, rootUse, rootTenant}
 
 // ErrExist indicates when a key in etcd exits already. Used for create logic.
 var ErrExist = errors.New("Already exists")

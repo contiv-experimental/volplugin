@@ -202,3 +202,7 @@ func (cfg *VolumeConfig) Validate() error {
 
 	return cfg.Options.Validate()
 }
+
+func (cfg *VolumeConfig) String() string {
+	return path.Join(cfg.TenantName, cfg.VolumeName)
+}

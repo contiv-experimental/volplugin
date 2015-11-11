@@ -45,8 +45,8 @@ func unmarshalRequest(r *http.Request) (config.Request, error) {
 	return cfg, nil
 }
 
-func unmarshalMountConfig(r *http.Request) (*config.MountConfig, error) {
-	cfg := &config.MountConfig{}
+func unmarshalUseConfig(r *http.Request) (*config.UseConfig, error) {
+	cfg := &config.UseConfig{}
 
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -57,7 +57,7 @@ func unmarshalMountConfig(r *http.Request) (*config.MountConfig, error) {
 		return cfg, err
 	}
 
-	if cfg.Volume == "" {
+	if cfg.Volume == nil {
 		return cfg, errors.New("volume was blank")
 	}
 

@@ -259,25 +259,25 @@ func VolumeListAll(ctx *cli.Context) {
 	}
 }
 
-// MountList returns a list of the mounts the volmaster knows about.
-func MountList(ctx *cli.Context) {
+// UseList returns a list of the mounts the volmaster knows about.
+func UseList(ctx *cli.Context) {
 	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		errExit(ctx, err, false)
 	}
 
-	mounts, err := cfg.ListMounts()
+	uses, err := cfg.ListUses()
 	if err != nil {
 		errExit(ctx, err, false)
 	}
 
-	for _, name := range mounts {
+	for _, name := range uses {
 		fmt.Println(name)
 	}
 }
 
-// MountGet retrieves the JSON information for a mount.
-func MountGet(ctx *cli.Context) {
+// UseGet retrieves the JSON information for a mount.
+func UseGet(ctx *cli.Context) {
 	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
@@ -287,7 +287,12 @@ func MountGet(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	mount, err := cfg.GetMount(ctx.Args()[0], ctx.Args()[1])
+	vc := &config.VolumeConfig{
+		TenantName: ctx.Args()[0],
+		VolumeName: ctx.Args()[1],
+	}
+
+	mount, err := cfg.GetUse(vc)
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -300,9 +305,9 @@ func MountGet(ctx *cli.Context) {
 	fmt.Println(string(content))
 }
 
-// MountForceRemove deletes the mount entry from etcd; useful for clearing a
+// UseTheForce deletes the use entry from etcd; useful for clearing a
 // stale mount.
-func MountForceRemove(ctx *cli.Context) {
+func UseTheForce(ctx *cli.Context) {
 	if len(ctx.Args()) != 2 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
@@ -312,7 +317,12 @@ func MountForceRemove(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	if err := cfg.RemoveMount(&config.MountConfig{Pool: ctx.Args()[0], Volume: ctx.Args()[1]}, true); err != nil {
+	vc := &config.VolumeConfig{
+		TenantName: ctx.Args()[0],
+		VolumeName: ctx.Args()[1],
+	}
+
+	if err := cfg.RemoveUse(&config.UseConfig{Volume: vc}, true); err != nil {
 		errExit(ctx, err, false)
 	}
 }

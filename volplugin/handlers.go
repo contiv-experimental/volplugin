@@ -180,14 +180,12 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 
 		driver := ceph.NewDriver()
 
-		mt := &config.MountConfig{
-			Volume:     volConfig.VolumeName,
-			Pool:       volConfig.Options.Pool,
-			MountPoint: ceph.MountPath(volConfig.Options.Pool, joinPath(tenant, name)),
-			Host:       host,
+		ut := &config.UseConfig{
+			Volume:   volConfig,
+			Hostname: host,
 		}
 
-		if err := reportMount(master, mt); err != nil {
+		if err := reportMount(master, ut); err != nil {
 			httpError(w, "Reporting mount to master", err)
 			return
 		}
@@ -274,14 +272,12 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		mt := &config.MountConfig{
-			Volume:     name,
-			MountPoint: ceph.MountPath(volConfig.Options.Pool, joinPath(tenant, name)),
-			Pool:       volConfig.Options.Pool,
-			Host:       hostname,
+		ut := &config.UseConfig{
+			Volume:   volConfig,
+			Hostname: hostname,
 		}
 
-		if err := reportUnmount(master, mt); err != nil {
+		if err := reportUnmount(master, ut); err != nil {
 			httpError(w, "Reporting unmount to master", err)
 			return
 		}
