@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -73,6 +74,23 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Retrieving hostname", err)
+		return
+	}
+
+	uc := &config.UseConfig{
+		Volume:   vc,
+		Reason:   "Remove",
+		Hostname: hostname,
+	}
+
+	if err := d.config.PublishUse(uc); err != nil {
+		httpError(w, "Creating use lock", err)
+		return
+	}
+
 	if err := removeImage(vc); err != nil {
 		httpError(w, "removing image", err)
 		return
@@ -82,23 +100,29 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "clearing volume records", err)
 		return
 	}
+
+	if err := d.config.RemoveUse(uc, false); err != nil {
+		httpError(w, "Removing use lock", err)
+		return
+	}
 }
 
 func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalMountConfig(r)
+	req, err := unmarshalUseConfig(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	mt, err := d.config.GetMount(req.Pool, req.Volume)
+	mt, err := d.config.GetUse(req.Volume)
 	if err != nil {
 		httpError(w, "Could not retrieve mount information", err)
 		return
 	}
 
-	if mt.Host == req.Host {
-		if err := d.config.RemoveMount(req, false); err != nil {
+	if mt.Hostname == req.Hostname {
+		req.Reason = "Mount"
+		if err := d.config.RemoveUse(req, false); err != nil {
 			httpError(w, "Could not publish mount information", err)
 			return
 		}
@@ -106,13 +130,15 @@ func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalMountConfig(r)
+	req, err := unmarshalUseConfig(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	if err := d.config.PublishMount(req); err != nil {
+	req.Reason = "Mount"
+
+	if err := d.config.PublishUse(req); err != nil {
 		httpError(w, "Could not publish mount information", err)
 		return
 	}
@@ -165,19 +191,53 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volConfig, err := d.config.CreateVolume(req)
-	if err != config.ErrExist && volConfig != nil {
-		tenant, err := d.config.GetTenant(req.Tenant)
-		if err != nil {
-			httpError(w, "Creating volume", err)
-		}
-
-		if err := createImage(tenant, volConfig); err != nil {
-			httpError(w, "Creating volume", err)
-			return
-		}
-	} else if err != nil && err != config.ErrExist {
+	if err != nil {
 		httpError(w, "Creating volume", err)
 		return
+	}
+
+	tenant, err := d.config.GetTenant(req.Tenant)
+	if err != nil {
+		httpError(w, "Retrieving tenant", err)
+		return
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Creating volume", err)
+		return
+	}
+
+	uc := &config.UseConfig{
+		Volume:   volConfig,
+		Reason:   "create",
+		Hostname: hostname,
+	}
+
+	// FIXME I think the use of v here is a racy thing, but I'm not sure yet.
+	v, _ := d.config.GetVolume(req.Tenant, req.Volume)
+
+	if err := d.config.PublishUse(uc); err == nil {
+		if v == nil {
+			if err := createImage(tenant, volConfig); err != nil {
+				httpError(w, "Creating volume", err)
+				return
+			}
+
+			if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+				httpError(w, "Publishing volume", err)
+				return
+			}
+		} else {
+			volConfig = v
+		}
+
+		if err := d.config.RemoveUse(uc, false); err != nil {
+			httpError(w, "Removing Use Lock", err)
+			return
+		}
+	} else {
+		volConfig = v
 	}
 
 	content, err = json.Marshal(volConfig)

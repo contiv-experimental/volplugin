@@ -50,11 +50,6 @@ func (c *TopLevelConfig) volume(tenant, name string) string {
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
-	v, _ := c.GetVolume(rc.Tenant, rc.Volume)
-	if v != nil {
-		return v, ErrExist
-	}
-
 	resp, err := c.GetTenant(rc.Tenant)
 	if err != nil {
 		return nil, err
@@ -82,18 +77,23 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		vc.Options.FileSystem = defaultFilesystem
 	}
 
+	return vc, nil
+}
+
+// PublishVolume writes a volume to etcd.
+func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
 	remarshal, err := json.Marshal(vc)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, rc.Tenant), "", &client.SetOptions{Dir: true})
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.TenantName), "", &client.SetOptions{Dir: true})
 
-	if _, err := c.etcdClient.Set(context.Background(), c.volume(rc.Tenant, rc.Volume), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
-		return nil, err
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.TenantName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
+		return ErrExist
 	}
 
-	return vc, nil
+	return nil
 }
 
 // GetVolume returns the VolumeConfig for a given volume.
@@ -201,4 +201,8 @@ func (cfg *VolumeConfig) Validate() error {
 	}
 
 	return cfg.Options.Validate()
+}
+
+func (cfg *VolumeConfig) String() string {
+	return path.Join(cfg.TenantName, cfg.VolumeName)
 }

@@ -112,8 +112,8 @@ func requestCreate(host, tenantName, name string, opts map[string]string) error 
 	return nil
 }
 
-func reportMount(host string, mt *config.MountConfig) error {
-	content, err := json.Marshal(mt)
+func reportMount(host string, ut *config.UseConfig) error {
+	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
 	}
@@ -132,8 +132,8 @@ func reportMount(host string, mt *config.MountConfig) error {
 	return nil
 }
 
-func reportUnmount(host string, mt *config.MountConfig) error {
-	content, err := json.Marshal(mt)
+func reportUnmount(host string, ut *config.UseConfig) error {
+	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
 	}
