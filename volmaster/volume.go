@@ -15,7 +15,7 @@ func joinVolumeName(config *config.VolumeConfig) string {
 	return strings.Join([]string{config.TenantName, config.VolumeName}, ".")
 }
 
-func createImage(tenant *config.TenantConfig, config *config.VolumeConfig) error {
+func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) error {
 	var (
 		fscmd string
 		ok    bool
@@ -52,7 +52,7 @@ func createImage(tenant *config.TenantConfig, config *config.VolumeConfig) error
 	return driver.Format(driverOpts)
 }
 
-func removeImage(config *config.VolumeConfig) error {
+func removeVolume(config *config.VolumeConfig) error {
 	driver := ceph.NewDriver()
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
