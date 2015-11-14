@@ -38,6 +38,10 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
+	// create the volume directory for the tenant so that files can be written there.
+	// for example: /volplugin/tenants/tenant1 will create
+	// /volplugin/volumes/tenant1 so that a volume of tenant1/test can be created
+	// at /volplugin/volumes/tenant1/test
 	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, name), "", &client.SetOptions{Dir: true})
 
 	if _, err := c.etcdClient.Set(context.Background(), c.tenant(name), string(value), &client.SetOptions{PrevExist: client.PrevIgnore}); err != nil {

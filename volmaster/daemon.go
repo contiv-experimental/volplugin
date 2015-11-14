@@ -91,7 +91,7 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := removeImage(vc); err != nil {
+	if err := removeVolume(vc); err != nil {
 		httpError(w, "removing image", err)
 		return
 	}
@@ -219,7 +219,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	if err := d.config.PublishUse(uc); err == nil {
 		if v == nil {
-			if err := createImage(tenant, volConfig); err != nil {
+			if err := createVolume(tenant, volConfig); err != nil {
 				httpError(w, "Creating volume", err)
 				return
 			}
