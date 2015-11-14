@@ -10,8 +10,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// UseConfig is the exchange configuration for users. Users are hosts,
-// consumers of a volume. Examples of uses are: creating a volume, useing a
+// UseConfig is the locking mechanism for users. Users are hosts,
+// consumers of a volume. Examples of uses are: creating a volume, using a
 // volume, removing a volume, snapshotting a volume. These are supplied in the
 // `Reason` field as text.
 type UseConfig struct {
