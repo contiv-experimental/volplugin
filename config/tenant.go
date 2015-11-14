@@ -38,7 +38,7 @@ func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
 		return err
 	}
 
-	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, name), "", &client.SetOptions{Dir: true})
+	c.etcdClient.Set(context.Background(), c.prefixed(rootTenant, name), "", &client.SetOptions{Dir: true})
 
 	if _, err := c.etcdClient.Set(context.Background(), c.tenant(name), string(value), &client.SetOptions{PrevExist: client.PrevIgnore}); err != nil {
 		return err
