@@ -1,17 +1,17 @@
 ---
-- name: create OpenStack pool
-  command: rados mkpool {{ item }}
+- name: create openstack pool
+  command: ceph osd pool create {{ item.name }} {{ item.pg_num }}
   with_items:
     - "{{ openstack_glance_pool }}"
     - "{{ openstack_cinder_pool }}"
     - "{{ openstack_nova_pool }}"
     - "{{ openstack_cinder_backup_pool }}"
   changed_when: false
-  ignore_errors: true
+  failed_when: false
 
-- name: create OpenStack keys
-  command: >
-    ceph auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/ceph.{{ item.name }}.keyring
-    creates=/etc/ceph/ceph.{{ item.name }}.keyring
+- name: create openstack keys
+  command: ceph auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/ceph.{{ item.name }}.keyring
+  args:
+    creates: /etc/ceph/ceph.{{ item.name }}.keyring
   with_items: openstack_keys
   changed_when: false
