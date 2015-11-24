@@ -56,6 +56,8 @@ ansible_provision = proc do |ansible|
     monitor_interface: 'enp0s8',
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
+    devices: "[ '/dev/sdb', '/dev/sdc' ]",
+    journal_collocation: 'true',
   }
   ansible.limit = 'all'
 end

@@ -2,6 +2,12 @@
 # You can override default vars defined in defaults/main.yml here,
 # but I would advice to use host or group vars instead
 
+###########
+# GENERAL #
+###########
+
+fetch_directory: fetch/
+
 ####################
 # OSD CRUSH LOCATION
 ####################
@@ -41,16 +47,12 @@ cephx: true
 #
 # !! WARNING !!
 
-# USE WITH CAUTION
-# Erase partitions structure and layout of the given devices below prior to prepare them
-zap_devices: false
-
 # Declare devices
 # All the scenarii inherit from the following device declaration
 #
-devices:
-  - /dev/sdb
-  - /dev/sdc
+#devices:
+#  - /dev/sdb
+#  - /dev/sdc
 
 # Device discovery is based on the Ansible fact 'ansible_devices'
 # which reports all the devices on a system. If chosen all the disks
@@ -66,7 +68,7 @@ osd_auto_discovery: false
 # This will collocate both journal and data on the same disk
 # creating a partition at the beginning of the device
 
-journal_collocation: true
+journal_collocation: false
 
 
 # II. Second scenario: single journal device for N OSDs
@@ -86,29 +88,29 @@ journal_collocation: true
 # 2. Progressively add new devices
 
 raw_multi_journal: false
-raw_journal_devices:
-  - /dev/sdb
-  - /dev/sdb
-  - /dev/sdc
-  - /dev/sdc
+#raw_journal_devices:
+#  - /dev/sdb
+#  - /dev/sdb
+#  - /dev/sdc
+#  - /dev/sdc
 
 
 # IV. Fourth scenario: use directory instead of disk for OSDs
 # Use 'true' to enable this scenario
 
 osd_directory: false
-osd_directories:
-  - /var/lib/ceph/osd/mydir1
-  - /var/lib/ceph/osd/mydir2
-  - /var/lib/ceph/osd/mydir3
-  - /var/lib/ceph/osd/mydir4
+#osd_directories:
+#  - /var/lib/ceph/osd/mydir1
+#  - /var/lib/ceph/osd/mydir2
 
 
 ##########
 # DOCKER #
 ##########
 
-ceph_containerized_deployment: false
+osd_containerized_deployment: false
 ceph_osd_docker_username: ceph
 ceph_osd_docker_imagename: daemon
-#ceph_osd_docker_device: /dev/sdb
+ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK" # comma separated variables
+#ceph_osd_docker_device:
+# - /dev/sdb
