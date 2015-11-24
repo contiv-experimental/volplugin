@@ -64,7 +64,7 @@ run-build: godep
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
-	godep go test -v ./systemtests -check.v
+	godep go test -v -timeout 30m ./systemtests -check.v
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
