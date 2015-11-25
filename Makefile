@@ -57,7 +57,7 @@ unit-test-nocoverage:
 unit-test-nocoverage-host: golint-host govet-host
 	HOST_TEST=1 GOGC=1000 godep go test -v ./... -check.v
 
-build: golint
+build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 
 run:

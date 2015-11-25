@@ -22,7 +22,7 @@ func start(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
-	volmaster.Daemon(cfg, ctx.Bool("debug"), ctx.String("listen"))
+	volmaster.Daemon(cfg, ctx.Int("ttl"), ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {
@@ -51,6 +51,11 @@ func main() {
 			Name:  "etcd",
 			Usage: "URL for etcd",
 			Value: &cli.StringSlice{"http://localhost:2379"},
+		},
+		cli.IntFlag{
+			Name:  "ttl",
+			Usage: "Set ttl of written locks; in seconds",
+			Value: 300,
 		},
 	}
 

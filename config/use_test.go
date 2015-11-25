@@ -2,6 +2,9 @@ package config
 
 import (
 	"sort"
+	"time"
+
+	"github.com/coreos/etcd/client"
 
 	. "gopkg.in/check.v1"
 )
@@ -46,4 +49,15 @@ func (s *configSuite) TestUseCRUD(c *C) {
 
 	sort.Strings(mounts)
 	c.Assert([]string{"tenant1/quux", "tenant2/baz"}, DeepEquals, mounts)
+}
+
+func (s *configSuite) TestUseCRUDWithTTL(c *C) {
+	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevNoExist), IsNil)
+	use, err := s.tlc.GetUse(testUseVolumeConfigs["basic"])
+	c.Assert(err, IsNil)
+	c.Assert(use, DeepEquals, testUseConfigs["basic"])
+	time.Sleep(10 * time.Second)
+	use, err = s.tlc.GetUse(testUseVolumeConfigs["basic"])
+	c.Assert(err, NotNil)
+	c.Assert(use, IsNil)
 }

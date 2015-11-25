@@ -43,7 +43,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 func (s *systemtestSuite) TestHostLabel(c *C) {
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 
-	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug tenant1")
+	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug --ttl 5")
 	c.Assert(err, IsNil)
 
 	time.Sleep(10 * time.Millisecond)
@@ -303,4 +303,26 @@ func (s *systemtestSuite) TestRemoveWhileMount(c *C) {
 
 	_, err = s.volcli("volume remove tenant1 test")
 	c.Assert(err, IsNil)
+}
+
+func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
+	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(10 * time.Second) // this is based on a 5s ttl set at volmaster/volplugin startup
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(1 * time.Second)
+	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
+	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), NotNil)
+
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(10 * time.Second)
+	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
+	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), NotNil)
+
+	s.clearContainers()
+
+	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
+	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
 }

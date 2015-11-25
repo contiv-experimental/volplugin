@@ -3,15 +3,38 @@ package volplugin
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 )
+
+var (
+	errVolumeResponse = errors.New("Volmaster could not be contacted")
+	errVolumeNotFound = errors.New("Volume not found")
+)
+
+func heartbeatMount(master string, ttl int, payload *config.UseConfig, stop chan struct{}) {
+	sleepTime := ttl / 4
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-time.After(time.Duration(sleepTime) * time.Second):
+			if err := reportMountStatus(master, payload); err != nil {
+				log.Errorf("Could not report mount for host %q to master %q: %v", payload.Hostname, master, err)
+				continue
+			}
+		}
+	}
+}
 
 func httpError(w http.ResponseWriter, message string, err error) {
 	fullError := fmt.Sprintf("%s %v", message, err)
@@ -52,10 +75,14 @@ func requestVolumeConfig(host, tenant, name string) (*config.VolumeConfig, error
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/request", host), "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return nil, err
+		return nil, errVolumeResponse
 	}
 
 	content, err = ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode == 404 {
+		return nil, errVolumeNotFound
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
@@ -112,13 +139,13 @@ func requestCreate(host, tenantName, name string, opts map[string]string) error 
 	return nil
 }
 
-func reportMount(host string, ut *config.UseConfig) error {
+func reportMountEndpoint(endpoint, master string, ut *config.UseConfig) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/mount", host), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/%s", master, endpoint), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
 	}
@@ -132,13 +159,21 @@ func reportMount(host string, ut *config.UseConfig) error {
 	return nil
 }
 
-func reportUnmount(host string, ut *config.UseConfig) error {
+func reportMount(master string, ut *config.UseConfig) error {
+	return reportMountEndpoint("mount", master, ut)
+}
+
+func reportMountStatus(master string, ut *config.UseConfig) error {
+	return reportMountEndpoint("mount-report", master, ut)
+}
+
+func reportUnmount(master string, ut *config.UseConfig) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/unmount", host), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/unmount", master), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
 	}
@@ -163,4 +198,29 @@ func splitPath(name string) (string, string, error) {
 
 func joinPath(tenant, name string) string {
 	return strings.Join([]string{tenant, name}, ".")
+}
+
+func addStopChan(name string) chan struct{} {
+	mountMutex.Lock()
+	defer mountMutex.Unlock()
+
+	stopChan := make(chan struct{}, 1)
+
+	if sc, ok := mountStopChans[name]; ok {
+		sc <- struct{}{}
+	}
+
+	mountStopChans[name] = stopChan
+
+	return stopChan
+}
+
+func removeStopChan(name string) {
+	mountMutex.Lock()
+	defer mountMutex.Unlock()
+
+	if sc, ok := mountStopChans[name]; ok {
+		sc <- struct{}{}
+		delete(mountStopChans, name)
+	}
 }

@@ -40,6 +40,11 @@ func main() {
 			EnvVar: "HOSTLABEL",
 			Value:  host,
 		},
+		cli.IntFlag{
+			Name:  "ttl",
+			Usage: "Set the timeout for refreshing mount point data to the volmaster",
+			Value: 300,
+		},
 	}
 	app.Action = run
 
@@ -50,5 +55,15 @@ func main() {
 }
 
 func run(ctx *cli.Context) {
-	volplugin.Daemon(ctx.Bool("debug"), ctx.String("master"), ctx.String("host-label"))
+	dc := &volplugin.DaemonConfig{
+		Debug:  ctx.Bool("debug"),
+		TTL:    ctx.Int("ttl"),
+		Master: ctx.String("master"),
+		Host:   ctx.String("host-label"),
+	}
+
+	if err := dc.Daemon(); err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)
+		os.Exit(1)
+	}
 }

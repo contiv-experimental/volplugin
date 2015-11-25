@@ -1,6 +1,7 @@
 package ceph
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/contiv/volplugin/storage"
 )
+
+var errNotFound = errors.New("Could not find rbd kernel driver entry")
 
 const (
 	mountInfoFile  = "/proc/self/mountinfo"
@@ -39,16 +42,22 @@ func rbdDevID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Could not find rbd kernel driver entry")
+	return "", errNotFound
 }
 
 func getMounts() ([]*storage.Mount, error) {
+	mounts := []*storage.Mount{}
+
 	devid, err := rbdDevID()
-	if err != nil {
+	if err == errNotFound {
+		// XXX we mask this error, because if nothing has been mounted yet the
+		// kernel will not display the kernel driver in the devices list, which
+		// means we cannot probe, and it's pointless anyways because there will be
+		// no mounts to list.
+		return mounts, nil
+	} else if err != nil {
 		return nil, err
 	}
-
-	mounts := []*storage.Mount{}
 
 	content, err := ioutil.ReadFile(mountInfoFile)
 	if err != nil {
