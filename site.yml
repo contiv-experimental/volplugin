@@ -18,7 +18,7 @@
   sudo: true
   environment: env
   roles:
-  - { role: docker }
+  - { role: docker, etcd_client_port1: 2379 }
   - { role: contiv_cluster }
 
 # service-master hosts correspond to cluster machines that run the master/controller
