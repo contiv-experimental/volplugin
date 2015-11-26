@@ -1,9 +1,17 @@
 ---
 # Variables here are applicable to all host groups
 
+ceph_stable: true # use ceph stable branch
+cephx: true
+cephx_require_signatures: false # Kernel RBD does NOT support signatures!
+cephx_cluster_require_signatures: true
+cephx_service_require_signatures: false
 
 node_name: "{{ ansible_hostname }}"
 node_addr: "{{ hostvars[ansible_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }}"
+
+crush_location: false
+osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
 
 # following variables are used in one or more roles, but have no good default value to pick from.
 # Leaving them as commented so that playbooks can fail early due to variable not defined error.

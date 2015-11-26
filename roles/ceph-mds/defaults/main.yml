@@ -1,6 +1,12 @@
 ---
 # You can override vars by using host or group vars
 
+###########
+# GENERAL #
+###########
+
+fetch_directory: fetch/
+
 cephx: true
 
 
@@ -8,6 +14,7 @@ cephx: true
 # DOCKER #
 ##########
 
-ceph_containerized_deployment: false
+mds_containerized_deployment: false
 ceph_mds_docker_username: ceph
 ceph_mds_docker_imagename: daemon
+ceph_mds_docker_extra_env: "MDS_NAME={{ ansible_hostname }}" # comma separated variables

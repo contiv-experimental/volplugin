@@ -67,10 +67,22 @@
   rbd concurrent management ops = {{ rbd_concurrent_management_ops }}
   admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
   log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
+  rbd default map options = {{ rbd_default_map_options }}
+  rbd default features = {{ rbd_default_features }} # sum features digits
+  rbd default format = {{ rbd_default_format }}
 
 [mon]
   mon osd down out interval = {{ mon_osd_down_out_interval }}
   mon osd min down reporters = {{ mon_osd_min_down_reporters }}
+  mon clock drift allowed = {{ mon_clock_drift_allowed }}
+  mon clock drift warn backoff = {{ mon_clock_drift_warn_backoff }}
+  mon osd full ratio = {{ mon_osd_full_ratio }}
+  mon osd nearfull ratio = {{ mon_osd_nearfull_ratio }}
+  mon osd report timeout = {{ mon_osd_report_timeout }}
+  mon pg warn max per osd = {{ mon_pg_warn_max_per_osd }}
+  mon osd allow primary affinity = {{ mon_osd_allow_primary_affinity }}
+  mon pg warn max object skew = {{ mon_pg_warn_max_object_skew }}
+
 {% if enable_debug_mon %}
   debug mon = {{ debug_mon_level }}
   debug paxos = {{ debug_mon_level }}
@@ -80,7 +92,7 @@
   {% if hostvars[host]['ansible_hostname'] is defined %}
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
     host = {{ hostvars[host]['ansible_hostname'] }}
-    mon addr = {{ hostvars[host]['ansible_' + monitor_interface]['ipv4']['address'] }}
+    mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
   {% endif %}
 {% endfor %}
 
@@ -140,7 +152,7 @@
 {% endfor %}
 {% endif %}
 
-{% if groups[mds_group_name] is defined %}
+{% if groups[rgw_group_name] is defined %}
 {% for host in groups[rgw_group_name] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
