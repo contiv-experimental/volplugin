@@ -1,0 +1,13 @@
+---
+# Variables here are applicable to all host groups
+
+
+node_name: "{{ ansible_hostname }}"
+node_addr: "{{ hostvars[ansible_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }}"
+
+# following variables are used in one or more roles, but have no good default value to pick from.
+# Leaving them as commented so that playbooks can fail early due to variable not defined error.
+
+# env:
+# service_vip:
+# monitor_interface:

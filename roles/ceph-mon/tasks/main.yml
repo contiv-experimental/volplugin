@@ -1,0 +1,22 @@
+---
+- include: deploy_monitors.yml
+  when: not ceph_containerized_deployment
+
+- include: start_monitor.yml
+  when: not ceph_containerized_deployment
+
+- include: ceph_keys.yml
+  when: not ceph_containerized_deployment
+
+- include: create_mds_filesystems.yml
+  when:
+    not ceph_containerized_deployment and
+    mds_group_name is defined
+
+- include: secure_cluster.yml
+  when:
+    secure_cluster and
+    not ceph_containerized_deployment
+
+- include: docker.yml
+  when: ceph_containerized_deployment

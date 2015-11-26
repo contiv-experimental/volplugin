@@ -1,0 +1,74 @@
+---
+- include: os_check.yml
+
+- include: os_tuning.yml
+  when: osd_group_name in group_names
+
+- include: prerequisite_ice.yml
+  when: ceph_stable_ice
+
+- include: prerequisite_rh_storage.yml
+  when: ceph_stable_rh_storage
+
+- include: install_on_redhat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: install_on_debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: check for a Ceph socket
+  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
+  changed_when: false
+  ignore_errors: true
+  register: socket
+
+- name: check for a rados gateway socket
+  shell: "stat {{ rbd_client_admin_socket_path }}*.asok > /dev/null 2>&1"
+  changed_when: false
+  ignore_errors: true
+  register: socketrgw
+
+- name: generate cluster UUID
+  shell: >
+    uuidgen | tee fetch/ceph_cluster_uuid.conf
+    creates=fetch/ceph_cluster_uuid.conf
+  connection: local
+  register: cluster_uuid
+  sudo: false
+
+- name: read cluster UUID if it already exists
+  command: >
+    cat fetch/ceph_cluster_uuid.conf
+    removes=fetch/ceph_cluster_uuid.conf
+  connection: local
+  changed_when: false
+  register: cluster_uuid
+  sudo: false
+
+- include: check-mandatory-vars.yml
+
+- name: generate Ceph configuration file
+  template: >
+    src=ceph.conf.j2
+    dest=/etc/ceph/ceph.conf
+    owner=root
+    group=root
+    mode=0644
+  notify:
+    - restart ceph mons
+    - restart ceph mons on ubuntu
+    - restart ceph osds
+    - restart ceph osds on ubuntu
+    - restart ceph mdss
+    - restart ceph mdss on ubuntu
+    - restart ceph rgws
+    - restart ceph rgws on ubuntu
+    - restart ceph rgws on red hat
+
+- name: create rbd client directory
+  file: >
+    path={{ rbd_client_admin_socket_path }}
+    state=directory
+    owner=root
+    group=root
+    mode=0644

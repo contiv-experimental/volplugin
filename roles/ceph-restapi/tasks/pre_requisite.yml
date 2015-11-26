@@ -1,0 +1,59 @@
+---
+- name: create Ceph REST API directory
+  file: >
+    path=/var/lib/ceph/restapi/ceph-restapi
+    state=directory
+    owner=root
+    group=root
+    mode=0755
+
+- name: copy Ceph REST API keyring
+  copy: >
+    src=fetch/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring
+    dest=/var/lib/ceph/restapi/ceph-restapi/keyring
+    owner=root
+    group=root
+    mode=600
+  when: cephx
+
+- name: activate Ceph REST API with upstart
+  file: >
+    path=/var/lib/ceph/restapi/{{ item }}
+    state=touch
+    owner=root
+    group=root
+    mode=0600
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when: ansible_distribution == "Ubuntu"
+
+- name: activate Ceph REST API with sysvinit
+  file: >
+    path=/var/lib/ceph/restapi/{{ item }}
+    state=touch
+    owner=root
+    group=root
+    mode=0600
+  with_items:
+    - done
+    - sysvinit
+  when: ansible_distribution != "Ubuntu"
+
+# NOTE (leseb): will uncomment this when this https://github.com/ceph/ceph/pull/4144 lands
+#- name: start and add that the Ceph REST API service to the init sequence (Ubuntu)
+#  service: >
+#    name=ceph-restapi
+#    state=started
+#    enabled=yes
+#    args="id={{ ansible_hostname }}"
+#  when: ansible_distribution == "Ubuntu"
+#
+#- name: start and add that the Ceph REST API service to the init sequence
+#  service: >
+#    name=ceph
+#    state=started
+#    enabled=yes
+#    args=restapi
+#  when: ansible_distribution != "Ubuntu"

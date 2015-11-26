@@ -1,0 +1,7 @@
+[Unit]
+Description=Ucarp (Virtual IP service)
+After=auditd.service systemd-user-sessions.service time-sync.target
+
+[Service]
+ExecStart=/usr/bin/ucarp.sh start
+KillMode=control-group
