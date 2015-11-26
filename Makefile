@@ -108,3 +108,6 @@ release: tar
 		( github-release -v upload -r volplugin -t $(VERSION) -n $(TAR_FILENAME) -f $(TAR_FILE) || \
 		github-release -v delete -r volplugin -t $(VERSION) ) ) || exit 1
 	@make clean-tar
+
+vendor-ansible:
+	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD --squash
