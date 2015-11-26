@@ -1,0 +1,7 @@
+[Unit]
+Description=Swarm
+After=auditd.service systemd-user-sessions.service time-sync.target etcd.service
+
+[Service]
+ExecStart=/usr/bin/swarm.sh start
+KillMode=control-group

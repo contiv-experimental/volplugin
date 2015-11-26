@@ -1,0 +1,42 @@
+#!/bin/bash
+
+usage="$0 start"
+if [ $# -ne 1 ]; then
+    echo USAGE: $usage
+    exit 1
+fi
+
+case $1 in
+start)
+    # fail on error
+    set -e
+
+    # install necessary iptables to let mdns work
+    # XXX: the interface name should be discovered
+    echo setting up iptables for mdns
+    iptables -I INPUT -p udp --dport 5353 -i {{ serf_discovery_interface }}  -j ACCEPT && \
+    iptables -I INPUT -p udp --sport 5353 -i {{ serf_discovery_interface }}  -j ACCEPT
+
+    echo starting serf
+    label=$(hostname)
+    serial=$(lshw -c system | grep serial | awk '{print $2}')
+    addr=$(ip addr list dev {{ serf_discovery_interface }} | \
+            grep inet | grep {{ serf_discovery_interface }} | \
+            awk '{split ($2, a , "/"); print a[1]}')
+    if [[ "$addr" == "" ]]; then
+        echo {{ serf_discovery_interface }} is not assigned a valid addr: ***$addr***
+        exit 1
+    fi
+
+    # start serf
+    serf agent -discover mycluster -iface eth1 \
+        -tag NodeLabel=$label \
+        -tag NodeSerial=$serial \
+        -tag NodeAddr=$addr
+    ;;
+
+*)
+    echo USAGE: $usage
+    exit 1
+    ;;
+esac
