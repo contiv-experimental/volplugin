@@ -36,7 +36,8 @@ func StopEtcd(nodes []TestbedNode) error {
 }
 
 func ClearEtcd(node TestbedNode) {
-	node.RunCommand("etcdctl ls --recursive / | xargs etcdctl rm --recursive")
+	log.Infof("Clearing etcd data")
+	node.RunCommand(`for i in $(etcdctl ls /); do etcdctl rm --recursive "$i"; done`)
 }
 
 // StartEtcd starts etcd on a specific host.
