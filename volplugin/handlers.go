@@ -13,6 +13,12 @@ import (
 	"github.com/docker/docker/pkg/plugins"
 )
 
+type unmarshalledConfig struct {
+	Request VolumeRequest
+	Name    string
+	Tenant  string
+}
+
 func nilAction(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(VolumeResponse{})
 	if err != nil {
@@ -36,143 +42,115 @@ func deactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
+func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledConfig, error) {
+	vr, err := unmarshalRequest(r.Body)
+	if err != nil {
+		httpError(w, "Could not unmarshal request", err)
+		return nil, err
+	}
+
+	if vr.Name == "" {
+		httpError(w, "Name is empty", nil)
+		return nil, err
+	}
+
+	tenant, name, err := splitPath(vr.Name)
+	if err != nil {
+		httpError(w, "Configuring volume", err)
+		return nil, err
+	}
+
+	uc := unmarshalledConfig{
+		Request: vr,
+		Name:    name,
+		Tenant:  tenant,
+	}
+
+	return &uc, nil
+}
+
+func writeResponse(w http.ResponseWriter, r *http.Request, vr *VolumeResponse) {
+	content, err := marshalResponse(*vr)
+	if err != nil {
+		httpError(w, "Could not marshal response", err)
+		return
+	}
+
+	w.Write(content)
+
+}
+
 func remove(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vr, err := unmarshalRequest(r.Body)
+		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
-			httpError(w, "Could not unmarshal request", err)
 			return
 		}
 
-		if vr.Name == "" {
-			httpError(w, "Image name is empty", nil)
-			return
-		}
-
-		tenant, name, err := splitPath(vr.Name)
-		if err != nil {
-			httpError(w, "Configuring volume", err)
-			return
-		}
-
-		vc, err := requestVolumeConfig(master, tenant, name)
+		vc, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
 		if err != nil {
 			httpError(w, "Getting volume properties", err)
 			return
 		}
 
 		if vc.Options.Ephemeral {
-			if err := requestRemove(master, tenant, name); err != nil {
+			if err := requestRemove(master, uc.Tenant, uc.Name); err != nil {
 				httpError(w, "Removing ephemeral volume", err)
 				return
 			}
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: vr.Name, Err: ""})
-		if err != nil {
-			httpError(w, "Could not marshal response", err)
-			return
-		}
-
-		w.Write(content)
+		writeResponse(w, r, &VolumeResponse{Mountpoint: uc.Request.Name, Err: ""})
 	}
 }
 
 func create(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vr, err := unmarshalRequest(r.Body)
+		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
-			httpError(w, "Could not unmarshal request", err)
 			return
 		}
 
-		if vr.Name == "" {
-			httpError(w, "Image name is empty", nil)
-			return
-		}
-
-		tenant, name, err := splitPath(vr.Name)
-		if err != nil {
-			httpError(w, "Configuring volume", err)
-			return
-		}
-
-		if err := requestCreate(master, tenant, name, vr.Opts); err != nil {
+		if err := requestCreate(master, uc.Tenant, uc.Name, uc.Request.Opts); err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: vr.Name, Err: ""})
-		if err != nil {
-			httpError(w, "Could not marshal response", err)
-			return
-		}
-
-		w.Write(content)
+		writeResponse(w, r, &VolumeResponse{Mountpoint: uc.Request.Name, Err: ""})
 	}
 }
 
 func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vr, err := unmarshalRequest(r.Body)
+		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
-			httpError(w, "Could not unmarshal request", err)
 			return
 		}
 
-		if vr.Name == "" {
-			httpError(w, "Name is empty", nil)
-			return
-		}
+		log.Infof("Returning mount path to docker for volume: %q", uc.Request.Name)
 
-		log.Infof("Returning mount path to docker for volume: %q", vr.Name)
-
-		tenant, name, err := splitPath(vr.Name)
-		if err != nil {
-			httpError(w, "Configuring volume", err)
-			return
-		}
-
-		volConfig, err := requestVolumeConfig(master, tenant, name)
+		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Request.Name)
 		if err != nil {
 			httpError(w, "Requesting tenant configuration", err)
 			return
 		}
 
 		// FIXME need to ensure that the mount exists before returning to docker
-		content, err := marshalResponse(VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, name)})
-		if err != nil {
-			httpError(w, "Reply could not be marshalled", err)
-			return
-		}
-
-		w.Write(content)
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, uc.Name)})
 	}
 }
 
 func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vr, err := unmarshalRequest(r.Body)
+		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
-			httpError(w, "Could not unmarshal request", err)
-			return
-		}
-
-		if vr.Name == "" {
-			httpError(w, "Name is empty", nil)
 			return
 		}
 
 		// FIXME check if we're holding the mount already
-		log.Infof("Mounting volume %q", vr.Name)
+		log.Infof("Mounting volume %q", uc.Request.Name)
 
-		tenant, name, err := splitPath(vr.Name)
-		if err != nil {
-			httpError(w, "Configuring volume", err)
-			return
-		}
-
-		volConfig, err := requestVolumeConfig(master, tenant, name)
+		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -214,38 +192,20 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(tenant, name))})
-		if err != nil {
-			httpError(w, "Reply could not be marshalled", err)
-			return
-		}
-
-		w.Write(content)
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(uc.Tenant, uc.Name))})
 	}
 }
 
 func unmount(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vr, err := unmarshalRequest(r.Body)
+		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
-			httpError(w, "Could not unmarshal request", err)
 			return
 		}
 
-		if vr.Name == "" {
-			httpError(w, "Name is empty", nil)
-			return
-		}
+		log.Infof("Unmounting volume %q", uc.Request.Name)
 
-		log.Infof("Unmounting volume %q", vr.Name)
-
-		tenant, name, err := splitPath(vr.Name)
-		if err != nil {
-			httpError(w, "Configuring volume", err)
-			return
-		}
-
-		volConfig, err := requestVolumeConfig(master, tenant, name)
+		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
 		if err != nil {
 			httpError(w, "Could not determine tenant configuration", err)
 			return
@@ -282,13 +242,7 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		content, err := marshalResponse(VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(tenant, name))})
-		if err != nil {
-			httpError(w, "Reply could not be marshalled", err)
-			return
-		}
-
-		w.Write(content)
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(uc.Tenant, uc.Name))})
 	}
 }
 
