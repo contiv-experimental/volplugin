@@ -122,7 +122,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	}
 
 	if err := os.MkdirAll(volumePath, 0700); err != nil && !os.IsExist(err) {
-		return nil, fmt.Errorf("error creating %q directory: %v", volumePath)
+		return nil, fmt.Errorf("error creating %q directory: %v", volumePath, err)
 	}
 
 	// Obtain the major and minor node information about the device we're mounting.
