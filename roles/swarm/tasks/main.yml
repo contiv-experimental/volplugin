@@ -1,0 +1,11 @@
+---
+# This role contains tasks for configuring and starting swarm service
+
+- name: copy the swarm start/stop script
+  template: src=swarm.j2 dest=/usr/bin/swarm.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for swarm
+  copy: src=swarm.service dest=/etc/systemd/system/swarm.service
+
+- name: start swarm
+  shell: systemctl daemon-reload && systemctl start swarm

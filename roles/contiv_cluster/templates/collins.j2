@@ -1,0 +1,20 @@
+#!/bin/bash
+
+usage="$0 start"
+if [ $# -ne 1 ]; then
+    echo USAGE: $usage
+    exit 1
+fi
+
+case $1 in
+start)
+    set -e
+
+    /usr/bin/docker run -t -p {{ collins_host_port }}:{{ collins_guest_port }} --name collins tumblr/collins
+    ;;
+
+*)
+    echo USAGE: $usage
+    exit 1
+    ;;
+esac

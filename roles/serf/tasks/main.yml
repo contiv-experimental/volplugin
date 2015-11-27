@@ -1,0 +1,24 @@
+---
+# This role contains tasks for configuring and starting serf service
+
+- name: download serf binary
+  get_url:
+    validate_certs: no
+    url: https://dl.bintray.com/mitchellh/serf/0.6.4_linux_amd64.zip
+    dest: /tmp/0.6.4_linux_amd64.zip
+
+- name: install serf
+  unarchive:
+    copy: no
+    src: /tmp/0.6.4_linux_amd64.zip
+    dest: /usr/bin
+    creates: /usr/bin/serf
+
+- name: copy the serf start/stop script
+  template: src=serf.j2 dest=/usr/bin/serf.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for serf
+  copy: src=serf.service dest=/etc/systemd/system/serf.service
+
+- name: enable serf to be started on boot-up and start it as well
+  shell: systemctl daemon-reload && systemctl enable serf && systemctl start serf

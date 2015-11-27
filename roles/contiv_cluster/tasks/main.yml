@@ -1,0 +1,33 @@
+---
+# This role contains tasks for configuring and starting clusterm service
+
+- name: copy shell script for starting collins
+  template: src=collins.j2 dest=/usr/bin/collins.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for collins
+  copy: src=collins.service dest=/etc/systemd/system/collins.service
+
+- name: start collins
+  shell: systemctl daemon-reload && systemctl start collins
+
+# XXX: revisit once we have cluster-manager releases available
+- name: download clusterm
+  shell: /bin/true
+  ignore_errors: yes
+
+# XXX: revisit once we have cluster-manager releases available
+- name: install clusterm
+  file: src=/opt/gopath/bin/{{ item.name }} dest=/usr/bin/{{ item.name }} state=link
+  with_items:
+    - { name: clusterm }
+    - { name: clusterctl }
+  ignore_errors: yes
+
+- name: copy environment file for clusterm
+  copy: src=clusterm dest=/etc/default/clusterm
+
+- name: copy systemd units for clusterm
+  copy: src=clusterm.service dest=/etc/systemd/system/clusterm.service
+
+- name: start clusterm
+  shell: systemctl daemon-reload && systemctl start clusterm

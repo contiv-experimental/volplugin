@@ -1,0 +1,8 @@
+[Unit]
+Description=Volmaster
+After=auditd.service systemd-user-sessions.service time-sync.target etcd.service
+
+[Service]
+EnvironmentFile=/etc/default/volmaster
+ExecStart=/usr/bin/volmaster $VOLMASTER_ARGS
+KillMode=control-group

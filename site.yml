@@ -1,0 +1,61 @@
+---
+# This playbook deploys the configuration based on special purpose host-groups.
+
+# devtest hosts correspond to the dev, lab and vagrant based machines for contiv projects.
+# Here we will install the base packages needed for those environments.
+# XXX: this is used by the 'contiv/build' project right now. But hopefully soon
+# we can use it as replacement for 'contiv/lab' with some more refinements.
+- hosts: devtest
+  sudo: true
+  environment: env
+  roles:
+  - { role: base }
+  - { role: serf }
+
+- hosts: volplugin-test
+  sudo: true
+  environment: env
+  roles: 
+  - { role: base }
+  - { role: etcd, run_as: master }
+  - { role: docker, etcd_client_port1: 2379 }
+  - { role: ceph-mon, mon_group_name: volplugin-test }
+  - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }
+  #- { role: swarm, run_as: master }
+
+# cluster-control hosts corresponds to the first machine in the cluster that is provisioned
+# to bootstrap the cluster by starting cluster manager and inventory database (collins)
+- hosts: cluster-control
+  sudo: true
+  environment: env
+  roles:
+  - { role: docker, etcd_client_port1: 2379 }
+  - { role: contiv_cluster }
+
+# service-master hosts correspond to cluster machines that run the master/controller
+# logic of the infra services
+- hosts: service-master
+  sudo: true
+  environment: env
+  roles:
+  - { role: ucarp }
+  - { role: docker }
+  - { role: etcd, run_as: master }
+  - { role: ceph-mon, mon_group_name: service-master }
+  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master }
+  - { role: swarm, run_as: master }
+  - { role: contiv_network, run_as: master }
+  - { role: contiv_storage, run_as: master }
+
+# service-worker hosts correspond to cluster machines that run the worker/driver
+# logic of the infra services.
+- hosts: service-worker
+  sudo: true
+  environment: env
+  roles:
+  - { role: docker }
+  - { role: etcd, run_as: worker }
+  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker }
+  - { role: swarm, run_as: worker }
+  - { role: contiv_network, run_as: worker }
+  - { role: contiv_storage, run_as: worker }
