@@ -95,15 +95,16 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
 
-	if err := s.restartDocker(); err != nil {
-		return err
-	}
-
 	stopVolsupervisor(s.vagrant.GetNode("mon0"))
 	s.vagrant.IterateNodes(stopVolplugin)
 	s.vagrant.IterateNodes(stopVolmaster)
 	s.clearRBD()
+
 	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
+
+	if err := s.restartDocker(); err != nil {
+		return err
+	}
 
 	if err := s.vagrant.IterateNodes(startVolmaster); err != nil {
 		return err

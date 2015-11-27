@@ -4,7 +4,6 @@ import (
 	"os/exec"
 	"path"
 	. "testing"
-	"time"
 
 	. "gopkg.in/check.v1"
 )
@@ -22,9 +21,6 @@ func (s *configSuite) SetUpTest(c *C) {
 }
 
 func (s *configSuite) SetUpSuite(c *C) {
-	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
-	time.Sleep(200 * time.Millisecond)
-
 	tlc, err := NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
 	if err != nil {
 		c.Fatal(err)
