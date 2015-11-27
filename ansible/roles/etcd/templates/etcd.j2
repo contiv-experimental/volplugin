@@ -1,0 +1,87 @@
+#!/bin/bash
+
+usage="$0 <start|stop|post-stop>"
+if [ $# -ne 1 ]; then
+    echo USAGE: $usage
+    exit 1
+fi
+
+export ETCD_NAME={{ node_name }}
+export ETCD_DATA_DIR=/var/lib/etcd
+export ETCD_INITIAL_CLUSTER_TOKEN=contiv-cluster
+export ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_client_port1 }},http://0.0.0.0:{{ etcd_client_port2 }}
+export ETCD_ADVERTISE_CLIENT_URLS=http://{{ node_addr }}:{{ etcd_client_port1 }},http://{{ node_addr }}:{{ etcd_client_port2 }}
+export ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }},http://{{ node_addr }}:{{ etcd_peer_port2 }}
+export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
+
+case $1 in
+start)
+    {% macro add_proxy() -%}
+    export ETCD_PROXY=on
+    export ETCD_INITIAL_CLUSTER="{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port1 }},{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port2 }}"
+    {% endmacro -%}
+
+    {% macro add_member() -%}
+    # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
+    # ETCD_LISTEN_PEER_URLS for now
+    out=`etcdctl --peers="{{ etcd_master_addr }}:{{ etcd_client_port1 }},{{ etcd_master_addr }}:{{ etcd_client_port2 }}" \
+        member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS"`
+    if [ $? -ne 0 ]; then
+        echo "failed to add member {{ node_name }}"
+        exit 1
+    fi
+    # parse and export the environment returned by member add
+    export `echo $out | awk -F 'ETCD_' '{print "ETCD_"$2 "ETCD_"$3 "ETCD_"$4}' | sed s/\"//g`
+    {% endmacro -%}
+
+    {% macro init_cluster() -%}
+    export ETCD_INITIAL_CLUSTER_STATE=new
+    export ETCD_INITIAL_CLUSTER="
+    {%- for host in groups[etcd_peers_group] -%}
+    {%- if loop.last -%}
+    {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
+    {%- else -%}
+    {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
+    {%- endif -%}
+    {% endfor -%}
+    "
+    {% endmacro -%}
+
+    {% if run_as == "worker" -%}
+    # on worker nodes, run etcd in proxy mode
+    {{ add_proxy() }}
+    {% elif etcd_init_cluster -%}
+    # on master nodes, if the cluster is being initialized for first time then initialize it
+    {{ init_cluster() }}
+    {% else -%}
+    # if a new master node is being commissioned then add it to exisitng cluster
+    {{ add_member() }}
+    {% endif -%}
+
+    #start etcd
+    echo "==> starting etcd with environment:" `env`
+    /usr/bin/etcd
+    ;;
+
+stop)
+    {% if run_as == "worker" -%}
+    echo "==> no 'stop' action for proxy"
+    {% else -%}
+    #XXX: do better cleanup like remove the member from the cluster only if it was started
+    out=`etcdctl member list | grep {{ node_name }} | awk -F ':' '{print $1}'`
+    if [ "$out" != "" ]; then
+        echo "==> removing member: " $out
+        etcdctl member remove $out
+    fi
+    {% endif -%}
+    ;;
+
+post-stop)
+    #XXX: is there a case when we should not cleanup the data dir on stop?
+    rm -rf $ETCD_DATA_DIR
+    ;;
+
+*)
+    echo USAGE: $usage
+    exit 1
+esac
