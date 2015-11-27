@@ -69,8 +69,8 @@ func setKey(typeinfo reflect.Type, valinfo *reflect.Value, key string, value str
 }
 
 func setValueWithType(field *reflect.Value, val string) error {
-	if field.CanSet() {
-		fmt.Errorf("Cannot set value %q for struct element %q", val, field.Kind().String())
+	if !field.CanSet() {
+		return fmt.Errorf("Cannot set value %q for struct element %q", val, field.Kind().String())
 	}
 
 	// navigate the kinds using the reflect types. fallthrough until we can get
