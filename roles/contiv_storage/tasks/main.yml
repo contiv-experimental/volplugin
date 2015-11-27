@@ -1,0 +1,47 @@
+---
+# This role contains tasks for configuring and starting the storage service
+
+- name: download storage service binaries
+  get_url:
+    validate_certs: no
+    url: https://github.com/contiv/volplugin/releases/download/v0.0.0-11-12-2015.09-14-08.UTC/volplugin-v0.0.0-11-12-2015.09-14-08.UTC.tar.bz2
+    dest: /tmp/contivvol.tar.bz2
+
+- name: install storage service
+  shell: tar vxjf /tmp/contivvol.tar.bz2
+  args:
+    chdir: /usr/bin/
+    creates: volmaster
+
+- name: copy environment file for volmaster
+  copy: src=volmaster dest=/etc/default/volmaster
+  when: run_as == "master"
+
+- name: copy systemd units for volmaster
+  copy: src=volmaster.service dest=/etc/systemd/system/volmaster.service
+  when: run_as == "master"
+
+- name: start volmaster
+  service: name=volmaster state=restarted
+  when: run_as == "master"
+
+- name: copy environment file for volsupervisor
+  copy: src=volsupervisor dest=/etc/default/volsupervisor
+  when: run_as == "master"
+
+- name: copy systemd units for volsupervisor
+  copy: src=volsupervisor.service dest=/etc/systemd/system/volsupervisor.service
+  when: run_as == "master"
+
+- name: start volsupervisor
+  service: name=volsupervisor state=restarted
+  when: run_as == "master"
+
+- name: copy environment file for volplugin
+  template: src=volplugin.j2 dest=/etc/default/volplugin
+
+- name: copy systemd units for volplugin
+  copy: src=volplugin.service dest=/etc/systemd/system/volplugin.service
+
+- name: start volplugin
+  service: name=volplugin state=restarted

@@ -1,0 +1,50 @@
+---
+# NOTE (leseb) : this task is for disk devices only because of the explicit use of the first
+# partition.
+- name: activate osd(s) when device is a disk
+  command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_together:
+    - ispartition.results
+    - devices
+  changed_when: false
+  failed_when: false
+  when: item.0.rc != 0
+
+# NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
+- name: activate osd(s) when device is a partition
+  command: "ceph-disk activate {{ item.1 }}"
+  with_together:
+    - ispartition.results
+    - devices
+  changed_when: false
+  failed_when: false
+  when: item.0.rc == 0
+
+- include: osd_fragment.yml
+  when: crush_location
+
+- name: start and add that the osd service(s) to the init sequence (before infernalis)
+  service:
+    name: ceph
+    state: started
+    enabled: yes
+  when:
+    ansible_distribution == "Ubuntu" or
+    (ceph_stable_release == 'dumpling' or
+     ceph_stable_release == 'emperor' or
+     ceph_stable_release == 'firefly' or
+     ceph_stable_release == 'giant' or
+     ceph_stable_release == 'hammer')
+
+- name: start and add that the osd service(s) to the init sequence (on or after infernalis)
+  service:
+    name: ceph.target
+    state: started
+    enabled: yes
+  when:
+    ansible_distribution != "Ubuntu" and not
+    (ceph_stable_release == 'dumpling' or
+     ceph_stable_release == 'emperor' or
+     ceph_stable_release == 'firefly' or
+     ceph_stable_release == 'giant' or
+     ceph_stable_release == 'hammer')

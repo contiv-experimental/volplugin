@@ -1,0 +1,4 @@
+---
+# role variable for the serf service
+
+serf_discovery_interface: eth1

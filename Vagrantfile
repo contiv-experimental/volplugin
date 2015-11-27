@@ -36,7 +36,7 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons'        => (0..NMONS - 1).map { |j| "mon#{j}" },
+    'volplugin-test'        => (0..NMONS - 1).map { |j| "mon#{j}" },
   }
 
   proxy_env = { }
@@ -49,7 +49,8 @@ ansible_provision = proc do |ansible|
 
   # In a production deployment, these should be secret
   ansible.extra_vars = {
-    proxy_env: proxy_env,
+    etcd_peers_group: 'volplugin-test',
+    env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
@@ -72,7 +73,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NMONS - 1).each do |i|
     config.vm.define "mon#{i}" do |mon|
-      mon.vm.hostname = "ceph-mon#{i}"
+      mon.vm.hostname = "mon#{i}"
       mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
       mon.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
       #mon.vm.network :private_network, ip: "#{SUBNET}.20#{i}"

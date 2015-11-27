@@ -11,8 +11,6 @@ import (
 	utils "github.com/contiv/systemtests-utils"
 )
 
-var orderedNodes []utils.TestbedNode
-
 type systemtestSuite struct {
 	vagrant utils.Vagrant
 	nodeMap map[string]utils.TestbedNode
@@ -52,14 +50,6 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 
 	c.Assert(s.vagrant.IterateNodes(stopVolplugin), IsNil)
 	c.Assert(stopVolmaster(s.vagrant.GetNode("mon0")), IsNil)
-
-	reversedNodes := []utils.TestbedNode{}
-
-	for i := len(orderedNodes) - 1; i > -1; i-- {
-		reversedNodes = append(reversedNodes, orderedNodes[i])
-	}
-
-	c.Assert(utils.StopEtcd(reversedNodes), IsNil)
 }
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
@@ -72,16 +62,12 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 		s.nodeMap[node.GetName()] = node
 	}
 
-	orderedNodes = []utils.TestbedNode{s.vagrant.GetNode("mon0"), s.vagrant.GetNode("mon1"), s.vagrant.GetNode("mon2")}
-
-	c.Assert(s.restartDocker(), IsNil)
 	err := s.clearContainers()
 	if err != nil && !strings.Contains(err.Error(), "Process exited with: 123") {
 		c.Fatal(err)
 	}
 
 	c.Assert(s.pullUbuntu(), IsNil)
-	c.Assert(utils.StartEtcd(orderedNodes), IsNil)
 	c.Assert(s.rebootstrap(), IsNil)
 
 	_, err = s.uploadIntent("tenant1", "intent1")

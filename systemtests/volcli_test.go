@@ -148,7 +148,7 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	ut := &config.UseConfig{}
 	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
 	c.Assert(ut.Volume, NotNil)
-	c.Assert(ut.Hostname, Equals, "ceph-mon0")
+	c.Assert(ut.Hostname, Equals, "mon0")
 
 	_, err = s.volcli("use force-remove tenant1 foo")
 	c.Assert(err, IsNil)
