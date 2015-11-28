@@ -42,7 +42,7 @@ godep:
 test: godep unit-test system-test
 
 unit-test: golint govet
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./... -check.v"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go list ./... | HOST_TEST=1 xargs -I{} godep go test -v '{}' -coverprofile=/opt/golang/src/{}/cover.out -check.v"'
 
 build: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
