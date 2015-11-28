@@ -23,6 +23,13 @@ golint-host:
 golint:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
 
+# -composites=false is required to work around bug https://github.com/golang/go/issues/11394
+govet-host:
+	go tool vet -composites=false `find . -name '*.go' | grep -v Godeps`
+
+govet:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
+
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
 
@@ -34,7 +41,7 @@ godep:
 
 test: godep unit-test system-test
 
-unit-test: golint
+unit-test: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; HOST_TEST=1 godep go test -v ./... -check.v"'
 
 build: golint
