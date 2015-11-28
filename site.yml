@@ -11,6 +11,7 @@
   roles:
   - { role: base }
   - { role: serf }
+  - { role: ceph-install }
 
 - hosts: volplugin-test
   sudo: true
