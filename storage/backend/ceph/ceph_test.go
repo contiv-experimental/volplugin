@@ -148,3 +148,36 @@ func (s *cephSuite) TestTemplateFSCmd(c *C) {
 	c.Assert(templateFSCmd("% %% %", "foo"), Equals, "foo %% foo")
 	c.Assert(templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1"), Equals, "mkfs.ext4 -m0 /dev/sda1")
 }
+
+func (s *cephSuite) TestShowMapped(c *C) {
+	driver := NewDriver()
+	driverOpts := storage.DriverOptions{
+		Volume:    volumeSpec,
+		FSOptions: filesystems["ext4"],
+	}
+
+	// we don't care if there's an error here, just want to make sure the create
+	// succeeds. Easier restart of failed tests this way.
+	driver.Unmount(driverOpts)
+	driver.Destroy(driverOpts)
+
+	c.Assert(driver.Create(driverOpts), IsNil)
+	c.Assert(driver.Format(driverOpts), IsNil)
+	_, err := driver.Mount(driverOpts)
+	c.Assert(err, IsNil)
+	mounts, err := driver.ShowMapped()
+	c.Assert(err, IsNil)
+	c.Assert(mounts, DeepEquals, []*storage.Mount{
+		{
+			Device: "/dev/rbd0",
+			Volume: storage.Volume{
+				Name: "pithos",
+				Params: map[string]string{
+					"pool": "rbd",
+				},
+			},
+		},
+	})
+	c.Assert(driver.Unmount(driverOpts), IsNil)
+	c.Assert(driver.Destroy(driverOpts), IsNil)
+}
