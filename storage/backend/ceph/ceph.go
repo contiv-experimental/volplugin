@@ -20,6 +20,8 @@ const (
 	mountBase  = "/mnt/ceph"
 )
 
+var spaceSplitRegex = regexp.MustCompile(`\s+`)
+
 // Driver implements a ceph backed storage driver for volplugin.
 //
 // -- Pool naming
@@ -228,7 +230,7 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	lines := strings.Split(string(out), "\n")
 	if len(lines) > 1 {
 		for _, line := range lines[1:] {
-			parts := regexp.MustCompile(`\s+`).Split(line, -1)
+			parts := spaceSplitRegex.Split(line, -1)
 			if len(parts) < 3 {
 				continue
 			}
@@ -255,7 +257,7 @@ func (c *Driver) ShowMapped() ([]*storage.Mount, error) {
 			continue
 		}
 
-		parts := regexp.MustCompile(`\s+`).Split(line, -1)
+		parts := spaceSplitRegex.Split(line, -1)
 		parts = parts[:len(parts)-1]
 		if len(parts) < 5 {
 			continue
