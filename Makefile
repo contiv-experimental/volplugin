@@ -41,8 +41,11 @@ godep:
 
 test: godep unit-test system-test
 
-unit-test: golint govet
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; godep go list ./... | HOST_TEST=1 xargs -I{} godep go test -v '{}' -coverprofile=/opt/golang/src/{}/cover.out -check.v"'
+unit-test:
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make unit-test-host"'
+
+unit-test-host: golint-host govet-host
+	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=/opt/golang/src/{}/cover.out -check.v
 
 build: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
@@ -67,7 +70,7 @@ run-volmaster:
 	sudo -E setsid bash -c '/opt/golang/bin/volmaster --debug &>/tmp/volmaster.log &'
 
 run-build: godep
-	godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
