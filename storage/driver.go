@@ -73,4 +73,8 @@ type Driver interface {
 	// ListSnapshots returns an array of snapshot names provided a maximum number
 	// of snapshots to be returned. Any error will be returned.
 	ListSnapshots(DriverOptions) ([]string, error)
+
+	// ShowMapped shows any volumes that belong to volplugin on the host, in
+	// their native representation. They yield a *Mount.
+	ShowMapped() ([]*Mount, error)
 }

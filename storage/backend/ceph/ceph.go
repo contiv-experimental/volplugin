@@ -20,6 +20,8 @@ const (
 	mountBase  = "/mnt/ceph"
 )
 
+var spaceSplitRegex = regexp.MustCompile(`\s+`)
+
 // Driver implements a ceph backed storage driver for volplugin.
 //
 // -- Pool naming
@@ -228,7 +230,7 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	lines := strings.Split(string(out), "\n")
 	if len(lines) > 1 {
 		for _, line := range lines[1:] {
-			parts := regexp.MustCompile(`\s+`).Split(line, -1)
+			parts := spaceSplitRegex.Split(line, -1)
 			if len(parts) < 3 {
 				continue
 			}
@@ -238,4 +240,39 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	}
 
 	return names, nil
+}
+
+// ShowMapped describes all the volumes currently mapped on to the host. It
+// does not yield any mount points (yet.)
+func (c *Driver) ShowMapped() ([]*storage.Mount, error) {
+	out, err := exec.Command("rbd", "showmapped").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// FIXME maybe a new type here would be better than re-using this one.
+	mounts := []*storage.Mount{}
+	for i, line := range strings.Split(string(out), "\n") {
+		if i == 0 {
+			continue
+		}
+
+		parts := spaceSplitRegex.Split(line, -1)
+		parts = parts[:len(parts)-1]
+		if len(parts) < 5 {
+			continue
+		}
+
+		mounts = append(mounts, &storage.Mount{
+			Device: parts[4],
+			Volume: storage.Volume{
+				Name: strings.Replace(parts[2], ".", "/", -1),
+				Params: map[string]string{
+					"pool": parts[1],
+				},
+			},
+		})
+	}
+
+	return mounts, nil
 }
