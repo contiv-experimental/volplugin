@@ -47,6 +47,12 @@ unit-test:
 unit-test-host: golint-host govet-host
 	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=/opt/golang/src/{}/cover.out -check.v
 
+unit-test-nocoverage:
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make unit-test-nocoverage-host"'
+
+unit-test-nocoverage-host: golint-host govet-host
+	HOST_TEST=1 GOGC=1000 godep go test -v ./... -check.v
+
 build: golint
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
 
@@ -86,7 +92,7 @@ reflex-test: reflex
 	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make test
 
 reflex-unit-test: reflex
-	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make unit-test
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make unit-test-nocoverage
 
 # We are using date based versioning, so for consistent version during a build
 # we evaluate and set the value of version once in a file and use it in 'tar'
