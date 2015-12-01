@@ -100,7 +100,7 @@ func remove(master string) func(http.ResponseWriter, *http.Request) {
 			}
 		}
 
-		writeResponse(w, r, &VolumeResponse{Mountpoint: uc.Request.Name, Err: ""})
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(vc.Options.Pool, joinPath(uc.Tenant, uc.Name)), Err: ""})
 	}
 }
 
@@ -116,7 +116,7 @@ func create(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		writeResponse(w, r, &VolumeResponse{Mountpoint: uc.Request.Name, Err: ""})
+		writeResponse(w, r, &VolumeResponse{Mountpoint: "", Err: ""})
 	}
 }
 
@@ -129,7 +129,7 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Returning mount path to docker for volume: %q", uc.Request.Name)
 
-		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Request.Name)
+		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
 		if err != nil {
 			httpError(w, "Requesting tenant configuration", err)
 			return
