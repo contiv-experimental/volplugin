@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/contiv/volplugin/config"
@@ -52,5 +53,9 @@ func main() {
 			Value: &cli.StringSlice{"http://localhost:2379"},
 		},
 	}
-	app.Run(os.Args)
+
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)
+		os.Exit(1)
+	}
 }

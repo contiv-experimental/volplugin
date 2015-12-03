@@ -32,7 +32,9 @@ type VolumeResponse struct {
 // Daemon starts the volplugin service.
 func Daemon(debug bool, master, host string) error {
 	driverPath := path.Join(basePath, "volplugin.sock")
-	os.Remove(driverPath)
+	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	if err := os.MkdirAll(basePath, 0700); err != nil {
 		return err
 	}

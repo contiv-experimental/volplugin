@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -42,7 +43,10 @@ func main() {
 	}
 	app.Action = run
 
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)
+		os.Exit(1)
+	}
 }
 
 func run(ctx *cli.Context) {
