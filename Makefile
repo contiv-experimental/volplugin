@@ -1,3 +1,7 @@
+GUESTPREFIX=/opt/golang
+GUESTGOPATH=$(GUESTPREFIX)/src/github.com/contiv/volplugin
+GUESTBINPATH=$(GUESTPREFIX)/bin
+
 start: install-ansible
 	vagrant up
 	make build
@@ -21,14 +25,14 @@ golint-host:
 	golint ./...
 
 golint:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
 
 # -composites=false is required to work around bug https://github.com/golang/go/issues/11394
 govet-host:
 	go tool vet -composites=false `find . -name '*.go' | grep -v Godeps`
 
 govet:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd /opt/golang/src/github.com/contiv/volplugin; http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
 
 install-ansible:
 	[ -n "`which ansible`" ] || pip install ansible
@@ -42,38 +46,38 @@ godep:
 test: godep unit-test system-test
 
 unit-test:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make unit-test-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-host"'
 
 unit-test-host: golint-host govet-host
-	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=/opt/golang/src/{}/cover.out -check.v
+	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
 
 unit-test-nocoverage:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make unit-test-nocoverage-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-nocoverage-host"'
 
 unit-test-nocoverage-host: golint-host govet-host
 	HOST_TEST=1 GOGC=1000 godep go test -v ./... -check.v
 
 build: golint
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd /opt/golang/src/github.com/contiv/volplugin; make run-build"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 
 run:
-	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volplugin run-volmaster'; done
-	vagrant ssh mon0 -c 'cd /opt/golang/src/github.com/contiv/volplugin && make run-volsupervisor'
+	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
+	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
 run-etcd:
 	sudo systemctl start etcd
 
 run-volplugin: run-etcd
 	sudo pkill volplugin || exit 0
-	sudo -E setsid bash -c '/opt/golang/bin/volplugin --debug &>/tmp/volplugin.log &'
+	sudo -E setsid bash -c '$(GUESTBINPATH)/volplugin --debug &>/tmp/volplugin.log &'
 
 run-volsupervisor:
 	sudo pkill volsupervisor || exit 0
-	sudo -E setsid bash -c '/opt/golang/bin/volsupervisor --debug &>/tmp/volsupervisor.log &'
+	sudo -E setsid bash -c '$(GUESTBINPATH)/volsupervisor --debug &>/tmp/volsupervisor.log &'
 
 run-volmaster:
 	sudo pkill volmaster || exit 0
-	sudo -E setsid bash -c '/opt/golang/bin/volmaster --debug &>/tmp/volmaster.log &'
+	sudo -E setsid bash -c '$(GUESTBINPATH)/volmaster --debug &>/tmp/volmaster.log &'
 
 run-build: godep
 	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
