@@ -1,9 +1,8 @@
-[![Build Status](http://51633006.ngrok.com/buildStatus/icon?job=Volplugin Push Build Master)](http://51633006.ngrok.com/job/Volplugin Push Build Master)
+[![Build Status](http://547ae48f.ngrok.com/buildStatus/icon?job=Volplugin Push Build Master)](http://51633006.ngrok.com/job/Volplugin Push Build Master)
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
-**Note:** we have extended documentation for users
-[here](http://contiv-docs.s3-website-us-west-1.amazonaws.com/)
+**Note:** we have extended documentation for users @ http://docs.contiv.io
 
 volplugin controls [Ceph](http://ceph.com/) RBD devices with a master/slave
 model to orchestrate the mounting (and cross-host remounting) of volumes
