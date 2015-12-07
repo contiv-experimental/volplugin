@@ -1,4 +1,4 @@
-[![Build Status](http://51633006.ngrok.com/buildStatus/icon?job=Volplugin Push Build Master)](http://51633006.ngrok.com/job/Volplugin Push Build Master)
+[![Build Status](http://547ae48f.ngrok.com/buildStatus/icon?job=Volplugin Push Build Master)](http://51633006.ngrok.com/job/Volplugin Push Build Master)
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
