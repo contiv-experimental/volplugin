@@ -149,7 +149,7 @@ func (s *cephSuite) TestTemplateFSCmd(c *C) {
 	c.Assert(templateFSCmd("mkfs.ext4 -m0 %", "/dev/sda1"), Equals, "mkfs.ext4 -m0 /dev/sda1")
 }
 
-func (s *cephSuite) TestShowMapped(c *C) {
+func (s *cephSuite) TestMounted(c *C) {
 	driver := NewDriver()
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
@@ -165,11 +165,15 @@ func (s *cephSuite) TestShowMapped(c *C) {
 	c.Assert(driver.Format(driverOpts), IsNil)
 	_, err := driver.Mount(driverOpts)
 	c.Assert(err, IsNil)
-	mounts, err := driver.ShowMapped()
+	mounts, err := driver.Mounted()
 	c.Assert(err, IsNil)
+
 	c.Assert(mounts, DeepEquals, []*storage.Mount{
 		{
-			Device: "/dev/rbd0",
+			Device:   "/dev/rbd0",
+			DevMajor: 252,
+			DevMinor: 0,
+			Path:     "/mnt/ceph/rbd/pithos",
 			Volume: storage.Volume{
 				Name: "pithos",
 				Params: map[string]string{

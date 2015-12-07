@@ -76,5 +76,5 @@ type Driver interface {
 
 	// ShowMapped shows any volumes that belong to volplugin on the host, in
 	// their native representation. They yield a *Mount.
-	ShowMapped() ([]*Mount, error)
+	Mounted() ([]*Mount, error)
 }
