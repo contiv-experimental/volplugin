@@ -2,8 +2,7 @@
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
-**Note:** we have extended documentation for users
-[here](http://contiv-docs.s3-website-us-west-1.amazonaws.com/)
+**Note:** we have extended documentation for users @ http://docs.contiv.io
 
 volplugin controls [Ceph](http://ceph.com/) RBD devices with a master/slave
 model to orchestrate the mounting (and cross-host remounting) of volumes
