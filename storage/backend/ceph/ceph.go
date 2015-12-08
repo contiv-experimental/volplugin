@@ -242,36 +242,41 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	return names, nil
 }
 
-// ShowMapped describes all the volumes currently mapped on to the host. It
-// does not yield any mount points (yet.)
-func (c *Driver) ShowMapped() ([]*storage.Mount, error) {
-	out, err := exec.Command("rbd", "showmapped").Output()
+// Mounted describes all the volumes currently mapped on to the host.
+func (c *Driver) Mounted() ([]*storage.Mount, error) {
+	hostMounts, err := getMounts()
 	if err != nil {
 		return nil, err
 	}
 
-	// FIXME maybe a new type here would be better than re-using this one.
+	mapped, err := getMapped()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(hostMounts) != len(mapped) {
+		return nil, fmt.Errorf("Mounted and mapped volumes do not align.")
+	}
+
 	mounts := []*storage.Mount{}
-	for i, line := range strings.Split(string(out), "\n") {
-		if i == 0 {
-			continue
-		}
 
-		parts := spaceSplitRegex.Split(line, -1)
-		parts = parts[:len(parts)-1]
-		if len(parts) < 5 {
-			continue
+	for _, hostMount := range hostMounts {
+		for _, mappedMount := range mapped {
+			if hostMount.Device == mappedMount.Device {
+				mounts = append(mounts, &storage.Mount{
+					Device:   hostMount.Device,
+					DevMajor: hostMount.DevMajor,
+					DevMinor: hostMount.DevMinor,
+					Path:     hostMount.Path,
+					Volume:   mappedMount.Volume,
+				})
+				break
+			}
 		}
+	}
 
-		mounts = append(mounts, &storage.Mount{
-			Device: parts[4],
-			Volume: storage.Volume{
-				Name: strings.Replace(parts[2], ".", "/", -1),
-				Params: map[string]string{
-					"pool": parts[1],
-				},
-			},
-		})
+	if len(mounts) != len(hostMounts) || len(mounts) != len(mapped) {
+		return nil, fmt.Errorf("Did not align all mounts between mapped and mounted volumes.")
 	}
 
 	return mounts, nil
