@@ -1,19 +1,23 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.7.3-13-g81e2611",
-			"Rev": "81e2611f37acccd8cb5e4e1a5a4a5f6c9c7f4537"
+			"Comment": "v0.8.7-53-g446d1c1",
+			"Rev": "446d1c146faa8ed3f4218f056fcd165f6bcfda81"
+		},
+		{
+			"ImportPath": "github.com/alecthomas/units",
+			"Rev": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-155-g96f1fed",
-			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
+			"Comment": "1.2.0-179-g0302d39",
+			"Rev": "0302d3914d2a6ad61404584cdae6e6dbc9c03599"
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
@@ -21,18 +25,38 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v2.1.0-alpha.0-51-gb24dd8e",
-			"Rev": "b24dd8e4e67d7203c5a68cd43de4f6ffcfff5e66"
+			"Comment": "v2.2.2",
+			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
+			"Comment": "v2.2.2",
+			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v2.1.0-alpha.0-51-gb24dd8e",
-			"Rev": "b24dd8e4e67d7203c5a68cd43de4f6ffcfff5e66"
+			"Comment": "v2.2.2",
+			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/listenbuffer",
+			"Comment": "v1.9.1",
+			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/plugins",
-			"Comment": "v1.4.1-4308-g77396bd",
-			"Rev": "77396bd66acc141f1d5a1743cecd27777af7ef1d"
+			"Comment": "v1.9.1",
+			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/sockets",
+			"Comment": "v1.9.1",
+			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/tlsconfig",
+			"Comment": "v1.9.1",
+			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -41,6 +65,15 @@
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "47e8f450ef38c857cdd922ec08862ca9d65a1c6d"
+		},
+		{
+			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
+			"Comment": "v0.0.5-12-g3317785",
+			"Rev": "3317785f562b363eb386a2fa4909a55f267088c8"
+		},
+		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "3f41379a4bdd0906316978f4f99166fdbe960be4"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",

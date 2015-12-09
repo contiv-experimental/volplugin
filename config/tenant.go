@@ -29,6 +29,10 @@ func (c *TopLevelConfig) tenant(name string) string {
 
 // PublishTenant publishes tenant intent to the configuration store.
 func (c *TopLevelConfig) PublishTenant(name string, cfg *TenantConfig) error {
+	if err := cfg.DefaultVolumeOptions.computeSize(); err != nil {
+		return err
+	}
+
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -65,7 +69,17 @@ func (c *TopLevelConfig) GetTenant(name string) (*TenantConfig, error) {
 	}
 
 	tc := &TenantConfig{}
-	err = json.Unmarshal([]byte(resp.Node.Value), tc)
+	if err := json.Unmarshal([]byte(resp.Node.Value), tc); err != nil {
+		return nil, err
+	}
+
+	if err := tc.DefaultVolumeOptions.computeSize(); err != nil {
+		return nil, err
+	}
+
+	if err := tc.DefaultVolumeOptions.Validate(); err != nil {
+		return nil, err
+	}
 
 	return tc, err
 }

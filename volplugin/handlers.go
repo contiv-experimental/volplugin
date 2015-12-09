@@ -176,10 +176,16 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 		stopChan := addStopChan(uc.Request.Name)
 		go heartbeatMount(master, ttl, ut, stopChan)
 
+		actualSize, err := volConfig.Options.ActualSize()
+		if err != nil {
+			httpError(w, "Computing size of volume", err)
+			return
+		}
+
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
 				Name: joinPath(volConfig.TenantName, volConfig.VolumeName),
-				Size: volConfig.Options.Size,
+				Size: actualSize,
 				Params: storage.Params{
 					"pool": volConfig.Options.Pool,
 				},

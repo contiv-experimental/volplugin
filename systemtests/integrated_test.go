@@ -8,18 +8,17 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	"github.com/contiv/systemtests-utils"
 	"github.com/contiv/volplugin/config"
 )
 
-func (s *systemtestSuite) TestEtcdUpdate(c *C) {
+func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 	// this not-very-obvious test ensures that the tenant can be uploaded after
 	// the volplugin/volmaster pair are started.
 	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 }
 
-func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
+func (s *systemtestSuite) TestIntegratedSnapshotSchedule(c *C) {
 	_, err := s.uploadIntent("tenant1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
@@ -40,31 +39,7 @@ func (s *systemtestSuite) TestSnapshotSchedule(c *C) {
 	c.Assert(mylen >= 5 && mylen <= 10, Equals, true)
 }
 
-func (s *systemtestSuite) TestHostLabel(c *C) {
-	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-
-	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug --ttl 5")
-	c.Assert(err, IsNil)
-
-	time.Sleep(10 * time.Millisecond)
-	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
-
-	out, err := s.docker("run -d -v tenant1/foo:/mnt ubuntu sleep infinity")
-	c.Assert(err, IsNil)
-
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
-	defer s.docker("rm -f " + out)
-
-	ut := &config.UseConfig{}
-
-	// we know the pool is rbd here, so cheat a little.
-	out, err = s.volcli("use get tenant1 foo")
-	c.Assert(err, IsNil)
-	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
-	c.Assert(ut.Hostname, Equals, "quux")
-}
-
-func (s *systemtestSuite) TestUseMountLock(c *C) {
+func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 	for _, name := range []string{"mon0", "mon1", "mon2"} {
 		c.Assert(s.createVolume(name, "tenant1", "test", nil), IsNil)
 	}
@@ -86,7 +61,7 @@ func (s *systemtestSuite) TestUseMountLock(c *C) {
 	}
 }
 
-func (s *systemtestSuite) TestMultiPool(c *C) {
+func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
 	c.Assert(err, IsNil)
 	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
@@ -99,12 +74,14 @@ func (s *systemtestSuite) TestMultiPool(c *C) {
 
 	vc := &config.VolumeConfig{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
-	c.Assert(vc.Options.Size, Equals, uint64(10))
+	actualSize, err := vc.Options.ActualSize()
+	c.Assert(err, IsNil)
+	c.Assert(actualSize, Equals, uint64(10))
 }
 
-func (s *systemtestSuite) TestDriverOptions(c *C) {
+func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 	opts := map[string]string{
-		"size":                "200",
+		"size":                "200MB",
 		"snapshots":           "true",
 		"snapshots.frequency": "100m",
 		"snapshots.keep":      "20",
@@ -119,17 +96,19 @@ func (s *systemtestSuite) TestDriverOptions(c *C) {
 
 	vc := &config.VolumeConfig{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
-	c.Assert(vc.Options.Size, Equals, uint64(200))
+	actualSize, err := vc.Options.ActualSize()
+	c.Assert(err, IsNil)
+	c.Assert(actualSize, Equals, uint64(200))
 	c.Assert(vc.Options.Snapshot.Frequency, Equals, "100m")
 	c.Assert(vc.Options.Snapshot.Keep, Equals, uint(20))
 }
 
-func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
+func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	_, err := s.uploadIntent("tenant2", "fs")
 	c.Assert(err, IsNil)
 
 	opts := map[string]string{
-		"size": "1000",
+		"size": "1GB",
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant2", "test", opts), IsNil)
@@ -175,61 +154,7 @@ func (s *systemtestSuite) TestMultipleFileSystems(c *C) {
 	c.Assert(pass, Equals, true)
 }
 
-func (s *systemtestSuite) TestMultiTenantVolumeCreate(c *C) {
-	_, err := s.uploadIntent("tenant2", "intent2")
-	c.Assert(err, IsNil)
-
-	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
-	c.Assert(s.createVolume("mon0", "tenant2", "test", nil), IsNil)
-
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
-	defer s.purgeVolume("mon0", "tenant2", "test", true)
-
-	_, err = s.docker("run -v tenant1/test:/mnt ubuntu sh -c \"echo foo > /mnt/bar\"")
-	c.Assert(err, IsNil)
-
-	c.Assert(s.clearContainers(), IsNil)
-
-	_, err = s.docker("run -v tenant2/test:/mnt ubuntu sh -c \"cat /mnt/bar\"")
-	c.Assert(err, NotNil)
-
-	c.Assert(s.clearContainers(), IsNil)
-
-	_, err = s.docker("run -v tenant2/test:/mnt ubuntu sh -c \"echo bar > /mnt/foo\"")
-	c.Assert(err, IsNil)
-
-	c.Assert(s.clearContainers(), IsNil)
-
-	_, err = s.docker("run -v tenant1/test:/mnt ubuntu sh -c \"cat /mnt/foo\"")
-	c.Assert(err, NotNil)
-}
-
-func (s *systemtestSuite) TestEphemeralVolumes(c *C) {
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
-
-	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "true"}), IsNil)
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
-	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
-
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
-	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Not(Equals), "tenant1.test")
-
-	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"ephemeral": "false"}), IsNil)
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
-	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
-
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker volume rm tenant1/test"), IsNil)
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
-	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
-
-}
-
-func (s *systemtestSuite) TestRateLimiting(c *C) {
+func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 	// FIXME find a better place for these
 	var (
 		writeIOPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_iops_device"
@@ -277,21 +202,7 @@ func (s *systemtestSuite) TestRateLimiting(c *C) {
 	}
 }
 
-func (s *systemtestSuite) TestParallelCreate(c *C) {
-	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
-		return node.RunCommand("docker volume create -d volplugin --name tenant1/test")
-	}), IsNil)
-
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
-	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
-
-	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
-		return node.RunCommand("docker volume rm tenant1/test")
-	}), IsNil)
-}
-
-func (s *systemtestSuite) TestRemoveWhileMount(c *C) {
+func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 	_, err := s.docker("run -itd -v tenant1/test:/mnt ubuntu sleep infinity")
 	c.Assert(err, IsNil)
@@ -303,26 +214,4 @@ func (s *systemtestSuite) TestRemoveWhileMount(c *C) {
 
 	_, err = s.volcli("volume remove tenant1 test")
 	c.Assert(err, IsNil)
-}
-
-func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
-	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
-	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(10 * time.Second) // this is based on a 5s ttl set at volmaster/volplugin startup
-	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(1 * time.Second)
-	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
-	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), NotNil)
-
-	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(10 * time.Second)
-	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
-	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), NotNil)
-
-	s.clearContainers()
-
-	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
-	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v tenant1/test:/mnt ubuntu sleep infinity"), IsNil)
 }
