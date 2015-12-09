@@ -9,27 +9,31 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
 
 type daemonConfig struct {
-	config *config.TopLevelConfig
+	config   *config.TopLevelConfig
+	mountTTL int
 }
 
 // Daemon initializes the daemon for use.
-func Daemon(config *config.TopLevelConfig, debug bool, listen string) {
-	d := daemonConfig{config}
+func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
+	d := daemonConfig{config, ttl}
 	r := mux.NewRouter()
 
 	router := map[string]func(http.ResponseWriter, *http.Request){
-		"/request": d.handleRequest,
-		"/create":  d.handleCreate,
-		"/mount":   d.handleMount,
-		"/unmount": d.handleUnmount,
-		"/remove":  d.handleRemove,
+		"/request":      d.handleRequest,
+		"/create":       d.handleCreate,
+		"/mount":        d.handleMount,
+		"/mount-report": d.handleMountReport,
+		"/unmount":      d.handleUnmount,
+		"/remove":       d.handleRemove,
 	}
 
 	for path, f := range router {
@@ -129,16 +133,30 @@ func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
+func (d daemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Request, exist client.PrevExistType) error {
 	req, err := unmarshalUseConfig(r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
-		return
+		return err
 	}
 
 	req.Reason = "Mount"
 
-	if err := d.config.PublishUse(req); err != nil {
+	if err := d.config.PublishUseWithTTL(req, time.Duration(d.mountTTL)*time.Second, exist); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
+	if err := d.handleMountWithTTLFlag(w, r, client.PrevNoExist); err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
+	}
+}
+
+func (d daemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
+	if err := d.handleMountWithTTLFlag(w, r, client.PrevExist); err != nil {
 		httpError(w, "Could not publish mount information", err)
 		return
 	}

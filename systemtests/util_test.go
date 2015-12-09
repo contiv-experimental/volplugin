@@ -174,7 +174,7 @@ func stopVolsupervisor(node utils.TestbedNode) error {
 
 func startVolmaster(node utils.TestbedNode) error {
 	log.Infof("Starting the volmaster on %s", node.GetName())
-	_, err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug </dev/null &>/tmp/volmaster.log &")
+	_, err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
 	time.Sleep(10 * time.Millisecond)
 	return err
@@ -191,7 +191,7 @@ func startVolplugin(node utils.TestbedNode) error {
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug &>/tmp/volplugin.log &")
+	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --ttl 5 &>/tmp/volplugin.log &")
 	return err
 }
 
@@ -234,7 +234,7 @@ func (s *systemtestSuite) clearVolumes() error {
 
 func (s *systemtestSuite) clearRBD() error {
 	log.Info("Clearing rbd images")
-	if out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("set -e; for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo rbd unmap $img; done"); err != nil {
+	if out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("set -e; for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done"); err != nil {
 		log.Info(out)
 		return err
 	}

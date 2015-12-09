@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -18,6 +18,11 @@ type unmarshalledConfig struct {
 	Name    string
 	Tenant  string
 }
+
+var (
+	mountStopChans = map[string]chan struct{}{}
+	mountMutex     = sync.Mutex{}
+)
 
 func nilAction(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(VolumeResponse{})
@@ -140,7 +145,7 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func mount(master, host string) func(http.ResponseWriter, *http.Request) {
+func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
@@ -167,6 +172,9 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 			httpError(w, "Reporting mount to master", err)
 			return
 		}
+
+		stopChan := addStopChan(uc.Request.Name)
+		go heartbeatMount(master, ttl, ut, stopChan)
 
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
@@ -196,7 +204,7 @@ func mount(master, host string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func unmount(master string) func(http.ResponseWriter, *http.Request) {
+func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
@@ -226,16 +234,12 @@ func unmount(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		hostname, err := os.Hostname()
-		if err != nil {
-			httpError(w, "Retrieving hostname", err)
-			return
-		}
-
 		ut := &config.UseConfig{
 			Volume:   volConfig,
-			Hostname: hostname,
+			Hostname: host,
 		}
+
+		removeStopChan(uc.Request.Name)
 
 		if err := reportUnmount(master, ut); err != nil {
 			httpError(w, "Reporting unmount to master", err)
