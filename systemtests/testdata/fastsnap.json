@@ -1,7 +1,7 @@
 { 
   "default-options": {
     "pool": "rbd",
-    "size": 10,
+    "size": "10MB",
     "snapshots": true,
     "snapshot": {
       "frequency": "1s",

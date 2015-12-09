@@ -4,48 +4,106 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/pkg/sockets"
+	"github.com/docker/docker/pkg/tlsconfig"
 )
 
 const (
-	versionMimetype = "application/vnd.docker.plugins.v1+json"
+	versionMimetype = "application/vnd.docker.plugins.v1.1+json"
 	defaultTimeOut  = 30
 )
 
-func NewClient(addr string) *Client {
+type remoteError struct {
+	method string
+	err    string
+}
+
+func (e *remoteError) Error() string {
+	return fmt.Sprintf("Plugin Error: %s, %s", e.err, e.method)
+}
+
+// NewClient creates a new plugin client (http).
+func NewClient(addr string, tlsConfig tlsconfig.Options) (*Client, error) {
 	tr := &http.Transport{}
+
+	c, err := tlsconfig.Client(tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+	tr.TLSClientConfig = c
+
 	protoAndAddr := strings.Split(addr, "://")
-	configureTCPTransport(tr, protoAndAddr[0], protoAndAddr[1])
-	return &Client{&http.Client{Transport: tr}, protoAndAddr[1]}
+	sockets.ConfigureTCPTransport(tr, protoAndAddr[0], protoAndAddr[1])
+
+	scheme := protoAndAddr[0]
+	if scheme != "https" {
+		scheme = "http"
+	}
+	return &Client{&http.Client{Transport: tr}, scheme, protoAndAddr[1]}, nil
 }
 
+// Client represents a plugin client.
 type Client struct {
-	http *http.Client
-	addr string
+	http   *http.Client // http client to use
+	scheme string       // scheme protocol of the plugin
+	addr   string       // http address of the plugin
 }
 
+// Call calls the specified method with the specified arguments for the plugin.
+// It will retry for 30 seconds if a failure occurs when calling.
 func (c *Client) Call(serviceMethod string, args interface{}, ret interface{}) error {
-	return c.callWithRetry(serviceMethod, args, ret, true)
-}
-
-func (c *Client) callWithRetry(serviceMethod string, args interface{}, ret interface{}, retry bool) error {
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(args); err != nil {
 		return err
 	}
-
-	req, err := http.NewRequest("POST", "/"+serviceMethod, &buf)
+	body, err := c.callWithRetry(serviceMethod, &buf, true)
 	if err != nil {
 		return err
 	}
+	defer body.Close()
+	if err := json.NewDecoder(body).Decode(&ret); err != nil {
+		logrus.Errorf("%s: error reading plugin resp: %v", serviceMethod, err)
+		return err
+	}
+	return nil
+}
+
+// Stream calls the specified method with the specified arguments for the plugin and returns the response body
+func (c *Client) Stream(serviceMethod string, args interface{}) (io.ReadCloser, error) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(args); err != nil {
+		return nil, err
+	}
+	return c.callWithRetry(serviceMethod, &buf, true)
+}
+
+// SendFile calls the specified method, and passes through the IO stream
+func (c *Client) SendFile(serviceMethod string, data io.Reader, ret interface{}) error {
+	body, err := c.callWithRetry(serviceMethod, data, true)
+	if err != nil {
+		return err
+	}
+	if err := json.NewDecoder(body).Decode(&ret); err != nil {
+		logrus.Errorf("%s: error reading plugin resp: %v", serviceMethod, err)
+		return err
+	}
+	return nil
+}
+
+func (c *Client) callWithRetry(serviceMethod string, data io.Reader, retry bool) (io.ReadCloser, error) {
+	req, err := http.NewRequest("POST", "/"+serviceMethod, data)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Add("Accept", versionMimetype)
-	req.URL.Scheme = "http"
+	req.URL.Scheme = c.scheme
 	req.URL.Host = c.addr
 
 	var retries int
@@ -55,12 +113,12 @@ func (c *Client) callWithRetry(serviceMethod string, args interface{}, ret inter
 		resp, err := c.http.Do(req)
 		if err != nil {
 			if !retry {
-				return err
+				return nil, err
 			}
 
 			timeOff := backoff(retries)
 			if abort(start, timeOff) {
-				return err
+				return nil, err
 			}
 			retries++
 			logrus.Warnf("Unable to connect to plugin: %s, retrying in %v", c.addr, timeOff)
@@ -68,16 +126,14 @@ func (c *Client) callWithRetry(serviceMethod string, args interface{}, ret inter
 			continue
 		}
 
-		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			remoteErr, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				return fmt.Errorf("Plugin Error: %s", err)
+				return nil, &remoteError{err.Error(), serviceMethod}
 			}
-			return fmt.Errorf("Plugin Error: %s", remoteErr)
+			return nil, &remoteError{string(remoteErr), serviceMethod}
 		}
-
-		return json.NewDecoder(resp.Body).Decode(&ret)
+		return resp.Body, nil
 	}
 }
 
@@ -94,20 +150,5 @@ func backoff(retries int) time.Duration {
 }
 
 func abort(start time.Time, timeOff time.Duration) bool {
-	return timeOff+time.Since(start) > time.Duration(defaultTimeOut)*time.Second
-}
-
-func configureTCPTransport(tr *http.Transport, proto, addr string) {
-	// Why 32? See https://github.com/docker/docker/pull/8035.
-	timeout := 32 * time.Second
-	if proto == "unix" {
-		// No need for compression in local communications.
-		tr.DisableCompression = true
-		tr.Dial = func(_, _ string) (net.Conn, error) {
-			return net.DialTimeout(proto, addr, timeout)
-		}
-	} else {
-		tr.Proxy = http.ProxyFromEnvironment
-		tr.Dial = (&net.Dialer{Timeout: timeout}).Dial
-	}
+	return timeOff+time.Since(start) >= time.Duration(defaultTimeOut)*time.Second
 }

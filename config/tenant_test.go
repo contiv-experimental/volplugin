@@ -6,7 +6,7 @@ var testTenantConfigs = map[string]*TenantConfig{
 	"basic": {
 		DefaultVolumeOptions: VolumeOptions{
 			Pool:         "rbd",
-			Size:         10,
+			Size:         "10MB",
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
 		},
@@ -15,7 +15,7 @@ var testTenantConfigs = map[string]*TenantConfig{
 	"basic2": {
 		DefaultVolumeOptions: VolumeOptions{
 			Pool:         "rbd",
-			Size:         20,
+			Size:         "20MB",
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
 		},
@@ -23,7 +23,7 @@ var testTenantConfigs = map[string]*TenantConfig{
 	},
 	"nopool": {
 		DefaultVolumeOptions: VolumeOptions{
-			Size:         20,
+			Size:         "20MB",
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
 		},

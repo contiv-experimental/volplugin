@@ -30,11 +30,16 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) erro
 		}
 	}
 
+	actualSize, err := config.Options.ActualSize()
+	if err != nil {
+		return err
+	}
+
 	driver := ceph.NewDriver()
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
 			Name: joinVolumeName(config),
-			Size: config.Options.Size,
+			Size: actualSize,
 			Params: storage.Params{
 				"pool": config.Options.Pool,
 			},

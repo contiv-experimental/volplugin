@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/alecthomas/units"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -21,12 +22,14 @@ type VolumeConfig struct {
 // VolumeOptions comprises the optional paramters a volume can accept.
 type VolumeOptions struct {
 	Pool         string          `json:"pool" merge:"pool"`
-	Size         uint64          `json:"size" merge:"size"`
+	Size         string          `json:"size" merge:"size"`
 	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
 	Snapshot     SnapshotConfig  `json:"snapshot"`
 	FileSystem   string          `json:"filesystem" merge:"filesystem"`
 	Ephemeral    bool            `json:"ephemeral,omitempty" merge:"ephemeral"`
 	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
+
+	actualSize units.Base2Bytes
 }
 
 // RateLimitConfig is the configuration for limiting the rate of disk access.
@@ -82,6 +85,14 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 
 // PublishVolume writes a volume to etcd.
 func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
+	if err := vc.Options.computeSize(); err != nil {
+		return err
+	}
+
+	if err := vc.Validate(); err != nil {
+		return err
+	}
+
 	remarshal, err := json.Marshal(vc)
 	if err != nil {
 		return err
@@ -91,6 +102,29 @@ func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
 
 	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.TenantName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return ErrExist
+	}
+
+	return nil
+}
+
+// ActualSize returns the size of the volume as an integer of megabytes.
+func (vo *VolumeOptions) ActualSize() (uint64, error) {
+	if err := vo.computeSize(); err != nil {
+		return 0, err
+	}
+	return uint64(vo.actualSize), nil
+}
+
+func (vo *VolumeOptions) computeSize() error {
+	var err error
+
+	vo.actualSize, err = units.ParseBase2Bytes(vo.Size)
+	if err != nil {
+		return err
+	}
+
+	if vo.actualSize != 0 {
+		vo.actualSize = vo.actualSize / units.Mebibyte
 	}
 
 	return nil
@@ -106,6 +140,14 @@ func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
 	ret := &VolumeConfig{}
 
 	if err := json.Unmarshal([]byte(resp.Node.Value), ret); err != nil {
+		return nil, err
+	}
+
+	if err := ret.Options.computeSize(); err != nil {
+		return nil, err
+	}
+
+	if err := ret.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -170,16 +212,16 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 
 // Validate options for a volume. Should be called anytime options are
 // considered.
-func (opts *VolumeOptions) Validate() error {
-	if opts.Pool == "" {
+func (vo *VolumeOptions) Validate() error {
+	if vo.Pool == "" {
 		return fmt.Errorf("No Pool specified")
 	}
 
-	if opts.Size == 0 {
+	if vo.actualSize == 0 {
 		return fmt.Errorf("Config for tenant has a zero size")
 	}
 
-	if opts.UseSnapshots && (opts.Snapshot.Frequency == "" || opts.Snapshot.Keep == 0) {
+	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {
 		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
