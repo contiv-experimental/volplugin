@@ -29,6 +29,30 @@ var testTenantConfigs = map[string]*TenantConfig{
 		},
 		FileSystems: defaultFilesystems,
 	},
+	"badsize": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "0",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsize2": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "10M",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsize3": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "not a number",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
 }
 
 func (s *configSuite) TestBasicTenant(c *C) {
@@ -73,4 +97,8 @@ func (s *configSuite) TestTenantValidate(c *C) {
 	}
 
 	c.Assert(testTenantConfigs["nopool"].Validate(), NotNil)
+	c.Assert(testTenantConfigs["badsize"].Validate(), NotNil)
+	c.Assert(testTenantConfigs["badsize2"].Validate(), NotNil)
+	_, err := testTenantConfigs["badsize3"].DefaultVolumeOptions.ActualSize()
+	c.Assert(err, NotNil)
 }
