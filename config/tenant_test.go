@@ -1,11 +1,6 @@
 package config
 
-import (
-	"os/exec"
-	"time"
-
-	. "gopkg.in/check.v1"
-)
+import . "gopkg.in/check.v1"
 
 var testTenantConfigs = map[string]*TenantConfig{
 	"basic": {
@@ -151,35 +146,16 @@ func (s *configSuite) TestTenantBadPublish(c *C) {
 }
 
 func (s *configSuite) TestTenantPublishEtcdDown(c *C) {
-	defer time.Sleep(1 * time.Second)
-	defer func() {
-		// I have ABSOLUTELY no idea why CombinedOutput() is required here, but it is.
-		_, err := exec.Command("/bin/sh", "-c", "sudo systemctl restart etcd").CombinedOutput()
-		c.Assert(err, IsNil)
-	}()
-
-	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
-	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl stop etcd").Run(), IsNil)
-	time.Sleep(1 * time.Second)
-
-	for _, key := range []string{"basic", "basic2"} {
-		c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
-	}
+	stopStartEtcd(c, func() {
+		for _, key := range []string{"basic", "basic2"} {
+			c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
+		}
+	})
 }
 
 func (s *configSuite) TestTenantListEtcdDown(c *C) {
-	defer time.Sleep(1 * time.Second)
-	defer func() {
-		// I have ABSOLUTELY no idea why CombinedOutput() is required here, but it is.
-		_, err := exec.Command("/bin/sh", "-c", "sudo systemctl restart etcd").CombinedOutput()
-		c.Assert(err, IsNil)
-	}()
-
-	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
-	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl stop etcd").Run(), IsNil)
-	time.Sleep(1 * time.Second)
-
-	_, err := s.tlc.ListTenants()
-
-	c.Assert(err, NotNil)
+	stopStartEtcd(c, func() {
+		_, err := s.tlc.ListTenants()
+		c.Assert(err, NotNil)
+	})
 }

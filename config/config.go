@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path"
 
+	"github.com/alecthomas/units"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -12,6 +13,10 @@ const (
 	rootVolume = "volumes"
 	rootUse    = "users"
 	rootTenant = "tenants"
+)
+
+var (
+	quux = units.Mebibyte
 )
 
 var defaultPaths = []string{rootVolume, rootUse, rootTenant}
