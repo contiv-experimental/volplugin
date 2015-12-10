@@ -21,10 +21,10 @@ start)
     export ETCD_INITIAL_CLUSTER="{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port1 }},{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port2 }}"
     {% endmacro -%}
 
-    {% macro add_member() -%}
+    {% macro add_member(peer_addr) -%}
     # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
     # ETCD_LISTEN_PEER_URLS for now
-    out=`etcdctl --peers="{{ etcd_master_addr }}:{{ etcd_client_port1 }},{{ etcd_master_addr }}:{{ etcd_client_port2 }}" \
+    out=`etcdctl --peers="{{ peer_addr }}:{{ etcd_client_port1 }},{{ peer_addr }}:{{ etcd_client_port2 }}" \
         member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS"`
     if [ $? -ne 0 ]; then
         echo "failed to add member {{ node_name }}"
@@ -35,16 +35,36 @@ start)
     {% endmacro -%}
 
     {% macro init_cluster() -%}
-    export ETCD_INITIAL_CLUSTER_STATE=new
-    export ETCD_INITIAL_CLUSTER="
-    {%- for host in groups[etcd_peers_group] -%}
-    {%- if loop.last -%}
-    {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
-    {%- else -%}
-    {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
-    {%- endif -%}
-    {% endfor -%}
-    "
+    if [ ! -f /var/tmp/etcd.existing ]; then
+        touch /var/tmp/etcd.existing
+        export ETCD_INITIAL_CLUSTER_STATE=new
+        export ETCD_INITIAL_CLUSTER="
+        {%- for host in groups[etcd_peers_group] -%}
+        {%- if loop.last -%}
+        {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
+        {%- else -%}
+        {{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['ansible_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
+        {%- endif -%}
+        {% endfor -%}
+        "
+    else
+        {# we can't use a simple filter as shown, as it needs pythoin 2.8.
+         # So resorting to loop below to get a peer.
+        {%- set peer_name=groups[etcd_peers_group]|reject("equalto", node_name)|first -%} #}
+        {%- set peers=[] -%}
+        {%- for host in groups[etcd_peers_group] -%}
+            {%- if host != node_name %}
+                {%- if peers.append(host) -%}
+                {%- endif -%}
+            {%- endif %}
+        {% endfor -%}
+        {% if peers %}
+            {% set peer_addr=hostvars[peers[0]]['ansible_' + etcd_peer_interface]['ipv4']['address'] -%}
+            {{ add_member(peer_addr=peer_addr) }}
+        {%- else -%}
+        echo "==> no peer found, single member cluster?"
+        {% endif -%}
+    fi
     {% endmacro -%}
 
     {% if run_as == "worker" -%}
@@ -55,7 +75,7 @@ start)
     {{ init_cluster() }}
     {% else -%}
     # if a new master node is being commissioned then add it to exisitng cluster
-    {{ add_member() }}
+    {{ add_member(peer_addr=etcd_master_addr) }}
     {% endif -%}
 
     #start etcd
