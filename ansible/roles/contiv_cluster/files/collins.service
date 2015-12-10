@@ -1,7 +1,0 @@
-[Unit]
-Description=Collins
-After=auditd.service systemd-user-sessions.service time-sync.target docker.service
-
-[Service]
-ExecStart=/usr/bin/collins.sh start
-KillMode=control-group

@@ -1,5 +1,0 @@
----
-# role variable for the cluster manager service
-
-collins_host_port: 9000
-collins_guest_port: 9000
