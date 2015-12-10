@@ -218,7 +218,14 @@ func (vo *VolumeOptions) Validate() error {
 	}
 
 	if vo.actualSize == 0 {
-		return fmt.Errorf("Config for tenant has a zero size")
+		actualSize, err := vo.ActualSize()
+		if err != nil {
+			return err
+		}
+
+		if actualSize == 0 {
+			return fmt.Errorf("Config for tenant has a zero size")
+		}
 	}
 
 	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {
