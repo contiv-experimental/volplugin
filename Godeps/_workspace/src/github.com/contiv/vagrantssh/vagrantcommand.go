@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package vagrantssh
 
 import (
 	"fmt"
@@ -41,12 +41,12 @@ func (c *VagrantCommand) getCmd(cmd string, args ...string) *exec.Cmd {
 	return osCmd
 }
 
-// Run runs a command and return it's exit status
+// Run runs a command and return its exit status
 func (c *VagrantCommand) Run(cmd string, args ...string) error {
 	return c.getCmd(cmd, args...).Run()
 }
 
-// RunWithOutput runs a command and return it's exit status and output
+// RunWithOutput runs a command and return its exit status and output
 func (c *VagrantCommand) RunWithOutput(cmd string, args ...string) ([]byte, error) {
 	return c.getCmd(cmd, args...).CombinedOutput()
 }

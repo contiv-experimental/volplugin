@@ -8,12 +8,12 @@ import (
 	. "gopkg.in/check.v1"
 
 	log "github.com/Sirupsen/logrus"
-	utils "github.com/contiv/systemtests-utils"
+	"github.com/contiv/vagrantssh"
 )
 
 type systemtestSuite struct {
-	vagrant utils.Vagrant
-	nodeMap map[string]utils.TestbedNode
+	vagrant vagrantssh.Vagrant
+	nodeMap map[string]vagrantssh.TestbedNode
 }
 
 var _ = Suite(&systemtestSuite{})
@@ -55,8 +55,8 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 func (s *systemtestSuite) SetUpSuite(c *C) {
 	log.Infof("Bootstrapping system tests")
 
-	s.nodeMap = map[string]utils.TestbedNode{}
-	s.vagrant = utils.Vagrant{}
+	s.nodeMap = map[string]vagrantssh.TestbedNode{}
+	s.vagrant = vagrantssh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
 	for _, node := range s.vagrant.GetNodes() {
 		s.nodeMap[node.GetName()] = node

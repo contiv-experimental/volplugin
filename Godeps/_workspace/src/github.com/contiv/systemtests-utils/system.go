@@ -5,10 +5,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/vagrantssh"
 )
 
 // StopEtcd stops etcd on a specific host
-func StopEtcd(nodes []TestbedNode) error {
+func StopEtcd(nodes []vagrantssh.TestbedNode) error {
 	for _, node := range nodes {
 		log.Infof("Stopping etcd on node %s", node.GetName())
 
@@ -35,13 +36,13 @@ func StopEtcd(nodes []TestbedNode) error {
 	return nil
 }
 
-func ClearEtcd(node TestbedNode) {
+func ClearEtcd(node vagrantssh.TestbedNode) {
 	log.Infof("Clearing etcd data")
 	node.RunCommand(`for i in $(etcdctl ls /); do etcdctl rm --recursive "$i"; done`)
 }
 
 // StartEtcd starts etcd on a specific host.
-func StartEtcd(nodes []TestbedNode) error {
+func StartEtcd(nodes []vagrantssh.TestbedNode) error {
 	for _, node := range nodes {
 		log.Infof("Starting etcd on %s", node.GetName())
 		times := 10

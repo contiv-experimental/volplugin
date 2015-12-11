@@ -9,7 +9,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	utils "github.com/contiv/systemtests-utils"
+	"github.com/contiv/systemtests-utils"
+	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
 )
 
@@ -161,46 +162,44 @@ func (s *systemtestSuite) pullUbuntu() error {
 	}
 }
 
-func startVolsupervisor(node utils.TestbedNode) error {
+func startVolsupervisor(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %s", node.GetName())
-	_, err := node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>/tmp/volsupervisor.log &")
-	return err
+	return node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>/tmp/volsupervisor.log &")
 }
 
-func stopVolsupervisor(node utils.TestbedNode) error {
+func stopVolsupervisor(node vagrantssh.TestbedNode) error {
 	log.Infof("Stopping the volsupervisor on %s", node.GetName())
 	return node.RunCommand("sudo pkill volsupervisor")
 }
 
-func startVolmaster(node utils.TestbedNode) error {
+func startVolmaster(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volmaster on %s", node.GetName())
-	_, err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>/tmp/volmaster.log &")
+	err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup")
 	time.Sleep(10 * time.Millisecond)
 	return err
 }
 
-func stopVolmaster(node utils.TestbedNode) error {
+func stopVolmaster(node vagrantssh.TestbedNode) error {
 	log.Infof("Stopping the volmaster on %s", node.GetName())
 	return node.RunCommand("sudo pkill volmaster")
 }
 
-func startVolplugin(node utils.TestbedNode) error {
+func startVolplugin(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volplugin on %q", node.GetName())
 	defer time.Sleep(10 * time.Millisecond)
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	_, err := node.RunCommandBackground("sudo -E `which volplugin` --debug --ttl 5 &>/tmp/volplugin.log &")
-	return err
+	return node.RunCommandBackground("sudo -E `which volplugin` --debug --ttl 5 &>/tmp/volplugin.log &")
 }
 
-func stopVolplugin(node utils.TestbedNode) error {
+func stopVolplugin(node vagrantssh.TestbedNode) error {
 	log.Infof("Stopping the volplugin on %q", node.GetName())
 	return node.RunCommand("sudo pkill volplugin")
 }
 
-func restartDockerHost(node utils.TestbedNode) error {
+func restartDockerHost(node vagrantssh.TestbedNode) error {
 	log.Infof("Restarting docker on %q", node.GetName())
 	// note that for all these restart tasks we error out quietly to avoid other
 	// hosts being cleaned up
@@ -212,7 +211,7 @@ func (s *systemtestSuite) restartDocker() error {
 	return s.vagrant.IterateNodes(restartDockerHost)
 }
 
-func (s *systemtestSuite) clearContainerHost(node utils.TestbedNode) error {
+func (s *systemtestSuite) clearContainerHost(node vagrantssh.TestbedNode) error {
 	log.Infof("Clearing containers on %q", node.GetName())
 	node.RunCommand("docker ps -aq | xargs docker rm -f")
 	return nil
@@ -222,7 +221,7 @@ func (s *systemtestSuite) clearContainers() error {
 	return s.vagrant.IterateNodes(s.clearContainerHost)
 }
 
-func (s *systemtestSuite) clearVolumeHost(node utils.TestbedNode) error {
+func (s *systemtestSuite) clearVolumeHost(node vagrantssh.TestbedNode) error {
 	log.Infof("Clearing volumes on %q", node.GetName())
 	node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
 	return nil
