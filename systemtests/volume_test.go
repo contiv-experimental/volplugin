@@ -3,7 +3,7 @@ package systemtests
 import (
 	"strings"
 
-	"github.com/contiv/systemtests-utils"
+	"github.com/contiv/vagrantssh"
 
 	. "gopkg.in/check.v1"
 )
@@ -105,7 +105,7 @@ func (s *systemtestSuite) TestVolumeEphemeral(c *C) {
 }
 
 func (s *systemtestSuite) TestVolumeParallelCreate(c *C) {
-	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
+	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
 		return node.RunCommand("docker volume create -d volplugin --name tenant1/test")
 	}), IsNil)
 
@@ -113,7 +113,7 @@ func (s *systemtestSuite) TestVolumeParallelCreate(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "tenant1.test")
 
-	c.Assert(s.vagrant.IterateNodes(func(node utils.TestbedNode) error {
+	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
 		return node.RunCommand("docker volume rm tenant1/test")
 	}), IsNil)
 }

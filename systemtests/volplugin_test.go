@@ -34,8 +34,7 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 func (s *systemtestSuite) TestVolpluginHostLabel(c *C) {
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 
-	_, err := s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug --ttl 5")
-	c.Assert(err, IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommandBackground("sudo -E `which volplugin` --host-label quux --debug --ttl 5"), IsNil)
 
 	time.Sleep(10 * time.Millisecond)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
