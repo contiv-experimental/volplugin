@@ -138,14 +138,14 @@ func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, err
 	return s.volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
 }
 
-func (s *systemtestSuite) pullUbuntu() error {
+func (s *systemtestSuite) pullDebian() error {
 	wg := sync.WaitGroup{}
 	errChan := make(chan error, 3)
-	for _, host := range []string{"mon0", "mon1", "mon2"} {
+	for _, host := range s.vagrant.GetNodes() {
 		wg.Add(1)
-		go func(host string) {
-			log.Infof("Pulling ubuntu image on host %q", host)
-			if err := s.vagrant.GetNode(host).RunCommand("docker pull ubuntu"); err != nil {
+		go func(node vagrantssh.TestbedNode) {
+			log.Infof("Pulling debian image on host %q", node.GetName())
+			if err := node.RunCommand("docker pull debian"); err != nil {
 				errChan <- err
 			}
 			wg.Done()
