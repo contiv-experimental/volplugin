@@ -86,13 +86,40 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 	volumeNames := []string{"baz", "quux"}
 	sort.Strings(volumeNames) // lazy
 
+	_, err := s.tlc.CreateVolume(RequestCreate{})
+	c.Assert(err, NotNil)
+
+	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "Doesn'tExist"})
+	c.Assert(err, NotNil)
+
+	// populate the tenants so the next few tests don't give false positives
 	for _, tenant := range tenantNames {
 		c.Assert(s.tlc.PublishTenant(tenant, testTenantConfigs["basic"]), IsNil)
+	}
 
+	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
+	c.Assert(err, NotNil)
+
+	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: "bar", Opts: map[string]string{"pool": ""}})
+	c.Assert(err, NotNil)
+
+	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: ""})
+	c.Assert(err, NotNil)
+
+	_, err = s.tlc.GetVolume("foo", "bar")
+	c.Assert(err, NotNil)
+
+	_, err = s.tlc.ListVolumes("quux")
+	c.Assert(err, NotNil)
+
+	for _, tenant := range tenantNames {
 		for _, volume := range volumeNames {
-			vcfg, err := s.tlc.CreateVolume(RequestCreate{Tenant: tenant, Volume: volume})
+			vcfg, err := s.tlc.CreateVolume(RequestCreate{Tenant: tenant, Volume: volume, Opts: map[string]string{"filesystem": ""}})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
+			c.Assert(s.tlc.PublishVolume(vcfg), Equals, ErrExist)
+
+			c.Assert(vcfg.Options.FileSystem, Equals, "ext4")
 
 			defer func(tenant, volume string) { c.Assert(s.tlc.RemoveVolume(tenant, volume), IsNil) }(tenant, volume)
 
@@ -105,6 +132,10 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 			c.Assert(err, IsNil)
 
 			c.Assert(vcfg, DeepEquals, vcfg2)
+
+			vcfg.Options.Size = "0"
+			vcfg.Options.actualSize = 0
+			c.Assert(s.tlc.PublishVolume(vcfg), NotNil)
 		}
 
 		volumes, err := s.tlc.ListVolumes(tenant)

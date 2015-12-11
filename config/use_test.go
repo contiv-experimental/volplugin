@@ -49,6 +49,12 @@ func (s *configSuite) TestUseCRUD(c *C) {
 
 	sort.Strings(mounts)
 	c.Assert([]string{"tenant1/quux", "tenant2/baz"}, DeepEquals, mounts)
+
+	basicTmp := *testUseConfigs["basic"]
+	basicTmp.Hostname = "quux"
+
+	c.Assert(s.tlc.RemoveUse(&basicTmp, false), NotNil)
+	c.Assert(s.tlc.RemoveUse(&basicTmp, true), IsNil)
 }
 
 func (s *configSuite) TestUseCRUDWithTTL(c *C) {
@@ -60,4 +66,15 @@ func (s *configSuite) TestUseCRUDWithTTL(c *C) {
 	use, err = s.tlc.GetUse(testUseVolumeConfigs["basic"])
 	c.Assert(err, NotNil)
 	c.Assert(use, IsNil)
+
+	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevNoExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic2"], 5*time.Second, client.PrevNoExist), IsNil)
+}
+
+func (s *configSuite) TestUseListEtcdDown(c *C) {
+	stopStartEtcd(c, func() {
+		_, err := s.tlc.ListUses()
+		c.Assert(err, NotNil)
+	})
 }

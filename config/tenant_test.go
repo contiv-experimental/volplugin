@@ -21,11 +21,65 @@ var testTenantConfigs = map[string]*TenantConfig{
 		},
 		FileSystems: defaultFilesystems,
 	},
+	"untouchedwithzerosize": {
+		DefaultVolumeOptions: VolumeOptions{
+			Pool:         "rbd",
+			Size:         "0",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"nilfs": {
+		DefaultVolumeOptions: VolumeOptions{
+			Pool:         "rbd",
+			Size:         "20MB",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
 	"nopool": {
 		DefaultVolumeOptions: VolumeOptions{
 			Size:         "20MB",
 			UseSnapshots: false,
 			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsize": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "0",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsize2": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "10M",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsize3": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "not a number",
+			UseSnapshots: false,
+			FileSystem:   defaultFilesystem,
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"badsnaps": {
+		DefaultVolumeOptions: VolumeOptions{
+			Size:         "10M",
+			UseSnapshots: true,
+			FileSystem:   defaultFilesystem,
+			Snapshot: SnapshotConfig{
+				Keep:      0,
+				Frequency: "",
+			},
 		},
 		FileSystems: defaultFilesystems,
 	},
@@ -68,9 +122,40 @@ func (s *configSuite) TestBasicTenant(c *C) {
 }
 
 func (s *configSuite) TestTenantValidate(c *C) {
-	for _, key := range []string{"basic", "basic2"} {
+	for _, key := range []string{"basic", "basic2", "nilfs"} {
 		c.Assert(testTenantConfigs[key].Validate(), IsNil)
 	}
 
+	// FIXME: ensure the default filesystem option is set when validate is called.
+	//        honestly, this both a pretty lousy way to do it and test it, we should do
+	//        something better.
+	c.Assert(testTenantConfigs["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
+
+	c.Assert(testTenantConfigs["untouchedwithzerosize"].Validate(), NotNil)
 	c.Assert(testTenantConfigs["nopool"].Validate(), NotNil)
+	c.Assert(testTenantConfigs["badsize"].Validate(), NotNil)
+	c.Assert(testTenantConfigs["badsize2"].Validate(), NotNil)
+	_, err := testTenantConfigs["badsize3"].DefaultVolumeOptions.ActualSize()
+	c.Assert(err, NotNil)
+}
+
+func (s *configSuite) TestTenantBadPublish(c *C) {
+	for _, key := range []string{"badsize", "badsize2", "badsize3", "nopool", "badsnaps"} {
+		c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
+	}
+}
+
+func (s *configSuite) TestTenantPublishEtcdDown(c *C) {
+	stopStartEtcd(c, func() {
+		for _, key := range []string{"basic", "basic2"} {
+			c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
+		}
+	})
+}
+
+func (s *configSuite) TestTenantListEtcdDown(c *C) {
+	stopStartEtcd(c, func() {
+		_, err := s.tlc.ListTenants()
+		c.Assert(err, NotNil)
+	})
 }

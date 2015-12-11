@@ -85,10 +85,6 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 
 // PublishVolume writes a volume to etcd.
 func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
-	if err := vc.Options.computeSize(); err != nil {
-		return err
-	}
-
 	if err := vc.Validate(); err != nil {
 		return err
 	}
@@ -140,10 +136,6 @@ func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
 	ret := &VolumeConfig{}
 
 	if err := json.Unmarshal([]byte(resp.Node.Value), ret); err != nil {
-		return nil, err
-	}
-
-	if err := ret.Options.computeSize(); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +210,14 @@ func (vo *VolumeOptions) Validate() error {
 	}
 
 	if vo.actualSize == 0 {
-		return fmt.Errorf("Config for tenant has a zero size")
+		actualSize, err := vo.ActualSize()
+		if err != nil {
+			return err
+		}
+
+		if actualSize == 0 {
+			return fmt.Errorf("Config for tenant has a zero size")
+		}
 	}
 
 	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {

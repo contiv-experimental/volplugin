@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"path"
 
 	"github.com/coreos/etcd/client"
@@ -73,14 +72,7 @@ func (c *TopLevelConfig) GetTenant(name string) (*TenantConfig, error) {
 		return nil, err
 	}
 
-	if err := tc.DefaultVolumeOptions.computeSize(); err != nil {
-		return nil, err
-	}
-
-	if err := tc.DefaultVolumeOptions.Validate(); err != nil {
-		return nil, err
-	}
-
+	err = tc.Validate()
 	return tc, err
 }
 
@@ -90,10 +82,6 @@ func (c *TopLevelConfig) ListTenants() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootTenant), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
-	}
-
-	if resp.Node == nil {
-		return nil, fmt.Errorf("Tenant's root is missing")
 	}
 
 	tenants := []string{}

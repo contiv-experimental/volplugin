@@ -134,10 +134,6 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	id, err := s.docker("run -itd -v tenant1/foo:/mnt ubuntu sleep infinity")
 	c.Assert(err, IsNil)
 
-	defer s.volcli("volume remove tenant1 foo")
-	defer s.docker("volume rm tenant1/foo")
-	defer s.docker("rm -f " + id)
-
 	out, err := s.volcli("use list")
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
@@ -156,6 +152,15 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	out, err = s.volcli("use list")
 	c.Assert(err, IsNil)
 	c.Assert(out, Equals, "")
+
+	_, err = s.docker("rm -f " + id)
+	c.Assert(err, IsNil)
+
+	_, err = s.docker("volume rm tenant1/foo")
+	c.Assert(err, IsNil)
+
+	_, err = s.volcli("volume remove tenant1 foo")
+	c.Assert(err, IsNil)
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
