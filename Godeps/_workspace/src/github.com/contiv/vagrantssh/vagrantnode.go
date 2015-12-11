@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package vagrantssh
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ type VagrantNode struct {
 	client    *ssh.Client
 }
 
-//NewVagrantNode intializes a node in vagrant testbed
+// NewVagrantNode intializes a node in vagrant testbed
 func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
 	var (
 		vnode      *VagrantNode
@@ -62,7 +62,7 @@ func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
 	return vnode, nil
 }
 
-//Cleanup clears the ssh client resources
+// Cleanup clears the ssh client resources
 func (n *VagrantNode) Cleanup() {
 	n.client.Close()
 }
@@ -111,22 +111,22 @@ func (n *VagrantNode) RunCommandWithOutput(cmd string) (string, error) {
 	return string(output), err
 }
 
-// RunCommandBackground runs a background command in a vagrant node
-func (n *VagrantNode) RunCommandBackground(cmd string) (string, error) {
+// RunCommandBackground runs a background command in a vagrant node.
+func (n *VagrantNode) RunCommandBackground(cmd string) error {
 	var (
 		s   *ssh.Session
 		err error
 	)
 
 	if s, err = n.client.NewSession(); err != nil {
-		return "", err
+		return err
 	}
 	defer s.Close()
 
 	// start and forget about the command as user asked to run in background.
 	// The limitation is we/ won't know if it fails though. Not a worry right
 	// now as the test will fail anyways, but might be good to find a better way.
-	return "", s.Start(newCmdStrWithSource(cmd))
+	return s.Start(newCmdStrWithSource(cmd))
 }
 
 // GetName returns vagrant node's name

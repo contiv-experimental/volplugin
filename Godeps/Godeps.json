@@ -21,7 +21,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
-			"Rev": "46f4ea0558cbff443b3da3761e4ccd9eeb2dc571"
+			"Rev": "56e0c8c6075bf854c2a9c1814730b8c2ab18fa75"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",

@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package vagrantssh
 
 // TestbedNode is a node under test
 type TestbedNode interface {
 	RunCommand(cmd string) (err error)
 	RunCommandWithOutput(cmd string) (output string, err error)
-	RunCommandBackground(cmd string) (output string, err error)
+	RunCommandBackground(cmd string) (err error)
 	GetName() string
 }
