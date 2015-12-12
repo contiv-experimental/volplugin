@@ -78,7 +78,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 				wg.Add(1)
 				go func(node vagrantssh.TestbedNode, x int) {
 					defer wg.Done()
-					log.Infof("Creating image on %q", node.GetName())
+					log.Infof("Creating image tenant1/test%d on %q", x, node.GetName())
 
 					if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create tenant1 test%d", x)); err != nil {
 						log.Error(out)
