@@ -24,6 +24,10 @@
 			"Rev": "56e0c8c6075bf854c2a9c1814730b8c2ab18fa75"
 		},
 		{
+			"ImportPath": "github.com/contiv/vagrantssh",
+			"Rev": "a88fef02ddd47f0d83326cfdbee8564cade8d143"
+		},
+		{
 			"ImportPath": "github.com/coreos/etcd/client",
 			"Comment": "v2.2.2",
 			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
@@ -65,11 +69,6 @@
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "47e8f450ef38c857cdd922ec08862ca9d65a1c6d"
-		},
-		{
-			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
-			"Comment": "v0.0.5-12-g3317785",
-			"Rev": "3317785f562b363eb386a2fa4909a55f267088c8"
 		},
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
