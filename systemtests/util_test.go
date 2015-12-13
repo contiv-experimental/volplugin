@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -139,27 +138,7 @@ func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, err
 }
 
 func (s *systemtestSuite) pullDebian() error {
-	wg := sync.WaitGroup{}
-	errChan := make(chan error, 3)
-	for _, host := range s.vagrant.GetNodes() {
-		wg.Add(1)
-		go func(node vagrantssh.TestbedNode) {
-			log.Infof("Pulling debian image on host %q", node.GetName())
-			if err := node.RunCommand("docker pull debian"); err != nil {
-				errChan <- err
-			}
-			wg.Done()
-		}(host)
-	}
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
-		return err
-	default:
-		return nil
-	}
+	return s.vagrant.SSHExecAllNodes("docker pull debian")
 }
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
