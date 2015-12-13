@@ -27,13 +27,13 @@ import (
 type VagrantNode struct {
 	Name      string
 	primaryIP net.IP
-	client    *ssh.Client
+	port      string
+	config    *ssh.ClientConfig
 }
 
 // NewVagrantNode intializes a node in vagrant testbed
 func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
 	var (
-		vnode      *VagrantNode
 		err        error
 		signer     ssh.Signer
 		privateKey []byte
@@ -54,18 +54,20 @@ func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
 		},
 	}
 
-	vnode = &VagrantNode{Name: name}
-	if vnode.client, err = ssh.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", port), config); err != nil {
+	return &VagrantNode{Name: name, port: port, config: config}, nil
+}
+
+func (n *VagrantNode) dial() (*ssh.Client, error) {
+	client, err := ssh.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", n.port), n.config)
+	if err != nil {
 		return nil, err
 	}
 
-	return vnode, nil
+	return client, nil
 }
 
-// Cleanup clears the ssh client resources
-func (n *VagrantNode) Cleanup() {
-	n.client.Close()
-}
+// Cleanup does nothing for vagrant
+func (n *VagrantNode) Cleanup() {}
 
 func newCmdStrWithSource(cmd string) string {
 	// we need to source the environment manually as the ssh package client
@@ -74,22 +76,29 @@ func newCmdStrWithSource(cmd string) string {
 	return fmt.Sprintf("bash -lc '%s'", cmd)
 }
 
+func (n *VagrantNode) GetClientAndSession() (*ssh.Client, *ssh.Session, error) {
+	client, err := n.dial()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s, err := client.NewSession()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client, s, nil
+}
+
 // RunCommand runs a shell command in a vagrant node and returns it's exit status
 func (n *VagrantNode) RunCommand(cmd string) error {
-	var (
-		s   *ssh.Session
-		err error
-	)
-
-	if s, err = n.client.NewSession(); err != nil {
+	client, s, err := n.GetClientAndSession()
+	if err != nil {
 		return err
 	}
+
+	defer client.Close()
 	defer s.Close()
-
-	if err := s.RequestPty("vt100", 80, 25, ssh.TerminalModes{}); err != nil {
-		fmt.Println(err)
-		return err
-	}
 
 	return s.Run(newCmdStrWithSource(cmd))
 }
@@ -97,14 +106,12 @@ func (n *VagrantNode) RunCommand(cmd string) error {
 // RunCommandWithOutput runs a shell command in a vagrant node and returns it's
 // exit status and output
 func (n *VagrantNode) RunCommandWithOutput(cmd string) (string, error) {
-	var (
-		s   *ssh.Session
-		err error
-	)
-
-	if s, err = n.client.NewSession(); err != nil {
+	client, s, err := n.GetClientAndSession()
+	if err != nil {
 		return "", err
 	}
+
+	defer client.Close()
 	defer s.Close()
 
 	output, err := s.CombinedOutput(newCmdStrWithSource(cmd))
@@ -113,15 +120,13 @@ func (n *VagrantNode) RunCommandWithOutput(cmd string) (string, error) {
 
 // RunCommandBackground runs a background command in a vagrant node.
 func (n *VagrantNode) RunCommandBackground(cmd string) error {
-	var (
-		s   *ssh.Session
-		err error
-	)
-
-	if s, err = n.client.NewSession(); err != nil {
+	// XXX we leak a connection here so we can keep the session alive. While this
+	// is less than ideal it allows us to "fire and forget" from our perspective,
+	// and give system tests the ability to manage the background processes themselves.
+	_, s, err := n.GetClientAndSession()
+	if err != nil {
 		return err
 	}
-	defer s.Close()
 
 	// start and forget about the command as user asked to run in background.
 	// The limitation is we/ won't know if it fails though. Not a worry right
