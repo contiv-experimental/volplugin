@@ -4,6 +4,7 @@
 - name: wait for client.admin key exists
   wait_for:
     path: /etc/ceph/ceph.client.admin.keyring
+  run_once: true
 
 - name: create ceph rest api keyring
   command: ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
@@ -13,17 +14,20 @@
   when:
     cephx and
     groups[restapi_group_name] is defined
+  run_once: true
 
 - include: openstack_config.yml
   when:
     openstack_config and
     cephx
+  run_once: true
 
 - name: find ceph keys
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
   when: cephx
+  run_once: true
 
 - name: set keys permissions
   file:
@@ -33,6 +37,7 @@
     group: root
   with_items:
     - "{{ ceph_keys.stdout_lines }}"
+  run_once: true
 
 - name: copy keys to the ansible server
   fetch:
@@ -45,6 +50,7 @@
     - /var/lib/ceph/bootstrap-rgw/ceph.keyring
     - /var/lib/ceph/bootstrap-mds/ceph.keyring
   when: cephx
+  run_once: true
 
 - name: drop in a motd script to report status when logging in
   copy:
@@ -54,3 +60,4 @@
     group: root
     mode: 0755
   when: ansible_distribution_release == 'precise'
+  run_once: true
