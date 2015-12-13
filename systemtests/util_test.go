@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -62,7 +61,7 @@ func (s *systemtestSuite) createVolumeHost(tenant, host string, opts map[string]
 }
 
 func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[string]string) error {
-	log.Infof("Creating %s/%s on %s", tenant, name, host)
+	log.Infof("Creating %s/%s on %q", tenant, name, host)
 
 	optsStr := []string{}
 
@@ -138,50 +137,30 @@ func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, err
 	return s.volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
 }
 
-func (s *systemtestSuite) pullUbuntu() error {
-	wg := sync.WaitGroup{}
-	errChan := make(chan error, 3)
-	for _, host := range []string{"mon0", "mon1", "mon2"} {
-		wg.Add(1)
-		go func(host string) {
-			log.Infof("Pulling ubuntu image on host %q", host)
-			if err := s.vagrant.GetNode(host).RunCommand("docker pull ubuntu"); err != nil {
-				errChan <- err
-			}
-			wg.Done()
-		}(host)
-	}
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
-		return err
-	default:
-		return nil
-	}
+func (s *systemtestSuite) pullDebian() error {
+	return s.vagrant.SSHExecAllNodes("docker pull debian")
 }
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
-	log.Infof("Starting the volsupervisor on %s", node.GetName())
+	log.Infof("Starting the volsupervisor on %q", node.GetName())
 	return node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>/tmp/volsupervisor.log &")
 }
 
 func stopVolsupervisor(node vagrantssh.TestbedNode) error {
-	log.Infof("Stopping the volsupervisor on %s", node.GetName())
+	log.Infof("Stopping the volsupervisor on %q", node.GetName())
 	return node.RunCommand("sudo pkill volsupervisor")
 }
 
 func startVolmaster(node vagrantssh.TestbedNode) error {
-	log.Infof("Starting the volmaster on %s", node.GetName())
+	log.Infof("Starting the volmaster on %q", node.GetName())
 	err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>/tmp/volmaster.log &")
-	log.Infof("Waiting for volmaster startup")
+	log.Infof("Waiting for volmaster startup on %q", node.GetName())
 	time.Sleep(10 * time.Millisecond)
 	return err
 }
 
 func stopVolmaster(node vagrantssh.TestbedNode) error {
-	log.Infof("Stopping the volmaster on %s", node.GetName())
+	log.Infof("Stopping the volmaster on %q", node.GetName())
 	return node.RunCommand("sudo pkill volmaster")
 }
 

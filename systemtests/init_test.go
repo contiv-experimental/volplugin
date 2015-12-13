@@ -67,7 +67,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 		c.Fatal(err)
 	}
 
-	c.Assert(s.pullUbuntu(), IsNil)
+	c.Assert(s.pullDebian(), IsNil)
 	c.Assert(s.rebootstrap(), IsNil)
 
 	_, err = s.uploadIntent("tenant1", "intent1")

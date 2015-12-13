@@ -8,7 +8,7 @@ VAGRANTFILE_API_VERSION = '2'
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-NMONS        = settings['vms']
+NMONS        = ENV["VMS"] || settings['vms']
 SUBNET       = settings['subnet']
 BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
