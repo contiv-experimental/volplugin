@@ -10,8 +10,8 @@ import (
 )
 
 var testUseVolumeConfigs = map[string]*VolumeConfig{
-	"basic":  &VolumeConfig{TenantName: "tenant1", VolumeName: "quux"},
-	"basic2": &VolumeConfig{TenantName: "tenant2", VolumeName: "baz"},
+	"basic":  {TenantName: "tenant1", VolumeName: "quux"},
+	"basic2": {TenantName: "tenant2", VolumeName: "baz"},
 }
 
 var testUseConfigs = map[string]*UseConfig{
