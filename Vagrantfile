@@ -58,6 +58,7 @@ ansible_provision = proc do |ansible|
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdb', '/dev/sdc' ]",
+    service_vip: "192.168.24.50",
     journal_collocation: 'true',
   }
   ansible.limit = 'all'
