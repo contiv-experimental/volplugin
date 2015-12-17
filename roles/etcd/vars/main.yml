@@ -11,7 +11,7 @@ etcd_init_cluster: true
 
 
 # following variables are used in one or more roles, but have no good default value to pick from.
-# Leaving them as commented so that playbooks can fail early due to variable not defined error.
+# Leaving them as commented so that playbooks can fail early with variable not defined error.
 
 #etcd_master_addr:
 #etcd_master_name:
