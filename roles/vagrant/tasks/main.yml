@@ -1,0 +1,13 @@
+---
+- name: check for vagrant user
+  shell: id vagrant
+  register: vagrant_exist
+
+- name: install bashrc with swarm configs
+  template:
+    src: bashrc.j2
+    dest: /home/vagrant/.bashrc
+    owner: vagrant
+    group: vagrant
+    mode: 0755
+  when: vagrant_exist
