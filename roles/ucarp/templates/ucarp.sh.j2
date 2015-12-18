@@ -11,7 +11,7 @@ set -x -e
 case $1 in
 start)
     /sbin/ucarp --shutdown --interface={{ monitor_interface }} \
-        --srcip={{ hostvars[ansible_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }} \
+        --srcip={{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }} \
         --vhid=1 --pass=cluster_secret --addr={{ service_vip }} \
         --upscript="/usr/bin/ucarp/vip_up.sh" --downscript="/usr/bin/ucarp/vip_down.sh"
     ;;
