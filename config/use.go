@@ -32,8 +32,6 @@ func (c *TopLevelConfig) PublishUse(ut *UseConfig) error {
 		return err
 	}
 
-	// FIXME the TTL here should be variable and there should be a way to refresh it.
-	// This way if an instance goes down, its use expires after a while.
 	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Volume), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
 	return err
 }
@@ -46,8 +44,6 @@ func (c *TopLevelConfig) PublishUseWithTTL(ut *UseConfig, ttl time.Duration, exi
 		return err
 	}
 
-	// FIXME the TTL here should be variable and there should be a way to refresh it.
-	// This way if an instance goes down, its use expires after a while.
 	value := string(content)
 	if exist != client.PrevNoExist {
 		value = ""
