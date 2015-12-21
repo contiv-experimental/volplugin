@@ -13,6 +13,12 @@ start)
     /usr/bin/docker run -t -p {{ collins_host_port }}:{{ collins_guest_port }} --name collins tumblr/collins
     ;;
 
+stop)
+    # don't stop on error
+    /usr/bin/docker stop collins
+    /usr/bin/docker rm collins
+    ;;
+
 *)
     echo USAGE: $usage
     exit 1
