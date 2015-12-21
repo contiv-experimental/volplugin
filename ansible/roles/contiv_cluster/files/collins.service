@@ -4,4 +4,5 @@ After=auditd.service systemd-user-sessions.service time-sync.target docker.servi
 
 [Service]
 ExecStart=/usr/bin/collins.sh start
+ExecStop=/usr/bin/collins.sh stop
 KillMode=control-group
