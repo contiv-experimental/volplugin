@@ -31,15 +31,16 @@ func (s *systemtestSuite) SetUpTest(c *C) {
 }
 
 func (s *systemtestSuite) TearDownTest(c *C) {
-	if os.Getenv("CONTIV_SOE") != "" {
-		log.Infof("SOE set. Terminating immediately")
+	if c.Failed() && os.Getenv("CONTIV_SOE") != "" {
+		log.Infof("Test failed and SOE set. Terminating immediately")
 		os.Exit(1)
 	}
 }
 
 func (s *systemtestSuite) TearDownSuite(c *C) {
-	if os.Getenv("NO_TEARDOWN") != "" || os.Getenv("CONTIV_SOE") != "" {
-		os.Exit(0)
+	if c.Failed() && os.Getenv("CONTIV_SOE") != "" {
+		log.Infof("SOE set; aborting")
+		os.Exit(1)
 	}
 
 	log.Infof("Tearing down system test facilities")
