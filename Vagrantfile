@@ -4,6 +4,7 @@
 require 'yaml'
 require 'fileutils'
 VAGRANTFILE_API_VERSION = '2'
+OSX_VMWARE_DIR = "/Applications/VMware Fusion.app/Contents/Library/"
 
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
@@ -21,13 +22,6 @@ no_proxy='192.168.24.10,192.168.24.11,192.168.24.12,172.17.42.1,127.0.0.1,localh
 echo "export 'no_proxy=$no_proxy'" >> /etc/profile.d/envvar.sh
 
 . /etc/profile.d/envvar.sh
-
-mkdir -p /etc/systemd/system/docker.service.d
-echo "[Service]" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf &>/dev/null
-echo "Environment=\\\"no_proxy=$no_proxy\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf &>/dev/null
-sudo systemctl daemon-reload
-sudo systemctl stop docker
-sudo systemctl start docker
 EOF
 
 ansible_provision = proc do |ansible|
@@ -54,7 +48,7 @@ ansible_provision = proc do |ansible|
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
-    monitor_interface: 'enp0s8',
+    monitor_interface: "enp0s8",
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdb', '/dev/sdc' ]",
@@ -64,52 +58,97 @@ ansible_provision = proc do |ansible|
   ansible.limit = 'all'
 end
 
+def create_vmdk(name, size)
+  dir = Pathname.new(__FILE__).expand_path.dirname
+  path = File.join(dir, '.vagrant', name + '.vmdk')
+  command = "vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1 > /dev/null"
+
+  if Dir.exist?(OSX_VMWARE_DIR)
+    command = OSX_VMWARE_DIR + command
+  end
+
+  %x[#{command}] unless File.exist?(path)
+  return path
+end
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = BOX
   config.vm.box_version = BOX_VERSION
-  config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
+
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
   config.vm.synced_folder "bin", "/opt/golang/bin"
 
-  (0..NMONS - 1).each do |i|
+  [:vmware_workstation, :vmware_fusion].each do |provider|
+    config.vm.provider provider do |v,override|
+    end
+  end
+
+
+  (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "mon#{i}"
-      mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
-      mon.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
-      #mon.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
-      mon.vm.provider :virtualbox do |vb|
+
+      [:vmware_workstation, :vmware_fusion].each do |provider|
+        mon.vm.provider provider do |v, override|
+          override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
+          (0..1).each do |d|
+            v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
+            v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
+          end
+
+          v.vmx['memsize'] = "#{MEMORY}"
+
+          override.vm.provision 'shell' do |s|
+            s.inline = <<-EOF
+              #{shell_provision}
+              if sudo ip link | grep -q ens33
+              then
+                sudo ip link set dev ens33 down
+                sudo ip link set dev ens33 name enp0s8
+                sudo ip link set dev enp0s8 up
+                sudo dhclient enp0s8
+              fi
+            EOF
+            s.args = []
+          end
+
+          # Run the provisioner after the last machine comes up
+          override.vm.provision 'ansible', &ansible_provision if i == (NMONS - 1)
+        end
+      end
+
+      mon.vm.provider :virtualbox do |vb, override|
+        override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
+
         (0..1).each do |d|
           disk_path = "disk-#{i}-#{d}"
           vdi_disk_path = disk_path + ".vdi"
 
-          vb.customize ['createhd',
-                        '--filename', disk_path,
-                        '--size', '11000']
-          # Controller names are dependent on the VM being built.
-          # It is set when the base box is made in our case ubuntu/trusty64.
-          # Be careful while changing the box.
-          vb.customize ['storageattach', :id,
-                        '--storagectl', 'SATA Controller',
-                        '--port', 3 + d,
-                        '--type', 'hdd',
-                        '--medium', vdi_disk_path]
+          unless File.exist?(vdi_disk_path)
+            vb.customize ['createhd',
+                          '--filename', disk_path,
+                          '--size', '11000']
+            # Controller names are dependent on the VM being built.
+            # Be careful while changing the box.
+            vb.customize ['storageattach', :id,
+                          '--storagectl', 'SATA Controller',
+                          '--port', 3 + d,
+                          '--type', 'hdd',
+                          '--medium', vdi_disk_path]
+          end
         end
 
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
-      end
 
-      mon.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = "#{MEMORY}"
-      end
+        override.vm.provision "shell" do |s|
+          s.inline = shell_provision
+          s.args = [ ENV["http_proxy"] || "", ENV["https_proxy"] || "" ]
+        end
 
-      mon.vm.provision "shell" do |s|
-        s.inline = shell_provision
-        s.args = [ ENV["http_proxy"] || "", ENV["https_proxy"] || "" ]
+        # Run the provisioner after the last machine comes up
+        override.vm.provision 'ansible', &ansible_provision if i == (NMONS - 1)
       end
-
-      # Run the provisioner after the last machine comes up
-      mon.vm.provision 'ansible', &ansible_provision if i == (NMONS - 1)
     end
   end
 end

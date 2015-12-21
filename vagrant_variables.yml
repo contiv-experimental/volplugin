@@ -16,5 +16,5 @@ memory: 2048
 # For more boxes have a look at:
 #   - https://atlas.hashicorp.com/boxes/search?utf8=✓&sort=&provider=virtualbox&q=
 #   - https://download.gluster.org/pub/gluster/purpleidea/vagrant/
-vagrant_box: contiv/centos71-netplugin
-box_version: 0.5.1
+vagrant_box: contiv/centos72
+box_version: 0.1.1

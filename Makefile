@@ -8,6 +8,11 @@ start: install-ansible
 
 stop:
 	vagrant destroy -f
+	make clean
+
+clean:
+	rm -f *.vdi
+	rm -f .vagrant/*.vmdk
 
 update:
 	vagrant box update || exit 0
