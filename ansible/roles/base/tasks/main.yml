@@ -22,6 +22,7 @@
 - name: install base packages (redhat)
   yum: "update_cache=yes name={{ item }}"
   with_items:
+    - epel-release
     - ntp
     - unzip
     - vim
