@@ -23,16 +23,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// VagrantNode implements a node in vagrant testbed
-type VagrantNode struct {
+// SSHNode implements a node with ssh connectivity in a testbed
+type SSHNode struct {
 	Name      string
 	primaryIP net.IP
-	port      string
+	sshAddr   string
+	sshPort   string
 	config    *ssh.ClientConfig
 }
 
-// NewVagrantNode intializes a node in vagrant testbed
-func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
+// NewSSHNode intializes a ssh-client based node in a testbed
+func NewSSHNode(name, user, sshAddr, sshPort, privKeyFile string) (*SSHNode, error) {
 	var (
 		err        error
 		signer     ssh.Signer
@@ -48,17 +49,17 @@ func NewVagrantNode(name, port, privKeyFile string) (*VagrantNode, error) {
 	}
 
 	config := &ssh.ClientConfig{
-		User: "vagrant",
+		User: user,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
 	}
 
-	return &VagrantNode{Name: name, port: port, config: config}, nil
+	return &SSHNode{Name: name, sshAddr: sshAddr, sshPort: sshPort, config: config}, nil
 }
 
-func (n *VagrantNode) dial() (*ssh.Client, error) {
-	client, err := ssh.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", n.port), n.config)
+func (n *SSHNode) dial() (*ssh.Client, error) {
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", n.sshAddr, n.sshPort), n.config)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +67,8 @@ func (n *VagrantNode) dial() (*ssh.Client, error) {
 	return client, nil
 }
 
-// Cleanup does nothing for vagrant
-func (n *VagrantNode) Cleanup() {}
+// Cleanup does nothing
+func (n *SSHNode) Cleanup() {}
 
 func newCmdStrWithSource(cmd string) string {
 	// we need to source the environment manually as the ssh package client
@@ -76,11 +77,16 @@ func newCmdStrWithSource(cmd string) string {
 	return fmt.Sprintf("bash -lc '%s'", cmd)
 }
 
-func (n *VagrantNode) GetClientAndSession() (*ssh.Client, *ssh.Session, error) {
+func (n *SSHNode) getClientAndSession() (*ssh.Client, *ssh.Session, error) {
 	client, err := n.dial()
 	if err != nil {
 		return nil, nil, err
 	}
+	defer func() {
+		if err != nil {
+			client.Close()
+		}
+	}()
 
 	s, err := client.NewSession()
 	if err != nil {
@@ -91,8 +97,8 @@ func (n *VagrantNode) GetClientAndSession() (*ssh.Client, *ssh.Session, error) {
 }
 
 // RunCommand runs a shell command in a vagrant node and returns it's exit status
-func (n *VagrantNode) RunCommand(cmd string) error {
-	client, s, err := n.GetClientAndSession()
+func (n *SSHNode) RunCommand(cmd string) error {
+	client, s, err := n.getClientAndSession()
 	if err != nil {
 		return err
 	}
@@ -105,8 +111,8 @@ func (n *VagrantNode) RunCommand(cmd string) error {
 
 // RunCommandWithOutput runs a shell command in a vagrant node and returns it's
 // exit status and output
-func (n *VagrantNode) RunCommandWithOutput(cmd string) (string, error) {
-	client, s, err := n.GetClientAndSession()
+func (n *SSHNode) RunCommandWithOutput(cmd string) (string, error) {
+	client, s, err := n.getClientAndSession()
 	if err != nil {
 		return "", err
 	}
@@ -119,11 +125,11 @@ func (n *VagrantNode) RunCommandWithOutput(cmd string) (string, error) {
 }
 
 // RunCommandBackground runs a background command in a vagrant node.
-func (n *VagrantNode) RunCommandBackground(cmd string) error {
+func (n *SSHNode) RunCommandBackground(cmd string) error {
 	// XXX we leak a connection here so we can keep the session alive. While this
 	// is less than ideal it allows us to "fire and forget" from our perspective,
 	// and give system tests the ability to manage the background processes themselves.
-	_, s, err := n.GetClientAndSession()
+	_, s, err := n.getClientAndSession()
 	if err != nil {
 		return err
 	}
@@ -135,6 +141,6 @@ func (n *VagrantNode) RunCommandBackground(cmd string) error {
 }
 
 // GetName returns vagrant node's name
-func (n *VagrantNode) GetName() string {
+func (n *SSHNode) GetName() string {
 	return n.Name
 }

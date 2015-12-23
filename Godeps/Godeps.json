@@ -25,7 +25,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/vagrantssh",
-			"Rev": "a88fef02ddd47f0d83326cfdbee8564cade8d143"
+			"Rev": "2b44706f52b6a04d0441e6f0938e13a3e1f0bd49"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
