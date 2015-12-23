@@ -138,6 +138,7 @@ func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, err
 }
 
 func (s *systemtestSuite) pullDebian() error {
+	log.Infof("Pulling debian:latest on all boxes")
 	return s.vagrant.SSHExecAllNodes("docker pull debian")
 }
 
