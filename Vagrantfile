@@ -108,7 +108,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Run the provisioner after the last machine comes up
-      config.vm.provision 'ansible', &ansible_provision if i == (NMONS - 1)
+      mon.vm.provision 'ansible', &ansible_provision if i == (NMONS - 1)
     end
   end
 end
