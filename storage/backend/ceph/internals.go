@@ -6,14 +6,30 @@ import (
 	"regexp"
 	"strings"
 
+	"encoding/json"
+
 	"github.com/contiv/volplugin/storage"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	blkdev, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
-	device := strings.TrimSpace(string(blkdev))
+	var outputdata map[string]interface{}
+	var device string
+
+	_, err := exec.Command("rbd", "map", do.Volume.Name, "--id", "contiv", "--pool", do.Volume.Params["pool"]).Output()
+	output, err := exec.Command("rbd", "showmapped", "--format", "json").Output()
+
+	json.Unmarshal(output, &outputdata)
+	fmt.Println(outputdata)
+
+	device = ""
+
+	for i := range outputdata {
+		if outputdata[i].(map[string]interface{})["name"].(string) == do.Volume.Name {
+			device = outputdata[i].(map[string]interface{})["device"].(string)
+		}
+	}
 
 	if err == nil {
 		log.Debugf("mapped volume %q as %q", do.Volume.Name, device)
