@@ -13,9 +13,6 @@
     name: '*'
     state: latest
   when: ansible_os_family == "RedHat"
-- name: install openstack kilo repo
-  yum: "name=https://repos.fedorapeople.org/repos/openstack/openstack-kilo/rdo-release-kilo-1.noarch.rpm"
-  when: ansible_os_family == "RedHat"
 - name: install base packages (debian)
   apt:
     name: "{{ item }}"
@@ -54,68 +51,6 @@
 - name: install and start ntp
   shell: systemctl enable ntpd
   when: ansible_os_family == "RedHat"
-- name: check if golang is installed
-  stat: path=/usr/local/go/bin/go
-  register: golang_bin
-- name: download Golang v1.5.2
-  get_url:
-    validate_certs: no
-    url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
-    dest: /tmp/golang.tar.gz
-  when: golang_bin.stat.exists == false
-- name: install Golang v1.5.2
-  shell: chdir=/usr/local/ tar xfvz /tmp/golang.tar.gz
-  when: golang_bin.stat.exists == false
-- name: download etcd v2.1.1
-  get_url: 
-    validate_certs: no
-    url: https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz
-    dest: /tmp/etcd.tar.gz
-- name: install etcd
-  shell: creates=/usr/bin/etcd tar vxzf /tmp/etcd.tar.gz && mv etcd-v2.1.1-linux-amd64/etcd* /usr/bin
-- name: setup golang environment 
-  copy:
-    dest: /etc/profile.d/00golang.sh
-    content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH\nexport GOPATH=/opt/golang"
-- name: install docker
-  shell: creates=/usr/bin/docker curl https://get.docker.com | bash
-- name: add vagrant user to docker group
-  user: name=vagrant groups=docker append=yes
-- name: download and install swarm
-  get_url:
-    validate_certs: no
-    url: https://cisco.box.com/shared/static/0txiq5h7282hraujk09eleoevptd5jpl
-    dest: /usr/bin/swarm
-    mode: u=rwx,g=rx,o=rx
-- name: download ovs binaries (debian)
-  get_url:
-    validate_certs: no
-    dest: "{{ item.dest }}"
-    url: "{{ item.url }}"
-  with_items:
-    - { 
-        url: "https://cisco.box.com/shared/static/v1dvgoboo5zgqrtn6tu27vxeqtdo2bdl.deb",
-        dest: /tmp/ovs-common.deb
-      }
-    - { 
-        url: "https://cisco.box.com/shared/static/ymbuwvt2qprs4tquextw75b82hyaxwon.deb",
-        dest: /tmp/ovs-switch.deb
-      }
-  when: ansible_os_family == "Debian"
-- name: install ovs-common (debian)
-  apt: "deb=/tmp/ovs-common.deb"
-  when: ansible_os_family == "Debian"
-- name: install ovs (debian)
-  apt: "deb=/tmp/ovs-switch.deb"
-  when: ansible_os_family == "Debian"
-- name: start ovs service
-  service: "name=openvswitch enabled=yes state=started"
-  when: ansible_os_family == "RedHat"
-- name: setup ovs
-  shell: "ovs-vsctl set-manager {{ item }}"
-  with_items:
-    - "tcp:127.0.0.1:6640"
-    - "ptcp:6640"
 - name: download consul binary 
   get_url: 
     validate_certs: no

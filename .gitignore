@@ -1,0 +1,5 @@
+#ide files
+*.swp
+
+# ansible fetch dir
+fetch/*

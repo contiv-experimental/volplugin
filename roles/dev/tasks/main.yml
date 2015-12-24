@@ -1,0 +1,22 @@
+---
+# This role contains tasks for installing development packages
+# We also use this role to pre-bake packages in the OS image for our development
+# environment.
+
+- name: download Golang v1.5.2
+  get_url:
+    validate_certs: no
+    url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
+    dest: /tmp/go1.5.2.linux-amd64.tar.gz
+    force: no
+
+- name: install Golang
+  shell: chdir=/usr/local/ creates=/usr/local/go/bin/go tar xfvz /tmp/go1.5.2.linux-amd64.tar.gz
+
+- name: setup golang environment
+  copy:
+    dest: /etc/profile.d/00golang.sh
+    content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH; export GOPATH=/opt/golang"
+
+# pre-install ovs
+- include: ../../contiv_network/tasks/ovs.yml
