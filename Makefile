@@ -48,7 +48,7 @@ test: godep unit-test system-test
 unit-test:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-host"'
 
-unit-test-host: golint-host govet-host
+unit-test-host: godep golint-host govet-host
 	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
 
 unit-test-nocoverage:
