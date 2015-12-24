@@ -2,6 +2,7 @@ cover.out
 bin/*
 ansible/docker
 *.vdi
+.bundle
 .vagrant
 ansible/fetch/*
 volmaster/volmaster
