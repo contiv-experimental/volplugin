@@ -6,4 +6,3 @@ export HTTP_PROXY={{ lookup('env', 'HTTP_PROXY') }}
 export http_proxy={{ lookup('env', 'http_proxy') }}
 export HTTPS_PROXY={{ lookup('env', 'HTTPS_PROXY') }}
 export https_proxy={{ lookup('env', 'https_proxy') }}
-export DOCKER_HOST=tcp://{{ node_addr }}:2375
