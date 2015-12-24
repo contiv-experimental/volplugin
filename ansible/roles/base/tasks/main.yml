@@ -1,11 +1,24 @@
 ---
 # This role contains tasks for install base packages
 
+- name: upgrade system (debian)
+  apt:
+    update_cache: true
+    name: '*'
+    state: latest
+  when: ansible_os_family == "Debian"
+- name: upgrade system (redhat)
+  yum:
+    update_cache: true
+    name: '*'
+    state: latest
+  when: ansible_os_family == "RedHat"
 - name: install openstack kilo repo
   yum: "name=https://repos.fedorapeople.org/repos/openstack/openstack-kilo/rdo-release-kilo-1.noarch.rpm"
   when: ansible_os_family == "RedHat"
 - name: install base packages (debian)
-  apt: "update_cache=yes name={{ item }}"
+  apt:
+    name: "{{ item }}"
   with_items:
     - unzip
     - vim-nox
@@ -20,7 +33,8 @@
     - python-pip
   when: ansible_os_family == "Debian"
 - name: install base packages (redhat)
-  yum: "update_cache=yes name={{ item }}"
+  yum:
+    name: "{{ item }}"
   with_items:
     - epel-release
     - ntp
@@ -35,6 +49,7 @@
     - librbd1-devel
     - lshw
     - python-pip
+    - python-requests # XXX required by ceph repo, but it has a bad package on it
   when: ansible_os_family == "RedHat"
 - name: install and start ntp
   shell: systemctl enable ntpd
