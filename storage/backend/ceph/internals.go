@@ -17,7 +17,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	var outputdata map[string]interface{}
 	var device string
 
-	_, err := exec.Command("rbd", "map", do.Volume.Name, "--id", "contiv", "--pool", do.Volume.Params["pool"]).Output()
+	_, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
 	output, err := exec.Command("rbd", "showmapped", "--format", "json").Output()
 
 	json.Unmarshal(output, &outputdata)
