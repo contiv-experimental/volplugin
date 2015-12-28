@@ -59,7 +59,7 @@
     validate_certs: no
     url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
     dest: /tmp/golang.tar.gz
-- name: install Golang v1.5.1
+- name: install Golang v1.5.2
   shell: chdir=/usr/local/ creates=/usr/local/go/bin/go tar xfvz /tmp/golang.tar.gz
 - name: download etcd v2.1.1
   get_url: 
