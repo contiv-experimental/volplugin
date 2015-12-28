@@ -14,20 +14,32 @@ import (
 )
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	var outputdata map[string]interface{}
+	var rbdMaps map[string] struct {
+		Pool string `json:"pool"`
+		Name string `json:"name"`
+		Device string `json:"device"`
+	}
+
 	var device string
 
-	_, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
-	output, err := exec.Command("rbd", "showmapped", "--format", "json").Output()
+	blkdev, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
+	device = strings.TrimSpace(string(blkdev))
 
-	json.Unmarshal(output, &outputdata)
-	fmt.Println(outputdata)
+	if device == "" && err == nil {
+		output, err := exec.Command("rbd", "showmapped", "--format", "json").Output()
 
-	device = ""
-
-	for i := range outputdata {
-		if outputdata[i].(map[string]interface{})["name"].(string) == do.Volume.Name {
-			device = outputdata[i].(map[string]interface{})["device"].(string)
+		if err == nil {
+			err := json.Unmarshal(output, &rbdMaps)
+			if err == nil {
+				for i := range rbdMaps {
+					if rbdMaps[i].Name == do.Volume.Name && rbdMaps[i].Pool == do.Volume.Params["pool"] {
+						device = rbdMaps[i].Device
+						break
+					}
+				}
+			} else {
+				log.Debugf("Could not parse RBD showmapped output.")
+			}
 		}
 	}
 
