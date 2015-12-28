@@ -55,11 +55,10 @@ Your guests will configure themselves.
 
 Be sure to start and run the environment with `make start` before you
 continue with these steps. You must have working vagrant, virtualbox, and
-ansible.
+ansible. If you are behind a proxy server, then use only http proxy.
 
 These instructions ssh you into the `mon0` vm. If you wish to test the
-cross-host functionality, ssh into `mon1` or `mon2` with `vagrant ssh`. Then
-start at the "starting volplugin" (not volmaster) step.
+cross-host functionality, ssh into `mon1` or `mon2` with `vagrant ssh`.
 
 1. Run the suite: `make run`.
 1. SSH into the host: `make ssh`.
