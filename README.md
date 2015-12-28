@@ -55,7 +55,8 @@ Your guests will configure themselves.
 
 Be sure to start and run the environment with `make start` before you
 continue with these steps. You must have working vagrant, virtualbox, and
-ansible. If you are behind a proxy server, then use only http proxy.
+ansible. If you are behind a proxy server, set the https_proxy same as the
+http_proxy. This is because of a current limitation with ansible.
 
 These instructions ssh you into the `mon0` vm. If you wish to test the
 cross-host functionality, ssh into `mon1` or `mon2` with `vagrant ssh`.
