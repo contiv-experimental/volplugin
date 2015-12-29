@@ -38,13 +38,18 @@
 - name: install and start ntp
   shell: systemctl enable ntpd
   when: ansible_os_family == "RedHat"
+- name: check if golang is installed
+  stat: path=/usr/local/go/bin/go
+  register: golang_bin
 - name: download Golang v1.5.2
   get_url:
     validate_certs: no
     url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
     dest: /tmp/golang.tar.gz
-- name: install Golang v1.5.1
-  shell: chdir=/usr/local/ creates=/usr/local/go/bin/go tar xfvz /tmp/golang.tar.gz
+  when: golang_bin.stat.exists == false
+- name: install Golang v1.5.2
+  shell: chdir=/usr/local/ tar xfvz /tmp/golang.tar.gz
+  when: golang_bin.stat.exists == false
 - name: download etcd v2.1.1
   get_url: 
     validate_certs: no
