@@ -37,10 +37,14 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 						break
 					}
 				}
+				if device == "" {
+					return "", fmt.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
+				}
 			} else {
-				log.Debugf("Could not parse RBD showmapped output.")
+				return "", fmt.Errorf("Could not parse RBD showmapped output: %s", output)
 			}
 		}
+		return "", err
 	}
 
 	if err == nil {
