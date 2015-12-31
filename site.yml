@@ -48,7 +48,7 @@
   - { role: ceph-mon, mon_group_name: service-master }
   - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master }
   - { role: swarm, run_as: master }
-  - { role: contiv_network, run_as: master, deploy_released_version: true }
+  - { role: contiv_network, run_as: master }
   - { role: contiv_storage, run_as: master }
 
 # service-worker hosts correspond to cluster machines that run the worker/driver
@@ -61,7 +61,7 @@
   - { role: etcd, run_as: worker }
   - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker }
   - { role: swarm, run_as: worker }
-  - { role: contiv_network, run_as: worker, deploy_released_version: true }
+  - { role: contiv_network, run_as: worker }
   - { role: contiv_storage, run_as: worker }
 
 # netplugin-node hosts set up netmast/netplugin in a cluster
@@ -72,4 +72,4 @@
   - { role: etcd, run_as: master }
   - { role: docker, etcd_client_port1: 2379 }
   - { role: swarm, run_as: master }
-  - { role: contiv_network, run_as: master, deploy_released_version: true }
+  - { role: contiv_network, run_as: master }

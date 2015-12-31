@@ -1,0 +1,6 @@
+---
+# Variables defined here are specific to contiv_network role
+
+gopath_folder: /opt/gopath
+contiv_demo: true # or false to not deploy netmaster/netplugin
+contiv_dev: false # or true to deploy binaries from local repository

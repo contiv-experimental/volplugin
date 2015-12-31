@@ -1,10 +1,13 @@
 ---
 # This role contains tasks for configuring and starting netmaster and netplugin service
-- name: pull dns container image
-  docker:
-    image: skynetservices/skydns
-    pull: always
-    state: absent
+- name: check dns container image
+  shell: docker inspect skynetservices/skydns
+  register: docker_inspect_result
+  ignore_errors: yes
 
-- include: deploy_release.yml
-  when: deploy_released_version is defined and deploy_released_version == true
+- name: pull dns container image
+  shell: docker pull skynetservices/skydns
+  when: "'No such image' in docker_inspect_result.stderr"
+
+- include: deploy_binaries.yml
+  when: contiv_demo 
