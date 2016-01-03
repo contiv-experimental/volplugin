@@ -13,7 +13,6 @@ import (
 
 type systemtestSuite struct {
 	vagrant vagrantssh.Vagrant
-	nodeMap map[string]vagrantssh.TestbedNode
 }
 
 var _ = Suite(&systemtestSuite{})
@@ -55,12 +54,8 @@ func (s *systemtestSuite) TearDownSuite(c *C) {
 func (s *systemtestSuite) SetUpSuite(c *C) {
 	log.Infof("Bootstrapping system tests")
 
-	s.nodeMap = map[string]vagrantssh.TestbedNode{}
 	s.vagrant = vagrantssh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
-	for _, node := range s.vagrant.GetNodes() {
-		s.nodeMap[node.GetName()] = node
-	}
 
 	err := s.clearContainers()
 	if err != nil && !strings.Contains(err.Error(), "Process exited with: 123") {
