@@ -14,7 +14,6 @@ import (
 func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 	// this not-very-obvious test ensures that the tenant can be uploaded after
 	// the volplugin/volmaster pair are started.
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 }
 
@@ -22,7 +21,6 @@ func (s *systemtestSuite) TestIntegratedSnapshotSchedule(c *C) {
 	_, err := s.uploadIntent("tenant1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 
 	time.Sleep(2 * time.Second)
 
@@ -67,7 +65,6 @@ func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}), IsNil)
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
 	out, err := s.volcli("volume get tenant1 test")
 	c.Assert(err, IsNil)
@@ -88,8 +85,6 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
-
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
 	out, err := s.volcli("volume get tenant1 test")
 	c.Assert(err, IsNil)
@@ -112,11 +107,7 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant2", "test", opts), IsNil)
-	defer s.purgeVolume("mon0", "tenant2", "test", true)
-
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/test:/mnt debian sleep infinity"), IsNil)
-
-	defer s.clearContainers()
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
 	c.Assert(err, IsNil)
@@ -133,8 +124,6 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 
 	c.Assert(pass, Equals, true)
 	c.Assert(s.createVolume("mon0", "tenant2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
-
-	defer s.purgeVolume("mon0", "tenant2", "testext4", true)
 
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/testext4:/mnt debian sleep infinity"), IsNil)
 
