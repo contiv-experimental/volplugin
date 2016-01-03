@@ -6,20 +6,55 @@ import (
 	"regexp"
 	"strings"
 
+	"encoding/json"
+
 	"github.com/contiv/volplugin/storage"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
+	var rbdMaps map[string] struct {
+		Pool string `json:"pool"`
+		Name string `json:"name"`
+		Device string `json:"device"`
+	}
+
 	blkdev, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
 	device := strings.TrimSpace(string(blkdev))
 
-	if err == nil {
-		log.Debugf("mapped volume %q as %q", do.Volume.Name, device)
+	if err != nil {
+		return "", err
 	}
 
-	return device, err
+	if device == "" {
+		output, err := exec.Command("rbd", "showmapped", "--format", "json").Output()
+
+		if err != nil {
+			return "", err
+		}
+
+		err = json.Unmarshal(output, &rbdMaps)
+
+		if err != nil {
+			return "", fmt.Errorf("Could not parse RBD showmapped output: %s", output)
+		}
+
+		for i := range rbdMaps {
+			if rbdMaps[i].Name == do.Volume.Name && rbdMaps[i].Pool == do.Volume.Params["pool"] {
+				device = rbdMaps[i].Device
+				break
+			}
+		}
+
+		if device == "" {
+			return "", fmt.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
+		}
+	}
+
+	log.Debugf("mapped volume %q as %q", do.Volume.Name, device)
+
+	return device, nil
 }
 
 func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
