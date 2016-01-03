@@ -62,7 +62,10 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
 	c.Assert(err, IsNil)
-	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
+
+	defer func() {
+		s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
+	}()
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}), IsNil)
 

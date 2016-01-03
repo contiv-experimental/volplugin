@@ -1,26 +1,69 @@
 package ceph
 
 import (
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
-
-	"encoding/json"
 
 	"github.com/contiv/volplugin/storage"
 
 	log "github.com/Sirupsen/logrus"
 )
 
+func (c *Driver) lockImage(do storage.DriverOptions) error {
+	poolName := do.Volume.Params["pool"]
+
+	if err := exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName).Run(); err != nil {
+		log.Debugf("Could not acquire lock for %q: %v", do.Volume.Name, err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Driver) unlockImage(do storage.DriverOptions) error {
+	poolName := do.Volume.Params["pool"]
+
+	output, err := exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName).Output()
+	if err != nil {
+		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, err)
+	}
+
+	locks := map[string]map[string]string{}
+
+	if err := json.Unmarshal(output, &locks); err != nil {
+		return fmt.Errorf("Error unmarshalling lock report for volume %q: %v", do.Volume.Name, err)
+	}
+
+	if _, ok := locks[do.Volume.Name]; ok {
+		if err := exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName).Run(); err != nil {
+			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, err)
+		}
+	}
+
+	return nil
+}
+
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	var rbdMaps map[string] struct {
-		Pool string `json:"pool"`
-		Name string `json:"name"`
+	var rbdMaps map[string]struct {
+		Pool   string `json:"pool"`
+		Name   string `json:"name"`
 		Device string `json:"device"`
 	}
 
-	blkdev, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
+	poolName := do.Volume.Params["pool"]
+
+	// NOTE: if lockImage() fails, the call to mapImage will try to release the
+	// lock before erroring out. It is done there instead of here to reduce code
+	// duplication, and avoid creating a very ugly defer statement that relies on
+	// top level scoped errors, which really suck.
+	if err := c.lockImage(do); err != nil {
+		return "", err
+	}
+
+	blkdev, err := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName).Output()
 	device := strings.TrimSpace(string(blkdev))
 
 	if err != nil {
@@ -94,5 +137,5 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		}
 	}
 
-	return nil
+	return c.unlockImage(do)
 }
