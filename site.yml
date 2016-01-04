@@ -69,6 +69,7 @@
   sudo: true
   environment: env
   roles:
+  - { role: base }
   - { role: etcd, run_as: master }
   - { role: docker, etcd_client_port1: 2379 }
   - { role: swarm, run_as: master }

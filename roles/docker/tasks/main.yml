@@ -24,12 +24,5 @@
   shell: systemctl daemon-reload && systemctl stop docker && systemctl start docker-tcp.socket && systemctl start docker
   when: docker_env_conf_result.changed or docker_tcp_conf_result.changed or docker_svc_conf_result.changed
 
-#NOTE: Without this step, pip crashes after installing docker-compose
-#      Move to appropriate role later
-- name: upgrade pip
-  pip:
-    name: pip
-    extra_args: "--upgrade"
-
 - name: install docker-compose
   pip: name=docker-compose state=latest extra_args=--upgrade

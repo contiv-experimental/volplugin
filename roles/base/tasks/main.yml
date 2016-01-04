@@ -102,6 +102,13 @@
     dest: /tmp/consul.zip
 - name: install consul
   shell: "chdir=/tmp creates=/usr/bin/consul unzip /tmp/consul.zip && mv /tmp/consul /usr/bin"
+
+#NOTE: Upgrade pip to latest which is useful for installation of packages like docker-compose
+- name: upgrade pip
+  pip:
+    name: pip
+    extra_args: "--upgrade"
+
 #- name: setup systemd files for services
 #  copy: src=files/{{ item }} dest=/etc/default/{{ item }}
 #  with_items:
