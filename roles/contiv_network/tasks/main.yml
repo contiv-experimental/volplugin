@@ -9,28 +9,17 @@
   shell: docker pull skynetservices/skydns
   when: "'No such image' in docker_inspect_result.stderr"
 
-- name: download released netmaster and netplugin
+- name: download netmaster and netplugin
   get_url:
     validate_certs: no
     url: https://github.com/contiv/netplugin/releases/download/v0.0.0-12-11-2015.20-54-40.UTC/netplugin-v0.0.0-12-11-2015.20-54-40.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
-  when: not contiv_dev
 
 - name: install netmaster and netplugin
   shell: tar vxjf /tmp/contivnet.tar.bz2
   args:
     chdir: /usr/bin/
     creates: netmaster
-  when: not contiv_dev
-
-- name: install netmaster and netplugin from local repository
-  file: src={{ gopath_folder }}/bin/{{ item.name }} dest=/usr/bin/{{ item.name }} state=link
-  with_items:
-    - { name: netmaster }
-    - { name: netplugin }
-    - { name: netctl }
-  when: contiv_dev
-  ignore_errors: yes
 
 - name: copy environment file for netplugin
   template: src=netplugin.j2 dest=/etc/default/netplugin
