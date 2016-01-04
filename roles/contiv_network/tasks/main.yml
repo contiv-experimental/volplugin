@@ -9,5 +9,55 @@
   shell: docker pull skynetservices/skydns
   when: "'No such image' in docker_inspect_result.stderr"
 
-- include: deploy_binaries.yml
-  when: contiv_demo 
+- name: download released netmaster and netplugin
+  get_url:
+    validate_certs: no
+    url: https://github.com/contiv/netplugin/releases/download/v0.0.0-12-11-2015.20-54-40.UTC/netplugin-v0.0.0-12-11-2015.20-54-40.UTC.tar.bz2
+    dest: /tmp/contivnet.tar.bz2
+  when: not contiv_dev
+
+- name: install netmaster and netplugin
+  shell: tar vxjf /tmp/contivnet.tar.bz2
+  args:
+    chdir: /usr/bin/
+    creates: netmaster
+  when: not contiv_dev
+
+- name: install netmaster and netplugin from local repository
+  file: src={{ gopath_folder }}/bin/{{ item.name }} dest=/usr/bin/{{ item.name }} state=link
+  with_items:
+    - { name: netmaster }
+    - { name: netplugin }
+    - { name: netctl }
+  when: contiv_dev
+  ignore_errors: yes
+
+- name: copy environment file for netplugin
+  template: src=netplugin.j2 dest=/etc/default/netplugin
+
+- name: copy systemd units for netplugin
+  copy: src=netplugin.service dest=/etc/systemd/system/netplugin.service
+
+- name: start netplugin
+  shell: systemctl daemon-reload && systemctl start netplugin
+
+- name: setup netmaster host alias
+  shell: echo "{{ service_vip }} netmaster" >> /etc/hosts
+
+- name: copy environment file for netmaster
+  copy: src=netmaster dest=/etc/default/netmaster
+  when: run_as == "master"
+
+- name: copy systemd units for netmaster
+  copy: src=netmaster.service dest=/etc/systemd/system/netmaster.service
+  when: run_as == "master"
+
+# resolves an issue with netmaster: https://github.com/contiv/netplugin/issues/210
+- name: start netmaster
+  shell: systemctl daemon-reload && systemctl start netmaster
+  when: run_as == "master"
+  run_once: true
+
+# FIXME: need to move the following to correct roles -- also needs release tooling
+- name: install contivctl
+  shell: . /etc/profile.d/00golang.sh && go get github.com/contiv/contivctl
