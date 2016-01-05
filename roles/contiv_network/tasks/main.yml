@@ -1,5 +1,13 @@
 ---
 # This role contains tasks for configuring and starting netmaster and netplugin service
+- name: check dns container image
+  shell: docker inspect skynetservices/skydns
+  register: docker_inspect_result
+  ignore_errors: yes
+
+- name: pull dns container image
+  shell: docker pull skynetservices/skydns
+  when: "'No such image' in docker_inspect_result.stderr"
 
 - name: download netmaster and netplugin
   get_url:
@@ -41,4 +49,4 @@
 
 # FIXME: need to move the following to correct roles -- also needs release tooling
 - name: install contivctl
-  shell: source /etc/profile.d/00golang.sh && go get github.com/contiv/contivctl
+  shell: . /etc/profile.d/00golang.sh && go get github.com/contiv/contivctl
