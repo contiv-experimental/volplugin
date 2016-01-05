@@ -2,14 +2,18 @@
 # This playbook deploys the configuration based on special purpose host-groups.
 
 # devtest hosts correspond to the dev, lab and vagrant based machines for contiv projects.
-# Here we will install the base packages needed for those environments.
+# Here we will install the base packages needed for those environments that includes:
+# - base production packages like python, ansible, serf etc
+# - development tools like go
+# - pre-bake some binaries that are otherwise installed as part of contiv
+#   service deployments like collins, sky-dns, ceph etc.
 - hosts: devtest
   sudo: true
   environment: env
   roles:
   - { role: base }
-  - { role: dev }
   - { role: serf }
+  - { role: dev }
 
 - hosts: volplugin-test
   sudo: true

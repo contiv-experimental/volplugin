@@ -4,6 +4,8 @@
 # XXX: figure a way to download a specific docker version
 - name: install docker
   shell: creates=/usr/bin/docker curl https://get.docker.com | bash
+  tags:
+    - prebake-for-dev
 
 - name: create docker daemon's config directory
   file: path=/etc/systemd/system/docker.service.d state=directory
@@ -30,3 +32,5 @@
 
 - name: install docker-compose
   pip: name=docker-compose state=latest extra_args=--upgrade
+  tags:
+    - prebake-for-dev

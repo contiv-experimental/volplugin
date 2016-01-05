@@ -4,10 +4,14 @@
   shell: docker inspect skynetservices/skydns
   register: docker_inspect_result
   ignore_errors: yes
+  tags:
+    - prebake-for-dev
 
 - name: pull dns container image
   shell: docker pull skynetservices/skydns
   when: "'No such image' in docker_inspect_result.stderr"
+  tags:
+    - prebake-for-dev
 
 # install ovs, needed for our netplugin deployments. In future, if needed, this
 # install can be conditional based on deployment environment.

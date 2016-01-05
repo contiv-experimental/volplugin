@@ -1,0 +1,34 @@
+- name: upgrade system (redhat)
+  yum:
+    update_cache: true
+    name: '*'
+    state: latest
+
+# install epel-release first to ensure the extra packages can be installed later
+- name: install epel release package (redhat)
+  yum:
+    name: epel-release
+
+- name: install base packages (redhat)
+  yum:
+    name: "{{ item }}"
+  with_items:
+    - ntp
+    - unzip
+    - bzip2
+    - vim
+    - curl
+    - git
+    - mercurial
+    - gcc
+    - perl
+    - librbd1-devel
+    - lshw
+    - python-pip
+    - python-requests # XXX required by ceph repo, but it has a bad package on it
+
+- name: install and start ntp
+  shell: systemctl enable ntpd
+
+- name: install ansible (redhat)
+  yum: name=ansible state=present

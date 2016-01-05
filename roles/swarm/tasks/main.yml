@@ -8,6 +8,8 @@
     dest: /usr/bin/swarm
     mode: u=rwx,g=rx,o=rx
     force: no
+  tags:
+    - prebake-for-dev
 
 - name: copy the swarm start/stop script
   template: src=swarm.j2 dest=/usr/bin/swarm.sh mode=u=rwx,g=rx,o=rx

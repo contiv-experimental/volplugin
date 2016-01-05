@@ -2,99 +2,28 @@
 # This role contains tasks for installing development packages
 # We also use this role to pre-bake packages in the OS image for our development
 # environment.
+#
+# Note:
+# - 'dev' role is run as part of devtest host-group which is invoked from 'contiv/build'
+# and 'contiv/lab'. See those repos for details on the ansible invocation but the
+# most noticable point is that they run the tasks tagged as 'prebake-for-dev'
+# - Anything marked with tags 'prebake-for-dev' is installed when 'dev' role is run,
+# so all that is needed for pre-baking certain binaries is to mark them with
+# 'prebake-for-dev' tag in respective roles. For third-party roles like ceph we tag
+# it explicitly here
 
-- name: download Golang v1.5.2
-  get_url:
-    validate_certs: no
-    url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
-    dest: /tmp/go1.5.2.linux-amd64.tar.gz
-    force: no
 
-- name: install Golang
-  shell: tar xfvz /tmp/go1.5.2.linux-amd64.tar.gz
-  args:
-    chdir: /usr/local/
-    creates: /usr/local/go/bin/go
+- include: os_agnostic_tasks.yml
+  tags:
+    - prebake-for-dev
 
-- name: setup golang environment
-  copy:
-    dest: /etc/profile.d/00golang.sh
-    content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH; export GOPATH=/opt/golang"
-
-- name: check packer's version
-  shell: packer --version
-  register: packer_version
-  ignore_errors: yes
-
-- name: download packer
-  get_url:
-    validate_certs: no
-    url: https://releases.hashicorp.com/packer/0.8.6/packer_0.8.6_linux_amd64.zip
-    dest: /tmp/packer_0.8.6_linux_amd64.zip
-    force: no
-  when: packer_version.stdout != "0.8.6"
-
-- name: install packer
-  shell: rm -f packer* && unzip /tmp/packer_0.8.6_linux_amd64.zip
-  args:
-    chdir: /usr/local/bin
-  when: packer_version.stdout != "0.8.6"
-
-- name: download VBox (debian)
-  get_url:
-    validate_certs: no
-    url: http://download.virtualbox.org/virtualbox/5.0.12/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb
-    dest: /tmp/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb
-    force: no
+- include: ubuntu_tasks.yml
   when: ansible_os_family == "Debian"
+  tags:
+    - prebake-for-dev
 
-- name: install VBox (debian)
-  apt: deb=/tmp/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb state=present
-  when: ansible_os_family == "Debian"
 
-- name: install VBox dkms (debian)
-  apt: name=dkms state=present
-  when: ansible_os_family == "Debian"
-
-- name: download VBox (redhat)
-  get_url:
-    validate_certs: no
-    url: http://download.virtualbox.org/virtualbox/5.0.12/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
-    dest: /tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
-    force: no
+- include: redhat_tasks.yml
   when: ansible_os_family == "RedHat"
-
-- name: install VBox (redhat)
-  yum: name=/tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm state=present
-  when: ansible_os_family == "RedHat"
-
-- name: install VBox dkms (redhat)
-  yum: name=dkms state=present
-  when: ansible_os_family == "RedHat"
-
-- name: download vagrant (debian)
-  get_url:
-    validate_certs: no
-    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.deb
-    dest: /tmp/vagrant_1.8.1_x86_64.deb
-    force: no
-  when: ansible_os_family == "Debian"
-
-- name: install vagrant (debian)
-  apt: deb=/tmp/vagrant_1.8.1_x86_64.deb state=present
-  when: ansible_os_family == "Debian"
-
-- name: download vagrant (redhat)
-  get_url:
-    validate_certs: no
-    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.rpm
-    dest: /tmp/vagrant_1.8.1_x86_64.rpm
-    force: no
-  when: ansible_os_family == "RedHat"
-
-- name: install vagrant (redhat)
-  yum: name=/tmp/vagrant_1.8.1_x86_64.rpm state=present
-  when: ansible_os_family == "RedHat"
-
-# pre-install ovs
-- include: ../../contiv_network/tasks/ovs.yml
+  tags:
+    - prebake-for-dev
