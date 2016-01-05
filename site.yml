@@ -3,15 +3,13 @@
 
 # devtest hosts correspond to the dev, lab and vagrant based machines for contiv projects.
 # Here we will install the base packages needed for those environments.
-# XXX: this is used by the 'contiv/build' project right now. But hopefully soon
-# we can use it as replacement for 'contiv/lab' with some more refinements.
 - hosts: devtest
   sudo: true
   environment: env
   roles:
   - { role: base }
+  - { role: dev }
   - { role: serf }
-  - { role: ceph-install }
 
 - hosts: volplugin-test
   sudo: true

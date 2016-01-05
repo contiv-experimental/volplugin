@@ -1,6 +1,10 @@
 ---
 # This role contains tasks for configuring and starting docker service
 
+# XXX: figure a way to download a specific docker version
+- name: install docker
+  shell: creates=/usr/bin/docker curl https://get.docker.com | bash
+
 - name: create docker daemon's config directory
   file: path=/etc/systemd/system/docker.service.d state=directory
 

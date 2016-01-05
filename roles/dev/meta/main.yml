@@ -1,0 +1,9 @@
+---
+# The dependecies contains tasks for installing development packages
+# We also use this role to pre-bake packages in the OS image for our development
+# environment.
+# XXX: need to figure a way to download and prebake more binaries like
+# docker, etcd, swarm etc
+
+dependencies:
+- { role: ceph-install }

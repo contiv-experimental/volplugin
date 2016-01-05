@@ -9,6 +9,10 @@
   shell: docker pull skynetservices/skydns
   when: "'No such image' in docker_inspect_result.stderr"
 
+# install ovs, needed for our netplugin deployments. In future, if needed, this
+# install can be conditional based on deployment environment.
+- include: ovs.yml
+
 - name: download netmaster and netplugin
   get_url:
     validate_certs: no
