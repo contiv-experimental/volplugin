@@ -120,7 +120,7 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 	}
 
 	// now some hardwork of finding the names of the running nodes from status output
-	re, err := regexp.Compile("[a-zA-Z0-9_\\- ]*running \\(virtualbox\\)")
+	re, err := regexp.Compile("[a-zA-Z0-9_\\- ]*running ")
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 		return fmt.Errorf("Error running vagrant ssh-config. Error: %s. Output: \n%s\n", err, output)
 	}
 
-	if re, err = regexp.Compile("Host [a-zA-Z0-9_-]+|Port [0-9]+|IdentityFile .*"); err != nil {
+	if re, err = regexp.Compile("Host [a-zA-Z0-9_-]+|HostName.*|Port [0-9]+|IdentityFile .*"); err != nil {
 		return err
 	}
 
@@ -172,8 +172,14 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 			return fmt.Errorf("Failed to find %q info in vagrant ssh-config output: \n%s\n", nodeName, output)
 		}
 
-		portInfo := string(nodeInfosBytes[nodeInfoPos+1])
-		idInfo := string(nodeInfosBytes[nodeInfoPos+2])
+		hostnameInfo := string(nodeInfosBytes[nodeInfoPos+1])
+		portInfo := string(nodeInfosBytes[nodeInfoPos+2])
+		idInfo := string(nodeInfosBytes[nodeInfoPos+3])
+
+		hostname := strings.Split(hostnameInfo, " ")
+		if len(hostname) != 2 {
+			return fmt.Errorf("Failed to find hostname in vagrant ssh-config output:\n%s\n", nodeName)
+		}
 
 		port := portRegexp.FindStringSubmatch(portInfo)
 		if port == nil || len(port) < 2 {
@@ -188,7 +194,7 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 
 		log.Infof("Adding node: %q(%s:%s)", nodeName, port[1], privKeyFile[1])
 		var node *SSHNode
-		if node, err = NewSSHNode(nodeName, "vagrant", "127.0.0.1", port[1], privKeyFile[1]); err != nil {
+		if node, err = NewSSHNode(nodeName, "vagrant", hostname[1], port[1], privKeyFile[1]); err != nil {
 			return err
 		}
 		v.nodes[node.GetName()] = TestbedNode(node)

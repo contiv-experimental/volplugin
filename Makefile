@@ -8,6 +8,11 @@ start: install-ansible
 
 stop:
 	vagrant destroy -f
+	make clean
+
+clean:
+	rm -f *.vdi
+	rm -f .vagrant/*.vmdk
 
 update:
 	vagrant box update || exit 0
@@ -84,7 +89,7 @@ run-build: godep
 
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
-	godep go test -v -timeout 30m ./systemtests -check.v
+	godep go test -v -timeout 120m ./systemtests -check.v
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
