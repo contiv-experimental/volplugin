@@ -11,12 +11,90 @@
     force: no
 
 - name: install Golang
-  shell: chdir=/usr/local/ creates=/usr/local/go/bin/go tar xfvz /tmp/go1.5.2.linux-amd64.tar.gz
+  shell: tar xfvz /tmp/go1.5.2.linux-amd64.tar.gz
+  args:
+    chdir: /usr/local/
+    creates: /usr/local/go/bin/go
 
 - name: setup golang environment
   copy:
     dest: /etc/profile.d/00golang.sh
     content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH; export GOPATH=/opt/golang"
+
+- name: check packer's version
+  shell: packer --version
+  register: packer_version
+  ignore_errors: yes
+
+- name: download packer
+  get_url:
+    validate_certs: no
+    url: https://releases.hashicorp.com/packer/0.8.6/packer_0.8.6_linux_amd64.zip
+    dest: /tmp/packer_0.8.6_linux_amd64.zip
+    force: no
+  when: packer_version.stdout != "0.8.6"
+
+- name: install packer
+  shell: rm -f packer* && unzip /tmp/packer_0.8.6_linux_amd64.zip
+  args:
+    chdir: /usr/local/bin
+  when: packer_version.stdout != "0.8.6"
+
+- name: download VBox (debian)
+  get_url:
+    validate_certs: no
+    url: http://download.virtualbox.org/virtualbox/5.0.12/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb
+    dest: /tmp/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb
+    force: no
+  when: ansible_os_family == "Debian"
+
+- name: install VBox (debian)
+  apt: deb=/tmp/virtualbox-5.0_5.0.12-104815~Ubuntu~trusty_amd64.deb state=present
+  when: ansible_os_family == "Debian"
+
+- name: install VBox dkms (debian)
+  apt: name=dkms state=present
+  when: ansible_os_family == "Debian"
+
+- name: download VBox (redhat)
+  get_url:
+    validate_certs: no
+    url: http://download.virtualbox.org/virtualbox/5.0.12/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
+    dest: /tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
+    force: no
+  when: ansible_os_family == "RedHat"
+
+- name: install VBox (redhat)
+  yum: name=/tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm state=present
+  when: ansible_os_family == "RedHat"
+
+- name: install VBox dkms (redhat)
+  yum: name=dkms state=present
+  when: ansible_os_family == "RedHat"
+
+- name: download vagrant (debian)
+  get_url:
+    validate_certs: no
+    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.deb
+    dest: /tmp/vagrant_1.8.1_x86_64.deb
+    force: no
+  when: ansible_os_family == "Debian"
+
+- name: install vagrant (debian)
+  apt: deb=/tmp/vagrant_1.8.1_x86_64.deb state=present
+  when: ansible_os_family == "Debian"
+
+- name: download vagrant (redhat)
+  get_url:
+    validate_certs: no
+    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.rpm
+    dest: /tmp/vagrant_1.8.1_x86_64.rpm
+    force: no
+  when: ansible_os_family == "RedHat"
+
+- name: install vagrant (redhat)
+  yum: name=/tmp/vagrant_1.8.1_x86_64.rpm state=present
+  when: ansible_os_family == "RedHat"
 
 # pre-install ovs
 - include: ../../contiv_network/tasks/ovs.yml
