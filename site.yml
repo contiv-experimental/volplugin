@@ -31,6 +31,7 @@
   sudo: true
   environment: env
   roles:
+  - { role: base }
   - { role: docker, etcd_client_port1: 2379 }
   - { role: contiv_cluster }
 
@@ -40,6 +41,7 @@
   sudo: true
   environment: env
   roles:
+  - { role: base }
   - { role: ucarp }
   - { role: docker }
   - { role: etcd, run_as: master }
@@ -55,6 +57,7 @@
   sudo: true
   environment: env
   roles:
+  - { role: base }
   - { role: docker }
   - { role: etcd, run_as: worker }
   - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker }
