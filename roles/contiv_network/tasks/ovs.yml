@@ -1,8 +1,12 @@
 ---
 # This role contains tasks for installing ovs
 
-- name: install openstack kilo repo
+- name: install openstack kilo repo (redhat)
   yum: "name=https://repos.fedorapeople.org/repos/openstack/openstack-kilo/rdo-release-kilo-1.noarch.rpm"
+  when: ansible_os_family == "RedHat"
+
+- name: install ovs (redhat)
+  yum: name=openvswitch state=present
   when: ansible_os_family == "RedHat"
 
 - name: download ovs binaries (debian)

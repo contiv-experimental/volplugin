@@ -48,7 +48,6 @@
     - curl
     - git
     - mercurial
-    - openvswitch
     - gcc
     - perl
     - librbd1-devel
