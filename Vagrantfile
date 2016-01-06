@@ -15,11 +15,12 @@ BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
 MEMORY       = settings['memory']
 
+NO_PROXY = '192.168.24.50,192.168.24.10,192.168.24.11,192.168.24.12'
+
 shell_provision = <<-EOF
 echo "export http_proxy='$1'" >> /etc/profile.d/envvar.sh
 echo "export https_proxy='$2'" >> /etc/profile.d/envvar.sh
-no_proxy='192.168.24.10,192.168.24.11,192.168.24.12,172.17.42.1,127.0.0.1,localhost'
-echo "export 'no_proxy=$no_proxy'" >> /etc/profile.d/envvar.sh
+echo "export no_proxy='#{NO_PROXY}'" >> /etc/profile.d/envvar.sh
 
 . /etc/profile.d/envvar.sh
 EOF
@@ -30,10 +31,12 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'volplugin-test'        => (0..NMONS - 1).map { |j| "mon#{j}" },
+    'volplugin-test' => (0..NMONS - 1).map { |j| "mon#{j}" },
   }
 
-  proxy_env = { }
+  proxy_env = {
+    "no_proxy" => NO_PROXY
+  }
 
   %w[HTTP_PROXY HTTPS_PROXY http_proxy https_proxy].each do |name|
     if ENV[name]
