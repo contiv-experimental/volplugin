@@ -4,7 +4,6 @@
 - name: upgrade system (debian)
   apt:
     update_cache: true
-    name: '*'
     state: latest
   when: ansible_os_family == "Debian"
 
