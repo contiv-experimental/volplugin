@@ -19,6 +19,7 @@
     name: "{{ item }}"
   with_items:
     - unzip
+    - bzip2
     - vim-nox
     - curl
     - python-software-properties
@@ -43,6 +44,7 @@
   with_items:
     - ntp
     - unzip
+    - bzip2
     - vim
     - curl
     - git
