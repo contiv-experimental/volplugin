@@ -4,20 +4,22 @@
 - name: upgrade system (debian)
   apt:
     update_cache: true
-    name: '*'
     state: latest
   when: ansible_os_family == "Debian"
+
 - name: upgrade system (redhat)
   yum:
     update_cache: true
     name: '*'
     state: latest
   when: ansible_os_family == "RedHat"
+
 - name: install base packages (debian)
   apt:
     name: "{{ item }}"
   with_items:
     - unzip
+    - bzip2
     - vim-nox
     - curl
     - python-software-properties
@@ -29,18 +31,24 @@
     - lshw
     - python-pip
   when: ansible_os_family == "Debian"
+
+# install epel-release first to ensure the extra packages can be installed later
+- name: install epel release package (redhat)
+  yum:
+    name: epel-release
+  when: ansible_os_family == "RedHat"
+
 - name: install base packages (redhat)
   yum:
     name: "{{ item }}"
   with_items:
-    - epel-release
     - ntp
     - unzip
+    - bzip2
     - vim
     - curl
     - git
     - mercurial
-    - openvswitch
     - gcc
     - perl
     - librbd1-devel
@@ -48,18 +56,35 @@
     - python-pip
     - python-requests # XXX required by ceph repo, but it has a bad package on it
   when: ansible_os_family == "RedHat"
+
 - name: install and start ntp
   shell: systemctl enable ntpd
   when: ansible_os_family == "RedHat"
+
 - name: download consul binary 
   get_url: 
     validate_certs: no
     url: https://dl.bintray.com/mitchellh/consul/0.5.2_linux_amd64.zip
     dest: /tmp/consul.zip
+
 - name: install consul
   shell: "chdir=/tmp creates=/usr/bin/consul unzip /tmp/consul.zip && mv /tmp/consul /usr/bin"
 
-#NOTE: Upgrade pip to latest which is useful for installation of packages like docker-compose
+- name: install ansible (redhat)
+  yum: name=ansible state=present
+  when: ansible_os_family == "RedHat"
+
+- name: add ansible apt repository (debian)
+  apt_repository: repo=ppa:ansible/ansible state=present
+  when: ansible_os_family == "Debian"
+
+- name: install ansible (debian)
+  apt: name=ansible state=present
+  when: ansible_os_family == "Debian"
+
+#NOTE: Upgrade pip to latest which is needed for correct installation of docker-compose
+#XXX: This messes with the python packages already installed causing any yum/apt
+#re-run to fail subsequently. We need a different way to update pip.
 - name: upgrade pip
   pip:
     name: pip
