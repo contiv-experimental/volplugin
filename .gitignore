@@ -3,3 +3,6 @@
 
 # ansible fetch dir
 fetch/*
+
+#vagrant temp files
+.vagrant*
