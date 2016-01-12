@@ -21,7 +21,7 @@
     - python-pip
 
 - name: add ansible apt repository (debian)
-  apt_repository: repo=ppa:ansible/ansible state=present
+  apt_repository: repo=ppa:ansible/ansible state=present validate_certs=no
 
 - name: install ansible (debian)
   apt: name=ansible state=present

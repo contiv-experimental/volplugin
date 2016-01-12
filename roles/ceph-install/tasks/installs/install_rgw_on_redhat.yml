@@ -8,6 +8,7 @@
 
 - name: add special fastcgi repository key
   rpm_key:
+    validate_certs: no
     key: http://dag.wieers.com/rpm/packages/RPM-GPG-KEY.dag.txt
 
 - name: add special fastcgi repository
