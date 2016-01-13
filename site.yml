@@ -9,7 +9,7 @@
 #   service deployments like collins, sky-dns, ceph etc.
 - hosts: devtest
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: serf }
@@ -17,7 +17,7 @@
 
 - hosts: volplugin-test
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles: 
   - { role: base }
   - { role: vagrant }
@@ -33,7 +33,7 @@
 # to bootstrap the cluster by starting cluster manager and inventory database (collins)
 - hosts: cluster-control
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: docker, etcd_client_port1: 2379 }
@@ -43,7 +43,7 @@
 # logic of the infra services
 - hosts: service-master
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: ucarp }
@@ -59,7 +59,7 @@
 # logic of the infra services.
 - hosts: service-worker
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: docker }
@@ -72,7 +72,7 @@
 # netplugin-node hosts set up netmast/netplugin in a cluster
 - hosts: netplugin-node
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: etcd, run_as: master }
