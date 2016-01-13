@@ -3,26 +3,26 @@
   rpm_key:
     key: "{{ ceph_stable_key }}"
     state: present
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
   when: ceph_stable
 
 - name: install the ceph development repository key
   rpm_key:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     key: "{{ ceph_dev_key }}"
     state: present
   when: ceph_dev
 
 - name: install inktank ceph enterprise repository key
   rpm_key:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     key: "{{ ceph_stable_ice_temp_path }}/release.asc"
     state: present
   when: ceph_stable_ice
 
 - name: install red hat storage repository key
   rpm_key:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     key: "{{ ceph_stable_rh_storage_repository_path }}/RPM-GPG-KEY-redhat-release"
     state: present
   when:

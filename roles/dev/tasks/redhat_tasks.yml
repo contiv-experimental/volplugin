@@ -1,6 +1,6 @@
 - name: download VBox (redhat)
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: http://download.virtualbox.org/virtualbox/5.0.12/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
     dest: /tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
     force: no
@@ -13,7 +13,7 @@
 
 - name: download vagrant (redhat)
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.rpm
     dest: /tmp/vagrant_1.8.1_x86_64.rpm
     force: no

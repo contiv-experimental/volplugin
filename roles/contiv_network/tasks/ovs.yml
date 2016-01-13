@@ -15,7 +15,7 @@
 
 - name: download ovs binaries (debian)
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     dest: "{{ item.dest }}"
     url: "{{ item.url }}"
   with_items:

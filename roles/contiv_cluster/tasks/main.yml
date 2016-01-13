@@ -21,7 +21,7 @@
 
 - name: download clusterm
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://github.com/contiv/cluster/releases/download/v0.0.0-01-05-2016.22-21-32.UTC/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
     dest: /tmp/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
     force: no
