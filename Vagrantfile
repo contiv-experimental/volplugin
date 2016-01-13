@@ -21,6 +21,7 @@ ansible_groups = { }
 ansible_playbook = "./site.yml"
 ansible_extra_vars = {
     "env" => host_env,
+    "validate_certs" => "no",
 }
 
 puts "Host environment: #{host_env}"
