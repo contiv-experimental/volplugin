@@ -1,0 +1,36 @@
+- name: download Golang v1.5.2
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
+    dest: /tmp/go1.5.2.linux-amd64.tar.gz
+    force: no
+
+- name: install Golang
+  shell: tar xfvz /tmp/go1.5.2.linux-amd64.tar.gz
+  args:
+    chdir: /usr/local/
+    creates: /usr/local/go/bin/go
+
+- name: setup golang environment
+  copy:
+    dest: /etc/profile.d/00golang.sh
+    content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH; export GOPATH=/opt/golang"
+
+- name: check packer's version
+  shell: packer --version
+  register: packer_version
+  ignore_errors: yes
+
+- name: download packer
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://releases.hashicorp.com/packer/0.8.6/packer_0.8.6_linux_amd64.zip
+    dest: /tmp/packer_0.8.6_linux_amd64.zip
+    force: no
+  when: packer_version.stdout != "0.8.6"
+
+- name: install packer
+  shell: rm -f packer* && unzip /tmp/packer_0.8.6_linux_amd64.zip
+  args:
+    chdir: /usr/local/bin
+  when: packer_version.stdout != "0.8.6"

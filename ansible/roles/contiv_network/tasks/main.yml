@@ -1,9 +1,25 @@
 ---
 # This role contains tasks for configuring and starting netmaster and netplugin service
+- name: check dns container image
+  shell: docker inspect skynetservices/skydns
+  register: docker_inspect_result
+  ignore_errors: yes
+  tags:
+    - prebake-for-dev
+
+- name: pull dns container image
+  shell: docker pull skynetservices/skydns
+  when: "'No such image' in docker_inspect_result.stderr"
+  tags:
+    - prebake-for-dev
+
+# install ovs, needed for our netplugin deployments. In future, if needed, this
+# install can be conditional based on deployment environment.
+- include: ovs.yml
 
 - name: download netmaster and netplugin
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://github.com/contiv/netplugin/releases/download/v0.0.0-12-11-2015.20-54-40.UTC/netplugin-v0.0.0-12-11-2015.20-54-40.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
 
@@ -39,6 +55,16 @@
   when: run_as == "master"
   run_once: true
 
-# FIXME: need to move the following to correct roles -- also needs release tooling
+# FIXME: need to move the following tasks to correct role
+- name: download contivctl
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://github.com/contiv/contivctl/releases/download/v0.0.0-01-14-2016.01-27-38.UTC/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
+    dest: /tmp/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
+    force: no
+
 - name: install contivctl
-  shell: source /etc/profile.d/00golang.sh && go get github.com/contiv/contivctl
+  shell: tar vxjf /tmp/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
+  args:
+    chdir: /usr/bin/
+    creates: contivctl
