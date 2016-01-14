@@ -3,7 +3,7 @@
 
 - name: download and install swarm
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://cisco.box.com/shared/static/0txiq5h7282hraujk09eleoevptd5jpl
     dest: /usr/bin/swarm
     mode: u=rwx,g=rx,o=rx

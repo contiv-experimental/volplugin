@@ -1,6 +1,6 @@
 - name: download Golang v1.5.2
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz
     dest: /tmp/go1.5.2.linux-amd64.tar.gz
     force: no
@@ -23,7 +23,7 @@
 
 - name: download packer
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://releases.hashicorp.com/packer/0.8.6/packer_0.8.6_linux_amd64.zip
     dest: /tmp/packer_0.8.6_linux_amd64.zip
     force: no
