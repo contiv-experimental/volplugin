@@ -68,3 +68,6 @@
   args:
     chdir: /usr/bin/
     creates: contivctl
+
+- include: aci_tasks.yml
+  when: (run_as == "master") and (contiv_network_mode == "aci")
