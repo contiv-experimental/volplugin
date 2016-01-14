@@ -3,8 +3,8 @@
 
 - name: download storage service binaries
   get_url:
-    validate_certs: no
-    url: https://github.com/contiv/volplugin/releases/download/v0.0.0-11-12-2015.09-14-08.UTC/volplugin-v0.0.0-11-12-2015.09-14-08.UTC.tar.bz2
+    validate_certs: "{{ validate_certs }}"
+    url: https://github.com/contiv/volplugin/releases/download/v0.0.0-12-14-2015.00-48-49.UTC/volplugin-v0.0.0-12-14-2015.00-48-49.UTC.tar.bz2
     dest: /tmp/contivvol.tar.bz2
 
 - name: install storage service

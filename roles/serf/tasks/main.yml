@@ -3,9 +3,11 @@
 
 - name: download serf binary
   get_url:
-    validate_certs: no
+    validate_certs: "{{ validate_certs }}"
     url: https://dl.bintray.com/mitchellh/serf/0.6.4_linux_amd64.zip
     dest: /tmp/0.6.4_linux_amd64.zip
+  tags:
+    - prebake-for-dev
 
 - name: install serf
   unarchive:
@@ -13,12 +15,20 @@
     src: /tmp/0.6.4_linux_amd64.zip
     dest: /usr/bin
     creates: /usr/bin/serf
+  tags:
+    - prebake-for-dev
 
 - name: copy the serf start/stop script
   template: src=serf.j2 dest=/usr/bin/serf.sh mode=u=rwx,g=rx,o=rx
+  tags:
+    - prebake-for-dev
 
 - name: copy systemd units for serf
   copy: src=serf.service dest=/etc/systemd/system/serf.service
+  tags:
+    - prebake-for-dev
 
 - name: enable serf to be started on boot-up and start it as well
-  shell: systemctl daemon-reload && systemctl enable serf && systemctl start serf
+  service: name=serf state=started enabled=yes
+  tags:
+    - prebake-for-dev

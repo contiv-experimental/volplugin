@@ -3,25 +3,34 @@
 
 - name: copy shell script for starting collins
   template: src=collins.j2 dest=/usr/bin/collins.sh mode=u=rwx,g=rx,o=rx
+  tags:
+    - prebake-for-dev
 
 - name: copy systemd units for collins
   copy: src=collins.service dest=/etc/systemd/system/collins.service
+  tags:
+    - prebake-for-dev
+
+- name: pull collins container image
+  shell: docker pull tumblr/collins
+  tags:
+    - prebake-for-dev
 
 - name: start collins
-  shell: systemctl daemon-reload && systemctl start collins
+  service: name=collins state=started
 
-# XXX: revisit once we have cluster-manager releases available
 - name: download clusterm
-  shell: /bin/true
-  ignore_errors: yes
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://github.com/contiv/cluster/releases/download/v0.0.0-01-05-2016.22-21-32.UTC/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
+    dest: /tmp/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
+    force: no
 
-# XXX: revisit once we have cluster-manager releases available
 - name: install clusterm
-  file: src=/opt/gopath/bin/{{ item.name }} dest=/usr/bin/{{ item.name }} state=link
-  with_items:
-    - { name: clusterm }
-    - { name: clusterctl }
-  ignore_errors: yes
+  shell: tar vxjf /tmp/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
+  args:
+    chdir: /usr/bin/
+    creates: clusterm
 
 - name: copy environment file for clusterm
   copy: src=clusterm dest=/etc/default/clusterm
@@ -30,4 +39,4 @@
   copy: src=clusterm.service dest=/etc/systemd/system/clusterm.service
 
 - name: start clusterm
-  shell: systemctl daemon-reload && systemctl start clusterm
+  service: name=clusterm state=started

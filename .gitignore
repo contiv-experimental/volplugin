@@ -1,0 +1,8 @@
+#ide files
+*.swp
+
+# ansible fetch dir
+fetch/*
+
+#vagrant temp files
+.vagrant*
