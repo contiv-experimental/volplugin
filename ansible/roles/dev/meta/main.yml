@@ -1,0 +1,20 @@
+---
+# The dependecies contains tasks for installing development packages
+# We also use this role to pre-bake packages in the OS image for our development
+# environment.
+#
+# Note:
+# - 'dev' role is run as part of devtest host-group which is invoked from 'contiv/build'
+# and 'contiv/lab'. See those repos for details on the ansible invocation but the
+# most noticable point is that they run the tasks tagged as 'prebake-for-dev'
+# - Anything marked with tags 'prebake-for-dev' is installed when 'dev' role is run,
+# so all that is needed for pre-baking certain binaries is to mark them with
+# 'prebake-for-dev' tag in respective roles.
+
+dependencies:
+- { role: etcd }
+- { role: docker }
+- { role: swarm }
+- { role: contiv_cluster }
+- { role: contiv_network }
+- { role: contiv_storage }

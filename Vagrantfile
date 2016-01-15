@@ -57,6 +57,7 @@ ansible_provision = proc do |ansible|
     devices: "[ '/dev/sdb', '/dev/sdc' ]",
     service_vip: "192.168.24.50",
     journal_collocation: 'true',
+    validate_certs: 'no',
   }
   ansible.limit = 'all'
 end

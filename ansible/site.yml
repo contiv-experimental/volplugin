@@ -2,20 +2,22 @@
 # This playbook deploys the configuration based on special purpose host-groups.
 
 # devtest hosts correspond to the dev, lab and vagrant based machines for contiv projects.
-# Here we will install the base packages needed for those environments.
-# XXX: this is used by the 'contiv/build' project right now. But hopefully soon
-# we can use it as replacement for 'contiv/lab' with some more refinements.
+# Here we will install the base packages needed for those environments that includes:
+# - base production packages like python, ansible, serf etc
+# - development tools like go
+# - pre-bake some binaries that are otherwise installed as part of contiv
+#   service deployments like collins, sky-dns, ceph etc.
 - hosts: devtest
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: serf }
-  - { role: ceph-install }
+  - { role: dev }
 
 - hosts: volplugin-test
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles: 
   - { role: base }
   - { role: vagrant }
@@ -31,8 +33,9 @@
 # to bootstrap the cluster by starting cluster manager and inventory database (collins)
 - hosts: cluster-control
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
+  - { role: base }
   - { role: docker, etcd_client_port1: 2379 }
   - { role: contiv_cluster }
 
@@ -40,8 +43,9 @@
 # logic of the infra services
 - hosts: service-master
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
+  - { role: base }
   - { role: ucarp }
   - { role: docker }
   - { role: etcd, run_as: master }
@@ -55,11 +59,23 @@
 # logic of the infra services.
 - hosts: service-worker
   sudo: true
-  environment: env
+  environment: '{{ env }}'
   roles:
+  - { role: base }
   - { role: docker }
   - { role: etcd, run_as: worker }
   - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker }
   - { role: swarm, run_as: worker }
   - { role: contiv_network, run_as: worker }
   - { role: contiv_storage, run_as: worker }
+
+# netplugin-node hosts set up netmast/netplugin in a cluster
+- hosts: netplugin-node
+  sudo: true
+  environment: '{{ env }}'
+  roles:
+  - { role: base }
+  - { role: etcd, run_as: master }
+  - { role: docker, etcd_client_port1: 2379 }
+  - { role: swarm, run_as: master }
+  - { role: contiv_network, run_as: master }

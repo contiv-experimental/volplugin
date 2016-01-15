@@ -13,6 +13,8 @@ node_addr: "{{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv
 crush_location: false
 osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
 
+validate_certs: "yes"
+
 # following variables are used in one or more roles, but have no good default value to pick from.
 # Leaving them as commented so that playbooks can fail early due to variable not defined error.
 
