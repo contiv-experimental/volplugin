@@ -65,13 +65,13 @@ end
 def create_vmdk(name, size)
   dir = Pathname.new(__FILE__).expand_path.dirname
   path = File.join(dir, '.vagrant', name + '.vmdk')
-  command = "vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1 > /dev/null"
+  command = "vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1"
 
   if Dir.exist?(OSX_VMWARE_DIR)
-    command = OSX_VMWARE_DIR + command
+    command = "'#{OSX_VMWARE_DIR}/vmware-vdiskmanager' -c -s #{size} -t 0 -a scsi #{path} 2>&1"
   end
 
-  %x[#{command}] unless File.exist?(path)
+  puts %x[#{command}] unless File.exist?(path)
   return path
 end
 
