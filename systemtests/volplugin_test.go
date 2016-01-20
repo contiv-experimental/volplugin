@@ -48,7 +48,7 @@ func (s *systemtestSuite) TestVolpluginHostLabel(c *C) {
 	ut := &config.UseConfig{}
 
 	// we know the pool is rbd here, so cheat a little.
-	out, err = s.volcli("use get tenant1 foo")
+	out, err = s.volcli("use get tenant1/foo")
 	c.Assert(err, IsNil)
 	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
 	c.Assert(ut.Hostname, Equals, "quux")

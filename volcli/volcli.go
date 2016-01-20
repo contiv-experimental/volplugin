@@ -15,6 +15,16 @@ import (
 	"github.com/contiv/volplugin/config"
 )
 
+func splitVolume(ctx *cli.Context) (string, string) {
+	volumeparts := strings.SplitN(ctx.Args()[0], "/", 2)
+
+	if len(volumeparts) < 2 {
+		errExit(ctx, fmt.Errorf("Invalid syntax: %q must be in the form of `tenant/volumeName`)", ctx.Args()[0]), false)
+	}
+
+	return volumeparts[0], volumeparts[1]
+}
+
 func errExit(ctx *cli.Context, err error, help bool) {
 	fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)
 	if help {
@@ -125,7 +135,7 @@ func TenantList(ctx *cli.Context) {
 // VolumeCreate creates a new volume with a JSON specification to store its
 // information.
 func VolumeCreate(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
@@ -140,9 +150,11 @@ func VolumeCreate(ctx *cli.Context) {
 		opts[pair[0]] = pair[1]
 	}
 
+	tenant, volume := splitVolume(ctx)
+
 	tc := &config.RequestCreate{
-		Tenant: ctx.Args()[0],
-		Volume: ctx.Args()[1],
+		Tenant: tenant,
+		Volume: volume,
 		Opts:   opts,
 	}
 
@@ -163,7 +175,7 @@ func VolumeCreate(ctx *cli.Context) {
 
 // VolumeGet retrieves the metadata for a volume and prints it.
 func VolumeGet(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
@@ -172,7 +184,9 @@ func VolumeGet(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	vol, err := cfg.GetVolume(ctx.Args()[0], ctx.Args()[1])
+	tenant, volume := splitVolume(ctx)
+
+	vol, err := cfg.GetVolume(tenant, volume)
 	if err != nil {
 		errExit(ctx, err, false)
 	}
@@ -187,7 +201,7 @@ func VolumeGet(ctx *cli.Context) {
 
 // VolumeForceRemove removes a volume forcefully.
 func VolumeForceRemove(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
@@ -196,20 +210,24 @@ func VolumeForceRemove(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
-	if err := cfg.RemoveVolume(ctx.Args()[0], ctx.Args()[1]); err != nil {
+	tenant, volume := splitVolume(ctx)
+
+	if err := cfg.RemoveVolume(tenant, volume); err != nil {
 		errExit(ctx, err, false)
 	}
 }
 
 // VolumeRemove removes a volume, deleting the image beneath it.
 func VolumeRemove(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
+	tenant, volume := splitVolume(ctx)
+
 	request := config.Request{
-		Tenant: ctx.Args()[0],
-		Volume: ctx.Args()[1],
+		Tenant: tenant,
+		Volume: volume,
 	}
 
 	content, err := json.Marshal(request)
@@ -285,7 +303,7 @@ func UseList(ctx *cli.Context) {
 
 // UseGet retrieves the JSON information for a mount.
 func UseGet(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
@@ -294,9 +312,11 @@ func UseGet(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
+	tenant, volume := splitVolume(ctx)
+
 	vc := &config.VolumeConfig{
-		TenantName: ctx.Args()[0],
-		VolumeName: ctx.Args()[1],
+		TenantName: tenant,
+		VolumeName: volume,
 	}
 
 	mount, err := cfg.GetUse(vc)
@@ -315,7 +335,7 @@ func UseGet(ctx *cli.Context) {
 // UseTheForce deletes the use entry from etcd; useful for clearing a
 // stale mount.
 func UseTheForce(ctx *cli.Context) {
-	if len(ctx.Args()) != 2 {
+	if len(ctx.Args()) != 1 {
 		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
 	}
 
@@ -324,9 +344,11 @@ func UseTheForce(ctx *cli.Context) {
 		errExit(ctx, err, false)
 	}
 
+	tenant, volume := splitVolume(ctx)
+
 	vc := &config.VolumeConfig{
-		TenantName: ctx.Args()[0],
-		VolumeName: ctx.Args()[1],
+		TenantName: tenant,
+		VolumeName: volume,
 	}
 
 	if err := cfg.RemoveUse(&config.UseConfig{Volume: vc}, true); err != nil {
