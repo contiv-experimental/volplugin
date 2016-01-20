@@ -64,6 +64,7 @@ unit-test-nocoverage-host: golint-host govet-host
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
+	make run
 
 run:
 	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
@@ -74,15 +75,15 @@ run-etcd:
 
 run-volplugin: run-etcd
 	sudo pkill volplugin || exit 0
-	sudo -E setsid bash -c '$(GUESTBINPATH)/volplugin --debug &>/tmp/volplugin.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volplugin --debug &>/tmp/volplugin.log &'
 
 run-volsupervisor:
 	sudo pkill volsupervisor || exit 0
-	sudo -E setsid bash -c '$(GUESTBINPATH)/volsupervisor --debug &>/tmp/volsupervisor.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor --debug &>/tmp/volsupervisor.log &'
 
 run-volmaster:
 	sudo pkill volmaster || exit 0
-	sudo -E setsid bash -c '$(GUESTBINPATH)/volmaster --debug &>/tmp/volmaster.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster --debug &>/tmp/volmaster.log &'
 
 run-build: godep
 	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
