@@ -65,7 +65,7 @@ func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}), IsNil)
 
-	out, err := s.volcli("volume get tenant1 test")
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -85,7 +85,9 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
 
-	out, err := s.volcli("volume get tenant1 test")
+	defer s.purgeVolume("mon0", "tenant1", "test", true)
+
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -195,11 +197,11 @@ func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 	_, err := s.docker("run -itd -v tenant1/test:/mnt debian sleep infinity")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, NotNil)
 
 	s.clearContainers()
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, IsNil)
 }

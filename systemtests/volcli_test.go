@@ -67,6 +67,10 @@ func (s *systemtestSuite) TestVolCLITenant(c *C) {
 }
 
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {
+	// XXX note that this is removed as a standard part of the tests and may error,
+	// so we don't check it.
+	defer s.volcli("volume remove tenant1/foo")
+
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
 	_, err := s.docker("run --rm -v tenant1/foo:/mnt debian ls")
@@ -80,7 +84,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
 
-	out, err = s.volcli("volume get tenant1 foo")
+	out, err = s.volcli("volume get tenant1/foo")
 	c.Assert(err, IsNil)
 
 	cfg := &config.VolumeConfig{}
@@ -96,22 +100,22 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 
-	_, err = s.volcli("volume remove tenant1 foo")
+	_, err = s.volcli("volume remove tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume create tenant1 foo")
+	_, err = s.volcli("volume create tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1 foo")
+	_, err = s.volcli("volume remove tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume get tenant1 foo")
+	_, err = s.volcli("volume get tenant1/foo")
 	c.Assert(err, NotNil)
 
-	_, err = s.volcli("volume create tenant1 foo --opt snapshots=false")
+	_, err = s.volcli("volume create tenant1/foo --opt snapshots=false")
 	c.Assert(err, IsNil)
 
-	out, err = s.volcli("volume get tenant1 foo")
+	out, err = s.volcli("volume get tenant1/foo")
 	c.Assert(err, IsNil)
 
 	cfg = &config.VolumeConfig{}
@@ -134,7 +138,7 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
 
-	out, err = s.volcli("use get tenant1 foo")
+	out, err = s.volcli("use get tenant1/foo")
 	c.Assert(err, IsNil)
 
 	ut := &config.UseConfig{}
@@ -142,7 +146,7 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(ut.Volume, NotNil)
 	c.Assert(ut.Hostname, Equals, "mon0")
 
-	_, err = s.volcli("use force-remove tenant1 foo")
+	_, err = s.volcli("use force-remove tenant1/foo")
 	c.Assert(err, IsNil)
 
 	out, err = s.volcli("use list")
@@ -155,17 +159,20 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	_, err = s.docker("volume rm tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1 foo")
+	_, err = s.volcli("volume remove tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume create tenant1 foo")
+	// the defer comes ahead of time here because of concerns that volume create
+	// will half-create a volume
+	defer s.purgeVolume("mon0", "tenant1", "foo", true)
+	_, err = s.volcli("volume create tenant1/foo")
 	c.Assert(err, IsNil)
 
 	// ensure that double-create does nothing (for now, at least)
-	_, err = s.volcli("volume create tenant1 foo")
+	_, err = s.volcli("volume create tenant1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume get tenant1 foo")
+	_, err = s.volcli("volume get tenant1/foo")
 	c.Assert(err, IsNil)
 
 	// this test should never fail; we should always fail because of an exit code
