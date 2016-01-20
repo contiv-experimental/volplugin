@@ -24,7 +24,6 @@
     - perl
     - librbd1-devel
     - lshw
-    - python-pip
     - python-requests # XXX required by ceph repo, but it has a bad package on it
 
 - name: install and start ntp
