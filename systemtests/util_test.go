@@ -47,7 +47,7 @@ func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool)
 	s.vagrant.GetNode(host).RunCommand(fmt.Sprintf("docker volume rm %s/%s", tenant, name))
 
 	if purgeCeph {
-		s.volcli(fmt.Sprintf("volume remove %s %s", tenant, name))
+		s.volcli(fmt.Sprintf("volume remove %s/%s", tenant, name))
 		s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", tenant, name))
 	}
 }
@@ -79,13 +79,8 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 		return err
 	}
 
-	if out, err := s.volcli(fmt.Sprintf("volume get %s %s", tenant, name)); err != nil {
+	if out, err := s.volcli(fmt.Sprintf("volume get %s/%s", tenant, name)); err != nil {
 		log.Error(out)
-		return err
-	}
-
-	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(cmd); err != nil {
-		log.Info(string(out))
 		return err
 	}
 

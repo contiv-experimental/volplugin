@@ -62,14 +62,14 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
+	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
 	c.Assert(err, IsNil)
-	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}), IsNil)
 	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := s.volcli("volume get tenant1 test")
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -91,7 +91,7 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 
 	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := s.volcli("volume get tenant1 test")
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -207,11 +207,11 @@ func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 	_, err := s.docker("run -itd -v tenant1/test:/mnt debian sleep infinity")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, NotNil)
 
 	s.clearContainers()
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, IsNil)
 }
