@@ -88,7 +88,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "mon#{i}"
 
-      [:vmware_workstation, :vmware_fusion].each do |provider|
+      [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
           (0..1).each do |d|
