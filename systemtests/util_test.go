@@ -144,7 +144,7 @@ func (s *systemtestSuite) pullDebian() error {
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %q", node.GetName())
-	return node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>/tmp/volsupervisor.log &")
+	return node.RunCommandBackground("sudo -E nohup `which volsupervisor` --debug </dev/null &>>/tmp/volsupervisor.log &")
 }
 
 func stopVolsupervisor(node vagrantssh.TestbedNode) error {
@@ -154,7 +154,7 @@ func stopVolsupervisor(node vagrantssh.TestbedNode) error {
 
 func startVolmaster(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volmaster on %q", node.GetName())
-	err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>/tmp/volmaster.log &")
+	err := node.RunCommandBackground("sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null &>>/tmp/volmaster.log &")
 	log.Infof("Waiting for volmaster startup on %q", node.GetName())
 	time.Sleep(10 * time.Millisecond)
 	return err
@@ -171,7 +171,7 @@ func startVolplugin(node vagrantssh.TestbedNode) error {
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	return node.RunCommandBackground("sudo -E `which volplugin` --debug --ttl 5 &>/tmp/volplugin.log &")
+	return node.RunCommandBackground("sudo -E `which volplugin` --debug --ttl 5 &>>/tmp/volplugin.log &")
 }
 
 func stopVolplugin(node vagrantssh.TestbedNode) error {
