@@ -65,13 +65,14 @@ end
 def create_vmdk(name, size)
   dir = Pathname.new(__FILE__).expand_path.dirname
   path = File.join(dir, '.vagrant', name + '.vmdk')
-  command = "vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1"
+  command = "vmware-vdiskmanager"
+  args = "-c -s #{size} -t 0 -a scsi #{path} 2>&1 >/dev/null"
 
   if Dir.exist?(OSX_VMWARE_DIR)
-    command = "'#{OSX_VMWARE_DIR}/vmware-vdiskmanager' -c -s #{size} -t 0 -a scsi #{path} 2>&1"
+    command = "'#{OSX_VMWARE_DIR}/vmware-vdiskmanager'"
   end
 
-  puts %x[#{command}] unless File.exist?(path)
+  print %x[#{command} #{args}] unless File.exist?(path)
   return path
 end
 
@@ -83,17 +84,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder "systemtests/testdata", "/testdata"
   config.vm.synced_folder "bin", "/opt/golang/bin"
 
-  [:vmware_workstation, :vmware_fusion].each do |provider|
-    config.vm.provider provider do |v,override|
-    end
-  end
-
-
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "mon#{i}"
 
-      [:vmware_workstation, :vmware_fusion].each do |provider|
+      [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
           (0..1).each do |d|
