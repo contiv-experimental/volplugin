@@ -92,11 +92,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
           (0..1).each do |d|
-            v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
-            v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
+            override.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
+            override.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
           end
 
-          v.vmx['memsize'] = "#{MEMORY}"
+          override.vmx['memsize'] = "#{MEMORY}"
 
           override.vm.provision 'shell' do |s|
             s.inline = <<-EOF
