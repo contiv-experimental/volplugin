@@ -1,0 +1,5 @@
+---
+# This play contains tasks for cleaning up etcd
+
+- name: stop etcd
+  service: name=etcd state=stopped
