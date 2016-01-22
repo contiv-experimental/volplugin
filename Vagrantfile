@@ -18,7 +18,8 @@ if ENV["http_proxy"]
 end
 
 ansible_groups = { }
-ansible_playbook = "./site.yml"
+ansible_playbook = ENV["CONTIV_ANSIBLE_PLAYBOOK"] || "./site.yml"
+ansible_tags =  ENV["CONTIV_ANSIBLE_TAGS"] || "prebake-for-dev"
 ansible_extra_vars = {
     "env" => host_env,
     "validate_certs" => "no",
@@ -55,7 +56,7 @@ Vagrant.configure(2) do |config|
                     ansible.playbook = ansible_playbook
                     ansible.extra_vars = ansible_extra_vars
                     ansible.limit = 'all'
-                    ansible.tags ='prebake-for-dev'
+                    ansible.tags = ansible_tags
                 end
             end
         end

@@ -1,0 +1,5 @@
+---
+# This play contains tasks for cleaning up ucarp
+
+- name: stop ucarp
+  service: name=ucarp state=stopped
