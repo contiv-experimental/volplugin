@@ -151,7 +151,7 @@ func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int
 		return "", true
 	}
 	timeoutMessage := fmt.Sprintf("timeout reached trying to run %v on %q", cmd, node.GetName())
-	_, err := utils.WaitForDone(runCmd, timeout, timeoutMessage)
+	_, err := utils.WaitForDone(runCmd, 10*time.Millisecond, 10*time.Second, timeoutMessage)
 	return err
 }
 
