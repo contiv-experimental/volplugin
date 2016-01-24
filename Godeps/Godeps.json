@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
-	"GoVersion": "go1.5.2",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -43,24 +43,19 @@
 			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
 		},
 		{
-			"ImportPath": "github.com/docker/docker/pkg/listenbuffer",
-			"Comment": "v1.9.1",
-			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
-		},
-		{
 			"ImportPath": "github.com/docker/docker/pkg/plugins",
-			"Comment": "v1.9.1",
-			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
+			"Comment": "v1.4.1-9497-g7aafa76",
+			"Rev": "7aafa76662986c4268f1130447c1534ae5fc1f1a"
 		},
 		{
-			"ImportPath": "github.com/docker/docker/pkg/sockets",
-			"Comment": "v1.9.1",
-			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
+			"ImportPath": "github.com/docker/go-connections/sockets",
+			"Comment": "v0.1.2-2-g082e382",
+			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
 		},
 		{
-			"ImportPath": "github.com/docker/docker/pkg/tlsconfig",
-			"Comment": "v1.9.1",
-			"Rev": "a34a1d598c6096ed8b5ce5219e77d68e5cd85462"
+			"ImportPath": "github.com/docker/go-connections/tlsconfig",
+			"Comment": "v0.1.2-2-g082e382",
+			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -69,6 +64,11 @@
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "47e8f450ef38c857cdd922ec08862ca9d65a1c6d"
+		},
+		{
+			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
+			"Comment": "v0.0.6-82-g59f3066",
+			"Rev": "59f3066c39b242a1e34d9c65e582346bf170919e"
 		},
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
