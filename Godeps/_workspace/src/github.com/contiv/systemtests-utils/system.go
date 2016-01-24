@@ -81,9 +81,9 @@ func ServiceStatus(n vagrantssh.TestbedNode, srv string) (string, error) {
 }
 
 // WaitForDone polls for checkDoneFn function to return true up until specified timeout
-func WaitForDone(doneFn func() (string, bool), timeoutSec int, timeoutMsg string) (string, error) {
-	tick := time.Tick(time.Duration(2) * time.Second)
-	timeout := time.After(time.Duration(timeoutSec) * time.Second)
+func WaitForDone(doneFn func() (string, bool), tickDur time.Duration, timeoutDur time.Duration, timeoutMsg string) (string, error) {
+	tick := time.Tick(tickDur)
+	timeout := time.After(timeoutDur)
 	doneCount := 0
 	for {
 		select {
@@ -123,7 +123,7 @@ func ServiceActionAndWaitForState(n vagrantssh.TestbedNode, srv string, timeoutS
 			return out, true
 		}
 		return out, false
-	}, timeoutSec, fmt.Sprintf("it seems that service %q is not %q", srv, state))
+	}, 2*time.Second, time.Duration(timeoutSec)*time.Second, fmt.Sprintf("it seems that service %q is not %q", srv, state))
 }
 
 //ServiceStartAndWaitForUp starts a systemd service unit and waits for it to be up
