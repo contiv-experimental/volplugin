@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	log "github.com/Sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
 	"github.com/contiv/volplugin/storage"
@@ -60,16 +61,26 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 	return exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName).Run()
 }
 
+func (c *Driver) unlockAndLog(do storage.DriverOptions) {
+	// this call might fail, so we don't check the error here. It does log it's
+	// failures, however.
+	if err := c.unlockImage(do); err != nil {
+		log.Error(err)
+	}
+}
+
 // Format formats a created volume.
 func (c *Driver) Format(do storage.DriverOptions) error {
 	device, err := c.mapImage(do)
 	if err != nil {
+		c.unlockAndLog(do)
 		return err
 	}
 
 	defer c.unmapImage(do) // see comments near end of function
 
 	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device); err != nil {
+		c.unlockAndLog(do)
 		return err
 	}
 
@@ -115,6 +126,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 
 	devName, err := c.mapImage(do)
 	if err != nil {
+		c.unlockAndLog(do)
 		return nil, err
 	}
 

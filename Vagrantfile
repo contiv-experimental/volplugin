@@ -72,7 +72,7 @@ def create_vmdk(name, size)
     command = "'#{OSX_VMWARE_DIR}/vmware-vdiskmanager'"
   end
 
-  print %x[#{command} #{args}] unless File.exist?(path)
+  %x[#{command} #{args} 2>&1] unless File.exist?(path)
   return path
 end
 
