@@ -8,7 +8,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/systemtests-utils"
+	utils "github.com/contiv/systemtests-utils"
 	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
 )
@@ -110,19 +110,25 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	if err := s.vagrant.IterateNodes(waitForVolmaster); err != nil {
+		return err
+	}
 
 	if err := startVolsupervisor(s.vagrant.GetNode("mon0")); err != nil {
 		return err
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	if err := waitForVolsupervisor(s.vagrant.GetNode("mon0")); err != nil {
+		return err
+	}
 
 	if err := s.vagrant.IterateNodes(startVolplugin); err != nil {
 		return err
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	if err := s.vagrant.IterateNodes(waitForVolplugin); err != nil {
+		return err
+	}
 
 	_, err := s.uploadIntent("tenant1", "intent1")
 	if err != nil {
@@ -135,6 +141,48 @@ func (s *systemtestSuite) rebootstrap() error {
 func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, error) {
 	log.Infof("Uploading intent %q as tenant %q", fileName, tenantName)
 	return s.volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
+}
+
+func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int) error {
+	runCmd := func() (string, bool) {
+		if err := node.RunCommand(cmd); err != nil {
+			return "", false
+		}
+		return "", true
+	}
+	timeoutMessage := fmt.Sprintf("timeout reached trying to run %v on %q", cmd, node.GetName())
+	_, err := utils.WaitForDone(runCmd, 10*time.Millisecond, 10*time.Second, timeoutMessage)
+	return err
+}
+
+func waitForVolsupervisor(node vagrantssh.TestbedNode) error {
+	log.Infof("Checking if volsupervisor is running on %q", node.GetName())
+	err := runCommandUntilNoError(node, "pgrep -c volsupervisor", 10)
+	if err == nil {
+		log.Infof("Volsupervisor is running on %q", node.GetName())
+
+	}
+	return nil
+}
+
+func waitForVolmaster(node vagrantssh.TestbedNode) error {
+	log.Infof("Checking if volmaster is running on %q", node.GetName())
+	err := runCommandUntilNoError(node, "pgrep -c volmaster", 10)
+	if err == nil {
+		log.Infof("Volmaster is running on %q", node.GetName())
+
+	}
+	return nil
+}
+
+func waitForVolplugin(node vagrantssh.TestbedNode) error {
+	log.Infof("Checking if volplugin is running on %q", node.GetName())
+	err := runCommandUntilNoError(node, "pgrep -c volplugin", 10)
+	if err == nil {
+		log.Infof("Volplugin is running on %q", node.GetName())
+
+	}
+	return nil
 }
 
 func (s *systemtestSuite) pullDebian() error {

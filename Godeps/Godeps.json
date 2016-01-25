@@ -21,7 +21,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
-			"Rev": "56e0c8c6075bf854c2a9c1814730b8c2ab18fa75"
+			"Rev": "912796a0a1310b462f441bbe7f4140da781d0548"
 		},
 		{
 			"ImportPath": "github.com/contiv/vagrantssh",
