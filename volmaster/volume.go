@@ -7,6 +7,8 @@ import (
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
@@ -50,9 +52,13 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) erro
 		},
 	}
 
+	log.Infof("Creating volume %q (pool %q) with size %d", joinVolumeName(config), config.Options.Pool, actualSize)
+
 	if err := driver.Create(driverOpts); err != nil {
 		return err
 	}
+
+	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", joinVolumeName(config), config.Options.Pool, config.Options.FileSystem, actualSize)
 
 	return driver.Format(driverOpts)
 }
@@ -67,6 +73,8 @@ func removeVolume(config *config.VolumeConfig) error {
 			},
 		},
 	}
+
+	log.Infof("Destroying volume %q (pool %q)", joinVolumeName(config), config.Options.Pool)
 
 	return driver.Destroy(driverOpts)
 }

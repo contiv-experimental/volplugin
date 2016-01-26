@@ -80,7 +80,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 					defer wg.Done()
 					log.Infof("Creating image tenant1/test%d on %q", x, node.GetName())
 
-					if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create tenant1 test%d", x)); err != nil {
+					if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create tenant1/test%d", x)); err != nil {
 						log.Error(out)
 						log.Error(err)
 						errChan <- err

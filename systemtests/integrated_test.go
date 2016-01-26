@@ -14,7 +14,6 @@ import (
 func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 	// this not-very-obvious test ensures that the tenant can be uploaded after
 	// the volplugin/volmaster pair are started.
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 }
 
@@ -22,7 +21,6 @@ func (s *systemtestSuite) TestIntegratedSnapshotSchedule(c *C) {
 	_, err := s.uploadIntent("tenant1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
 
 	time.Sleep(2 * time.Second)
 
@@ -62,14 +60,12 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
-	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
-	c.Assert(err, IsNil)
 	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
+	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", map[string]string{"pool": "test"}), IsNil)
-	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := s.volcli("volume get tenant1 test")
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -91,7 +87,7 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 
 	defer s.purgeVolume("mon0", "tenant1", "test", true)
 
-	out, err := s.volcli("volume get tenant1 test")
+	out, err := s.volcli("volume get tenant1/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.VolumeConfig{}
@@ -112,11 +108,7 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant2", "test", opts), IsNil)
-	defer s.purgeVolume("mon0", "tenant2", "test", true)
-
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/test:/mnt debian sleep infinity"), IsNil)
-
-	defer s.clearContainers()
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
 	c.Assert(err, IsNil)
@@ -133,8 +125,6 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 
 	c.Assert(pass, Equals, true)
 	c.Assert(s.createVolume("mon0", "tenant2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
-
-	defer s.purgeVolume("mon0", "tenant2", "testext4", true)
 
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/testext4:/mnt debian sleep infinity"), IsNil)
 
@@ -207,11 +197,11 @@ func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 	_, err := s.docker("run -itd -v tenant1/test:/mnt debian sleep infinity")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, NotNil)
 
 	s.clearContainers()
 
-	_, err = s.volcli("volume remove tenant1 test")
+	_, err = s.volcli("volume remove tenant1/test")
 	c.Assert(err, IsNil)
 }
