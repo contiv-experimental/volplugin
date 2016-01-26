@@ -1,4 +1,5 @@
 cover.out
+nohup.out
 bin/*
 ansible/docker
 *.vdi
