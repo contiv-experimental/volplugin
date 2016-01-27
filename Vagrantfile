@@ -45,6 +45,13 @@ Vagrant.configure(2) do |config|
                 node.vm.box = "box-cutter/ubuntu1504"
                 node.vm.box_version = "2.0.12"
             end
+
+            # set the vm's ram and cpu big enough for docker to run fine
+            node.vm.provider "virtualbox" do |vb|
+                vb.customize ['modifyvm', :id, '--memory', "4096"]
+                vb.customize ["modifyvm", :id, "--cpus", "2"]
+            end
+
             if ansible_groups["devtest"] == nil then
                 ansible_groups["devtest"] = [ ]
             end
