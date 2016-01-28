@@ -1,3 +1,5 @@
+[![Build Status](http://contiv.ngrok.io/view/Ansible%20CI/job/Ansible%20Push%20Build%20Master/badge/icon)](http://contiv.ngrok.io/view/Ansible%20CI/job/Ansible%20Push%20Build%20Master/)
+
 # Ansible Playbooks
 
 These are ansible playbooks we use for configuration management in a Contiv service cluster.
