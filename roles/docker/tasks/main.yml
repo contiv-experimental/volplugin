@@ -61,3 +61,28 @@
   when: docker_compose_version.stdout != "docker-compose version 1.5.2, build 7240ff3"
   tags:
     - prebake-for-dev
+
+- name: check contiv-compose version
+  shell: contiv-compose --version
+  register: contiv_compose_version
+  ignore_errors: yes
+  tags:
+    - prebake-for-dev
+
+- name: download contiv-compose
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://cisco.box.com/shared/static/eagplmveetdmwn7u2uwadna07l1m8t3s.bz2
+    dest: /tmp/contiv-compose.bz2
+  when: docker_compose_version.stdout != "libcompose-cli version 0.0.0-dev (4c0c2dd)"
+  tags:
+    - prebake-for-dev
+
+- name: install contiv-compose
+  shell: tar vxjf /tmp/contiv-compose.bz2
+  args:
+    chdir: /usr/bin/
+    creates: contiv-compose
+  when: docker_compose_version.stdout != "libcompose-cli version 0.0.0-dev (4c0c2dd)"
+  tags:
+    - prebake-for-dev
