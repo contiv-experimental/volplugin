@@ -9,7 +9,7 @@ cephx_cluster_require_signatures: true
 cephx_service_require_signatures: false
 crush_location: false
 osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
-monitor_interface: control_interface
+monitor_interface: "{{ control_interface }}"
 ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
 
 #host variables
