@@ -23,11 +23,22 @@
     url: https://github.com/contiv/netplugin/releases/download/v0.1-01-28-2016.03-55-05.UTC/netplugin-v0.1-01-28-2016.03-55-05.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
 
+- name: ensure netplugin directory exists
+  file: path=/usr/bin/contiv/netplugin state=directory
+
 - name: install netmaster and netplugin
   shell: tar vxjf /tmp/contivnet.tar.bz2
   args:
-    chdir: /usr/bin/
+    chdir: /usr/bin/contiv/netplugin
     creates: netmaster
+
+- name: create links for netplugin binaries
+  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link
+  with_items:
+    - netctl
+    - netmaster
+    - netplugin
+    - contivk8s
 
 - name: copy environment file for netplugin
   template: src=netplugin.j2 dest=/etc/default/netplugin
@@ -36,7 +47,7 @@
   copy: src=netplugin.service dest=/etc/systemd/system/netplugin.service
 
 - name: copy bash auto complete file for netctl
-  shell: sudo cp /usr/bin/contrib/completion/bash/netctl /etc/bash_completion.d/ && sudo rm -rf /usr/bin/contrib
+  file: src=/usr/bin/contiv/netplugin/contrib/completion/bash/netctl dest=/etc/bash_completion.d/netctl state=link
 
 - name: start netplugin
   shell: systemctl daemon-reload && systemctl start netplugin
