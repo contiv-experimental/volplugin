@@ -12,7 +12,7 @@
     - prebake-for-dev
 
 - name: pull collins container image
-  shell: docker pull tumblr/collins
+  shell: docker pull {{ collins_image }}
   tags:
     - prebake-for-dev
 

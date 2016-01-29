@@ -1,0 +1,5 @@
+---
+# This play contains tasks for cleaning up swarm
+
+- name: stop swarm
+  service: name=swarm state=stopped

@@ -1,0 +1,8 @@
+---
+# This play contains tasks for cleaning up docker
+
+- name: stop docker
+  service: name=docker state=stopped
+
+- name: stop docker tcp socket
+  service: name=docker-tcp.socket state=stopped

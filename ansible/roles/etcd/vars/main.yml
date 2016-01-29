@@ -6,7 +6,7 @@ etcd_client_port2: 4001
 etcd_peer_port1: 2380
 etcd_peer_port2: 7001
 etcd_peers_group: "service-master"
-etcd_peer_interface: "{{ monitor_interface }}"
+etcd_peer_interface: "{{ control_interface }}"
 etcd_init_cluster: true
 
 

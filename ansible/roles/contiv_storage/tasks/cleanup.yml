@@ -1,0 +1,11 @@
+---
+# This play contains tasks for cleaning up contiv_storage services
+
+- name: stop volmaster
+  service: name=volmaster state=stopped
+
+- name: stop volsupervisor
+  service: name=volsupervisor state=stopped
+
+- name: stop volplugin
+  service: name=volplugin state=stopped

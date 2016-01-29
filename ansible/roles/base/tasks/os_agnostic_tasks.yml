@@ -6,11 +6,3 @@
 
 - name: install consul
   shell: "chdir=/tmp creates=/usr/bin/consul unzip /tmp/consul.zip && mv /tmp/consul /usr/bin"
-
-#NOTE: Upgrade pip to latest which is needed for correct installation of docker-compose
-#XXX: This messes with the python packages already installed causing any yum/apt
-#re-run to fail subsequently. We need a different way to update pip.
-- name: upgrade pip
-  pip:
-    name: pip
-    extra_args: "--upgrade"
