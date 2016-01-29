@@ -11,6 +11,7 @@ crush_location: false
 osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
 monitor_interface: "{{ control_interface }}"
 ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
+ceph_stable_ice_kmod: ""
 
 #host variables
 node_name: "{{ inventory_hostname }}"
