@@ -66,6 +66,12 @@ build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 	make run
 
+docker: run-build
+	docker build -t contiv/volplugin .
+
+docker-push: docker
+	docker push contiv/volplugin
+
 run:
 	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
