@@ -35,8 +35,8 @@ start)
     {% endmacro -%}
 
     {% macro init_cluster() -%}
-    if [ ! -f /var/tmp/etcd.existing ]; then
-        touch /var/tmp/etcd.existing
+    if [ ! -f {{ etcd_tmp_filename }} ]; then
+        touch {{ etcd_tmp_filename }}
         export ETCD_INITIAL_CLUSTER_STATE=new
         export ETCD_INITIAL_CLUSTER="
         {%- for host in groups[etcd_peers_group] -%}
@@ -62,7 +62,9 @@ start)
             {% set peer_addr=hostvars[peers[0]]['ansible_' + etcd_peer_interface]['ipv4']['address'] -%}
             {{ add_member(peer_addr=peer_addr) }}
         {%- else -%}
-        echo "==> no peer found, single member cluster?"
+        {# This condition shall not arise, so fail early #}
+        echo "==> no peer found, failing now"
+        exit 1
         {% endif -%}
     fi
     {% endmacro -%}
@@ -74,7 +76,7 @@ start)
     # on master nodes, if the cluster is being initialized for first time then initialize it
     {{ init_cluster() }}
     {% else -%}
-    # if a new master node is being commissioned then add it to exisitng cluster
+    # if a new master node is being commissioned then add it to exisiting cluster
     {{ add_member(peer_addr=etcd_master_addr) }}
     {% endif -%}
 
