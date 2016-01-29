@@ -20,7 +20,7 @@
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/netplugin/releases/download/v0.0.0-12-11-2015.20-54-40.UTC/netplugin-v0.0.0-12-11-2015.20-54-40.UTC.tar.bz2
+    url: https://github.com/contiv/netplugin/releases/download/v0.1-01-28-2016.03-55-05.UTC/netplugin-v0.1-01-28-2016.03-55-05.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
 
 - name: install netmaster and netplugin
@@ -34,6 +34,9 @@
 
 - name: copy systemd units for netplugin
   copy: src=netplugin.service dest=/etc/systemd/system/netplugin.service
+
+- name: copy bash auto complete file for netctl
+  shell: sudo cp /usr/bin/contrib/completion/bash/netctl /etc/bash_completion.d/ && sudo rm -rf /usr/bin/contrib
 
 - name: start netplugin
   shell: systemctl daemon-reload && systemctl start netplugin
