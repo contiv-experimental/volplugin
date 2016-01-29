@@ -13,6 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
 )
 
@@ -58,7 +59,16 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 		return err
 	}
 
-	return exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName).Run()
+	er, err := executor.New(exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)).Run()
+	if err != nil {
+		return err
+	}
+
+	if er.ExitStatus != 0 {
+		return fmt.Errorf("Creating disk %q: %v", do.Volume.Name, er)
+	}
+
+	return nil
 }
 
 func (c *Driver) unlockAndLog(do storage.DriverOptions) {
@@ -92,23 +102,41 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 // Destroy a volume.
 func (c *Driver) Destroy(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
-	if err := exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName).Run(); err != nil {
+
+	er, err := executor.New(exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName)).Run()
+	if err != nil {
+		return err
+	}
+	if er.ExitStatus != 0 {
+		return fmt.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er)
+	}
+
+	er, err = executor.New(exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)).Run()
+	if err != nil {
 		return err
 	}
 
-	return exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName).Run()
+	if er.ExitStatus != 0 {
+		return fmt.Errorf("Destroying disk %q: %v", do.Volume.Name, er)
+	}
+
+	return nil
 }
 
 // List all volumes.
 func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 	poolName := lo.Params["pool"]
-	out, err := exec.Command("rbd", "ls", poolName).Output()
+	er, err := executor.New(exec.Command("rbd", "ls", poolName)).Run()
 	if err != nil {
 		return nil, err
 	}
 
+	if er.ExitStatus != 0 {
+		return nil, fmt.Errorf("Listing pool %q: %v", poolName, er)
+	}
+
 	list := []storage.Volume{}
-	textList := strings.Split(string(out), "\n")
+	textList := strings.Split(er.Stdout, "\n")
 
 	for _, name := range textList {
 		list = append(list, storage.Volume{Name: strings.TrimSpace(name), Params: storage.Params{"pool": poolName}})
@@ -221,25 +249,47 @@ func (c *Driver) Exists(do storage.DriverOptions) (bool, error) {
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error {
 	snapName = strings.Replace(snapName, " ", "-", -1)
-	return exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"]).Run()
+	er, err := executor.New(exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])).Run()
+	if err != nil {
+		return err
+	}
+
+	if er.ExitStatus != 0 {
+		return fmt.Errorf("Creating snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+	}
+
+	return nil
 }
 
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error {
-	return exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"]).Run()
+	er, err := executor.New(exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])).Run()
+	if err != nil {
+		return err
+	}
+
+	if er.ExitStatus != 0 {
+		return fmt.Errorf("Removing snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+	}
+
+	return nil
 }
 
 // ListSnapshots returns an array of snapshot names provided a maximum number
 // of snapshots to be returned. Any error will be returned.
 func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
-	out, err := exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"]).Output()
+	er, err := executor.New(exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"])).Run()
 	if err != nil {
 		return nil, err
 	}
 
+	if er.ExitStatus != 0 {
+		return nil, fmt.Errorf("Listing snapshots for (volume %q): %v", do.Volume.Name, er)
+	}
+
 	names := []string{}
 
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(er.Stdout, "\n")
 	if len(lines) > 1 {
 		for _, line := range lines[1:] {
 			parts := spaceSplitRegex.Split(line, -1)

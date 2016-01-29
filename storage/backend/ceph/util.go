@@ -5,16 +5,21 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/contiv/volplugin/executor"
 )
 
 func (c *Driver) poolExists(poolName string) (bool, error) {
-	cmd := exec.Command("ceph", "osd", "pool", "ls")
-	out, err := cmd.Output()
+	er, err := executor.New(exec.Command("ceph", "osd", "pool", "ls")).Run()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Problem listing pools: %v", err)
 	}
 
-	lines := strings.Split(string(out), "\n")
+	if er.ExitStatus != 0 {
+		return false, fmt.Errorf("Problem listing pools: %v", er)
+	}
+
+	lines := strings.Split(er.Stdout, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == poolName {
