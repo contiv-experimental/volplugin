@@ -3,3 +3,6 @@
 
 - name: stop etcd
   service: name=etcd state=stopped
+
+- name: remove the temp etcd file
+  file: name={{ etcd_tmp_filename }} state=absent
