@@ -18,7 +18,6 @@
     - perl
     - librbd-dev
     - lshw
-    - python-pip
 
 - name: add ansible apt repository (debian)
   apt_repository:

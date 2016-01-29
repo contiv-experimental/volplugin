@@ -24,7 +24,6 @@
     - perl
     - librbd1-devel
     - lshw
-    - python-pip
     - python-requests # XXX required by ceph repo, but it has a bad package on it
 
 - name: install and start ntp
@@ -36,8 +35,8 @@
   ignore_errors: yes
 
 - name: remove python crypt egg file to work-around https://bugs.centos.org/view.php?id=9896&nbn=2
-  shell: rm -rf /usr/lib64/python2.7/site-packages/pycrypto-2.6.1-py2.7.egg-info
-  when: python_crypto_result.msg == "Error unpacking rpm package python-crypto-2.6.1-1.el7.centos.x86_64\n"
+  shell: rm -rf /usr/lib64/python2.7/site-packages/pycrypto-*.egg-info
+  when: '"Error unpacking rpm package python2-crypto-" in python_crypto_result.msg'
 
 - name: install ansible (redhat)
   yum: name=ansible state=present

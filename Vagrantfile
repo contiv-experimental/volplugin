@@ -18,7 +18,8 @@ if ENV["http_proxy"]
 end
 
 ansible_groups = { }
-ansible_playbook = "./site.yml"
+ansible_playbook = ENV["CONTIV_ANSIBLE_PLAYBOOK"] || "./site.yml"
+ansible_tags =  ENV["CONTIV_ANSIBLE_TAGS"] || "prebake-for-dev"
 ansible_extra_vars = {
     "env" => host_env,
     "validate_certs" => "no",
@@ -44,6 +45,13 @@ Vagrant.configure(2) do |config|
                 node.vm.box = "box-cutter/ubuntu1504"
                 node.vm.box_version = "2.0.12"
             end
+
+            # set the vm's ram and cpu big enough for docker to run fine
+            node.vm.provider "virtualbox" do |vb|
+                vb.customize ['modifyvm', :id, '--memory', "4096"]
+                vb.customize ["modifyvm", :id, "--cpus", "2"]
+            end
+
             if ansible_groups["devtest"] == nil then
                 ansible_groups["devtest"] = [ ]
             end
@@ -55,7 +63,7 @@ Vagrant.configure(2) do |config|
                     ansible.playbook = ansible_playbook
                     ansible.extra_vars = ansible_extra_vars
                     ansible.limit = 'all'
-                    ansible.tags ='prebake-for-dev'
+                    ansible.tags = ansible_tags
                 end
             end
         end

@@ -1,0 +1,10 @@
+---
+# This play contains tasks for cleaning up contiv_network services
+
+- name: stop netmaster
+  service: name=netmaster state=stopped
+
+- name: stop netplugin
+  service: name=netplugin state=stopped
+
+- include: ovs_cleanup.yml
