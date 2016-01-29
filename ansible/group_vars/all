@@ -1,17 +1,21 @@
 ---
 # Variables here are applicable to all host groups
 
+# ceph specific variables
 ceph_stable: true # use ceph stable branch
 cephx: true
 cephx_require_signatures: false # Kernel RBD does NOT support signatures!
 cephx_cluster_require_signatures: true
 cephx_service_require_signatures: false
-
-node_name: "{{ inventory_hostname }}"
-node_addr: "{{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }}"
-
 crush_location: false
 osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
+monitor_interface: "{{ control_interface }}"
+ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
+ceph_stable_ice_kmod: ""
+
+#host variables
+node_name: "{{ inventory_hostname }}"
+node_addr: "{{ hostvars[inventory_hostname]['ansible_' + control_interface]['ipv4']['address'] }}"
 
 validate_certs: "yes"
 
@@ -20,4 +24,4 @@ validate_certs: "yes"
 
 # env:
 # service_vip:
-# monitor_interface:
+# control_interface:

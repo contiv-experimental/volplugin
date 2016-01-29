@@ -1,0 +1,37 @@
+---
+# This playbook performs service cleanup for contiv services.
+#
+# Note: cleanup is not expected to fail, so we set ignore_errors to yes here
+
+- hosts: all
+  sudo: true
+  tasks:
+    - include_vars: roles/{{ item }}/vars/main.yml
+      with_items:
+      - "etcd"
+    - include: roles/contiv_network/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/contiv_storage/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/contiv_cluster/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/swarm/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/docker/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/etcd/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/ucarp/tasks/cleanup.yml
+      ignore_errors: yes
+    # XXX: following syntax is much cleaner but is available only in v2.
+    # Will move to this once our packer images and hosts have consistently moved to Ansiblev2
+    #- include: roles/{{ item }}/tasks/cleanup.yml
+    #  with_items:
+    #    - contiv_network
+    #    - contiv_storage
+    #    - contiv_cluster
+    #    - swarm
+    #    - docker
+    #    - etcd
+    #    - ucarp
+    #  ignore_errors: yes
