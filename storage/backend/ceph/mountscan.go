@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
 )
 
@@ -100,13 +101,17 @@ func getMounts() ([]*storage.Mount, error) {
 }
 
 func getMapped() ([]*storage.Mount, error) {
-	out, err := exec.Command("rbd", "showmapped").Output()
+	// FIXME unify all these showmapped commands
+	er, err := executor.New(exec.Command("rbd", "showmapped")).Run()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not show mapped volumes: %v", err)
+	}
+	if er.ExitStatus != 0 {
+		return nil, fmt.Errorf("Could not show mapped volumes: %v", er)
 	}
 
 	mounts := []*storage.Mount{}
-	for i, line := range strings.Split(string(out), "\n") {
+	for i, line := range strings.Split(er.Stdout, "\n") {
 		if i == 0 {
 			continue
 		}
