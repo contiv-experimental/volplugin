@@ -82,15 +82,19 @@ func (c *Driver) unlockAndLog(do storage.DriverOptions) {
 // Format formats a created volume.
 func (c *Driver) Format(do storage.DriverOptions) error {
 	device, err := c.mapImage(do)
-	if err != nil {
+	if err == ErrLockFailed {
 		c.unlockAndLog(do)
+		return err
+	} else if err != nil {
 		return err
 	}
 
 	defer c.unmapImage(do) // see comments near end of function
 
-	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device); err != nil {
+	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device); err == ErrLockFailed {
 		c.unlockAndLog(do)
+		return err
+	} else if err != nil {
 		return err
 	}
 
@@ -153,17 +157,21 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	volumePath := filepath.Join(mountBase, do.Volume.Params["pool"], do.Volume.Name)
 
 	devName, err := c.mapImage(do)
-	if err != nil {
+	if err == ErrLockFailed {
 		c.unlockAndLog(do)
+		return nil, err
+	} else if err != nil {
 		return nil, err
 	}
 
 	// Create directory to mount
 	if err := os.MkdirAll(mountBase, 0700); err != nil && !os.IsExist(err) {
+		c.unlockAndLog(do)
 		return nil, fmt.Errorf("error creating %q directory: %v", mountBase, err)
 	}
 
 	if err := os.MkdirAll(volumePath, 0700); err != nil && !os.IsExist(err) {
+		c.unlockAndLog(do)
 		return nil, fmt.Errorf("error creating %q directory: %v", volumePath, err)
 	}
 
@@ -171,6 +179,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	// This is critical for tuning cgroups and obtaining metrics for this device only.
 	fi, err := os.Stat(devName)
 	if err != nil {
+		c.unlockAndLog(do)
 		return nil, fmt.Errorf("Failed to stat rbd device %q: %v", devName, err)
 	}
 
@@ -181,6 +190,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 
 	// Mount the RBD
 	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil && err != unix.EBUSY {
+		c.unlockAndLog(do)
 		return nil, fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
 	}
 
