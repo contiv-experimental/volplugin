@@ -235,10 +235,19 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// FIXME I think the use of v here is a racy thing, but I'm not sure yet.
 	v, _ := d.config.GetVolume(req.Tenant, req.Volume)
 
+	defer func() {
+		if err := d.config.RemoveUse(uc, false); err != nil {
+			httpError(w, "Removing Use Lock", err)
+			return
+		}
+	}()
+
 	if err := d.config.PublishUse(uc); err == nil {
 		if v == nil {
-			if err := createVolume(tenant, volConfig); err != nil {
+			do, err := createVolume(tenant, volConfig)
+			if err != nil {
 				httpError(w, "Creating volume", err)
+
 				return
 			}
 
@@ -246,14 +255,15 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 				httpError(w, "Publishing volume", err)
 				return
 			}
+
+			if err := formatVolume(volConfig, do); err != nil {
+				httpError(w, "Formatting volume", err)
+				return
+			}
 		} else {
 			volConfig = v
 		}
 
-		if err := d.config.RemoveUse(uc, false); err != nil {
-			httpError(w, "Removing Use Lock", err)
-			return
-		}
 	} else {
 		volConfig = v
 	}

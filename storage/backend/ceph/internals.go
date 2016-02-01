@@ -2,6 +2,7 @@ package ceph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -13,16 +14,25 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+var (
+	// ErrLockFailed is the error yielded when `rbd lock add` fails
+	ErrLockFailed = errors.New("The `rbd lock add` operation failed")
+	// ErrUnlockFailed is the error yielded when `rbd lock rm` fails
+	ErrUnlockFailed = errors.New("The `rbd lock rm` operation failed")
+)
+
 func (c *Driver) lockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName)).Run()
 	if err != nil {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
+		log.Errorf("Could not acquire lock for %q: %v (%v)", do.Volume.Name, ErrLockFailed, err)
+		return ErrLockFailed
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
+		log.Errorf("Could not acquire lock for %q: %v (%v)", do.Volume.Name, ErrLockFailed, err)
+		return ErrLockFailed
 	}
 
 	return nil
@@ -33,27 +43,32 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 
 	er, err := executor.New(exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName)).Run()
 	if err != nil {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, err)
+		log.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, err)
+		return ErrUnlockFailed
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, er)
+		log.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, er)
+		return ErrUnlockFailed
 	}
 
 	locks := map[string]map[string]string{}
 
 	if err := json.Unmarshal([]byte(er.Stdout), &locks); err != nil {
-		return fmt.Errorf("Error unmarshalling lock report for volume %q: %v", do.Volume.Name, err)
+		log.Errorf("Error unmarshalling lock report for volume %q: %v", do.Volume.Name, err)
+		return ErrUnlockFailed
 	}
 
 	if _, ok := locks[do.Volume.Name]; ok {
 		er, err := executor.New(exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName)).Run()
 		if err != nil {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, err)
+			log.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, err)
+			return ErrUnlockFailed
 		}
 
 		if er.ExitStatus != 0 {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, er)
+			log.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, er)
+			return ErrUnlockFailed
 		}
 	}
 
@@ -134,6 +149,11 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
 func (c *Driver) unmapImage(do storage.DriverOptions) error {
 	// FIXME use mapImage showmapped json code
 	poolName := do.Volume.Params["pool"]
+	var err error
+
+	defer func() {
+		err = c.unlockImage(do)
+	}()
 
 	er, err := executor.New(exec.Command("rbd", "showmapped", "--pool", poolName)).Run()
 	if err != nil {
@@ -167,5 +187,5 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		}
 	}
 
-	return c.unlockImage(do)
+	return err
 }

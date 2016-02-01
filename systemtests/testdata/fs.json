@@ -11,6 +11,7 @@
   },
   "filesystems": {
     "ext4": "mkfs.ext4 -m0 %",
-    "btrfs": "mkfs.btrfs %"
+    "btrfs": "mkfs.btrfs %",
+    "falsefs": "/bin/false"
   }
 }
