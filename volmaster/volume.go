@@ -17,7 +17,7 @@ func joinVolumeName(config *config.VolumeConfig) string {
 	return strings.Join([]string{config.TenantName, config.VolumeName}, ".")
 }
 
-func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) error {
+func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
@@ -28,13 +28,13 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) erro
 	} else {
 		fscmd, ok = tenant.FileSystems[config.Options.FileSystem]
 		if !ok {
-			return fmt.Errorf("Invalid filesystem %q", config.Options.FileSystem)
+			return storage.DriverOptions{}, fmt.Errorf("Invalid filesystem %q", config.Options.FileSystem)
 		}
 	}
 
 	actualSize, err := config.Options.ActualSize()
 	if err != nil {
-		return err
+		return storage.DriverOptions{}, err
 	}
 
 	driver := ceph.NewDriver()
@@ -53,14 +53,17 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) erro
 	}
 
 	log.Infof("Creating volume %q (pool %q) with size %d", joinVolumeName(config), config.Options.Pool, actualSize)
+	return driverOpts, driver.Create(driverOpts)
+}
 
-	if err := driver.Create(driverOpts); err != nil {
+func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
+	actualSize, err := config.Options.ActualSize()
+	if err != nil {
 		return err
 	}
 
 	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", joinVolumeName(config), config.Options.Pool, config.Options.FileSystem, actualSize)
-
-	return driver.Format(driverOpts)
+	return ceph.NewDriver().Format(do)
 }
 
 func removeVolume(config *config.VolumeConfig) error {
