@@ -5,3 +5,4 @@
 # Include variables which need to be overridden by inventory vars here.
 
 contiv_network_mode: "standalone" # Accepted values: standalone, aci
+netplugin_mode: "docker" # Accepted values: docker, kubernetes
