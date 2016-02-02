@@ -40,7 +40,7 @@ govet:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
 
 install-ansible:
-	[ -n "`which ansible`" ] || pip install ansible
+	[ -n "`which ansible`" ] || sudo pip install ansible
 
 ci:
 	GOPATH=/tmp/volplugin:${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
