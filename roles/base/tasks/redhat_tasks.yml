@@ -25,6 +25,7 @@
     - librbd1-devel
     - lshw
     - python-requests # XXX required by ceph repo, but it has a bad package on it
+    - bash-completion
 
 - name: install and start ntp
   shell: systemctl enable ntpd
