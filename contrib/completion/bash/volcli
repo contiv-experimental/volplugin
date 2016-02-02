@@ -71,8 +71,10 @@ _volcli() {
                 list)
                     ;;
                 get)
+					_volcli_complete_tenant_volume_pair
                     ;;
                 force-remove)
+					_volcli_complete_tenant_volume_pair
                     ;;
                 *)
                     COMPREPLY=( $( compgen -W "get list force-remove help" -- "$cur" ) )
