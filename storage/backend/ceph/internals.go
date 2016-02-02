@@ -17,12 +17,8 @@ func (c *Driver) lockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
-	}
-
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Could not acquire lock for %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	return nil
@@ -32,12 +28,8 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, err)
-	}
-
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, er)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	locks := map[string]map[string]string{}
@@ -48,12 +40,8 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 
 	if _, ok := locks[do.Volume.Name]; ok {
 		er, err := executor.New(exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName)).Run()
-		if err != nil {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, err)
-		}
-
-		if er.ExitStatus != 0 {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, er)
+		if err != nil || er.ExitStatus != 0 {
+			return fmt.Errorf("Error releasing lock on volume %q: %v (%v)", do.Volume.Name, er, err)
 		}
 	}
 
@@ -78,23 +66,16 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	}
 
 	er, err := executor.New(exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return "", fmt.Errorf("Could not map %q: %v", do.Volume.Name, err)
-	}
-	if er.ExitStatus != 0 {
-		return "", fmt.Errorf("Could not map %q: %v", do.Volume.Name, er)
+	if err != nil || er.ExitStatus != 0 {
+		return "", fmt.Errorf("Could not map %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	device := strings.TrimSpace(er.Stdout)
 
 	if device == "" {
 		er, err := executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
-		if err != nil {
-			return "", fmt.Errorf("Could not show mapped volumes: %v", err)
-		}
-
-		if er.ExitStatus != 0 {
-			return "", fmt.Errorf("Could not show mapped volumes: %v", er)
+		if err != nil || er.ExitStatus != 0 {
+			return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
 		}
 
 		if err := json.Unmarshal([]byte(er.Stdout), &rbdMaps); err != nil {
@@ -121,11 +102,8 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
 	// Create ext4 filesystem on the device. this will take a while
 	er, err := executor.New(exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))).Run()
-	if err != nil {
-		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v", devicePath, fscmd, err)
-	}
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v", devicePath, fscmd, er)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
 
 	return nil
@@ -136,11 +114,8 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "showmapped", "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Could not show mapped rbd volumes for pool %q: %v", poolName, err)
-	}
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Could not show mapped rbd volumes for pool %q: %v", poolName, er)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Could not show mapped rbd volumes for pool %q: %v (%v)", poolName, er, err)
 	}
 
 	lines := strings.Split(er.Stdout, "\n")
@@ -158,11 +133,8 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		if strings.TrimSpace(pool) == poolName && strings.TrimSpace(image) == do.Volume.Name {
 			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(device))
 			er, err := executor.New(exec.Command("rbd", "unmap", device)).Run()
-			if err != nil {
-				return fmt.Errorf("Could not unmap volume %q (device %q): %v", do.Volume.Name, device, err)
-			}
-			if er.ExitStatus != 0 {
-				return fmt.Errorf("Could not unmap volume %q (device %q): %v", do.Volume.Name, device, er)
+			if err != nil || er.ExitStatus != 0 {
+				return fmt.Errorf("Could not unmap volume %q (device %q): %v (%v)", do.Volume.Name, device, er, err)
 			}
 		}
 	}
