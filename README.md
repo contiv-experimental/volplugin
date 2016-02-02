@@ -39,7 +39,7 @@ On the host, equivalent or greater:
 
 * [VirtualBox](https://virtualbox.org) 5.0.2 or greater
 * [Vagrant](https://vagrantup.com) 1.7.4
-* [Ansible](https://ansible.com) 1.9.2
+* [Ansible](https://ansible.com) 2.0+
   * install with pip; you'll want to install `python-pip` and `python-dev` on
     ubuntu machines, then `sudo pip install ansible`. `brew install ansible`
     should do the right thing on OS X.
