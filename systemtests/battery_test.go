@@ -25,6 +25,8 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 				c.Assert(s.createVolume(node.GetName(), "tenant1", fmt.Sprintf("test%d", x), nil), IsNil)
 			}
 
+			defer s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true)
+
 			contID := ""
 			var contNode *vagrantssh.TestbedNode
 
@@ -102,6 +104,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 			c.Assert(errs, Equals, 0)
 		}(nodes, x)
+		defer s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true)
 	}
 
 	outwg.Wait()
