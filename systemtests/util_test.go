@@ -89,7 +89,6 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
-
 	stopVolsupervisor(s.vagrant.GetNode("mon0"))
 	s.vagrant.IterateNodes(stopVolplugin)
 	s.vagrant.IterateNodes(stopVolmaster)
@@ -125,8 +124,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	_, err := s.uploadIntent("tenant1", "intent1")
-	if err != nil {
+	if _, err := s.uploadIntent("tenant1", "intent1"); err != nil {
 		return err
 	}
 
