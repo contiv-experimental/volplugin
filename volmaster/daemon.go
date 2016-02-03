@@ -13,6 +13,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
@@ -96,11 +97,13 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := removeVolume(vc); err != nil {
+		d.config.RemoveUse(uc, false)
 		httpError(w, "removing image", err)
 		return
 	}
 
 	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
+		d.config.RemoveUse(uc, false)
 		httpError(w, "clearing volume records", err)
 		return
 	}
@@ -228,45 +231,38 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	uc := &config.UseConfig{
 		Volume:   volConfig,
-		Reason:   "create",
+		Reason:   "Create",
 		Hostname: hostname,
 	}
 
-	// FIXME I think the use of v here is a racy thing, but I'm not sure yet.
-	v, _ := d.config.GetVolume(req.Tenant, req.Volume)
+	if err := d.config.PublishUse(uc); err == nil {
+		defer func() {
+			if err := d.config.RemoveUse(uc, false); err != nil {
+				log.Errorf("Could not remove use lock on create for %q", hostname)
+			}
+		}()
 
-	defer func() {
-		if err := d.config.RemoveUse(uc, false); err != nil {
-			httpError(w, "Removing Use Lock", err)
+		do, err := createVolume(tenant, volConfig)
+		if err == storage.ErrVolumeExist { // FIXME move to storage
+			log.Errorf("Volume exists, cleaning up")
+			goto finish
+		} else if err != nil {
+			httpError(w, "Creating volume", err)
 			return
 		}
-	}()
 
-	if err := d.config.PublishUse(uc); err == nil {
-		if v == nil {
-			do, err := createVolume(tenant, volConfig)
-			if err != nil {
-				httpError(w, "Creating volume", err)
-
-				return
-			}
-
-			if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
-				httpError(w, "Publishing volume", err)
-				return
-			}
-
-			if err := formatVolume(volConfig, do); err != nil {
-				httpError(w, "Formatting volume", err)
-				return
-			}
-		} else {
-			volConfig = v
+		if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+			httpError(w, "Publishing volume", err)
+			return
 		}
 
-	} else {
-		volConfig = v
+		if err := formatVolume(volConfig, do); err != nil {
+			httpError(w, "Formatting volume", err)
+			return
+		}
 	}
+
+finish:
 
 	content, err = json.Marshal(volConfig)
 	if err != nil {

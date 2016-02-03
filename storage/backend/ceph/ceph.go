@@ -53,18 +53,14 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 		return fmt.Errorf("Pool %q does not exist", poolName)
 	}
 
-	if ok, err := c.Exists(do); ok {
-		return fmt.Errorf("Volume %v already exists", do.Volume)
-	} else if err != nil {
-		return err
-	}
-
 	er, err := executor.New(exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)).Run()
 	if err != nil {
 		return err
 	}
 
-	if er.ExitStatus != 0 {
+	if er.ExitStatus == 4352 {
+		return storage.ErrVolumeExist
+	} else if er.ExitStatus != 0 {
 		return fmt.Errorf("Creating disk %q: %v", do.Volume.Name, er)
 	}
 
