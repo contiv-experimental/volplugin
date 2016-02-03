@@ -123,7 +123,7 @@ TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
 tar: clean-tar run-build
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-	@tar -jcf $(TAR_FILE) -C $(GOPATH)/bin volcli volmaster volplugin volsupervisor
+	@tar -jcf $(TAR_FILE) -C $(GOPATH)/bin volcli volmaster volplugin volsupervisor -C $(GOPATH)/src/github.com/contiv/volplugin contrib/completion/bash/volcli
 
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)

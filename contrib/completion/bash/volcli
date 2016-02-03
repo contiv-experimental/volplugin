@@ -1,0 +1,128 @@
+#! /bin/bash
+
+GLOBAL_COMMANDS="\
+    tenant\
+    volume\
+    use\
+    help"
+
+GLOBAL_OPTIONS="\
+    --prefix\
+    --etcd\
+    --version\
+    --help"
+
+# Fetch all tenant names
+_volcli_complete_tenants() {
+	COMPREPLY=( $(compgen -W '$(volcli tenant list)' -- "$cur") )
+}
+
+_volcli_complete_tenant_volume_pair() {
+	COMPREPLY=( $(compgen -W '$(volcli volume list-all)' -- "$cur") )
+}
+
+
+_volcli() {
+    local cur prev firstword secondword complete_words complete_options
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+    firstword=$(_volcli_get_firstword)
+    secondword=$(_volcli_get_secondword)
+
+    #echo -e "\nprev = $prev, cur = $cur, firstword = $firstword, secondword = $secondword \n"
+    case "${firstword}" in
+        tenant)
+            case "${secondword}" in
+                get)
+            		_volcli_complete_tenants
+					return
+                    ;;
+                delete)
+            		_volcli_complete_tenants
+                    ;;
+                upload|list)
+                    ;;
+                *)
+                    COMPREPLY=( $( compgen -W "upload get list delete help" -- "$cur" ) )
+                    ;;
+            esac
+            ;;
+        volume)
+            case "${secondword}" in
+                create)
+            		_volcli_complete_tenants
+                    ;;
+                list)
+            		_volcli_complete_tenants
+                    ;;
+                list-all)
+                    ;;
+                remove|force-remove)
+					_volcli_complete_tenant_volume_pair
+                    ;;
+                *)
+                    COMPREPLY=( $( compgen -W "create remove force-remove list list-all help" -- "$cur" ) )
+                    ;;
+            esac
+            ;;
+        use)
+            case "${secondword}" in
+                list)
+                    ;;
+                get)
+					_volcli_complete_tenant_volume_pair
+                    ;;
+                force-remove)
+					_volcli_complete_tenant_volume_pair
+                    ;;
+                *)
+                    COMPREPLY=( $( compgen -W "get list force-remove help" -- "$cur" ) )
+                    ;;
+            esac
+            ;;
+
+        *)
+            if [[ $cur == -* ]]; then
+                COMPREPLY=( $( compgen -W "$GLOBAL_OPTIONS" -- "$cur" ) )
+            else
+                COMPREPLY=( $( compgen -W "$GLOBAL_COMMANDS" -- "$cur" ) )
+            fi
+            ;;
+    esac
+}
+
+
+# Get the first word that is not an option flag.
+# Usually the command
+_volcli_get_firstword() {
+    local firstword i
+
+    firstword=
+    for ((i = 1; i < ${#COMP_WORDS[@]}; ++i)); do
+        if [[ ${COMP_WORDS[i]} != -* ]]; then
+            firstword=${COMP_WORDS[i]}
+            break
+        fi
+    done
+
+    echo $firstword
+}
+
+# Get the second word that is not an option flag.
+# Usually the sub-command
+_volcli_get_secondword() {
+    local secondword i
+
+    secondword=
+    for ((i = 2; i < ${#COMP_WORDS[@]}; ++i)); do
+        if [[ ${COMP_WORDS[i]} != -* ]]; then
+            secondword=${COMP_WORDS[i]}
+            break
+        fi
+    done
+
+    echo $secondword
+}
+
+complete -F _volcli volcli
