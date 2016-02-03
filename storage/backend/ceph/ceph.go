@@ -83,15 +83,11 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 		return err
 	}
 
-	defer c.unmapImage(do) // see comments near end of function
-
 	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device); err != nil {
-		c.unlockAndLog(do)
+		c.unmapImage(do)
 		return err
 	}
 
-	// we do this twice so we don't swallow the unmap error if we make it to the
-	// return statement
 	return c.unmapImage(do)
 }
 
