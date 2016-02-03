@@ -21,22 +21,22 @@ func (s *systemtestSuite) TestVolumeCreateMultiHost(c *C) {
 func (s *systemtestSuite) TestVolumeCreateMultiHostCrossHostMount(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 
-	_, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt debian sh -c "echo bar >/mnt/foo"`)
+	_, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt alpine sh -c "echo bar >/mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	out, err := s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt debian sh -c "cat /mnt/foo"`)
+	out, err := s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt alpine sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "bar")
 
 	c.Assert(s.createVolume("mon1", "tenant1", "test", nil), IsNil)
 
-	_, err = s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt debian sh -c "echo quux >/mnt/foo"`)
+	_, err = s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt alpine sh -c "echo quux >/mnt/foo"`)
 	c.Assert(err, IsNil)
 
 	c.Assert(s.createVolume("mon2", "tenant1", "test", nil), IsNil)
 
-	out, err = s.vagrant.GetNode("mon2").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt debian sh -c "cat /mnt/foo"`)
+	out, err = s.vagrant.GetNode("mon2").RunCommandWithOutput(`docker run --rm -i -v tenant1/test:/mnt alpine sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "quux")
 }
@@ -48,22 +48,22 @@ func (s *systemtestSuite) TestVolumeMultiTenantCreate(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
 	c.Assert(s.createVolume("mon0", "tenant2", "test", nil), IsNil)
 
-	_, err = s.docker("run -v tenant1/test:/mnt debian sh -c \"echo foo > /mnt/bar\"")
+	_, err = s.docker("run -v tenant1/test:/mnt alpine sh -c \"echo foo > /mnt/bar\"")
 	c.Assert(err, IsNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v tenant2/test:/mnt debian sh -c \"cat /mnt/bar\"")
+	_, err = s.docker("run -v tenant2/test:/mnt alpine sh -c \"cat /mnt/bar\"")
 	c.Assert(err, NotNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v tenant2/test:/mnt debian sh -c \"echo bar > /mnt/foo\"")
+	_, err = s.docker("run -v tenant2/test:/mnt alpine sh -c \"echo bar > /mnt/foo\"")
 	c.Assert(err, IsNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v tenant1/test:/mnt debian sh -c \"cat /mnt/foo\"")
+	_, err = s.docker("run -v tenant1/test:/mnt alpine sh -c \"cat /mnt/foo\"")
 	c.Assert(err, NotNil)
 }
 

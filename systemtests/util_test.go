@@ -179,8 +179,8 @@ func waitForVolplugin(node vagrantssh.TestbedNode) error {
 }
 
 func (s *systemtestSuite) pullDebian() error {
-	log.Infof("Pulling debian:latest on all boxes")
-	return s.vagrant.SSHExecAllNodes("docker pull debian")
+	log.Infof("Pulling alpine:latest on all boxes")
+	return s.vagrant.SSHExecAllNodes("docker pull alpine")
 }
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {

@@ -33,9 +33,9 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 			for _, node := range nodes {
 				wg.Add(1)
 				go func(node vagrantssh.TestbedNode, x int) {
-					log.Infof("Running debian container on %q", node.GetName())
+					log.Infof("Running alpine container on %q", node.GetName())
 
-					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v tenant1/test%d:/mnt debian sleep infinity", x)); err != nil {
+					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v tenant1/test%d:/mnt alpine sleep 10m", x)); err != nil {
 						errChan <- err
 					} else {
 						contID = out

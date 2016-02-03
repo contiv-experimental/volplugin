@@ -42,7 +42,7 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 		c.Assert(s.createVolume(name, "tenant1", "test", nil), IsNil)
 	}
 
-	dockerCmd := "docker run -d -v tenant1/test:/mnt debian sleep infinity"
+	dockerCmd := "docker run -d -v tenant1/test:/mnt alpine sleep 10m"
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
 
 	for _, nodeName := range []string{"mon1", "mon2"} {
@@ -108,7 +108,7 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant2", "test", opts), IsNil)
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/test:/mnt debian sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/test:/mnt alpine sleep 10m"), IsNil)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
 	c.Assert(err, IsNil)
@@ -126,7 +126,7 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	c.Assert(pass, Equals, true)
 	c.Assert(s.createVolume("mon0", "tenant2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
 
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/testext4:/mnt debian sleep infinity"), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v tenant2/testext4:/mnt alpine sleep 10m"), IsNil)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
 	c.Assert(err, IsNil)
@@ -168,7 +168,7 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "tenant1", "test", opts), IsNil)
-	_, err := s.docker("run -itd -v tenant1/test:/mnt debian sleep infinity")
+	_, err := s.docker("run -itd -v tenant1/test:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)
 
 	for key, fn := range optMap {
@@ -194,7 +194,7 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 
 func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
-	_, err := s.docker("run -itd -v tenant1/test:/mnt debian sleep infinity")
+	_, err := s.docker("run -itd -v tenant1/test:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)
 
 	_, err = s.volcli("volume remove tenant1/test")
