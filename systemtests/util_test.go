@@ -254,10 +254,21 @@ func (s *systemtestSuite) clearVolumes() error {
 
 func (s *systemtestSuite) clearRBD() error {
 	log.Info("Clearing rbd images")
-	if out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("set -e; for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done"); err != nil {
+
+	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo umount -f $img; done")
+		return nil
+	})
+
+	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done")
+		return nil
+	})
+
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("for img in $(sudo rbd ls); do sudo rbd snap purge $img; sudo rbd rm $img; done")
+	if err != nil {
 		log.Info(out)
-		return err
 	}
 
-	return s.vagrant.GetNode("mon0").RunCommand("set -e; for img in $(sudo rbd ls); do sudo rbd snap purge $img && sudo rbd rm $img; done")
+	return err
 }
