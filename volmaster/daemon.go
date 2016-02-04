@@ -243,7 +243,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		do, err := createVolume(tenant, volConfig)
-		if err == storage.ErrVolumeExist { // FIXME move to storage
+		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			goto finish
 		} else if err != nil {
