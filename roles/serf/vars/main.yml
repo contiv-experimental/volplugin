@@ -1,5 +1,4 @@
 ---
 # role variable for the serf service
 
-serf_discovery_interface: "{{control_interface}}"
-
+serf_discovery_interface: "{{ control_interface }}"
