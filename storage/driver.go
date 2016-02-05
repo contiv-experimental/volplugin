@@ -1,5 +1,12 @@
 package storage
 
+import "errors"
+
+var (
+	// ErrVolumeExist indicates that a volume already exists.
+	ErrVolumeExist = errors.New("Volume already exists")
+)
+
 // Params are parameters that relate directly to the location of the storage.
 type Params map[string]string
 

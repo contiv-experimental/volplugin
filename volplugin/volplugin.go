@@ -40,6 +40,12 @@ type VolumeResponse struct {
 	Err        string
 }
 
+// volumeGet is taken from this struct in docker:
+// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
+type volumeGet struct {
+	Name string
+}
+
 // Daemon starts the volplugin service.
 func (dc *DaemonConfig) Daemon() error {
 	if err := dc.updateMounts(); err != nil {
@@ -73,6 +79,8 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 		"/Plugin.Deactivate":    nilAction,
 		"/VolumeDriver.Create":  create(dc.Master),
 		"/VolumeDriver.Remove":  remove(dc.Master),
+		"/VolumeDriver.List":    list(dc.Master),
+		"/VolumeDriver.Get":     get(dc.Master),
 		"/VolumeDriver.Path":    getPath(dc.Master),
 		"/VolumeDriver.Mount":   mount(dc.Master, dc.Host, dc.TTL),
 		"/VolumeDriver.Unmount": unmount(dc.Master, dc.Host),

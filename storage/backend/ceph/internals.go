@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"regexp"
 	"strings"
 
 	"github.com/contiv/volplugin/executor"
@@ -13,16 +12,18 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+type rbdMap map[string]struct {
+	Pool   string `json:"pool"`
+	Name   string `json:"name"`
+	Device string `json:"device"`
+}
+
 func (c *Driver) lockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
-	}
-
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Could not acquire lock for %q: %v", do.Volume.Name, err)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Could not acquire lock for %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	return nil
@@ -32,12 +33,8 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	er, err := executor.New(exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, err)
-	}
-
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v", do.Volume.Name, er)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	locks := map[string]map[string]string{}
@@ -48,12 +45,8 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 
 	if _, ok := locks[do.Volume.Name]; ok {
 		er, err := executor.New(exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName)).Run()
-		if err != nil {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, err)
-		}
-
-		if er.ExitStatus != 0 {
-			return fmt.Errorf("Error releasing lock on volume %q: %v", do.Volume.Name, er)
+		if err != nil || er.ExitStatus != 0 {
+			return fmt.Errorf("Error releasing lock on volume %q: %v (%v)", do.Volume.Name, er, err)
 		}
 	}
 
@@ -61,12 +54,6 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 }
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	var rbdMaps map[string]struct {
-		Pool   string `json:"pool"`
-		Name   string `json:"name"`
-		Device string `json:"device"`
-	}
-
 	poolName := do.Volume.Params["pool"]
 
 	// NOTE: if lockImage() fails, the call to mapImage will try to release the
@@ -78,32 +65,27 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	}
 
 	er, err := executor.New(exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)).Run()
-	if err != nil {
-		return "", fmt.Errorf("Could not map %q: %v", do.Volume.Name, err)
-	}
-	if er.ExitStatus != 0 {
-		return "", fmt.Errorf("Could not map %q: %v", do.Volume.Name, er)
+	if err != nil || er.ExitStatus != 0 {
+		return "", fmt.Errorf("Could not map %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	device := strings.TrimSpace(er.Stdout)
 
 	if device == "" {
 		er, err := executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
-		if err != nil {
-			return "", fmt.Errorf("Could not show mapped volumes: %v", err)
+		if err != nil || er.ExitStatus != 0 {
+			return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
 		}
 
-		if er.ExitStatus != 0 {
-			return "", fmt.Errorf("Could not show mapped volumes: %v", er)
-		}
+		rbdmap := rbdMap{}
 
-		if err := json.Unmarshal([]byte(er.Stdout), &rbdMaps); err != nil {
+		if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
 			return "", fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
 		}
 
-		for i := range rbdMaps {
-			if rbdMaps[i].Name == do.Volume.Name && rbdMaps[i].Pool == do.Volume.Params["pool"] {
-				device = rbdMaps[i].Device
+		for i := range rbdmap {
+			if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
+				device = rbdmap[i].Device
 				break
 			}
 		}
@@ -121,49 +103,40 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
 	// Create ext4 filesystem on the device. this will take a while
 	er, err := executor.New(exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))).Run()
-	if err != nil {
-		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v", devicePath, fscmd, err)
-	}
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v", devicePath, fscmd, er)
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
 
 	return nil
 }
 
 func (c *Driver) unmapImage(do storage.DriverOptions) error {
-	// FIXME use mapImage showmapped json code
 	poolName := do.Volume.Params["pool"]
 
-	er, err := executor.New(exec.Command("rbd", "showmapped", "--pool", poolName)).Run()
-	if err != nil {
-		return fmt.Errorf("Could not show mapped rbd volumes for pool %q: %v", poolName, err)
-	}
-	if er.ExitStatus != 0 {
-		return fmt.Errorf("Could not show mapped rbd volumes for pool %q: %v", poolName, er)
+	er, err := executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
+	if err != nil || er.ExitStatus != 0 {
+		return fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
 	}
 
-	lines := strings.Split(er.Stdout, "\n")
-	if len(lines) < 2 {
-		return nil // no mapped images
+	rbdmap := rbdMap{}
+
+	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
+		return fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
 	}
 
-	// the first line is a header
-	for _, line := range lines[1 : len(lines)-1] {
-		parts := regexp.MustCompile(`\s+`).Split(line, -1)
-		pool := parts[1]
-		image := parts[2]
-		device := parts[4]
-
-		if strings.TrimSpace(pool) == poolName && strings.TrimSpace(image) == do.Volume.Name {
-			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(device))
-			er, err := executor.New(exec.Command("rbd", "unmap", device)).Run()
-			if err != nil {
-				return fmt.Errorf("Could not unmap volume %q (device %q): %v", do.Volume.Name, device, err)
+	for i := range rbdmap {
+		if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
+			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbdmap[i].Device))
+			for x := 0; x < 5; x++ {
+				er, err = executor.New(exec.Command("rbd", "unmap", rbdmap[i].Device)).Run()
+				if err != nil || er.ExitStatus != 0 {
+					log.Errorf("Could not unmap volume %q (device %q): %v (%v)", do.Volume.Name, rbdmap[i].Device, er, err)
+				} else {
+					break
+				}
 			}
-			if er.ExitStatus != 0 {
-				return fmt.Errorf("Could not unmap volume %q (device %q): %v", do.Volume.Name, device, er)
-			}
+
+			break
 		}
 	}
 

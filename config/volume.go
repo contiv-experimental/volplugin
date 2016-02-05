@@ -128,6 +128,7 @@ func (vo *VolumeOptions) computeSize() error {
 
 // GetVolume returns the VolumeConfig for a given volume.
 func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
+	// FIXME make this take a single string and not a split one
 	resp, err := c.etcdClient.Get(context.Background(), c.volume(tenant, name), nil)
 	if err != nil {
 		return nil, err

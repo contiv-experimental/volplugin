@@ -89,7 +89,6 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
-
 	stopVolsupervisor(s.vagrant.GetNode("mon0"))
 	s.vagrant.IterateNodes(stopVolplugin)
 	s.vagrant.IterateNodes(stopVolmaster)
@@ -125,8 +124,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	_, err := s.uploadIntent("tenant1", "intent1")
-	if err != nil {
+	if _, err := s.uploadIntent("tenant1", "intent1"); err != nil {
 		return err
 	}
 
@@ -181,8 +179,8 @@ func waitForVolplugin(node vagrantssh.TestbedNode) error {
 }
 
 func (s *systemtestSuite) pullDebian() error {
-	log.Infof("Pulling debian:latest on all boxes")
-	return s.vagrant.SSHExecAllNodes("docker pull debian")
+	log.Infof("Pulling alpine:latest on all boxes")
+	return s.vagrant.SSHExecAllNodes("docker pull alpine")
 }
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
@@ -256,10 +254,21 @@ func (s *systemtestSuite) clearVolumes() error {
 
 func (s *systemtestSuite) clearRBD() error {
 	log.Info("Clearing rbd images")
-	if out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("set -e; for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done"); err != nil {
+
+	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo umount -f $img; done")
+		return nil
+	})
+
+	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done")
+		return nil
+	})
+
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("for img in $(sudo rbd ls); do sudo rbd snap purge $img; sudo rbd rm $img; done")
+	if err != nil {
 		log.Info(out)
-		return err
 	}
 
-	return s.vagrant.GetNode("mon0").RunCommand("set -e; for img in $(sudo rbd ls); do sudo rbd snap purge $img && sudo rbd rm $img; done")
+	return err
 }

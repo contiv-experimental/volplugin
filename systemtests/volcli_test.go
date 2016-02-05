@@ -73,7 +73,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
-	_, err := s.docker("run --rm -v tenant1/foo:/mnt debian ls")
+	_, err := s.docker("run --rm -v tenant1/foo:/mnt alpine ls")
 	c.Assert(err, IsNil)
 
 	out, err := s.volcli("volume list tenant1")
@@ -131,7 +131,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
 
-	id, err := s.docker("run -itd -v tenant1/foo:/mnt debian sleep infinity")
+	id, err := s.docker("run -itd -v tenant1/foo:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)
 
 	out, err := s.volcli("use list")

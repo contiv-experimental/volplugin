@@ -234,5 +234,5 @@ func (e *Executor) Err() io.ReadCloser {
 }
 
 func (er *ExecResult) String() string {
-	return fmt.Sprintf("Command: %v, Exit status %v, Runtime %v", er.executor.command.Path, er.ExitStatus, er.Runtime)
+	return fmt.Sprintf("Command: %v, Exit status %v, Runtime %v", er.executor.command.Args, er.ExitStatus, er.Runtime)
 }

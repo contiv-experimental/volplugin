@@ -103,11 +103,8 @@ func getMounts() ([]*storage.Mount, error) {
 func getMapped() ([]*storage.Mount, error) {
 	// FIXME unify all these showmapped commands
 	er, err := executor.New(exec.Command("rbd", "showmapped")).Run()
-	if err != nil {
-		return nil, fmt.Errorf("Could not show mapped volumes: %v", err)
-	}
-	if er.ExitStatus != 0 {
-		return nil, fmt.Errorf("Could not show mapped volumes: %v", er)
+	if err != nil || er.ExitStatus != 0 {
+		return nil, fmt.Errorf("Could not show mapped volumes: %v (%v)", er, err)
 	}
 
 	mounts := []*storage.Mount{}

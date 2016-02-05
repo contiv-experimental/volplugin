@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 
 	"golang.org/x/net/context"
@@ -33,6 +34,7 @@ func (c *TopLevelConfig) PublishUse(ut *UseConfig) error {
 	}
 
 	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Volume), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
+	log.Debugf("Publishing use: (error: %v) %#v", err, ut)
 	return err
 }
 
@@ -43,6 +45,8 @@ func (c *TopLevelConfig) PublishUseWithTTL(ut *UseConfig, ttl time.Duration, exi
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Publishing use with TTL %d: %#v", ttl, ut)
 
 	value := string(content)
 	if exist != client.PrevNoExist {
@@ -60,6 +64,8 @@ func (c *TopLevelConfig) RemoveUse(ut *UseConfig, force bool) error {
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Removing Use Lock: %#v", ut)
 
 	opts := &client.DeleteOptions{PrevValue: string(content)}
 	if force {

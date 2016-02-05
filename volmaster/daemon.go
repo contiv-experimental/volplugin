@@ -13,6 +13,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
@@ -22,12 +24,31 @@ type daemonConfig struct {
 	mountTTL int
 }
 
+// volume is the json response of a volume. Taken from
+// https://github.com/docker/docker/blob/master/volume/drivers/adapter.go#L75
+type volume struct {
+	Name       string
+	Mountpoint string
+}
+
+type volumeList struct {
+	Volumes []volume
+	Err     string
+}
+
+// volumeGet is taken from this struct in docker:
+// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
+type volumeGet struct {
+	Volume volume
+	Err    string
+}
+
 // Daemon initializes the daemon for use.
 func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
 	d := daemonConfig{config, ttl}
 	r := mux.NewRouter()
 
-	router := map[string]func(http.ResponseWriter, *http.Request){
+	postRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/request":      d.handleRequest,
 		"/create":       d.handleCreate,
 		"/mount":        d.handleMount,
@@ -36,8 +57,21 @@ func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
 		"/remove":       d.handleRemove,
 	}
 
-	for path, f := range router {
+	for path, f := range postRouter {
 		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
+	}
+
+	getRouter := map[string]func(http.ResponseWriter, *http.Request){
+		"/list":                  d.handleList,
+		"/get/{tenant}/{volume}": d.handleGet,
+	}
+
+	for path, f := range getRouter {
+		r.HandleFunc(path, logHandler(path, debug, f)).Methods("GET")
+	}
+
+	if debug {
+		r.HandleFunc("{action:.*}", d.handleDebug)
 	}
 
 	if err := http.ListenAndServe(listen, r); err != nil {
@@ -63,6 +97,62 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 
 		actionFunc(w, r)
 	}
+}
+
+func (d daemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
+	io.Copy(os.Stderr, r.Body)
+	w.WriteHeader(404)
+}
+
+func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
+	vols, err := d.config.ListAllVolumes()
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	response := volumeList{Volumes: []volume{}}
+
+	for _, vol := range vols {
+		parts := strings.SplitN(vol, "/", 2)
+		// FIXME make this take a single string and not a split one
+		volConfig, err := d.config.GetVolume(parts[0], parts[1])
+		if err != nil {
+			httpError(w, "Retrieving list", err)
+			return
+		}
+
+		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: ceph.MountPath(volConfig.Options.Pool, vol)})
+	}
+
+	content, err := json.Marshal(response)
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
+	volName := strings.TrimPrefix(r.URL.Path, "/get/")
+	parts := strings.SplitN(volName, "/", 2)
+
+	volConfig, err := d.config.GetVolume(parts[0], parts[1])
+	if err != nil {
+		httpError(w, "Retrieving volume", err)
+		return
+	}
+
+	vol := volume{Name: volName, Mountpoint: ceph.MountPath(volConfig.Options.Pool, volName)}
+
+	content, err := json.Marshal(volumeGet{Volume: vol})
+	if err != nil {
+		httpError(w, "Retrieving volume", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
@@ -96,11 +186,13 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := removeVolume(vc); err != nil {
+		d.config.RemoveUse(uc, false)
 		httpError(w, "removing image", err)
 		return
 	}
 
 	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
+		d.config.RemoveUse(uc, false)
 		httpError(w, "clearing volume records", err)
 		return
 	}
@@ -228,45 +320,38 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	uc := &config.UseConfig{
 		Volume:   volConfig,
-		Reason:   "create",
+		Reason:   "Create",
 		Hostname: hostname,
 	}
 
-	// FIXME I think the use of v here is a racy thing, but I'm not sure yet.
-	v, _ := d.config.GetVolume(req.Tenant, req.Volume)
+	if err := d.config.PublishUse(uc); err == nil {
+		defer func() {
+			if err := d.config.RemoveUse(uc, false); err != nil {
+				log.Errorf("Could not remove use lock on create for %q", hostname)
+			}
+		}()
 
-	defer func() {
-		if err := d.config.RemoveUse(uc, false); err != nil {
-			httpError(w, "Removing Use Lock", err)
+		do, err := createVolume(tenant, volConfig)
+		if err == storage.ErrVolumeExist {
+			log.Errorf("Volume exists, cleaning up")
+			goto finish
+		} else if err != nil {
+			httpError(w, "Creating volume", err)
 			return
 		}
-	}()
 
-	if err := d.config.PublishUse(uc); err == nil {
-		if v == nil {
-			do, err := createVolume(tenant, volConfig)
-			if err != nil {
-				httpError(w, "Creating volume", err)
-
-				return
-			}
-
-			if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
-				httpError(w, "Publishing volume", err)
-				return
-			}
-
-			if err := formatVolume(volConfig, do); err != nil {
-				httpError(w, "Formatting volume", err)
-				return
-			}
-		} else {
-			volConfig = v
+		if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+			httpError(w, "Publishing volume", err)
+			return
 		}
 
-	} else {
-		volConfig = v
+		if err := formatVolume(volConfig, do); err != nil {
+			httpError(w, "Formatting volume", err)
+			return
+		}
 	}
+
+finish:
 
 	content, err = json.Marshal(volConfig)
 	if err != nil {
