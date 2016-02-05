@@ -6,3 +6,4 @@
 
 contiv_network_mode: "standalone" # Accepted values: standalone, aci
 netplugin_mode: "docker" # Accepted values: docker, kubernetes
+fwd_mode: "bridge" #Accepted values: bridge , routing
