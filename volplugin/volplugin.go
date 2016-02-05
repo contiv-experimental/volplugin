@@ -73,6 +73,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 		"/Plugin.Deactivate":    nilAction,
 		"/VolumeDriver.Create":  create(dc.Master),
 		"/VolumeDriver.Remove":  remove(dc.Master),
+		"/VolumeDriver.List":    list(dc.Master),
 		"/VolumeDriver.Path":    getPath(dc.Master),
 		"/VolumeDriver.Mount":   mount(dc.Master, dc.Host, dc.TTL),
 		"/VolumeDriver.Unmount": unmount(dc.Master, dc.Host),

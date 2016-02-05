@@ -14,6 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
@@ -21,6 +22,18 @@ import (
 type daemonConfig struct {
 	config   *config.TopLevelConfig
 	mountTTL int
+}
+
+// volume is the json response of a volume. Taken from
+// https://github.com/docker/docker/blob/master/volume/drivers/adapter.go#L75
+type volume struct {
+	Name       string
+	Mountpoint string
+}
+
+type volumeList struct {
+	Volumes []volume
+	Err     string
 }
 
 // Daemon initializes the daemon for use.
@@ -40,6 +53,8 @@ func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
 	for path, f := range router {
 		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
 	}
+
+	r.HandleFunc("/list", logHandler("/list", debug, d.handleList)).Methods("GET")
 
 	if err := http.ListenAndServe(listen, r); err != nil {
 		log.Fatalf("Error starting volmaster: %v", err)
@@ -64,6 +79,36 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 
 		actionFunc(w, r)
 	}
+}
+
+func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
+	vols, err := d.config.ListAllVolumes()
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	response := volumeList{Volumes: []volume{}}
+
+	for _, vol := range vols {
+		parts := strings.SplitN(vol, "/", 2)
+		// FIXME make this take a single string and not a split one
+		volConfig, err := d.config.GetVolume(parts[0], parts[1])
+		if err != nil {
+			httpError(w, "Retrieving list", err)
+			return
+		}
+
+		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: ceph.MountPath(volConfig.Options.Pool, vol)})
+	}
+
+	content, err := json.Marshal(response)
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
