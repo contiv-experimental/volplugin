@@ -140,7 +140,8 @@ func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	volConfig, err := d.config.GetVolume(parts[0], parts[1])
 	if err != nil {
-		httpError(w, "Retrieving volume", err)
+		log.Warn(err)
+		w.WriteHeader(404)
 		return
 	}
 
