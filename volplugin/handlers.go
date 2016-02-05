@@ -87,6 +87,35 @@ func writeResponse(w http.ResponseWriter, r *http.Request, vr *VolumeResponse) {
 
 }
 
+func get(master string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		content, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			httpError(w, "Retrieving volume", err)
+			return
+		}
+
+		vg := volumeGet{}
+
+		if err := json.Unmarshal(content, &vg); err != nil {
+			httpError(w, "Retrieving volume", err)
+			return
+		}
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/get/%s", master, vg.Name))
+		if err != nil {
+			httpError(w, "Retrieving volume", err)
+			return
+		}
+
+		if resp.StatusCode != 200 {
+			httpError(w, "Retrieving volume", fmt.Errorf("Status was not 200: was %d", resp.StatusCode))
+		}
+
+		io.Copy(w, resp.Body)
+	}
+}
+
 func list(master string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Get(fmt.Sprintf("http://%s/list", master))

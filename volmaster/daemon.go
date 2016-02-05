@@ -36,12 +36,19 @@ type volumeList struct {
 	Err     string
 }
 
+// volumeGet is taken from this struct in docker:
+// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
+type volumeGet struct {
+	Volume volume
+	Err    string
+}
+
 // Daemon initializes the daemon for use.
 func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
 	d := daemonConfig{config, ttl}
 	r := mux.NewRouter()
 
-	router := map[string]func(http.ResponseWriter, *http.Request){
+	postRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/request":      d.handleRequest,
 		"/create":       d.handleCreate,
 		"/mount":        d.handleMount,
@@ -50,11 +57,22 @@ func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
 		"/remove":       d.handleRemove,
 	}
 
-	for path, f := range router {
+	for path, f := range postRouter {
 		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
 	}
 
-	r.HandleFunc("/list", logHandler("/list", debug, d.handleList)).Methods("GET")
+	getRouter := map[string]func(http.ResponseWriter, *http.Request){
+		"/list":                  d.handleList,
+		"/get/{tenant}/{volume}": d.handleGet,
+	}
+
+	for path, f := range getRouter {
+		r.HandleFunc(path, logHandler(path, debug, f)).Methods("GET")
+	}
+
+	if debug {
+		r.HandleFunc("{action:.*}", d.handleDebug)
+	}
 
 	if err := http.ListenAndServe(listen, r); err != nil {
 		log.Fatalf("Error starting volmaster: %v", err)
@@ -81,6 +99,11 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
+func (d daemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
+	io.Copy(os.Stderr, r.Body)
+	w.WriteHeader(404)
+}
+
 func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	vols, err := d.config.ListAllVolumes()
 	if err != nil {
@@ -105,6 +128,27 @@ func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(response)
 	if err != nil {
 		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
+	volName := strings.TrimPrefix(r.URL.Path, "/get/")
+	parts := strings.SplitN(volName, "/", 2)
+
+	volConfig, err := d.config.GetVolume(parts[0], parts[1])
+	if err != nil {
+		httpError(w, "Retrieving volume", err)
+		return
+	}
+
+	vol := volume{Name: volName, Mountpoint: ceph.MountPath(volConfig.Options.Pool, volName)}
+
+	content, err := json.Marshal(volumeGet{Volume: vol})
+	if err != nil {
+		httpError(w, "Retrieving volume", err)
 		return
 	}
 
