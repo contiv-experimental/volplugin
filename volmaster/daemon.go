@@ -140,7 +140,8 @@ func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	volConfig, err := d.config.GetVolume(parts[0], parts[1])
 	if err != nil {
-		httpError(w, "Retrieving volume", err)
+		log.Warn(err)
+		w.WriteHeader(404)
 		return
 	}
 
@@ -185,20 +186,15 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer d.config.RemoveUse(uc, false)
+
 	if err := removeVolume(vc); err != nil {
-		d.config.RemoveUse(uc, false)
 		httpError(w, "removing image", err)
 		return
 	}
 
 	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
-		d.config.RemoveUse(uc, false)
 		httpError(w, "clearing volume records", err)
-		return
-	}
-
-	if err := d.config.RemoveUse(uc, false); err != nil {
-		httpError(w, "Removing use lock", err)
 		return
 	}
 }

@@ -69,30 +69,28 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 		return "", fmt.Errorf("Could not map %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
-	device := strings.TrimSpace(er.Stdout)
+	var device string
+
+	er, err = executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
+	if err != nil || er.ExitStatus != 0 {
+		return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
+	}
+
+	rbdmap := rbdMap{}
+
+	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
+		return "", fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+	}
+
+	for i := range rbdmap {
+		if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
+			device = rbdmap[i].Device
+			break
+		}
+	}
 
 	if device == "" {
-		er, err := executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
-		if err != nil || er.ExitStatus != 0 {
-			return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
-		}
-
-		rbdmap := rbdMap{}
-
-		if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-			return "", fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
-		}
-
-		for i := range rbdmap {
-			if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
-				device = rbdmap[i].Device
-				break
-			}
-		}
-
-		if device == "" {
-			return "", fmt.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
-		}
+		return "", fmt.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
 	}
 
 	log.Debugf("mapped volume %q as %q", do.Volume.Name, device)
