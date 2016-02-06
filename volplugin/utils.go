@@ -204,7 +204,7 @@ func addStopChan(name string) chan struct{} {
 	mountMutex.Lock()
 	defer mountMutex.Unlock()
 
-	stopChan := make(chan struct{}, 1)
+	stopChan := make(chan struct{})
 
 	if sc, ok := mountStopChans[name]; ok {
 		sc <- struct{}{}
