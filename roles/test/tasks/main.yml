@@ -1,0 +1,17 @@
+---
+# This role contains tasks for installing test environment packages
+
+- include: os_agnostic_tasks.yml
+  tags:
+    - prebake-for-test
+
+- include: ubuntu_tasks.yml
+  when: ansible_os_family == "Debian"
+  tags:
+    - prebake-for-test
+
+
+- include: redhat_tasks.yml
+  when: ansible_os_family == "RedHat"
+  tags:
+    - prebake-for-test

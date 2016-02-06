@@ -3,13 +3,11 @@
 
 - name: download and install ucp images
   shell: >
-      docker run --rm -it \
+      docker run --rm -t \
         --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
         docker/ucp \
         images --image-version={{ ucp_version }}
-  tags:
-    - prebake-for-dev
 
 - name: copy the ucp files to worker nodes
   copy:
