@@ -20,7 +20,7 @@
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/netplugin/releases/download/v0.1-01-28-2016.03-55-05.UTC/netplugin-v0.1-01-28-2016.03-55-05.UTC.tar.bz2
+    url: https://github.com/contiv/netplugin/releases/download/v0.1-02-06-2016.14-42-05.UTC/netplugin-v0.1-02-06-2016.14-42-05.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
 
 - name: ensure netplugin directory exists
