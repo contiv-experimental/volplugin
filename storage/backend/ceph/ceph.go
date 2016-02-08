@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -53,7 +54,8 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 		return fmt.Errorf("Pool %q does not exist", poolName)
 	}
 
-	er, err := executor.New(exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)).Run()
+	cmd := exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 		return err
 	}
 
-	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device); err != nil {
+	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device, do.Timeout); err != nil {
 		c.unmapImage(do)
 		return err
 	}
@@ -95,7 +97,8 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 func (c *Driver) Destroy(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
-	er, err := executor.New(exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName)).Run()
+	cmd := exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName)
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return err
 	}
@@ -103,7 +106,8 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 		return fmt.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er)
 	}
 
-	er, err = executor.New(exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)).Run()
+	cmd = exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)
+	er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return err
 	}
@@ -241,7 +245,8 @@ func (c *Driver) Exists(do storage.DriverOptions) (bool, error) {
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error {
 	snapName = strings.Replace(snapName, " ", "-", -1)
-	er, err := executor.New(exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])).Run()
+	cmd := exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return err
 	}
@@ -255,7 +260,8 @@ func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error
 
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error {
-	er, err := executor.New(exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])).Run()
+	cmd := exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return err
 	}
@@ -270,7 +276,8 @@ func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error
 // ListSnapshots returns an array of snapshot names provided a maximum number
 // of snapshots to be returned. Any error will be returned.
 func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
-	er, err := executor.New(exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"])).Run()
+	cmd := exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"])
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -297,13 +304,13 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 }
 
 // Mounted describes all the volumes currently mapped on to the host.
-func (c *Driver) Mounted() ([]*storage.Mount, error) {
+func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	hostMounts, err := getMounts()
 	if err != nil {
 		return nil, err
 	}
 
-	mapped, err := getMapped()
+	mapped, err := getMapped(timeout)
 	if err != nil {
 		return nil, err
 	}

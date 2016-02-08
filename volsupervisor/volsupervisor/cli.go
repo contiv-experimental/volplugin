@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/config"
@@ -22,7 +23,13 @@ func start(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
-	volsupervisor.Daemon(cfg)
+	dc := &volsupervisor.DaemonConfig{
+		Config:  cfg,
+		Debug:   ctx.Bool("debug"),
+		Timeout: time.Duration(ctx.Int("timeout")) * time.Minute,
+	}
+
+	dc.Daemon()
 }
 
 func main() {
@@ -45,6 +52,11 @@ func main() {
 			Name:  "etcd",
 			Usage: "URL for etcd",
 			Value: &cli.StringSlice{"http://localhost:2379"},
+		},
+		cli.IntFlag{
+			Name:  "timeout",
+			Usage: "Set timeout for ceph commands; in minutes",
+			Value: 5,
 		},
 	}
 

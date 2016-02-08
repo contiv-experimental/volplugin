@@ -11,7 +11,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig)) func(*volumeDispatch) {
+func wrapSnapshotAction(action func(dc *DaemonConfig, pool string, volume *config.VolumeConfig)) func(*volumeDispatch) {
 	return func(v *volumeDispatch) {
 		for _, volume := range v.volumes {
 			duration, err := time.ParseDuration(volume.Options.Snapshot.Frequency)
@@ -21,23 +21,23 @@ func wrapSnapshotAction(action func(config *config.TopLevelConfig, pool string, 
 			}
 
 			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				action(v.config, volume.Options.Pool, volume)
+				action(v.daemonConfig, volume.Options.Pool, volume)
 			}
 		}
 	}
 }
 
-func scheduleSnapshotPrune(config *config.TopLevelConfig) {
+func scheduleSnapshotPrune(dc *DaemonConfig) {
 	for {
 		log.Debug("Running snapshot prune supervisor")
 
-		iterateVolumes(config, wrapSnapshotAction(runSnapshotPrune))
+		iterateVolumes(dc, wrapSnapshotAction(runSnapshotPrune))
 
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
+func runSnapshotPrune(dc *DaemonConfig, pool string, volume *config.VolumeConfig) {
 	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
 
 	driver := ceph.NewDriver()
@@ -49,6 +49,7 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config
 				"pool": pool,
 			},
 		},
+		Timeout: dc.Timeout,
 	}
 
 	list, err := driver.ListSnapshots(driverOpts)
@@ -70,7 +71,7 @@ func runSnapshotPrune(config *config.TopLevelConfig, pool string, volume *config
 	}
 }
 
-func runSnapshot(config *config.TopLevelConfig, pool string, volume *config.VolumeConfig) {
+func runSnapshot(dc *DaemonConfig, pool string, volume *config.VolumeConfig) {
 	now := time.Now()
 	log.Infof("Snapping volume %q at %v", volume, now)
 	driver := ceph.NewDriver()
@@ -81,6 +82,7 @@ func runSnapshot(config *config.TopLevelConfig, pool string, volume *config.Volu
 				"pool": pool,
 			},
 		},
+		Timeout: dc.Timeout,
 	}
 
 	if err := driver.CreateSnapshot(now.String(), driverOpts); err != nil {
@@ -88,11 +90,11 @@ func runSnapshot(config *config.TopLevelConfig, pool string, volume *config.Volu
 	}
 }
 
-func scheduleSnapshots(config *config.TopLevelConfig) {
+func scheduleSnapshots(dc *DaemonConfig) {
 	for {
 		log.Debug("Running snapshot supervisor")
 
-		iterateVolumes(config, wrapSnapshotAction(runSnapshot))
+		iterateVolumes(dc, wrapSnapshotAction(runSnapshot))
 
 		time.Sleep(1 * time.Second)
 	}

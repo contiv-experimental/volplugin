@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
@@ -100,9 +101,10 @@ func getMounts() ([]*storage.Mount, error) {
 	return mounts, nil
 }
 
-func getMapped() ([]*storage.Mount, error) {
+func getMapped(timeout time.Duration) ([]*storage.Mount, error) {
 	// FIXME unify all these showmapped commands
-	er, err := executor.New(exec.Command("rbd", "showmapped")).Run()
+	cmd := exec.Command("rbd", "showmapped")
+	er, err := executor.NewWithTimeout(cmd, timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return nil, fmt.Errorf("Could not show mapped volumes: %v (%v)", er, err)
 	}

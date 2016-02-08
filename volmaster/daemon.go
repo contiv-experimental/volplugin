@@ -22,6 +22,7 @@ import (
 type daemonConfig struct {
 	config   *config.TopLevelConfig
 	mountTTL int
+	timeout  time.Duration
 }
 
 // volume is the json response of a volume. Taken from
@@ -44,8 +45,11 @@ type volumeGet struct {
 }
 
 // Daemon initializes the daemon for use.
-func Daemon(config *config.TopLevelConfig, ttl int, debug bool, listen string) {
-	d := daemonConfig{config, ttl}
+func Daemon(config *config.TopLevelConfig, ttl, timeout int, debug bool, listen string) {
+	d := daemonConfig{config: config,
+		mountTTL: ttl,
+		timeout:  time.Duration(timeout) * time.Minute}
+
 	r := mux.NewRouter()
 
 	postRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -188,7 +192,7 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	defer d.config.RemoveUse(uc, false)
 
-	if err := removeVolume(vc); err != nil {
+	if err := removeVolume(vc, d.timeout); err != nil {
 		httpError(w, "removing image", err)
 		return
 	}
@@ -327,7 +331,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		do, err := createVolume(tenant, volConfig)
+		do, err := createVolume(tenant, volConfig, d.timeout)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			goto finish

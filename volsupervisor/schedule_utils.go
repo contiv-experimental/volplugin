@@ -7,25 +7,25 @@ import (
 )
 
 type volumeDispatch struct {
-	config  *config.TopLevelConfig
-	tenant  string
-	volumes map[string]*config.VolumeConfig
+	daemonConfig *DaemonConfig
+	tenant       string
+	volumes      map[string]*config.VolumeConfig
 }
 
-func iterateVolumes(config *config.TopLevelConfig, dispatch func(v *volumeDispatch)) {
-	tenants, err := config.ListTenants()
+func iterateVolumes(dc *DaemonConfig, dispatch func(v *volumeDispatch)) {
+	tenants, err := dc.Config.ListTenants()
 	if err != nil {
 		log.Warnf("Could not locate any tenant information; sleeping from error: %v.", err)
 		return
 	}
 
 	for _, tenant := range tenants {
-		volumes, err := config.ListVolumes(tenant)
+		volumes, err := dc.Config.ListVolumes(tenant)
 		if err != nil {
 			log.Warnf("Could not list volumes for tenant %q: sleeping.", tenant)
 			return
 		}
 
-		dispatch(&volumeDispatch{config, tenant, volumes})
+		dispatch(&volumeDispatch{dc, tenant, volumes})
 	}
 }
