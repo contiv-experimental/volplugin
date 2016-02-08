@@ -4,7 +4,7 @@
 - name: download serf binary
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://dl.bintray.com/mitchellh/serf/0.6.4_linux_amd64.zip
+    url: https://releases.hashicorp.com/serf/0.6.4/serf_0.6.4_linux_amd64.zip
     dest: /tmp/0.6.4_linux_amd64.zip
   tags:
     - prebake-for-dev
