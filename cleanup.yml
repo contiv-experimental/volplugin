@@ -9,6 +9,9 @@
     - include_vars: roles/{{ item }}/vars/main.yml
       with_items:
       - "etcd"
+    - include_vars: roles/{{ item }}/defaults/main.yml
+      with_items:
+      - "ucp"
     - include: roles/contiv_network/tasks/cleanup.yml
       ignore_errors: yes
     - include: roles/contiv_storage/tasks/cleanup.yml
@@ -16,6 +19,8 @@
     - include: roles/contiv_cluster/tasks/cleanup.yml
       ignore_errors: yes
     - include: roles/swarm/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/ucp/tasks/cleanup.yml
       ignore_errors: yes
     - include: roles/docker/tasks/cleanup.yml
       ignore_errors: yes

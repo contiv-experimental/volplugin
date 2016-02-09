@@ -1,0 +1,4 @@
+---
+# Role defaults for contiv_scheduler
+
+scheduler_provider: "native-swarm" # Accepted values: native-swarm, ucp-swarm

@@ -20,20 +20,34 @@
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/netplugin/releases/download/v0.0.0-12-11-2015.20-54-40.UTC/netplugin-v0.0.0-12-11-2015.20-54-40.UTC.tar.bz2
+    url: https://github.com/contiv/netplugin/releases/download/v0.1-02-06-2016.14-42-05.UTC/netplugin-v0.1-02-06-2016.14-42-05.UTC.tar.bz2
     dest: /tmp/contivnet.tar.bz2
+
+- name: ensure netplugin directory exists
+  file: path=/usr/bin/contiv/netplugin state=directory
 
 - name: install netmaster and netplugin
   shell: tar vxjf /tmp/contivnet.tar.bz2
   args:
-    chdir: /usr/bin/
+    chdir: /usr/bin/contiv/netplugin
     creates: netmaster
+
+- name: create links for netplugin binaries
+  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link
+  with_items:
+    - netctl
+    - netmaster
+    - netplugin
+    - contivk8s
 
 - name: copy environment file for netplugin
   template: src=netplugin.j2 dest=/etc/default/netplugin
 
 - name: copy systemd units for netplugin
   copy: src=netplugin.service dest=/etc/systemd/system/netplugin.service
+
+- name: copy bash auto complete file for netctl
+  file: src=/usr/bin/contiv/netplugin/contrib/completion/bash/netctl dest=/etc/bash_completion.d/netctl state=link
 
 - name: start netplugin
   shell: systemctl daemon-reload && systemctl start netplugin
@@ -59,12 +73,12 @@
 - name: download contivctl
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/contivctl/releases/download/v0.0.0-01-14-2016.01-27-38.UTC/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
-    dest: /tmp/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
+    url: https://github.com/contiv/contivctl/releases/download/v0.0.0-01-31-2016.17-56-53.UTC/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
+    dest: /tmp/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
     force: no
 
 - name: install contivctl
-  shell: tar vxjf /tmp/contivctl-v0.0.0-01-14-2016.01-27-38.UTC.tar.bz2
+  shell: tar vxjf /tmp/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
   args:
     chdir: /usr/bin/
     creates: contivctl
