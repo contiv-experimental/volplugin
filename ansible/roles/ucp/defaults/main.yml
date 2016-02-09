@@ -1,0 +1,9 @@
+---
+# Role defaults for ucp
+
+ucp_version: "0.7.1"
+ucp_local_dir: "fetch/ucp"
+ucp_remote_dir: "/tmp"
+ucp_instance_id_file: "ucp-instance-id"
+ucp_fingerprint_file: "ucp-fingerprint"
+ucp_fifo_file: "ucp-fifo"

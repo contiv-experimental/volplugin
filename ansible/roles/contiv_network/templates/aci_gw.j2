@@ -11,10 +11,10 @@ start)
     set -e
 
     /usr/bin/docker run --net=host \
-    -e "APIC_URL: {{ apic_url }}" \
-    -e "APIC_USERNAME: {{ apic_username }}" \
-    -e "APIC_PASSWORD: {{ apic_password }}" \
-    -e "APIC_LEAF_NODE: {{ apic_leaf_nodes }}" \
+    -e "APIC_URL={{ apic_url }}" \
+    -e "APIC_USERNAME={{ apic_username }}" \
+    -e "APIC_PASSWORD={{ apic_password }}" \
+    -e "APIC_LEAF_NODE={{ apic_leaf_nodes }}" \
     --name=contiv-aci-gw \
     contiv/aci-gw
     ;;

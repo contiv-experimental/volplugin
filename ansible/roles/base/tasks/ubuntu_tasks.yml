@@ -18,6 +18,7 @@
     - perl
     - librbd-dev
     - lshw
+    - bash-completion
 
 - name: add ansible apt repository (debian)
   apt_repository:
