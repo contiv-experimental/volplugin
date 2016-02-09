@@ -1,7 +1,7 @@
 - name: download consul binary
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://dl.bintray.com/mitchellh/consul/0.5.2_linux_amd64.zip
+    url: https://releases.hashicorp.com/consul/0.5.2/consul_0.5.2_linux_amd64.zip
     dest: /tmp/consul.zip
 
 - name: install consul

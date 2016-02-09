@@ -23,6 +23,7 @@ ansible_tags =  ENV["CONTIV_ANSIBLE_TAGS"] || "prebake-for-dev"
 ansible_extra_vars = {
     "env" => host_env,
     "validate_certs" => "no",
+    "control_interface" => "eth1",
 }
 
 puts "Host environment: #{host_env}"
