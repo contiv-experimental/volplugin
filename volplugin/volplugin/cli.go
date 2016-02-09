@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/volplugin"
@@ -24,11 +23,6 @@ func main() {
 	app.Version = ""
 	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:   "debug",
-			Usage:  "Turn on debug logging",
-			EnvVar: "DEBUG",
-		},
 		cli.StringFlag{
 			Name:   "master",
 			Usage:  "Set the volmaster host:port",
@@ -41,16 +35,6 @@ func main() {
 			EnvVar: "HOSTLABEL",
 			Value:  host,
 		},
-		cli.IntFlag{
-			Name:  "ttl",
-			Usage: "Set the timeout for refreshing mount point data to the volmaster",
-			Value: 300,
-		},
-		cli.IntFlag{
-			Name:  "timeout",
-			Usage: "Set timeout for ceph commands; in minutes",
-			Value: 5,
-		},
 	}
 	app.Action = run
 
@@ -62,11 +46,8 @@ func main() {
 
 func run(ctx *cli.Context) {
 	dc := &volplugin.DaemonConfig{
-		Debug:   ctx.Bool("debug"),
-		TTL:     ctx.Int("ttl"),
-		Master:  ctx.String("master"),
-		Host:    ctx.String("host-label"),
-		Timeout: time.Duration(ctx.Int("timeout")) * time.Minute,
+		Master: ctx.String("master"),
+		Host:   ctx.String("host-label"),
 	}
 
 	if err := dc.Daemon(); err != nil {

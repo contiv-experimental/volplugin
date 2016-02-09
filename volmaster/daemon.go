@@ -24,6 +24,7 @@ type DaemonConfig struct {
 	Config   *config.TopLevelConfig
 	MountTTL int
 	Timeout  time.Duration
+	Global   *config.Global
 }
 
 // volume is the json response of a volume. Taken from
@@ -47,6 +48,23 @@ type volumeGet struct {
 
 // Daemon initializes the daemon for use.
 func (d *DaemonConfig) Daemon(debug bool, listen string) {
+	global, err := d.Config.GetGlobal()
+	if err != nil {
+		log.Errorf("Error fetching global configuration: %v", err)
+		log.Infof("No global configuration. Proceeding with defaults...")
+		global = &config.Global{TTL: config.DefaultGlobalTTL}
+	}
+
+	d.Global = global
+
+	activity := make(chan *config.Global)
+	go d.Config.WatchGlobal(activity)
+	go func() {
+		for {
+			d.Global = <-activity
+		}
+	}()
+
 	r := mux.NewRouter()
 
 	postRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -59,19 +77,20 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	for path, f := range postRouter {
-		r.HandleFunc(path, logHandler(path, debug, f)).Methods("POST")
+		r.HandleFunc(path, logHandler(path, global.Debug, f)).Methods("POST")
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/list":                  d.handleList,
 		"/get/{tenant}/{volume}": d.handleGet,
+		"/global":                d.handleGlobal,
 	}
 
 	for path, f := range getRouter {
-		r.HandleFunc(path, logHandler(path, debug, f)).Methods("GET")
+		r.HandleFunc(path, logHandler(path, global.Debug, f)).Methods("GET")
 	}
 
-	if debug {
+	if d.Global.Debug {
 		r.HandleFunc("{action:.*}", d.handleDebug)
 	}
 
@@ -101,6 +120,15 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stderr, r.Body)
 	w.WriteHeader(404)
+}
+
+func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
+	content, err := json.Marshal(d.Global)
+	if err != nil {
+		httpError(w, "Marshalling global configuration", err)
+	}
+
+	w.Write(content)
 }
 
 func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +215,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	defer d.Config.RemoveUse(uc, false)
 
-	if err := removeVolume(vc, d.Timeout); err != nil {
+	if err := removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
 		httpError(w, "removing image", err)
 		return
 	}
@@ -228,7 +256,7 @@ func (d *DaemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Req
 
 	req.Reason = "Mount"
 
-	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.MountTTL)*time.Second, exist); err != nil {
+	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.Global.TTL)*time.Second, exist); err != nil {
 		return err
 	}
 
@@ -326,7 +354,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		do, err := createVolume(tenant, volConfig, d.Timeout)
+		do, err := createVolume(tenant, volConfig, time.Duration(d.Global.Timeout)*time.Second)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			goto finish

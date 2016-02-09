@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -193,7 +194,7 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request) {
+func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {

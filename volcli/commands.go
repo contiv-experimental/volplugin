@@ -29,6 +29,27 @@ var GlobalFlags = []cli.Flag{
 // for volcli.
 var Commands = []cli.Command{
 	{
+		Name:  "global",
+		Usage: "Manage Global Configuration",
+		Subcommands: []cli.Command{
+			{
+				Name:        "upload",
+				ArgsUsage:   "accepts configuration from stdin",
+				Description: "Uploads a the global configuration to etcd. Accepts JSON.",
+				Usage:       "Upload a tenant to etcd",
+				Action:      GlobalUpload,
+			},
+			{
+				Name:        "get",
+				Flags:       VolmasterFlags,
+				ArgsUsage:   "[tenant name]",
+				Usage:       "Obtain the global configuration",
+				Description: "Gets the global configuration from etcd",
+				Action:      GlobalGet,
+			},
+		},
+	},
+	{
 		Name:  "tenant",
 		Usage: "Manage Tenants",
 		Subcommands: []cli.Command{
