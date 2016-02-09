@@ -22,7 +22,7 @@ func start(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
-	volmaster.Daemon(cfg, ctx.Int("ttl"), ctx.Bool("debug"), ctx.String("listen"))
+	volmaster.Daemon(cfg, ctx.Int("ttl"), ctx.Int("timeout"), ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {
@@ -56,6 +56,11 @@ func main() {
 			Name:  "ttl",
 			Usage: "Set ttl of written locks; in seconds",
 			Value: 300,
+		},
+		cli.IntFlag{
+			Name:  "timeout",
+			Usage: "Set timeout for ceph commands; in minutes",
+			Value: 5,
 		},
 	}
 

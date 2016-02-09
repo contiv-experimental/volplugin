@@ -1,6 +1,9 @@
 package storage
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var (
 	// ErrVolumeExist indicates that a volume already exists.
@@ -30,6 +33,7 @@ type FSOptions struct {
 type DriverOptions struct {
 	Volume
 	FSOptions
+	Timeout time.Duration
 	Options map[string]string
 }
 
@@ -83,5 +87,5 @@ type Driver interface {
 
 	// ShowMapped shows any volumes that belong to volplugin on the host, in
 	// their native representation. They yield a *Mount.
-	Mounted() ([]*Mount, error)
+	Mounted(time.Duration) ([]*Mount, error)
 }

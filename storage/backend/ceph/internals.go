@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
@@ -21,7 +22,8 @@ type rbdMap map[string]struct {
 func (c *Driver) lockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
-	er, err := executor.New(exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName)).Run()
+	cmd := exec.Command("rbd", "lock", "add", do.Volume.Name, do.Volume.Name, "--pool", poolName)
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return fmt.Errorf("Could not acquire lock for %q: %v (%v)", do.Volume.Name, er, err)
 	}
@@ -32,7 +34,8 @@ func (c *Driver) lockImage(do storage.DriverOptions) error {
 func (c *Driver) unlockImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
-	er, err := executor.New(exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName)).Run()
+	cmd := exec.Command("rbd", "lock", "--format", "json", "list", do.Volume.Name, "--pool", poolName)
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return fmt.Errorf("Error running `rbd lock list` for volume %q: %v (%v)", do.Volume.Name, er, err)
 	}
@@ -44,7 +47,8 @@ func (c *Driver) unlockImage(do storage.DriverOptions) error {
 	}
 
 	if _, ok := locks[do.Volume.Name]; ok {
-		er, err := executor.New(exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName)).Run()
+		cmd = exec.Command("rbd", "lock", "remove", do.Volume.Name, do.Volume.Name, locks[do.Volume.Name]["locker"], "--pool", poolName)
+		er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 		if err != nil || er.ExitStatus != 0 {
 			return fmt.Errorf("Error releasing lock on volume %q: %v (%v)", do.Volume.Name, er, err)
 		}
@@ -64,14 +68,16 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 		return "", err
 	}
 
-	er, err := executor.New(exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)).Run()
+	cmd := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return "", fmt.Errorf("Could not map %q: %v (%v)", do.Volume.Name, er, err)
 	}
 
 	var device string
 
-	er, err = executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
+	cmd = exec.Command("rbd", "showmapped", "--format", "json")
+	er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
 	}
@@ -98,9 +104,10 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	return device, nil
 }
 
-func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
+func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) error {
 	// Create ext4 filesystem on the device. this will take a while
-	er, err := executor.New(exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))).Run()
+	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
+	er, err := executor.NewWithTimeout(cmd, timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
@@ -111,7 +118,8 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string) error {
 func (c *Driver) unmapImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
-	er, err := executor.New(exec.Command("rbd", "showmapped", "--format", "json")).Run()
+	cmd := exec.Command("rbd", "showmapped", "--format", "json")
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
 		return fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
 	}

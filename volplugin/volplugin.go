@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -20,10 +21,11 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Debug  bool
-	TTL    int
-	Master string
-	Host   string
+	Debug   bool
+	TTL     int
+	Master  string
+	Host    string
+	Timeout time.Duration
 }
 
 // VolumeRequest is taken from
@@ -121,7 +123,7 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 
 func (dc *DaemonConfig) updateMounts() error {
 	cd := ceph.NewDriver()
-	mounts, err := cd.Mounted()
+	mounts, err := cd.Mounted(dc.Timeout)
 	if err != nil {
 		return err
 	}

@@ -71,6 +71,15 @@ func New(cmd *exec.Cmd) *Executor {
 	}
 }
 
+// NewWithTimeout creates a new executor from an *exec.Cmd and a timeout.
+// You may modify the values before calling Start(). See Executor for
+// more information.
+func NewWithTimeout(cmd *exec.Cmd, timeout time.Duration) *Executor {
+	exec := New(cmd)
+	exec.SetTimeout(timeout)
+	return exec
+}
+
 func (e *Executor) String() string {
 	return fmt.Sprintf("%v (%v) (pid: %v)", e.command.Args, e.command.Path, e.PID())
 }

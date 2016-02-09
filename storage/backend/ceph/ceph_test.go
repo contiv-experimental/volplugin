@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	. "testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -156,6 +157,7 @@ func (s *cephSuite) TestMounted(c *C) {
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
+		Timeout:   2 * time.Minute,
 	}
 
 	// we don't care if there's an error here, just want to make sure the create
@@ -167,7 +169,7 @@ func (s *cephSuite) TestMounted(c *C) {
 	c.Assert(driver.Format(driverOpts), IsNil)
 	_, err := driver.Mount(driverOpts)
 	c.Assert(err, IsNil)
-	mounts, err := driver.Mounted()
+	mounts, err := driver.Mounted(2 * time.Minute)
 	c.Assert(err, IsNil)
 
 	c.Assert(mounts, DeepEquals, []*storage.Mount{

@@ -3,6 +3,7 @@ package volmaster
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
@@ -17,7 +18,7 @@ func joinVolumeName(config *config.VolumeConfig) string {
 	return strings.Join([]string{config.TenantName, config.VolumeName}, ".")
 }
 
-func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) (storage.DriverOptions, error) {
+func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
@@ -50,6 +51,7 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig) (sto
 			Type:          config.Options.FileSystem,
 			CreateCommand: fscmd,
 		},
+		Timeout: timeout,
 	}
 
 	log.Infof("Creating volume %q (pool %q) with size %d", joinVolumeName(config), config.Options.Pool, actualSize)
@@ -66,7 +68,7 @@ func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
 	return ceph.NewDriver().Format(do)
 }
 
-func removeVolume(config *config.VolumeConfig) error {
+func removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
 	driver := ceph.NewDriver()
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
@@ -75,6 +77,7 @@ func removeVolume(config *config.VolumeConfig) error {
 				"pool": config.Options.Pool,
 			},
 		},
+		Timeout: timeout,
 	}
 
 	log.Infof("Destroying volume %q (pool %q)", joinVolumeName(config), config.Options.Pool)
