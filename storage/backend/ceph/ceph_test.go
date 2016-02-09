@@ -63,6 +63,17 @@ func (s *cephSuite) readWriteTest(c *C, mountDir string) {
 	c.Assert(rbs, Equals, strings.TrimSpace("Test string"))
 }
 
+func (s *cephSuite) TestMkfsVolume(c *C) {
+	// Create a new driver; the ceph driver is needed
+	driver := Driver{}
+
+	err := driver.mkfsVolume("echo %s; sleep 1", "fake-fake-fake", 3*time.Second)
+	c.Assert(err, IsNil)
+
+	err = driver.mkfsVolume("echo %s; sleep 2", "fake-fake-fake", 1*time.Second)
+	c.Assert(err, NotNil)
+}
+
 func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
 	driver := NewDriver()
