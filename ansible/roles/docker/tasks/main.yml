@@ -1,9 +1,21 @@
 ---
 # This role contains tasks for configuring and starting docker service
 
-# XXX: figure a way to download a specific docker version
-- name: install docker
-  shell: creates=/usr/bin/docker curl https://get.docker.com | bash
+- name: install docker (debian)
+  shell: curl https://get.docker.com | sed 's/docker-engine/--force-yes docker-engine={{ docker_version }}-0~{{ ansible_distribution_release }}/' | bash
+  when: ansible_os_family == "Debian"
+  tags:
+    - prebake-for-dev
+
+- name: remove docker (redhat)
+  yum: name=docker-engine state=absent
+  when: ansible_os_family == "RedHat"
+  tags:
+    - prebake-for-dev
+
+- name: install docker (redhat)
+  shell: curl https://get.docker.com | sed 's/docker-engine/docker-engine-{{ docker_version }}/' | bash
+  when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev
 
