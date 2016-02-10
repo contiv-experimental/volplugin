@@ -142,4 +142,4 @@ release: tar
 	@make clean-tar
 
 vendor-ansible:
-	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD
+	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD --squash
