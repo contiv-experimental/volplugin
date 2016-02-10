@@ -227,6 +227,7 @@ func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *ht
 
 		actualSize, err := volConfig.Options.ActualSize()
 		if err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Computing size of volume", err)
 			return
 		}
@@ -246,11 +247,13 @@ func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *ht
 
 		mc, err := driver.Mount(driverOpts)
 		if err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
 		if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Applying cgroups", err)
 			return
 		}
