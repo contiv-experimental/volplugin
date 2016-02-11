@@ -141,6 +141,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
 
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+        vb.customize ['modifyvm', :id, '--paravirtprovider', "kvm"]
 
         override.vm.provision "shell" do |s|
           s.inline = shell_provision
