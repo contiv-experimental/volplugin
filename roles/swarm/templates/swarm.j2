@@ -8,13 +8,12 @@ fi
 
 case $1 in
 start)
-    echo starting swarm as {{ run_as }} on {{ node_name }}[{{ node_addr }}]
-    if [[ "{{ run_as }}" == "master" ]]; then
-        /usr/bin/swarm join --advertise={{ node_addr }}:{{ docker_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }} &
-        /usr/bin/swarm manage -H tcp://{{ node_addr }}:{{ swarm_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }}
-    else
-        /usr/bin/swarm join --advertise={{ node_addr }}:{{ docker_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }}
-    fi
+    echo starting swarm on {{ node_name }}[{{ node_addr }}]
+    {% if swarm_bootstrap_node_addr == node_addr -%}
+    /usr/bin/swarm manage -H tcp://{{ node_addr }}:{{ swarm_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }} &
+    {% endif %}
+
+    /usr/bin/swarm join --advertise={{ node_addr }}:{{ docker_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }}
     ;;
 
 *)
