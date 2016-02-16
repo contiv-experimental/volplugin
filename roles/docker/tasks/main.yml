@@ -1,21 +1,28 @@
 ---
 # This role contains tasks for configuring and starting docker service
 
+- name: check docker version
+  shell: docker --version
+  register: docker_installed_version
+  ignore_errors: yes
+  tags:
+    - prebake-for-dev
+
 - name: install docker (debian)
   shell: curl https://get.docker.com | sed 's/docker-engine/--force-yes docker-engine={{ docker_version }}-0~{{ ansible_distribution_release }}/' | bash
-  when: ansible_os_family == "Debian"
+  when: (ansible_os_family == "Debian") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
   tags:
     - prebake-for-dev
 
 - name: remove docker (redhat)
   yum: name=docker-engine state=absent
-  when: ansible_os_family == "RedHat"
+  when: (ansible_os_family == "RedHat") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
   tags:
     - prebake-for-dev
 
 - name: install docker (redhat)
   shell: curl https://get.docker.com | sed 's/docker-engine/docker-engine-{{ docker_version }}/' | bash
-  when: ansible_os_family == "RedHat"
+  when: (ansible_os_family == "RedHat") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
   tags:
     - prebake-for-dev
 
