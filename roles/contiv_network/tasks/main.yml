@@ -20,20 +20,21 @@
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/netplugin/releases/download/v0.1-02-06-2016.14-42-05.UTC/netplugin-v0.1-02-06-2016.14-42-05.UTC.tar.bz2
-    dest: /tmp/contivnet.tar.bz2
+    url: "{{ contiv_network_src_file }}"
+    dest: "{{ contiv_network_dest_file }}" 
+  register: download_result
 
 - name: ensure netplugin directory exists
   file: path=/usr/bin/contiv/netplugin state=directory
 
 - name: install netmaster and netplugin
-  shell: tar vxjf /tmp/contivnet.tar.bz2
+  shell: tar vxjf {{ contiv_network_dest_file }}
   args:
     chdir: /usr/bin/contiv/netplugin
-    creates: netmaster
+  when: download_result | changed 
 
 - name: create links for netplugin binaries
-  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link
+  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link force=yes
   with_items:
     - netctl
     - netmaster
