@@ -10,42 +10,42 @@ case $1 in
 start)
     set -e
 
-    echo starting ucp as {{ run_as }} on {{ node_name }}[{{ node_addr }}]
+    echo starting ucp on {{ node_name }}[{{ node_addr }}]
 
-    if [[ "{{ run_as }}" == "master" ]]; then
-        out=$(/usr/bin/docker run --rm -t --name ucp \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            docker/ucp install --host-address={{ node_addr }} \
-              --image-version={{ ucp_version }})
-        echo ${out}
+    {% if ucp_bootstrap_node_addr == node_addr -%}
+    out=$(/usr/bin/docker run --rm -t --name ucp \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        docker/ucp install --host-address={{ node_addr }} \
+          --image-version={{ ucp_version }})
+    echo ${out}
 
-        # copy out the instance ID
-        instanceId=$(echo ${out} | egrep -o 'UCP instance ID: [a-zA-Z0-9:_]*' | \
-            awk --field-separator='UCP instance ID: ' '{print $2}')
-        echo instance-id: $instanceId
-        echo ${instanceId} > "{{ ucp_remote_dir }}"/"{{ ucp_instance_id_file }}"
+    # copy out the instance ID
+    instanceId=$(echo ${out} | egrep -o 'UCP instance ID: [a-zA-Z0-9:_]*' | \
+        awk --field-separator='UCP instance ID: ' '{print $2}')
+    echo instance-id: $instanceId
+    echo ${instanceId} > "{{ ucp_remote_dir }}"/"{{ ucp_instance_id_file }}"
 
-        # copy out the fingerprint.
-        # XXX: we store the output in variable first than redirecting
-        # the output directly to file as we wait on this file to be created. So
-        # redirecting the output let's that task move forward even before the
-        # file contents have been written.
-        # XXX: we need a way for this fingerprint to stick around wherever
-        # contiv/cluster service is running. May be we can save this file on a
-        # distributed filesystem
-        out=$(/usr/bin/docker run --rm -t --name ucp \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            docker/ucp fingerprint)
-        echo ${out} > "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"
-    else
-        /usr/bin/docker run --rm -t --name ucp \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -e UCP_ADMIN_USER="admin" -e UCP_ADMIN_PASSWORD="orca" \
-            docker/ucp join --host-address={{ node_addr }} \
-              --image-version={{ ucp_version }} \
-              --url="https://{{ service_vip }}:443" \
-              --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"`
-    fi
+    # copy out the fingerprint.
+    # XXX: we store the output in variable first than redirecting
+    # the output directly to file as we wait on this file to be created. So
+    # redirecting the output let's that task move forward even before the
+    # file contents have been written.
+    # XXX: we need a way for this fingerprint to stick around wherever
+    # contiv/cluster service is running. May be we can save this file on a
+    # distributed filesystem
+    out=$(/usr/bin/docker run --rm -t --name ucp \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        docker/ucp fingerprint)
+    echo ${out} > "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"
+    {% else -%}
+    /usr/bin/docker run --rm -t --name ucp \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -e UCP_ADMIN_USER="admin" -e UCP_ADMIN_PASSWORD="orca" \
+        docker/ucp join --host-address={{ node_addr }} \
+          --image-version={{ ucp_version }} \
+          --url="https://{{ service_vip }}:443" \
+          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"`
+    {% endif %}
 
     # now just sleep to keep the service up
     mkfifo "{{ ucp_remote_dir }}"/"{{ ucp_fifo_file }}"
