@@ -29,6 +29,7 @@
 
 - name: create a local fetch directory if it doesn't exist
   local_action: file path={{ ucp_local_dir }} state=directory
+  sudo: false
   when: run_as == "master"
 
 - name: wait for ucp files to be created, which ensures the service has started
