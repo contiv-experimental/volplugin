@@ -1,17 +1,17 @@
 ---
 # This role contains tasks for configuring and starting etcd service
 
-- name: download etcd v2.1.1
+- name: download etcd v2.2.5
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/coreos/etcd/releases/download/v2.1.1/etcd-v2.1.1-linux-amd64.tar.gz
-    dest: /tmp/etcd-v2.1.1-linux-amd64.tar.gz
+    url: https://github.com/coreos/etcd/releases/download/v2.2.5/etcd-v2.2.5-linux-amd64.tar.gz
+    dest: /tmp/etcd-v2.2.5-linux-amd64.tar.gz
     force: no
   tags:
     - prebake-for-dev
 
 - name: install etcd
-  shell: creates=/usr/bin/etcd tar vxzf /tmp/etcd-v2.1.1-linux-amd64.tar.gz && mv etcd-v2.1.1-linux-amd64/etcd* /usr/bin
+  shell: creates=/usr/bin/etcd tar vxzf /tmp/etcd-v2.2.5-linux-amd64.tar.gz && mv etcd-v2.2.5-linux-amd64/etcd* /usr/bin
   tags:
     - prebake-for-dev
 
