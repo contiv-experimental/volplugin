@@ -12,3 +12,8 @@ contiv_network_version: "v0.1-02-06-2016.14-42-05.UTC"
 contiv_network_tar_file: "netplugin-{{ contiv_network_version }}.tar.bz2"
 contiv_network_src_file: "https://github.com/contiv/netplugin/releases/download/{{ contiv_network_version }}/{{ contiv_network_tar_file }}"
 contiv_network_dest_file: "/tmp/{{ contiv_network_tar_file }}"
+
+contivctl_version: "v0.0.0-01-31-2016.17-56-53.UTC"
+contivctl_tar_file: "contivctl-{{ contivctl_version }}.tar.bz2"
+contivctl_src_file: "https://github.com/contiv/contivctl/releases/download/{{ contivctl_version }}/{{ contivctl_tar_file }}"
+contivctl_dest_file: "/tmp/{{ contivctl_tar_file }}"
