@@ -71,7 +71,9 @@ func (dc *DaemonConfig) Daemon() error {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	http.Serve(l, dc.configureRouter())
+	srv := http.Server{Handler: dc.configureRouter()}
+	srv.SetKeepAlivesEnabled(false)
+	srv.Serve(l)
 	return l.Close()
 }
 

@@ -7,7 +7,14 @@ import (
 	"github.com/contiv/volplugin/config"
 
 	. "gopkg.in/check.v1"
+
+	log "github.com/Sirupsen/logrus"
 )
+
+func (s *systemtestSuite) TestVolpluginFDLeak(c *C) {
+	log.Info("Running 2000 iterations of `docker volume ls` to ensure no FD exhaustion")
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("set -e; for i in $(seq 0 2000); do docker volume ls; done"), IsNil)
+}
 
 func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
