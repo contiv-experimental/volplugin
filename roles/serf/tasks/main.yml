@@ -5,14 +5,16 @@
   get_url:
     validate_certs: "{{ validate_certs }}"
     url: https://releases.hashicorp.com/serf/0.6.4/serf_0.6.4_linux_amd64.zip
-    dest: /tmp/0.6.4_linux_amd64.zip
+    dest: /tmp/serf_0.6.4_linux_amd64.zip
+    force: no
+  register: download_result
 
 - name: install serf
   unarchive:
     copy: no
-    src: /tmp/0.6.4_linux_amd64.zip
+    src: /tmp/serf_0.6.4_linux_amd64.zip
     dest: /usr/bin
-    creates: /usr/bin/serf
+  when: download_result | changed
 
 - name: copy the serf start/stop script
   template: src=serf.j2 dest=/usr/bin/serf.sh mode=u=rwx,g=rx,o=rx

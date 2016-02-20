@@ -6,11 +6,9 @@
 - hosts: all
   sudo: true
   tasks:
-    - include_vars: roles/{{ item }}/vars/main.yml
-      with_items:
-      - "etcd"
     - include_vars: roles/{{ item }}/defaults/main.yml
       with_items:
+      - "etcd"
       - "ucp"
     - include: roles/contiv_network/tasks/cleanup.yml
       ignore_errors: yes
@@ -36,6 +34,7 @@
     #    - contiv_storage
     #    - contiv_cluster
     #    - swarm
+    #    - ucp
     #    - docker
     #    - etcd
     #    - ucarp
