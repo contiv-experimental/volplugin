@@ -40,11 +40,19 @@ start)
     {% else -%}
     /usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -e UCP_ADMIN_USER="admin" -e UCP_ADMIN_PASSWORD="orca" \
+        -e UCP_ADMIN_USER={{ ucp_admin_user }} -e UCP_ADMIN_PASSWORD={{ ucp_admin_password }} \
         docker/ucp join --host-address={{ node_addr }} \
           --image-version={{ ucp_version }} \
           --url="https://{{ service_vip }}:443" \
+    {% if ucp_replicator1_node is defined and node_addr == ucp_replicator1_node_addr -%}
+          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
+          {{ ucp_controller_replica }}
+    {% if node_addr == ucp_replicator1_node_addr or node_addr == ucp_replicator2_node_addr -%}
+          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
+          {{ ucp_controller_replica }}
+    {% else -%}
           --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"`
+    {% endif %}
     {% endif %}
 
     # now just sleep to keep the service up
@@ -62,9 +70,9 @@ stop)
     docker ps -a | grep 'ucp-' | awk '{print $1}' | xargs docker rm -v
 
     # XXX: do we need to uninstall ucp too?
-    #/usr/bin/docker run --rm -t --name ucp \
-    #    -v /var/run/docker.sock:/var/run/docker.sock \
-    #    docker/ucp uninstall --id=`cat {{ ucp_remote_dir }}/{{ ucp_instance_id_file }}` \
+    /usr/bin/docker run --rm -t --name ucp \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        docker/ucp uninstall --id=`cat {{ ucp_remote_dir }}/{{ ucp_instance_id_file }}`
     ;;
 
 *)

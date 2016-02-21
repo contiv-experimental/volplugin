@@ -15,8 +15,10 @@
   tags:
     - prebake-for-dev
 
+# The second part of the condition avoids reconfiguring master if it was already present in the host-group
 - name: copy the etcd start/stop script
   template: src=etcd.j2 dest=/usr/bin/etcd.sh mode=u=rwx,g=rx,o=rx
+  when: (etcd_init_cluster == true) or (etcd_init_cluster == false and node_addr != etcd_master_addr)
 
 - name: copy systemd units for etcd
   copy: src=etcd.service dest=/etc/systemd/system/etcd.service
