@@ -44,10 +44,7 @@ start)
         docker/ucp join --host-address={{ node_addr }} \
           --image-version={{ ucp_version }} \
           --url="https://{{ service_vip }}:443" \
-    {% if ucp_replicator1_node is defined and node_addr == ucp_replicator1_node_addr -%}
-          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
-          {{ ucp_controller_replica }}
-    {% elif ucp_replicator2_node is defined and node_addr == ucp_replicator2_node_addr -%}
+    {% if run_as is defined and run_as == "master" -%}
           --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
           {{ ucp_controller_replica }}
     {% else -%}
@@ -70,9 +67,9 @@ stop)
     docker ps -a | grep 'ucp-' | awk '{print $1}' | xargs docker rm -v
 
     # XXX: do we need to uninstall ucp too?
-    /usr/bin/docker run --rm -t --name ucp \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        docker/ucp uninstall --id=`cat {{ ucp_remote_dir }}/{{ ucp_instance_id_file }}`
+    #/usr/bin/docker run --rm -t --name ucp \
+    #    -v /var/run/docker.sock:/var/run/docker.sock \
+    #    docker/ucp uninstall --id=`cat {{ ucp_remote_dir }}/{{ ucp_instance_id_file }}`
     ;;
 
 *)
