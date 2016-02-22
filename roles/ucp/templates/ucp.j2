@@ -47,7 +47,7 @@ start)
     {% if ucp_replicator1_node is defined and node_addr == ucp_replicator1_node_addr -%}
           --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
           {{ ucp_controller_replica }}
-    {% if node_addr == ucp_replicator1_node_addr or node_addr == ucp_replicator2_node_addr -%}
+    {% elif ucp_replicator2_node is defined and node_addr == ucp_replicator2_node_addr -%}
           --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
           {{ ucp_controller_replica }}
     {% else -%}
