@@ -25,15 +25,13 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 				c.Assert(s.createVolume(node.GetName(), "tenant1", fmt.Sprintf("test%d", x), nil), IsNil)
 			}
 
-			defer s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true)
-
 			contID := ""
 			var contNode *vagrantssh.TestbedNode
 
 			for _, node := range nodes {
 				wg.Add(1)
 				go func(node vagrantssh.TestbedNode, x int) {
-					log.Infof("Running alpine container on %q", node.GetName())
+					log.Infof("Running alpine container for %d on %q", x, node.GetName())
 
 					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v tenant1/test%d:/mnt alpine sleep 10m", x)); err != nil {
 						errChan <- err
@@ -58,11 +56,19 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 				}
 			}
 			c.Assert(errs, Equals, len(nodes)-1)
-			c.Assert((*contNode).RunCommand(fmt.Sprintf("docker rm -f %s", contID)), IsNil)
+			log.Infof("Removing containers for %d: %s", x, contID)
+			out, err := (*contNode).RunCommandWithOutput(fmt.Sprintf("docker rm -f %s", contID))
+			if err != nil {
+				log.Error(out)
+			}
+			c.Assert(err, IsNil)
 		}(nodes, x)
 	}
 
 	outwg.Wait()
+	for x := 0; x < 10; x++ {
+		c.Assert(s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true), IsNil)
+	}
 }
 
 func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
@@ -96,7 +102,8 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 			for i := 0; i < len(nodes); i++ {
 				select {
-				case <-errChan:
+				case err := <-errChan:
+					log.Errorf("Processing %d: %v", x, err)
 					errs++
 				default:
 				}
@@ -104,8 +111,11 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 			c.Assert(errs, Equals, 0)
 		}(nodes, x)
-		defer s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true)
 	}
 
 	outwg.Wait()
+
+	for x := 0; x < 10; x++ {
+		c.Assert(s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true), IsNil)
+	}
 }
