@@ -40,16 +40,24 @@ func (s *systemtestSuite) readIntent(fn string) (*config.TenantConfig, error) {
 	return cfg, nil
 }
 
-func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool) {
+func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool) error {
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
 	s.vagrant.GetNode(host).RunCommand(fmt.Sprintf("docker volume rm %s/%s", tenant, name))
 
-	if purgeCeph {
-		s.volcli(fmt.Sprintf("volume remove %s/%s", tenant, name))
-		s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", tenant, name))
+	defer func() {
+		if purgeCeph {
+			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", tenant, name))
+		}
+	}()
+
+	if out, err := s.volcli(fmt.Sprintf("volume remove %s/%s", tenant, name)); err != nil {
+		log.Error(out)
+		return err
 	}
+
+	return nil
 }
 
 func (s *systemtestSuite) purgeVolumeHost(tenant, host string, purgeCeph bool) {

@@ -1,10 +1,8 @@
 package ceph
 
 import (
-	"encoding/json"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	. "testing"
 	"time"
@@ -198,25 +196,6 @@ func (s *cephSuite) TestMounted(c *C) {
 		},
 	})
 
-	output, err := exec.Command("sudo", "rbd", "lock", "--format", "json", "list", driverOpts.Volume.Name, "--pool", "rbd").Output()
-	c.Assert(err, IsNil)
-
-	locks := map[string]map[string]string{}
-	c.Assert(json.Unmarshal(output, &locks), IsNil)
-
-	_, ok := locks[driverOpts.Volume.Name]
-	c.Assert(ok, Equals, true)
-
 	c.Assert(driver.Unmount(driverOpts), IsNil)
-
-	output, err = exec.Command("sudo", "rbd", "lock", "--format", "json", "list", driverOpts.Volume.Name, "--pool", "rbd").Output()
-	c.Assert(err, IsNil)
-
-	locks = map[string]map[string]string{}
-	c.Assert(json.Unmarshal(output, &locks), IsNil)
-
-	_, ok = locks[driverOpts.Volume.Name]
-	c.Assert(ok, Equals, false)
-
 	c.Assert(driver.Destroy(driverOpts), IsNil)
 }
