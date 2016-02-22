@@ -44,7 +44,7 @@ start)
         docker/ucp join --host-address={{ node_addr }} \
           --image-version={{ ucp_version }} \
           --url="https://{{ service_vip }}:443" \
-    {% if run_as is defined and run_as == "master" -%}
+    {% if run_as == "master" -%}
           --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
           {{ ucp_controller_replica }}
     {% else -%}
