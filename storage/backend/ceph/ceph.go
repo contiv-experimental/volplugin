@@ -299,7 +299,7 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 		return nil, err
 	}
 
-	mapped, err := getMapped(timeout)
+	mapped, err := c.getMapped(timeout)
 	if err != nil {
 		return nil, err
 	}
