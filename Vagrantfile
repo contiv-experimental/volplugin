@@ -52,14 +52,16 @@ ansible_provision = proc do |ansible|
   # In a production deployment, these should be secret
   ansible.extra_vars = {
     docker_version: "1.10.2",
+    swarm_bootstrap_node_name: "mon0",
     docker_device: "/dev/sdb",
+    docker_version: "1.10.2",
     etcd_peers_group: 'volplugin-test',
     env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
     control_interface: "enp0s8",
-    netplugin_if: "enp0s8",
+    netplugin_if: "enp0s9",
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdc', '/dev/sdd' ]",
@@ -99,6 +101,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
+          override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.2#{i}", auto_config: false
           v.vmx["scsi0:1.present"] = 'TRUE'
           v.vmx["scsi0:1.fileName"] = create_vmdk("docker-#{i}", '11000MB')
 
@@ -117,7 +120,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 sudo ip link set dev ens33 down
                 sudo ip link set dev ens33 name enp0s8
                 sudo ip link set dev enp0s8 up
-                sudo dhclient enp0s8
+                sudo dhclient -pf /var/run/dhcp-enp0s8.pid enp0s8
+              fi
+              if sudo ip link | grep -q ens34
+              then
+                sudo ip link set dev ens34 down
+                sudo ip link set dev ens34 name enp0s9
+                sudo ip link set dev enp0s9 up
+                sudo dhclient -pf /var/run/dhcp-enp0s9.pid enp0s9
               fi
             EOF
             s.args = []
@@ -130,6 +140,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       mon.vm.provider :virtualbox do |vb, override|
         override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
+        override.vm.network :private_network, ip: "#{SUBNET}.2#{i}", virtualbox__intnet: true
 
         vb.customize ['createhd',
                       '--filename', "docker-#{i}",
