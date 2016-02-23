@@ -12,7 +12,6 @@
   environment: '{{ env }}'
   roles:
   - { role: base }
-  - { role: serf }
   - { role: dev }
   - { role: test }
 
@@ -29,6 +28,16 @@
   - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }
   - { role: swarm, run_as: master }
   - { role: contiv_network, run_as: master }
+
+# cluster-node hosts corresponds to the hosts that shall be managed by cluster manager.
+# This host group shall provision a host with all required packages needed to make
+# the node ready to be managed by cluster-manager
+- hosts: cluster-node
+  sudo: true
+  environment: '{{ env }}'
+  roles:
+  - { role: base }
+  - { role: serf }
 
 # cluster-control hosts corresponds to the first machine in the cluster that is provisioned
 # to bootstrap the cluster by starting cluster manager and inventory database (collins)

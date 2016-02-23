@@ -22,15 +22,16 @@
 - name: download clusterm
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/cluster/releases/download/v0.0.0-01-05-2016.22-21-32.UTC/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
-    dest: /tmp/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
+    url: "{{ contiv_cluster_src_file }}" 
+    dest: "{{ contiv_cluster_dest_file }}"
     force: no
+  register: download_result
 
 - name: install clusterm
-  shell: tar vxjf /tmp/cluster-v0.0.0-01-05-2016.22-21-32.UTC.tar.bz2
+  shell: tar vxjf {{ contiv_cluster_dest_file }} 
   args:
     chdir: /usr/bin/
-    creates: clusterm
+  when: download_result | changed 
 
 - name: copy environment file for clusterm
   copy: src=clusterm dest=/etc/default/clusterm

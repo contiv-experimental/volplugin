@@ -2,3 +2,4 @@
 # role variable for the swarm service
 #
 swarm_api_port: 2375
+swarm_bootstrap_node_addr: ""

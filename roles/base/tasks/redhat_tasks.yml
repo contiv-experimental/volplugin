@@ -40,4 +40,6 @@
   when: '"Error unpacking rpm package python2-crypto-" in python_crypto_result.msg'
 
 - name: install ansible (redhat)
-  yum: name=ansible state=present
+  yum:
+    name: http://ftp.gnome.org/mirror/fedora/epel/testing/7/x86_64/a/ansible-2.0.0.2-1.el7.noarch.rpm
+    state: present
