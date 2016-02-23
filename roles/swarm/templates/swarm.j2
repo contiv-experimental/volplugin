@@ -8,9 +8,9 @@ fi
 
 case $1 in
 start)
-    echo starting swarm on {{ node_name }}[{{ node_addr }}]
-    {% if swarm_bootstrap_node_addr == node_addr -%}
-    /usr/bin/swarm manage -H tcp://{{ node_addr }}:{{ swarm_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }} &
+    echo starting swarm as on {{ node_name }}[{{ node_addr }}]
+    {% if swarm_bootstrap_node_name == node_name %}
+        /usr/bin/swarm manage -H tcp://{{ node_addr }}:{{ swarm_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }} &
     {% endif %}
 
     /usr/bin/swarm join --advertise={{ node_addr }}:{{ docker_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }}
