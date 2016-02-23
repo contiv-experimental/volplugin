@@ -30,25 +30,9 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 
 	var device string
 
-	for { // ugly
-		cmd = exec.Command("rbd", "showmapped", "--format", "json")
-		er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
-		if er != nil && er.ExitStatus == 3072 {
-			log.Warnf("Could not show mapped volumes for %v, retrying...", do.Volume.Name)
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			break
-		}
-	}
-
-	if err != nil || er.ExitStatus != 0 {
-		return "", fmt.Errorf("Could not show mapped volumes: %v (%v)", err, er)
-	}
-
-	rbdmap := rbdMap{}
-
-	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		return "", fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+	rbdmap, err := c.showMapped(do.Timeout)
+	if err != nil {
+		return "", err
 	}
 
 	for i := range rbdmap {
@@ -81,36 +65,20 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) err
 func (c *Driver) unmapImage(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
-	var (
-		er  *executor.ExecResult
-		err error
-	)
-
-	for { // ugly
-		cmd := exec.Command("rbd", "showmapped", "--format", "json")
-		er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
-		if er != nil && er.ExitStatus == 3072 {
-			log.Warnf("Could not show mapped volumes for %v, retrying...", do.Volume.Name)
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			break
-		}
-	}
-
-	rbdmap := rbdMap{}
-
-	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		return fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+	rbdmap, err := c.showMapped(do.Timeout)
+	if err != nil {
+		return err
 	}
 
 	for i := range rbdmap {
 		if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
 			for {
 				log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbdmap[i].Device))
-				er, err = executor.New(exec.Command("rbd", "unmap", rbdmap[i].Device)).Run()
+				er, err := executor.New(exec.Command("rbd", "unmap", rbdmap[i].Device)).Run()
 				if err != nil || er.ExitStatus != 0 {
 					log.Errorf("Could not unmap volume %q (device %q): %v (%v)", do.Volume.Name, rbdmap[i].Device, er, err)
 					if er.ExitStatus == 4096 {
+						log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbdmap[i].Device)
 						time.Sleep(100 * time.Millisecond)
 						continue
 					}
@@ -125,4 +93,53 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 	}
 
 	return nil
+}
+
+func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {
+	var (
+		er  *executor.ExecResult
+		err error
+	)
+
+	for { // ugly
+		cmd := exec.Command("rbd", "showmapped", "--format", "json")
+		er, err = executor.NewWithTimeout(cmd, timeout).Run()
+		if err != nil || er.ExitStatus == 3072 {
+			log.Warnf("Could not show mapped volumes. Retrying")
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			break
+		}
+	}
+
+	rbdmap := rbdMap{}
+
+	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
+		return nil, fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+	}
+
+	return rbdmap, nil
+}
+
+func (c *Driver) getMapped(timeout time.Duration) ([]*storage.Mount, error) {
+	rbdmap, err := c.showMapped(timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	mounts := []*storage.Mount{}
+
+	for i := range rbdmap {
+		mounts = append(mounts, &storage.Mount{
+			Device: rbdmap[i].Device,
+			Volume: storage.Volume{
+				Name: strings.Replace(rbdmap[i].Name, ".", "/", -1),
+				Params: map[string]string{
+					"pool": rbdmap[i].Pool,
+				},
+			},
+		})
+	}
+
+	return mounts, nil
 }

@@ -4,12 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
 )
 
@@ -96,40 +93,6 @@ func getMounts() ([]*storage.Mount, error) {
 				// Deliberately omit the volume which will be merged in later.
 			})
 		}
-	}
-
-	return mounts, nil
-}
-
-func getMapped(timeout time.Duration) ([]*storage.Mount, error) {
-	// FIXME unify all these showmapped commands
-	cmd := exec.Command("rbd", "showmapped")
-	er, err := executor.NewWithTimeout(cmd, timeout).Run()
-	if err != nil || er.ExitStatus != 0 {
-		return nil, fmt.Errorf("Could not show mapped volumes: %v (%v)", er, err)
-	}
-
-	mounts := []*storage.Mount{}
-	for i, line := range strings.Split(er.Stdout, "\n") {
-		if i == 0 {
-			continue
-		}
-
-		parts := spaceSplitRegex.Split(line, -1)
-		parts = parts[:len(parts)-1]
-		if len(parts) < 5 {
-			continue
-		}
-
-		mounts = append(mounts, &storage.Mount{
-			Device: parts[4],
-			Volume: storage.Volume{
-				Name: strings.Replace(parts[2], ".", "/", -1),
-				Params: map[string]string{
-					"pool": parts[1],
-				},
-			},
-		})
 	}
 
 	return mounts, nil
