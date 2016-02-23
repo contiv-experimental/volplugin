@@ -28,6 +28,7 @@
   - { role: ceph-mon, mon_group_name: volplugin-test }
   - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }
   - { role: swarm, run_as: master }
+  - { role: contiv_network, run_as: master }
 
 # cluster-control hosts corresponds to the first machine in the cluster that is provisioned
 # to bootstrap the cluster by starting cluster manager and inventory database (collins)
