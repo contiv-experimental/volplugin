@@ -12,7 +12,7 @@ start)
 
     echo starting ucp on {{ node_name }}[{{ node_addr }}]
 
-    {% if ucp_bootstrap_node_addr == node_addr -%}
+    {% if ucp_bootstrap_node_name == node_name -%}
     out=$(/usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
         docker/ucp install --host-address={{ node_addr }} \
