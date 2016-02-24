@@ -103,7 +103,7 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Destroying disk %q: %v", do.Volume.Name, er)
+		return fmt.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stderr)
 	}
 
 	return nil

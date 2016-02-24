@@ -25,7 +25,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	cmd := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)
 	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
-		return "", fmt.Errorf("Could not map %q: %v (%v)", do.Volume.Name, er, err)
+		return "", fmt.Errorf("Could not map %q: %v (%v) (%v)", do.Volume.Name, er, err, er.Stderr)
 	}
 
 	var device string
@@ -76,7 +76,7 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 				log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbdmap[i].Device))
 				er, err := executor.New(exec.Command("rbd", "unmap", rbdmap[i].Device)).Run()
 				if err != nil || er.ExitStatus != 0 {
-					log.Errorf("Could not unmap volume %q (device %q): %v (%v)", do.Volume.Name, rbdmap[i].Device, er, err)
+					log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbdmap[i].Device, er, err, er.Stderr)
 					if er.ExitStatus == 4096 {
 						log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbdmap[i].Device)
 						time.Sleep(100 * time.Millisecond)
