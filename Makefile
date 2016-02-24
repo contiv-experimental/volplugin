@@ -6,6 +6,10 @@ start: install-ansible
 	vagrant up
 	make build
 
+big:
+	BIG=1 vagrant up
+	make build
+
 stop:
 	vagrant destroy -f
 	make clean
@@ -97,6 +101,9 @@ run-build: godep
 system-test: build godep
 	rm -rf Godeps/_workspace/pkg
 	godep go test -v -timeout 240m ./systemtests -check.v
+
+system-test-big:
+	BIG=1 make system-test
 
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'

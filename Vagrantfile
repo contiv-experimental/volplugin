@@ -13,8 +13,13 @@ NMONS        = ENV["VMS"] || settings['vms']
 SUBNET       = settings['subnet']
 BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
-MEMORY       = settings['memory']
+memory       = settings['memory']
 
+if ENV["BIG"]
+  memory = 8192
+end
+
+MEMORY   = memory
 NO_PROXY = '192.168.24.50,192.168.24.10,192.168.24.11,192.168.24.12'
 
 shell_provision = <<-EOF
