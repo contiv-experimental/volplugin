@@ -46,7 +46,7 @@ ansible_provision = proc do |ansible|
 
   # In a production deployment, these should be secret
   ansible.extra_vars = {
-    docker_version: "1.10.1",
+    docker_version: "1.10.2",
     etcd_peers_group: 'volplugin-test',
     env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
