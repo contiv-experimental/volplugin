@@ -1,12 +1,12 @@
-- name: download Golang v1.5.3
+- name: download Golang v1.6
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://storage.googleapis.com/golang/go1.5.3.linux-amd64.tar.gz
-    dest: /tmp/go1.5.3.linux-amd64.tar.gz
+    url: https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
+    dest: /tmp/go1.6.linux-amd64.tar.gz
     force: no
 
 - name: install Golang
-  shell: tar xfvz /tmp/go1.5.3.linux-amd64.tar.gz
+  shell: tar xfvz /tmp/go1.6.linux-amd64.tar.gz
   args:
     chdir: /usr/local/
     creates: /usr/local/go/bin/go
