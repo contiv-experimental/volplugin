@@ -12,8 +12,24 @@ import (
 )
 
 func (s *systemtestSuite) TestVolpluginFDLeak(c *C) {
-	log.Info("Running 2000 iterations of `docker volume ls` to ensure no FD exhaustion")
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("set -e; for i in $(seq 0 2000); do docker volume ls; done"), IsNil)
+	iterations := 2000
+	subIterations := 50
+
+	log.Infof("Running %d iterations of `docker volume ls` to ensure no FD exhaustion", iterations)
+
+	errChan := make(chan error, iterations)
+
+	for i := 0; i < iterations/subIterations; i++ {
+		go func() {
+			for i := 0; i < subIterations; i++ {
+				errChan <- s.vagrant.GetNode("mon0").RunCommand("docker volume ls")
+			}
+		}()
+	}
+
+	for i := 0; i < iterations; i++ {
+		c.Assert(<-errChan, IsNil)
+	}
 }
 
 func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {

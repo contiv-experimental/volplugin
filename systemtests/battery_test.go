@@ -66,9 +66,21 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	}
 
 	outwg.Wait()
+	errChan := make(chan error, 10)
 	for x := 0; x < 10; x++ {
-		c.Assert(s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true), IsNil)
+		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
 	}
+
+	var realErr error
+
+	for x := 0; x < 10; x++ {
+		err := <-errChan
+		if err != nil {
+			realErr = err
+		}
+	}
+
+	c.Assert(realErr, IsNil)
 }
 
 func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
@@ -115,7 +127,19 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 	outwg.Wait()
 
+	errChan := make(chan error, 10)
 	for x := 0; x < 10; x++ {
-		c.Assert(s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true), IsNil)
+		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
 	}
+
+	var realErr error
+
+	for x := 0; x < 10; x++ {
+		err := <-errChan
+		if err != nil {
+			realErr = err
+		}
+	}
+
+	c.Assert(realErr, IsNil)
 }
