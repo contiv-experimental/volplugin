@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/volplugin/cgroup"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
@@ -249,7 +250,7 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+		if err := cgroup.ApplyCGroupRateLimit(volConfig, mc); err != nil {
 			httpError(w, "Applying cgroups", err)
 			return
 		}
