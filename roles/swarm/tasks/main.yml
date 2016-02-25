@@ -1,13 +1,8 @@
 ---
 # This role contains tasks for configuring and starting swarm service
 
-- name: download and install swarm
-  get_url:
-    validate_certs: "{{ validate_certs }}"
-    url: https://cisco.box.com/shared/static/0txiq5h7282hraujk09eleoevptd5jpl
-    dest: /usr/bin/swarm
-    mode: u=rwx,g=rx,o=rx
-    force: no
+- name: download swarm container image
+  shell: docker pull swarm:{{ swarm_version }}
   tags:
     - prebake-for-dev
 
@@ -18,4 +13,4 @@
   copy: src=swarm.service dest=/etc/systemd/system/swarm.service
 
 - name: start swarm
-  shell: systemctl daemon-reload && systemctl start swarm
+  service: name=swarm state=started
