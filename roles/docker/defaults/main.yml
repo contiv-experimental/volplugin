@@ -4,3 +4,6 @@
 docker_api_port: 2385
 docker_version: 1.9.1
 docker_rule_comment: "docker api"
+docker_api_port: 2385
+docker_device: ""
+docker_device_size: "10000MB"

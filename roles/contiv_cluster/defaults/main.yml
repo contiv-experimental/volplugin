@@ -1,7 +1,8 @@
 ---
 # role variable for the cluster manager service
 
-collins_image: contiv/collins:02_25_2016
+collins_image: contiv/collins
+collins_image_version: "02_25_2016"
 collins_host_port: 9000
 collins_guest_port: 9000
 
