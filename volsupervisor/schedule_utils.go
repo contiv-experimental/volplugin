@@ -12,7 +12,7 @@ type volumeDispatch struct {
 	volumes      map[string]*config.VolumeConfig
 }
 
-func iterateVolumes(dc *DaemonConfig, dispatch func(v *volumeDispatch)) {
+func (dc *DaemonConfig) iterateVolumes(dispatch func(v *volumeDispatch)) {
 	tenants, err := dc.Config.ListTenants()
 	if err != nil {
 		log.Warnf("Could not locate any tenant information; sleeping from error: %v.", err)
