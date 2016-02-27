@@ -13,6 +13,11 @@ func (s *configSuite) TestActualSize(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(int(actualSize), Equals, 10)
 
+	vo = &VolumeOptions{Size: "1GB", UseSnapshots: false, Pool: "rbd"}
+	actualSize, err = vo.ActualSize()
+	c.Assert(err, IsNil)
+	c.Assert(int(actualSize), Equals, 1024)
+
 	vo = &VolumeOptions{Size: "0", UseSnapshots: false, Pool: "rbd"}
 	actualSize, err = vo.ActualSize()
 	c.Assert(err, IsNil)
