@@ -11,7 +11,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func wrapSnapshotAction(action func(dc *DaemonConfig, pool string, volume *config.VolumeConfig)) func(*volumeDispatch) {
+func (dc *DaemonConfig) wrapSnapshotAction(action func(pool string, volume *config.VolumeConfig)) func(*volumeDispatch) {
 	return func(v *volumeDispatch) {
 		for _, volume := range v.volumes {
 			duration, err := time.ParseDuration(volume.Options.Snapshot.Frequency)
@@ -21,23 +21,23 @@ func wrapSnapshotAction(action func(dc *DaemonConfig, pool string, volume *confi
 			}
 
 			if volume.Options.UseSnapshots && time.Now().Unix()%int64(duration.Seconds()) == 0 {
-				action(v.daemonConfig, volume.Options.Pool, volume)
+				action(volume.Options.Pool, volume)
 			}
 		}
 	}
 }
 
-func scheduleSnapshotPrune(dc *DaemonConfig) {
+func (dc *DaemonConfig) scheduleSnapshotPrune() {
 	for {
 		log.Debug("Running snapshot prune supervisor")
 
-		iterateVolumes(dc, wrapSnapshotAction(runSnapshotPrune))
+		dc.iterateVolumes(dc.wrapSnapshotAction(dc.runSnapshotPrune))
 
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func runSnapshotPrune(dc *DaemonConfig, pool string, volume *config.VolumeConfig) {
+func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfig) {
 	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
 
 	driver := ceph.NewDriver()
@@ -71,7 +71,7 @@ func runSnapshotPrune(dc *DaemonConfig, pool string, volume *config.VolumeConfig
 	}
 }
 
-func runSnapshot(dc *DaemonConfig, pool string, volume *config.VolumeConfig) {
+func (dc *DaemonConfig) runSnapshot(pool string, volume *config.VolumeConfig) {
 	now := time.Now()
 	log.Infof("Snapping volume %q at %v", volume, now)
 	driver := ceph.NewDriver()
@@ -90,11 +90,11 @@ func runSnapshot(dc *DaemonConfig, pool string, volume *config.VolumeConfig) {
 	}
 }
 
-func scheduleSnapshots(dc *DaemonConfig) {
+func (dc *DaemonConfig) scheduleSnapshots() {
 	for {
 		log.Debug("Running snapshot supervisor")
 
-		iterateVolumes(dc, wrapSnapshotAction(runSnapshot))
+		dc.iterateVolumes(dc.wrapSnapshotAction(dc.runSnapshot))
 
 		time.Sleep(1 * time.Second)
 	}

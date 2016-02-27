@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/volmaster"
@@ -22,7 +23,13 @@ func start(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
-	volmaster.Daemon(cfg, ctx.Int("ttl"), ctx.Int("timeout"), ctx.Bool("debug"), ctx.String("listen"))
+	d := &volmaster.DaemonConfig{
+		Config:   cfg,
+		MountTTL: ctx.Int("ttl"),
+		Timeout:  time.Duration(ctx.Int("timeout")) * time.Minute,
+	}
+
+	d.Daemon(ctx.Bool("debug"), ctx.String("listen"))
 }
 
 func main() {

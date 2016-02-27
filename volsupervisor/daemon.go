@@ -17,7 +17,7 @@ type DaemonConfig struct {
 // Daemon implements the startup of the various services volsupervisor manages.
 // It hangs until the program terminates.
 func (dc *DaemonConfig) Daemon() {
-	go scheduleSnapshotPrune(dc)
-	go scheduleSnapshots(dc)
+	go dc.scheduleSnapshotPrune()
+	go dc.scheduleSnapshots()
 	select {}
 }
