@@ -199,3 +199,25 @@ func (s *cephSuite) TestMounted(c *C) {
 	c.Assert(driver.Unmount(driverOpts), IsNil)
 	c.Assert(driver.Destroy(driverOpts), IsNil)
 }
+
+func (s *cephSuite) TestInternalNames(c *C) {
+	driver := NewDriver()
+	out, err := driver.InternalName("tenant1/test")
+	c.Assert(err, IsNil)
+	c.Assert(out, Equals, "tenant1.test")
+
+	out, err = driver.InternalName("tenant1.test/test")
+	c.Assert(err, NotNil)
+	c.Assert(out, Equals, "")
+
+	out, err = driver.InternalName("tenant1/test.two")
+	c.Assert(err, IsNil)
+	c.Assert(out, Equals, "tenant1.test.two")
+
+	out, err = driver.InternalName("tenant1/test/two")
+	c.Assert(err, NotNil)
+	c.Assert(out, Equals, "")
+
+	c.Assert(driver.InternalNameToVolpluginName("tenant1.test"), Equals, "tenant1/test")
+	c.Assert(driver.InternalNameToVolpluginName("tenant1.test.two"), Equals, "tenant1/test.two")
+}

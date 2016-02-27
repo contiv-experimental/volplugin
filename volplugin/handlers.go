@@ -153,7 +153,14 @@ func remove(master string) func(http.ResponseWriter, *http.Request) {
 			}
 		}
 
-		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(vc.Options.Pool, joinPath(uc.Tenant, uc.Name)), Err: ""})
+		driver := ceph.NewDriver()
+		name, err := driver.InternalName(uc.Request.Name)
+		if err != nil {
+			httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
+			return
+		}
+
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(vc.Options.Pool, name), Err: ""})
 	}
 }
 
@@ -230,9 +237,15 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 			return
 		}
 
+		intName, err := driver.InternalName(uc.Request.Name)
+		if err != nil {
+			httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)
+			return
+		}
+
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: joinPath(volConfig.TenantName, volConfig.VolumeName),
+				Name: intName,
 				Size: actualSize,
 				Params: storage.Params{
 					"pool": volConfig.Options.Pool,
@@ -254,7 +267,7 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(uc.Tenant, uc.Name))})
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, intName)})
 	}
 }
 
@@ -274,9 +287,15 @@ func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 		}
 
 		driver := ceph.NewDriver()
+		intName, err := driver.InternalName(uc.Request.Name)
+		if err != nil {
+			httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)
+			return
+		}
+
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: joinPath(volConfig.TenantName, volConfig.VolumeName),
+				Name: intName,
 				Params: storage.Params{
 					"pool": volConfig.Options.Pool,
 				},
@@ -300,7 +319,7 @@ func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, joinPath(uc.Tenant, uc.Name))})
+		writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, intName)})
 	}
 }
 

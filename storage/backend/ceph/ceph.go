@@ -40,6 +40,27 @@ func NewDriver() storage.Driver {
 	return &Driver{}
 }
 
+// InternalName translates a volplugin `tenant/volume` name to an internal
+// name suitable for the driver. Yields an error if impossible.
+func (c *Driver) InternalName(s string) (string, error) {
+	strs := strings.SplitN(s, "/", 2)
+	if strings.Contains(strs[0], ".") {
+		return "", fmt.Errorf("Invalid tenant name %q, cannot contain '.'", strs[0])
+	}
+
+	if strings.Contains(strs[1], "/") {
+		return "", fmt.Errorf("Invalid volume name %q, cannot contain '/'", strs[0])
+	}
+
+	return strings.Join(strs, "."), nil
+}
+
+// InternalNameToVolpluginName translates an internal name to a volplugin
+// `tenant/volume` syntax name.
+func (c *Driver) InternalNameToVolpluginName(s string) string {
+	return strings.Join(strings.SplitN(s, ".", 2), "/")
+}
+
 // Create a volume.
 func (c *Driver) Create(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]

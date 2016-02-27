@@ -2,7 +2,6 @@ package volmaster
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/contiv/volplugin/config"
@@ -13,10 +12,6 @@ import (
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
-
-func joinVolumeName(config *config.VolumeConfig) string {
-	return strings.Join([]string{config.TenantName, config.VolumeName}, ".")
-}
 
 func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
@@ -39,9 +34,14 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig, time
 	}
 
 	driver := ceph.NewDriver()
+	intName, err := driver.InternalName(config.String())
+	if err != nil {
+		return storage.DriverOptions{}, err
+	}
+
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: joinVolumeName(config),
+			Name: intName,
 			Size: actualSize,
 			Params: storage.Params{
 				"pool": config.Options.Pool,
@@ -54,7 +54,7 @@ func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig, time
 		Timeout: timeout,
 	}
 
-	log.Infof("Creating volume %q (pool %q) with size %d", joinVolumeName(config), config.Options.Pool, actualSize)
+	log.Infof("Creating volume %q (pool %q) with size %d", intName, config.Options.Pool, actualSize)
 	return driverOpts, driver.Create(driverOpts)
 }
 
@@ -64,15 +64,26 @@ func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
 		return err
 	}
 
-	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", joinVolumeName(config), config.Options.Pool, config.Options.FileSystem, actualSize)
+	driver := ceph.NewDriver()
+	intName, err := driver.InternalName(config.String())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", intName, config.Options.Pool, config.Options.FileSystem, actualSize)
 	return ceph.NewDriver().Format(do)
 }
 
 func removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
 	driver := ceph.NewDriver()
+	intName, err := driver.InternalName(config.String())
+	if err != nil {
+		return err
+	}
+
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: joinVolumeName(config),
+			Name: intName,
 			Params: storage.Params{
 				"pool": config.Options.Pool,
 			},
@@ -80,7 +91,7 @@ func removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
 		Timeout: timeout,
 	}
 
-	log.Infof("Destroying volume %q (pool %q)", joinVolumeName(config), config.Options.Pool)
+	log.Infof("Destroying volume %q (pool %q)", intName, config.Options.Pool)
 
 	return driver.Destroy(driverOpts)
 }
