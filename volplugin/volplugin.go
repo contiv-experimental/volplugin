@@ -73,7 +73,9 @@ func (dc *DaemonConfig) Daemon() error {
 
 	srv := http.Server{Handler: dc.configureRouter()}
 	srv.SetKeepAlivesEnabled(false)
-	srv.Serve(l)
+	if err := srv.Serve(l); err != nil {
+		log.Fatalf("Fatal error serving volplugin: %v", err)
+	}
 	return l.Close()
 }
 
