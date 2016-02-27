@@ -19,10 +19,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type daemonConfig struct {
-	config   *config.TopLevelConfig
-	mountTTL int
-	timeout  time.Duration
+// DaemonConfig is the configuration struct used by the volmaster to hold globals.
+type DaemonConfig struct {
+	Config   *config.TopLevelConfig
+	MountTTL int
+	Timeout  time.Duration
 }
 
 // volume is the json response of a volume. Taken from
@@ -45,11 +46,7 @@ type volumeGet struct {
 }
 
 // Daemon initializes the daemon for use.
-func Daemon(config *config.TopLevelConfig, ttl, timeout int, debug bool, listen string) {
-	d := daemonConfig{config: config,
-		mountTTL: ttl,
-		timeout:  time.Duration(timeout) * time.Minute}
-
+func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	r := mux.NewRouter()
 
 	postRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -81,8 +78,6 @@ func Daemon(config *config.TopLevelConfig, ttl, timeout int, debug bool, listen 
 	if err := http.ListenAndServe(listen, r); err != nil {
 		log.Fatalf("Error starting volmaster: %v", err)
 	}
-
-	select {}
 }
 
 func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
@@ -103,13 +98,13 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
-func (d daemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stderr, r.Body)
 	w.WriteHeader(404)
 }
 
-func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
-	vols, err := d.config.ListAllVolumes()
+func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
+	vols, err := d.Config.ListAllVolumes()
 	if err != nil {
 		httpError(w, "Retrieving list", err)
 		return
@@ -120,7 +115,7 @@ func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
 		// FIXME make this take a single string and not a split one
-		volConfig, err := d.config.GetVolume(parts[0], parts[1])
+		volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 		if err != nil {
 			httpError(w, "Retrieving list", err)
 			return
@@ -138,11 +133,11 @@ func (d daemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	volName := strings.TrimPrefix(r.URL.Path, "/get/")
 	parts := strings.SplitN(volName, "/", 2)
 
-	volConfig, err := d.config.GetVolume(parts[0], parts[1])
+	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 	if err != nil {
 		log.Warn(err)
 		w.WriteHeader(404)
@@ -160,14 +155,14 @@ func (d daemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
 		httpError(w, "unmarshalling request", err)
 		return
 	}
 
-	vc, err := d.config.GetVolume(req.Tenant, req.Volume)
+	vc, err := d.Config.GetVolume(req.Tenant, req.Volume)
 	if err != nil {
 		httpError(w, "obtaining volume configuration", err)
 		return
@@ -185,32 +180,32 @@ func (d daemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	if err := d.config.PublishUse(uc); err != nil {
+	if err := d.Config.PublishUse(uc); err != nil {
 		httpError(w, "Creating use lock", err)
 		return
 	}
 
-	defer d.config.RemoveUse(uc, false)
+	defer d.Config.RemoveUse(uc, false)
 
-	if err := removeVolume(vc, d.timeout); err != nil {
+	if err := removeVolume(vc, d.Timeout); err != nil {
 		httpError(w, "removing image", err)
 		return
 	}
 
-	if err := d.config.RemoveVolume(req.Tenant, req.Volume); err != nil {
+	if err := d.Config.RemoveVolume(req.Tenant, req.Volume); err != nil {
 		httpError(w, "clearing volume records", err)
 		return
 	}
 }
 
-func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalUseConfig(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	mt, err := d.config.GetUse(req.Volume)
+	mt, err := d.Config.GetUse(req.Volume)
 	if err != nil {
 		httpError(w, "Could not retrieve mount information", err)
 		return
@@ -218,14 +213,14 @@ func (d daemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 
 	if mt.Hostname == req.Hostname {
 		req.Reason = "Mount"
-		if err := d.config.RemoveUse(req, false); err != nil {
+		if err := d.Config.RemoveUse(req, false); err != nil {
 			httpError(w, "Could not publish mount information", err)
 			return
 		}
 	}
 }
 
-func (d daemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Request, exist client.PrevExistType) error {
+func (d *DaemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Request, exist client.PrevExistType) error {
 	req, err := unmarshalUseConfig(r)
 	if err != nil {
 		return err
@@ -233,35 +228,35 @@ func (d daemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Requ
 
 	req.Reason = "Mount"
 
-	if err := d.config.PublishUseWithTTL(req, time.Duration(d.mountTTL)*time.Second, exist); err != nil {
+	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.MountTTL)*time.Second, exist); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (d daemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 	if err := d.handleMountWithTTLFlag(w, r, client.PrevNoExist); err != nil {
 		httpError(w, "Could not publish mount information", err)
 		return
 	}
 }
 
-func (d daemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
 	if err := d.handleMountWithTTLFlag(w, r, client.PrevExist); err != nil {
 		httpError(w, "Could not publish mount information", err)
 		return
 	}
 }
 
-func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	tenConfig, err := d.config.GetVolume(req.Tenant, req.Volume)
+	tenConfig, err := d.Config.GetVolume(req.Tenant, req.Volume)
 	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -276,7 +271,7 @@ func (d daemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
-func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
+func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Reading request", err)
@@ -300,13 +295,13 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volConfig, err := d.config.CreateVolume(req)
+	volConfig, err := d.Config.CreateVolume(req)
 	if err != nil {
 		httpError(w, "Creating volume", err)
 		return
 	}
 
-	tenant, err := d.config.GetTenant(req.Tenant)
+	tenant, err := d.Config.GetTenant(req.Tenant)
 	if err != nil {
 		httpError(w, "Retrieving tenant", err)
 		return
@@ -324,14 +319,14 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	if err := d.config.PublishUse(uc); err == nil {
+	if err := d.Config.PublishUse(uc); err == nil {
 		defer func() {
-			if err := d.config.RemoveUse(uc, false); err != nil {
+			if err := d.Config.RemoveUse(uc, false); err != nil {
 				log.Errorf("Could not remove use lock on create for %q", hostname)
 			}
 		}()
 
-		do, err := createVolume(tenant, volConfig, d.timeout)
+		do, err := createVolume(tenant, volConfig, d.Timeout)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			goto finish
@@ -340,7 +335,7 @@ func (d daemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := d.config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+		if err := d.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
 			httpError(w, "Publishing volume", err)
 			return
 		}
