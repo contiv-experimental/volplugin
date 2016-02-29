@@ -25,3 +25,10 @@ validate_certs: "yes"
 # env:
 # service_vip:
 # control_interface:
+
+# should mons also run osds
+mon_osd_colocation_allowed: "true"
+
+# OSDs could be run without netplugin on them
+# osd_contiv_network_include controls this behaviour
+osd_contiv_network_include: "true"
