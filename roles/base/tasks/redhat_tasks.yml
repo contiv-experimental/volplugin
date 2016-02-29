@@ -39,15 +39,8 @@
   shell: rm -rf /usr/lib64/python2.7/site-packages/pycrypto-*.egg-info
   when: '"Error unpacking rpm package python2-crypto-" in python_crypto_result.msg'
 
-- name: download ansible rpm (redhat)
-  get_url:
-    url: http://ftp.gnome.org/mirror/fedora/epel/testing/7/x86_64/a/ansible-2.0.0.2-1.el7.noarch.rpm
-    dest: /tmp/ansible-2.0.0.2-1.el7.noarch.rpm
-    force: no
-  register: download_result
-
 - name: install ansible (redhat)
   yum:
-    name: /tmp/ansible-2.0.0.2-1.el7.noarch.rpm
-    state: present
-  when: download_result | changed
+    name: ansible
+    enablerepo: epel-testing
+    state: latest
