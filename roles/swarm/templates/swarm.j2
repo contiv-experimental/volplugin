@@ -8,12 +8,26 @@ fi
 
 case $1 in
 start)
-    echo starting swarm as on {{ node_name }}[{{ node_addr }}]
-    {% if swarm_bootstrap_node_name == node_name %}
-        /usr/bin/swarm manage -H tcp://{{ node_addr }}:{{ swarm_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }} &
+    echo starting swarm as {{ run_as }} on {{ node_name }}[{{ node_addr }}]
+    {% if run_as == "master" -%}
+    /usr/bin/docker run -t -d -p {{ swarm_api_port }}:{{ swarm_api_port }} --name=swarm-manager \
+        swarm:{{ swarm_version }} manage \
+        -H :{{ swarm_api_port }} \
+        --replication --advertise={{ node_addr }}:{{ swarm_api_port }} \
+        etcd://{{ node_addr }}:{{ etcd_client_port1 }}
     {% endif %}
+    /usr/bin/docker run -t --name=swarm-agent \
+        swarm:{{ swarm_version }} join \
+        --advertise={{ node_addr }}:{{ docker_api_port }} \
+        etcd://{{ node_addr }}:{{ etcd_client_port1 }}
+    ;;
 
-    /usr/bin/swarm join --advertise={{ node_addr }}:{{ docker_api_port }} etcd://{{ node_addr }}:{{ etcd_client_port1 }}
+stop)
+    # skipping `set -e` as we shouldn't stop on error
+    /usr/bin/docker stop swarm-manager
+    /usr/bin/docker rm swarm-manager
+    /usr/bin/docker stop swarm-agent
+    /usr/bin/docker rm swarm-agent
     ;;
 
 *)

@@ -16,7 +16,7 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
-  when: node_addr != ucp_bootstrap_node_addr
+  when: node_name != ucp_bootstrap_node_name
 
 - name: copy the ucp start/stop script
   template: src=ucp.j2 dest=/usr/bin/ucp.sh mode=u=rwx,g=rx,o=rx
@@ -39,7 +39,7 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
-  when: node_addr == ucp_bootstrap_node_addr
+  when: node_name == ucp_bootstrap_node_name
 
 - name: fetch the ucp files from master nodes
   fetch:
@@ -50,4 +50,4 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
-  when: node_addr == ucp_bootstrap_node_addr
+  when: node_name == ucp_bootstrap_node_name

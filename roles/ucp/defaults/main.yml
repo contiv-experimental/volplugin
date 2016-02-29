@@ -7,7 +7,7 @@ ucp_remote_dir: "/tmp"
 ucp_instance_id_file: "ucp-instance-id"
 ucp_fingerprint_file: "ucp-fingerprint"
 ucp_fifo_file: "ucp-fifo"
-ucp_bootstrap_node_addr: ""
+ucp_bootstrap_node_name: ""
 
 ucp_admin_user: "admin"
 ucp_admin_password: "orca"
