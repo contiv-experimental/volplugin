@@ -85,7 +85,15 @@ type Driver interface {
 	// of snapshots to be returned. Any error will be returned.
 	ListSnapshots(DriverOptions) ([]string, error)
 
-	// ShowMapped shows any volumes that belong to volplugin on the host, in
+	// Mounted shows any volumes that belong to volplugin on the host, in
 	// their native representation. They yield a *Mount.
 	Mounted(time.Duration) ([]*Mount, error)
+
+	// InternalName translates a volplugin `tenant/volume` name to an internal
+	// name suitable for the driver. Yields an error if impossible.
+	InternalName(string) (string, error)
+
+	// InternalNameToVolpluginName translates an internal name to a volplugin
+	// `tenant/volume` syntax name.
+	InternalNameToVolpluginName(s string) string
 }
