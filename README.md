@@ -37,6 +37,7 @@ be extremely volatile and it is not suggested that you use this in production.
 
 On the host, equivalent or greater:
 
+* 12GB of free RAM. Ceph likes RAM.
 * [VirtualBox](https://virtualbox.org) 5.0.2 or greater
 * [Vagrant](https://vagrantup.com) 1.7.4
 * [Ansible](https://ansible.com) 2.0+
