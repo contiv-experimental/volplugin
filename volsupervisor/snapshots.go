@@ -6,7 +6,7 @@ import (
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
-	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -40,7 +40,11 @@ func (dc *DaemonConfig) scheduleSnapshotPrune() {
 func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfig) {
 	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
 
-	driver := ceph.NewDriver()
+	driver, err := backend.NewDriver(volume.Options.Backend)
+	if err != nil {
+		log.Errorf("failed to get driver: %v", err)
+		return
+	}
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
@@ -74,7 +78,11 @@ func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfi
 func (dc *DaemonConfig) runSnapshot(pool string, volume *config.VolumeConfig) {
 	now := time.Now()
 	log.Infof("Snapping volume %q at %v", volume, now)
-	driver := ceph.NewDriver()
+	driver, err := backend.NewDriver(volume.Options.Backend)
+	if err != nil {
+		log.Errorf("failed to get driver: %v", err)
+		return
+	}
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
 			Name: strings.Join([]string{volume.PolicyName, volume.VolumeName}, "."),

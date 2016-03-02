@@ -1,0 +1,12 @@
+{ 
+  "default-options": {
+    "pool": "rbd",
+    "size": "10MB",
+    "snapshots": true,
+    "snapshot": {
+      "frequency": "30m",
+      "keep": 20
+    },
+    "backend" : "null"
+  }
+}

@@ -7,6 +7,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 )
 
 func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
@@ -41,7 +42,7 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	out, err := s.volcli("policy get test1")
 	c.Assert(err, IsNil)
 
-	intentTarget := &config.PolicyConfig{}
+	intentTarget := config.NewPolicyConfig(ceph.BackendName)
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
@@ -50,8 +51,8 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 
 	out, err = s.volcli("policy get test2")
 	c.Assert(err, IsNil)
-	intentTarget = &config.PolicyConfig{}
 
+	intentTarget = config.NewPolicyConfig(ceph.BackendName)
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(intent2, DeepEquals, intentTarget)
@@ -64,6 +65,28 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 
 	c.Assert(out, Matches, ".*test1.*")
 	c.Assert(out, Matches, ".*test2.*")
+}
+
+func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
+	nullDriverIntent, err := s.readIntent("testdata/nulldriver.json")
+	c.Assert(err, IsNil)
+	_, err = s.volcli("policy upload test < /testdata/nulldriver.json")
+	c.Assert(err, IsNil)
+
+	defer func() {
+		_, err := s.volcli("policy delete test")
+		c.Assert(err, IsNil)
+
+		_, err = s.volcli("policy get test")
+		c.Assert(err, NotNil)
+	}()
+
+	out, err := s.volcli("policy get test")
+	c.Assert(err, IsNil)
+	intentTarget := config.NewPolicyConfig("")
+	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
+	nullDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+	c.Assert(nullDriverIntent, DeepEquals, intentTarget)
 }
 
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {

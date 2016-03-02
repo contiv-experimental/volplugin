@@ -11,6 +11,7 @@ import (
 	utils "github.com/contiv/systemtests-utils"
 	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 )
 
 func (s *systemtestSuite) mon0cmd(command string) (string, error) {
@@ -31,7 +32,7 @@ func (s *systemtestSuite) readIntent(fn string) (*config.PolicyConfig, error) {
 		return nil, err
 	}
 
-	cfg := &config.PolicyConfig{}
+	cfg := config.NewPolicyConfig(ceph.BackendName)
 
 	if err := json.Unmarshal(content, cfg); err != nil {
 		return nil, err
@@ -146,7 +147,8 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	if _, err := s.uploadIntent("policy1", "intent1"); err != nil {
+	if out, err := s.uploadIntent("policy1", "intent1"); err != nil {
+		log.Errorf("Intent upload failed. Error: %v, Output: %s", err, out)
 		return err
 	}
 

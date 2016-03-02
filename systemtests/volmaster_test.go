@@ -31,19 +31,19 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 	content, err := ioutil.ReadFile("testdata/global1.json")
 	c.Assert(err, IsNil)
 
-	globalBase1 := &config.Global{}
+	globalBase1 := config.NewGlobalConfig()
 	c.Assert(json.Unmarshal(content, globalBase1), IsNil)
 
 	content, err = ioutil.ReadFile("testdata/global2.json")
 	c.Assert(err, IsNil)
 
-	globalBase2 := &config.Global{}
+	globalBase2 := config.NewGlobalConfig()
 	c.Assert(json.Unmarshal(content, globalBase2), IsNil)
 
 	out, err := s.volcli("global get")
 	c.Assert(err, IsNil)
 
-	global := &config.Global{}
+	global := config.NewGlobalConfig()
 	c.Assert(json.Unmarshal([]byte(out), global), IsNil)
 
 	c.Assert(globalBase1, DeepEquals, global)
@@ -54,7 +54,7 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 	out, err = s.volcli("global get")
 	c.Assert(err, IsNil)
 
-	global = &config.Global{}
+	global = config.NewGlobalConfig()
 	c.Assert(json.Unmarshal([]byte(out), global), IsNil)
 
 	c.Assert(globalBase1, Not(DeepEquals), global)

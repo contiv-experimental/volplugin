@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
@@ -23,6 +24,15 @@ type Global struct {
 	Debug   bool
 	Timeout time.Duration
 	TTL     time.Duration
+	Backend string
+}
+
+// NewGlobalConfig returns global config with preset defaults
+func NewGlobalConfig() *Global {
+	return &Global{
+		TTL:     DefaultGlobalTTL,
+		Backend: ceph.BackendName,
+	}
 }
 
 // PublishGlobal publishes the global configuration.
@@ -48,13 +58,9 @@ func (tlc *TopLevelConfig) GetGlobal() (*Global, error) {
 		return nil, err
 	}
 
-	global := &Global{}
+	global := NewGlobalConfig()
 	if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
 		return nil, err
-	}
-
-	if global.TTL == 0 {
-		global.TTL = DefaultGlobalTTL
 	}
 
 	return global, nil
@@ -90,7 +96,7 @@ func (tlc *TopLevelConfig) WatchGlobal(activity chan *Global) {
 			continue
 		}
 
-		global := &Global{}
+		global := NewGlobalConfig()
 		if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
 			log.Error("Error decoding global config, not updating")
 			time.Sleep(1 * time.Second)

@@ -54,6 +54,9 @@ type Volume struct {
 // Consumers should do this through the NewStorage call and associated member
 // functions.
 type Driver interface {
+	// Name returns the string associated with the storage backed of the driver
+	Name() string
+
 	// Create a volume.
 	Create(DriverOptions) error
 

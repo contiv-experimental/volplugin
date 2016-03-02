@@ -150,7 +150,7 @@ func (dc *DaemonConfig) getGlobal() {
 		return
 	}
 
-	global := &config.Global{}
+	global := config.NewGlobalConfig()
 
 	if err := json.Unmarshal(content, global); err != nil {
 		log.Errorf("Could not request global configuration: %v", err)

@@ -20,6 +20,8 @@ import (
 const (
 	deviceBase = "/dev/rbd"
 	mountBase  = "/mnt/ceph"
+	// BackendName is string for ceph storage backend
+	BackendName = "ceph"
 )
 
 var spaceSplitRegex = regexp.MustCompile(`\s+`)
@@ -38,6 +40,11 @@ type Driver struct{}
 // framework to yield new drivers on every creation.
 func NewDriver() storage.Driver {
 	return &Driver{}
+}
+
+// Name returns the ceph backend string
+func (c *Driver) Name() string {
+	return BackendName
 }
 
 // InternalName translates a volplugin `tenant/volume` name to an internal

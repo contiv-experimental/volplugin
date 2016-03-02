@@ -53,7 +53,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	if err != nil {
 		log.Errorf("Error fetching global configuration: %v", err)
 		log.Infof("No global configuration. Proceeding with defaults...")
-		global = &config.Global{TTL: config.DefaultGlobalTTL}
+		global = config.NewGlobalConfig()
 	}
 
 	d.Global = global

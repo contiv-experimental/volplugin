@@ -12,6 +12,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/docker/docker/pkg/plugins"
 )
@@ -154,7 +155,12 @@ func remove(master string) func(http.ResponseWriter, *http.Request) {
 			}
 		}
 
-		driver := ceph.NewDriver()
+		driver, err := backend.NewDriver(vc.Options.Backend)
+		if err != nil {
+			httpError(w, fmt.Sprintf("loading driver"), err)
+			return
+		}
+
 		name, err := driver.InternalName(uc.Request.Name)
 		if err != nil {
 			httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
@@ -217,7 +223,11 @@ func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *ht
 			return
 		}
 
-		driver := ceph.NewDriver()
+		driver, err := backend.NewDriver(volConfig.Options.Backend)
+		if err != nil {
+			httpError(w, fmt.Sprintf("loading driver"), err)
+			return
+		}
 
 		ut := &config.UseConfig{
 			Volume:   volConfig,
@@ -290,7 +300,12 @@ func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		driver := ceph.NewDriver()
+		driver, err := backend.NewDriver(volConfig.Options.Backend)
+		if err != nil {
+			httpError(w, fmt.Sprintf("loading driver"), err)
+			return
+		}
+
 		intName, err := driver.InternalName(uc.Request.Name)
 		if err != nil {
 			httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)

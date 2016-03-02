@@ -117,6 +117,16 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 			args: []string{"foo"},
 			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
+		"globalGet": {
+			f:    globalGet,
+			args: []string{"foo"},
+			err:  errorInvalidArgCount(1, 0, []string{"foo"}),
+		},
+		"globalUpload": {
+			f:    globalUpload,
+			args: []string{"foo"},
+			err:  errorInvalidArgCount(1, 0, []string{"foo"}),
+		},
 	}
 
 	for key, test := range testMap {
