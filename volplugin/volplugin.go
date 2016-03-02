@@ -87,7 +87,8 @@ func (dc *DaemonConfig) Daemon() error {
 	if err := srv.Serve(l); err != nil {
 		log.Fatalf("Fatal error serving volplugin: %v", err)
 	}
-	return l.Close()
+	l.Close()
+	return os.Remove(driverPath)
 }
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {

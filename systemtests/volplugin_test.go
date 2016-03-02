@@ -11,6 +11,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func (s *systemtestSuite) TestVolpluginCleanupSocket(c *C) {
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	defer c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	_, err := s.mon0cmd("test -f /run/docker/plugins/volplugin.sock")
+	c.Assert(err, NotNil)
+}
+
 func (s *systemtestSuite) TestVolpluginFDLeak(c *C) {
 	iterations := 2000
 	subIterations := 50
