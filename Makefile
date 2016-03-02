@@ -73,6 +73,7 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run:
+	vagrant ssh mon0 -c 'volcli global upload < /testdata/global1.json'
 	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
@@ -81,15 +82,15 @@ run-etcd:
 
 run-volplugin: run-etcd
 	sudo pkill volplugin || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volplugin --debug &>/tmp/volplugin.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volplugin &>/tmp/volplugin.log &'
 
 run-volsupervisor:
 	sudo pkill volsupervisor || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor --debug &>/tmp/volsupervisor.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor &>/tmp/volsupervisor.log &'
 
 run-volmaster:
 	sudo pkill volmaster || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster --debug &>/tmp/volmaster.log &'
+	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster &>/tmp/volmaster.log &'
 
 run-build: godep
 	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/

@@ -95,6 +95,16 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 	return nil
 }
 
+func (s *systemtestSuite) uploadGlobal(configFile string) error {
+	log.Infof("Uploading global configuration %s", configFile)
+	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/%s.json", configFile))
+	if err != nil {
+		log.Println(out)
+	}
+
+	return err
+}
+
 func (s *systemtestSuite) rebootstrap() error {
 	s.clearContainers()
 	stopVolsupervisor(s.vagrant.GetNode("mon0"))
@@ -105,6 +115,10 @@ func (s *systemtestSuite) rebootstrap() error {
 	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
 
 	if err := s.restartDocker(); err != nil {
+		return err
+	}
+
+	if err := s.uploadGlobal("global1"); err != nil {
 		return err
 	}
 
@@ -203,7 +217,7 @@ func stopVolsupervisor(node vagrantssh.TestbedNode) error {
 
 func startVolmaster(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volmaster on %q", node.GetName())
-	err := node.RunCommandBackground("(sudo -E nohup `which volmaster` --debug --ttl 5 </dev/null 2>&1 | sudo tee -a /tmp/volmaster.log) &")
+	err := node.RunCommandBackground("(sudo -E nohup `which volmaster` </dev/null 2>&1 | sudo tee -a /tmp/volmaster.log) &")
 	log.Infof("Waiting for volmaster startup on %q", node.GetName())
 	time.Sleep(10 * time.Millisecond)
 	return err
@@ -220,7 +234,7 @@ func startVolplugin(node vagrantssh.TestbedNode) error {
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	return node.RunCommandBackground("(sudo -E `which volplugin` --debug --ttl 5 2>&1 | sudo tee -a /tmp/volplugin.log) &")
+	return node.RunCommandBackground("(sudo -E `which volplugin` 2>&1 | sudo tee -a /tmp/volplugin.log) &")
 }
 
 func stopVolplugin(node vagrantssh.TestbedNode) error {

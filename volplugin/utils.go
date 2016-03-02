@@ -20,14 +20,14 @@ var (
 	errVolumeNotFound = errors.New("Volume not found")
 )
 
-func heartbeatMount(master string, ttl int, payload *config.UseConfig, stop chan struct{}) {
+func heartbeatMount(master string, ttl time.Duration, payload *config.UseConfig, stop chan struct{}) {
 	sleepTime := ttl / 4
 
 	for {
 		select {
 		case <-stop:
 			return
-		case <-time.After(time.Duration(sleepTime) * time.Second):
+		case <-time.After(sleepTime):
 			if err := reportMountStatus(master, payload); err != nil {
 				log.Errorf("Could not report mount for host %q to master %q: %v", payload.Hostname, master, err)
 				continue

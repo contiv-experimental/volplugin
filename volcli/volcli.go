@@ -51,6 +51,68 @@ func ppJSON(v interface{}) ([]byte, error) {
 	return json.MarshalIndent(v, "", "  ")
 }
 
+// GlobalGet retrives the global configuration and displays it on standard output.
+func GlobalGet(ctx *cli.Context) {
+	if len(ctx.Args()) != 0 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
+	}
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.String("volmaster")))
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	if resp.StatusCode != 200 {
+		errExit(ctx, fmt.Errorf("Status code was %d not 200: %s", resp.StatusCode, string(content)), false)
+	}
+
+	// rebuild and divide the contents so they are cast out of their internal
+	// representation.
+	global := &config.Global{}
+
+	if err := json.Unmarshal(content, global); err != nil {
+		errExit(ctx, err, false)
+	}
+
+	content, err = json.Marshal(config.DivideGlobalParameters(global))
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	fmt.Println(string(content))
+}
+
+// GlobalUpload uploads the global configuration
+func GlobalUpload(ctx *cli.Context) {
+	if len(ctx.Args()) != 0 {
+		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
+	}
+
+	content, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	global := &config.Global{}
+	if err := json.Unmarshal(content, global); err != nil {
+		errExit(ctx, err, false)
+	}
+
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		errExit(ctx, err, false)
+	}
+
+	if err := cfg.PublishGlobal(global); err != nil {
+		errExit(ctx, err, false)
+	}
+}
+
 // TenantUpload uploads a Tenant intent from stdin.
 func TenantUpload(ctx *cli.Context) {
 	execCliAndExit(ctx, tenantUpload)

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
@@ -200,7 +201,7 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request) {
+func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uc, err := unmarshalAndCheck(w, r)
 		if err != nil {
@@ -233,6 +234,7 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 
 		actualSize, err := volConfig.Options.ActualSize()
 		if err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Computing size of volume", err)
 			return
 		}
@@ -258,11 +260,13 @@ func mount(master, host string, ttl int) func(http.ResponseWriter, *http.Request
 
 		mc, err := driver.Mount(driverOpts)
 		if err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Volume could not be mounted", err)
 			return
 		}
 
 		if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+			removeStopChan(uc.Request.Name)
 			httpError(w, "Applying cgroups", err)
 			return
 		}

@@ -2,7 +2,10 @@ package volplugin
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -21,11 +24,9 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Debug   bool
-	TTL     int
-	Master  string
-	Host    string
-	Timeout time.Duration
+	Master string
+	Host   string
+	Global *config.Global
 }
 
 // VolumeRequest is taken from
@@ -50,6 +51,12 @@ type volumeGet struct {
 
 // Daemon starts the volplugin service.
 func (dc *DaemonConfig) Daemon() error {
+	dc.getGlobal()
+
+	if dc.Global == nil {
+		log.Fatal("Global configuration is missing; aborting.")
+	}
+
 	if err := dc.updateMounts(); err != nil {
 		return err
 	}
@@ -67,9 +74,11 @@ func (dc *DaemonConfig) Daemon() error {
 		return err
 	}
 
-	if dc.Debug {
+	if dc.Global.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	go dc.watchGlobal()
 
 	srv := http.Server{Handler: dc.configureRouter()}
 	srv.SetKeepAlivesEnabled(false)
@@ -88,7 +97,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 		"/VolumeDriver.List":    list(dc.Master),
 		"/VolumeDriver.Get":     get(dc.Master),
 		"/VolumeDriver.Path":    getPath(dc.Master),
-		"/VolumeDriver.Mount":   mount(dc.Master, dc.Host, dc.TTL),
+		"/VolumeDriver.Mount":   mount(dc.Master, dc.Host, dc.Global.TTL),
 		"/VolumeDriver.Unmount": unmount(dc.Master, dc.Host),
 	}
 
@@ -97,10 +106,10 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 
 	for key, value := range routeMap {
 		parts := strings.SplitN(key, ".", 2)
-		s.HandleFunc(key, logHandler(parts[1], dc.Debug, value))
+		s.HandleFunc(key, logHandler(parts[1], dc.Global.Debug, value))
 	}
 
-	if dc.Debug {
+	if dc.Global.Debug {
 		s.HandleFunc("{action:.*}", action)
 	}
 
@@ -125,9 +134,39 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 	}
 }
 
+func (dc *DaemonConfig) getGlobal() {
+	resp, err := http.Get(fmt.Sprintf("http://%s/global", dc.Master))
+	if err != nil {
+		log.Errorf("Could not request global configuration: %v", err)
+		return
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Could not request global configuration: %v", err)
+		return
+	}
+
+	global := &config.Global{}
+
+	if err := json.Unmarshal(content, global); err != nil {
+		log.Errorf("Could not request global configuration: %v", err)
+		return
+	}
+
+	dc.Global = global
+}
+
+func (dc *DaemonConfig) watchGlobal() error {
+	for {
+		time.Sleep(1 * time.Minute)
+		dc.getGlobal()
+	}
+}
+
 func (dc *DaemonConfig) updateMounts() error {
 	cd := ceph.NewDriver()
-	mounts, err := cd.Mounted(dc.Timeout)
+	mounts, err := cd.Mounted(dc.Global.Timeout)
 	if err != nil {
 		return err
 	}
@@ -163,7 +202,7 @@ func (dc *DaemonConfig) updateMounts() error {
 		}
 
 		stop := addStopChan(mount.Volume.Name)
-		go heartbeatMount(dc.Master, dc.TTL, payload, stop)
+		go heartbeatMount(dc.Master, dc.Global.TTL, payload, stop)
 	}
 
 	return nil

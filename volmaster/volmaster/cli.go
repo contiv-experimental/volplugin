@@ -38,11 +38,6 @@ func main() {
 	app.Usage = "Control many volplugins"
 	app.Action = start
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:   "debug",
-			Usage:  "turn on debugging",
-			EnvVar: "DEBUG",
-		},
 		cli.StringFlag{
 			Name:   "listen",
 			Usage:  "listen address for volmaster",
@@ -58,16 +53,6 @@ func main() {
 			Name:  "etcd",
 			Usage: "URL for etcd",
 			Value: &cli.StringSlice{"http://localhost:2379"},
-		},
-		cli.IntFlag{
-			Name:  "ttl",
-			Usage: "Set ttl of written locks; in seconds",
-			Value: 300,
-		},
-		cli.IntFlag{
-			Name:  "timeout",
-			Usage: "Set timeout for ceph commands; in minutes",
-			Value: 5,
 		},
 	}
 
