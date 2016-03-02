@@ -52,6 +52,7 @@ ansible_provision = proc do |ansible|
   # In a production deployment, these should be secret
   ansible.extra_vars = {
     docker_version: "1.10.2",
+    docker_device: "/dev/sdb",
     etcd_peers_group: 'volplugin-test',
     env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
@@ -61,7 +62,7 @@ ansible_provision = proc do |ansible|
     netplugin_if: "enp0s8",
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
-    devices: "[ '/dev/sdb', '/dev/sdc' ]",
+    devices: "[ '/dev/sdc', '/dev/sdd' ]",
     service_vip: "192.168.24.50",
     journal_collocation: 'true',
     validate_certs: 'no',
@@ -98,7 +99,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
-          (0..1).each do |d|
+          v.vmx["scsi0:1.present"] = 'TRUE'
+          v.vmx["scsi0:1.fileName"] = create_vmdk("docker-#{i}", '11000MB')
+
+          (1..2).each do |d|
             v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
             v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
           end
@@ -127,6 +131,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :virtualbox do |vb, override|
         override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
 
+        vb.customize ['createhd',
+                      '--filename', "docker-#{i}",
+                      '--size', '11000']
+        # Controller names are dependent on the VM being built.
+        # Be careful while changing the box.
+        vb.customize ['storageattach', :id,
+                      '--storagectl', 'SATA Controller',
+                      '--port', 3,
+                      '--type', 'hdd',
+                      '--medium', "docker-#{i}.vdi"]
+
         (0..1).each do |d|
           disk_path = "disk-#{i}-#{d}"
           vdi_disk_path = disk_path + ".vdi"
@@ -139,7 +154,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Be careful while changing the box.
             vb.customize ['storageattach', :id,
                           '--storagectl', 'SATA Controller',
-                          '--port', 3 + d,
+                          '--port', 4 + d,
                           '--type', 'hdd',
                           '--medium', vdi_disk_path]
           end

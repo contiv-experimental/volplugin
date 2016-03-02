@@ -1,4 +1,2 @@
 ---
-# role variable for the swarm service
-
-docker_api_port: 2385
+thin_provisioned: false
