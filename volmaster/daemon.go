@@ -13,6 +13,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
@@ -56,6 +57,8 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	d.Global = global
+
+	go info.HandleDebugSignal()
 
 	activity := make(chan *config.Global)
 	go d.Config.WatchGlobal(activity)

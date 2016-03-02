@@ -15,6 +15,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/gorilla/mux"
 )
@@ -78,6 +79,7 @@ func (dc *DaemonConfig) Daemon() error {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	go info.HandleDebugSignal()
 	go dc.watchGlobal()
 
 	srv := http.Server{Handler: dc.configureRouter()}
