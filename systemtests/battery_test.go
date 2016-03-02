@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	. "gopkg.in/check.v1"
@@ -12,9 +13,14 @@ import (
 
 func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	nodes := s.vagrant.GetNodes()
+	count := 10
+
+	if os.Getenv("BIG") != "" {
+		count = 50
+	}
 
 	outwg := sync.WaitGroup{}
-	for x := 0; x < 10; x++ {
+	for x := 0; x < count; x++ {
 		outwg.Add(1)
 		go func(nodes []vagrantssh.TestbedNode, x int) {
 			defer outwg.Done()
@@ -66,14 +72,14 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	}
 
 	outwg.Wait()
-	errChan := make(chan error, 10)
-	for x := 0; x < 10; x++ {
+	errChan := make(chan error, count)
+	for x := 0; x < count; x++ {
 		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
 	}
 
 	var realErr error
 
-	for x := 0; x < 10; x++ {
+	for x := 0; x < count; x++ {
 		err := <-errChan
 		if err != nil {
 			realErr = err
@@ -86,8 +92,13 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 	nodes := s.vagrant.GetNodes()
 	outwg := sync.WaitGroup{}
+	count := 10
 
-	for x := 0; x < 10; x++ {
+	if os.Getenv("BIG") != "" {
+		count = 50
+	}
+
+	for x := 0; x < count; x++ {
 		outwg.Add(1)
 		go func(nodes []vagrantssh.TestbedNode, x int) {
 			defer outwg.Done()
@@ -127,14 +138,14 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 	outwg.Wait()
 
-	errChan := make(chan error, 10)
-	for x := 0; x < 10; x++ {
+	errChan := make(chan error, count)
+	for x := 0; x < count; x++ {
 		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
 	}
 
 	var realErr error
 
-	for x := 0; x < 10; x++ {
+	for x := 0; x < count; x++ {
 		err := <-errChan
 		if err != nil {
 			realErr = err

@@ -13,8 +13,13 @@ NMONS        = ENV["VMS"] || settings['vms']
 SUBNET       = settings['subnet']
 BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
-MEMORY       = settings['memory']
+memory       = settings['memory']
 
+if ENV["BIG"]
+  memory = 8192
+end
+
+MEMORY   = memory
 NO_PROXY = '192.168.24.50,192.168.24.10,192.168.24.11,192.168.24.12'
 
 shell_provision = <<-EOF
@@ -46,7 +51,7 @@ ansible_provision = proc do |ansible|
 
   # In a production deployment, these should be secret
   ansible.extra_vars = {
-    docker_version: "1.10.1",
+    docker_version: "1.10.2",
     etcd_peers_group: 'volplugin-test',
     env: proxy_env,
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',

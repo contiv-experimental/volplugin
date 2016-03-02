@@ -306,17 +306,18 @@ func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 			},
 		}
 
-		if err := driver.Unmount(driverOpts); err != nil {
-			httpError(w, "Could not unmount image", err)
-			return
-		}
-
 		ut := &config.UseConfig{
 			Volume:   volConfig,
 			Hostname: host,
 		}
 
 		removeStopChan(uc.Request.Name)
+
+		if err := driver.Unmount(driverOpts); err != nil {
+			addStopChan(uc.Request.Name)
+			httpError(w, "Could not unmount image", err)
+			return
+		}
 
 		if err := reportUnmount(master, ut); err != nil {
 			httpError(w, "Reporting unmount to master", err)
