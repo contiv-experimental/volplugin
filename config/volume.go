@@ -11,10 +11,10 @@ import (
 	"golang.org/x/net/context"
 )
 
-// VolumeConfig is the configuration of the tenant. It includes pool and
+// VolumeConfig is the configuration of the policy. It includes pool and
 // snapshot information.
 type VolumeConfig struct {
-	TenantName string         `json:"tenant"`
+	PolicyName string         `json:"policy"`
 	VolumeName string         `json:"name"`
 	Options    *VolumeOptions `json:"options"`
 }
@@ -46,14 +46,14 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
-func (c *TopLevelConfig) volume(tenant, name string) string {
-	return c.prefixed(rootVolume, tenant, name)
+func (c *TopLevelConfig) volume(policy, name string) string {
+	return c.prefixed(rootVolume, policy, name)
 }
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the VolumeConfig that was copied in.
 func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
-	resp, err := c.GetTenant(rc.Tenant)
+	resp, err := c.GetPolicy(rc.Policy)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 
 	vc := &VolumeConfig{
 		Options:    &resp.DefaultVolumeOptions,
-		TenantName: rc.Tenant,
+		PolicyName: rc.Policy,
 		VolumeName: rc.Volume,
 	}
 
@@ -94,9 +94,9 @@ func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
 		return err
 	}
 
-	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.TenantName), "", &client.SetOptions{Dir: true})
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName), "", &client.SetOptions{Dir: true})
 
-	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.TenantName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return ErrExist
 	}
 
@@ -127,9 +127,9 @@ func (vo *VolumeOptions) computeSize() error {
 }
 
 // GetVolume returns the VolumeConfig for a given volume.
-func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
+func (c *TopLevelConfig) GetVolume(policy, name string) (*VolumeConfig, error) {
 	// FIXME make this take a single string and not a split one
-	resp, err := c.etcdClient.Get(context.Background(), c.volume(tenant, name), nil)
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,17 +148,17 @@ func (c *TopLevelConfig) GetVolume(tenant, name string) (*VolumeConfig, error) {
 }
 
 // RemoveVolume removes a volume from configuration.
-func (c *TopLevelConfig) RemoveVolume(tenant, name string) error {
+func (c *TopLevelConfig) RemoveVolume(policy, name string) error {
 	// FIXME might be a consistency issue here; pass around volume structs instead.
-	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, tenant, name), &client.DeleteOptions{})
+	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{})
 	return err
 }
 
 // ListVolumes returns a map of volume name -> VolumeConfig.
-func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, error) {
-	tenantPath := c.prefixed(rootVolume, tenant)
+func (c *TopLevelConfig) ListVolumes(policy string) (map[string]*VolumeConfig, error) {
+	policyPath := c.prefixed(rootVolume, policy)
 
-	resp, err := c.etcdClient.Get(context.Background(), tenantPath, &client.GetOptions{Recursive: true, Sort: true})
+	resp, err := c.etcdClient.Get(context.Background(), policyPath, &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, e
 			return nil, err
 		}
 
-		key := strings.TrimPrefix(node.Key, tenantPath)
+		key := strings.TrimPrefix(node.Key, policyPath)
 		// trim leading slash
 		configs[key[1:]] = config
 	}
@@ -183,8 +183,8 @@ func (c *TopLevelConfig) ListVolumes(tenant string) (map[string]*VolumeConfig, e
 	return configs, nil
 }
 
-// ListAllVolumes returns an array with all the named tenants and volumes the
-// volmaster knows about. Volumes have syntax: tenant/volumeName which will be
+// ListAllVolumes returns an array with all the named policies and volumes the
+// volmaster knows about. Volumes have syntax: policy/volumeName which will be
 // reflected in the returned string.
 func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
@@ -217,7 +217,7 @@ func (vo *VolumeOptions) Validate() error {
 		}
 
 		if actualSize == 0 {
-			return fmt.Errorf("Config for tenant has a zero size")
+			return fmt.Errorf("Config for policy has a zero size")
 		}
 	}
 
@@ -234,8 +234,8 @@ func (cfg *VolumeConfig) Validate() error {
 		return fmt.Errorf("Volume Name was omitted")
 	}
 
-	if cfg.TenantName == "" {
-		return fmt.Errorf("Tenant name was omitted")
+	if cfg.PolicyName == "" {
+		return fmt.Errorf("Policy name was omitted")
 	}
 
 	if cfg.Options == nil {
@@ -246,5 +246,5 @@ func (cfg *VolumeConfig) Validate() error {
 }
 
 func (cfg *VolumeConfig) String() string {
-	return path.Join(cfg.TenantName, cfg.VolumeName)
+	return path.Join(cfg.PolicyName, cfg.VolumeName)
 }

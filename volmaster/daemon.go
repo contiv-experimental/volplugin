@@ -85,7 +85,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/list":                  d.handleList,
-		"/get/{tenant}/{volume}": d.handleGet,
+		"/get/{policy}/{volume}": d.handleGet,
 		"/global":                d.handleGlobal,
 	}
 
@@ -193,7 +193,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vc, err := d.Config.GetVolume(req.Tenant, req.Volume)
+	vc, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err != nil {
 		httpError(w, "obtaining volume configuration", err)
 		return
@@ -223,7 +223,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := d.Config.RemoveVolume(req.Tenant, req.Volume); err != nil {
+	if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
 		httpError(w, "clearing volume records", err)
 		return
 	}
@@ -287,7 +287,7 @@ func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.Config.GetVolume(req.Tenant, req.Volume)
+	tenConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err == nil {
 		content, err := json.Marshal(tenConfig)
 		if err != nil {
@@ -316,13 +316,13 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Tenant == "" {
-		httpError(w, "Reading tenant", errors.New("tenant was blank"))
+	if req.Policy == "" {
+		httpError(w, "Reading policy", errors.New("policy was blank"))
 		return
 	}
 
 	if req.Volume == "" {
-		httpError(w, "Reading tenant", errors.New("volume was blank"))
+		httpError(w, "Reading policy", errors.New("volume was blank"))
 		return
 	}
 
@@ -332,9 +332,9 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := d.Config.GetTenant(req.Tenant)
+	policy, err := d.Config.GetPolicy(req.Policy)
 	if err != nil {
-		httpError(w, "Retrieving tenant", err)
+		httpError(w, "Retrieving policy", err)
 		return
 	}
 
@@ -357,7 +357,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		do, err := createVolume(tenant, volConfig, time.Duration(d.Global.Timeout)*time.Second)
+		do, err := createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			goto finish

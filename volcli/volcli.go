@@ -27,7 +27,7 @@ func splitVolume(ctx *cli.Context) (string, string, error) {
 	volumeparts := strings.SplitN(ctx.Args()[0], "/", 2)
 
 	if len(volumeparts) < 2 {
-		return "", "", errorInvalidVolumeSyntax(ctx.Args()[0], `<tenantName>/<volumeName>`)
+		return "", "", errorInvalidVolumeSyntax(ctx.Args()[0], `<policyName>/<volumeName>`)
 	}
 
 	return volumeparts[0], volumeparts[1], nil
@@ -113,12 +113,12 @@ func GlobalUpload(ctx *cli.Context) {
 	}
 }
 
-// TenantUpload uploads a Tenant intent from stdin.
-func TenantUpload(ctx *cli.Context) {
-	execCliAndExit(ctx, tenantUpload)
+// PolicyUpload uploads a Policy intent from stdin.
+func PolicyUpload(ctx *cli.Context) {
+	execCliAndExit(ctx, policyUpload)
 }
 
-func tenantUpload(ctx *cli.Context) (bool, error) {
+func policyUpload(ctx *cli.Context) (bool, error) {
 	if len(ctx.Args()) != 1 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
@@ -133,64 +133,64 @@ func tenantUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	tenant := &config.TenantConfig{}
+	policy := &config.PolicyConfig{}
 
-	if err := json.Unmarshal(content, tenant); err != nil {
+	if err := json.Unmarshal(content, policy); err != nil {
 		return false, err
 	}
 
-	if err := cfg.PublishTenant(ctx.Args()[0], tenant); err != nil {
+	if err := cfg.PublishPolicy(ctx.Args()[0], policy); err != nil {
 		return false, err
 	}
 
 	return false, nil
 }
 
-// TenantDelete removes a tenant supplied as an argument.
-func TenantDelete(ctx *cli.Context) {
-	execCliAndExit(ctx, tenantDelete)
+// PolicyDelete removes a policy supplied as an argument.
+func PolicyDelete(ctx *cli.Context) {
+	execCliAndExit(ctx, policyDelete)
 }
 
-func tenantDelete(ctx *cli.Context) (bool, error) {
+func policyDelete(ctx *cli.Context) (bool, error) {
 	if len(ctx.Args()) != 1 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant := ctx.Args()[0]
+	policy := ctx.Args()[0]
 
 	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.DeleteTenant(tenant); err != nil {
+	if err := cfg.DeletePolicy(policy); err != nil {
 		return false, err
 	}
 
-	fmt.Printf("%q removed!\n", tenant)
+	fmt.Printf("%q removed!\n", policy)
 
 	return false, nil
 }
 
-// TenantGet retrieves tenant configuration, the name of which is supplied as
+// PolicyGet retrieves policy configuration, the name of which is supplied as
 // an argument.
-func TenantGet(ctx *cli.Context) {
-	execCliAndExit(ctx, tenantGet)
+func PolicyGet(ctx *cli.Context) {
+	execCliAndExit(ctx, policyGet)
 }
 
-func tenantGet(ctx *cli.Context) (bool, error) {
+func policyGet(ctx *cli.Context) (bool, error) {
 	if len(ctx.Args()) != 1 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant := ctx.Args()[0]
+	policy := ctx.Args()[0]
 
 	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
 
-	value, err := cfg.GetTenant(tenant)
+	value, err := cfg.GetPolicy(policy)
 	if err != nil {
 		return false, err
 	}
@@ -205,12 +205,12 @@ func tenantGet(ctx *cli.Context) (bool, error) {
 	return false, nil
 }
 
-// TenantList provides a list of the tenant names.
-func TenantList(ctx *cli.Context) {
-	execCliAndExit(ctx, tenantList)
+// PolicyList provides a list of the policy names.
+func PolicyList(ctx *cli.Context) {
+	execCliAndExit(ctx, policyList)
 }
 
-func tenantList(ctx *cli.Context) (bool, error) {
+func policyList(ctx *cli.Context) (bool, error) {
 	if len(ctx.Args()) != 0 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
@@ -220,13 +220,13 @@ func tenantList(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	tenants, err := cfg.ListTenants()
+	policies, err := cfg.ListPolicies()
 	if err != nil {
 		return false, err
 	}
 
-	for _, tenant := range tenants {
-		fmt.Println(path.Base(tenant))
+	for _, policy := range policies {
+		fmt.Println(path.Base(policy))
 	}
 
 	return false, nil
@@ -243,7 +243,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -260,7 +260,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 	}
 
 	tc := &config.RequestCreate{
-		Tenant: tenant,
+		Policy: policy,
 		Volume: volume,
 		Opts:   opts,
 	}
@@ -292,7 +292,7 @@ func volumeGet(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -302,7 +302,7 @@ func volumeGet(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	vol, err := cfg.GetVolume(tenant, volume)
+	vol, err := cfg.GetVolume(policy, volume)
 	if err != nil {
 		return false, err
 	}
@@ -327,7 +327,7 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -337,7 +337,7 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	if err := cfg.RemoveVolume(tenant, volume); err != nil {
+	if err := cfg.RemoveVolume(policy, volume); err != nil {
 		return false, err
 	}
 
@@ -354,13 +354,13 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
 
 	request := config.Request{
-		Tenant: tenant,
+		Policy: policy,
 		Volume: volume,
 	}
 
@@ -473,7 +473,7 @@ func useGet(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -484,7 +484,7 @@ func useGet(ctx *cli.Context) (bool, error) {
 	}
 
 	vc := &config.VolumeConfig{
-		TenantName: tenant,
+		PolicyName: policy,
 		VolumeName: volume,
 	}
 
@@ -514,7 +514,7 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	tenant, volume, err := splitVolume(ctx)
+	policy, volume, err := splitVolume(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -525,7 +525,7 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 	}
 
 	vc := &config.VolumeConfig{
-		TenantName: tenant,
+		PolicyName: policy,
 		VolumeName: volume,
 	}
 

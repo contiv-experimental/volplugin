@@ -8,24 +8,24 @@ import (
 
 type volumeDispatch struct {
 	daemonConfig *DaemonConfig
-	tenant       string
+	policy       string
 	volumes      map[string]*config.VolumeConfig
 }
 
 func (dc *DaemonConfig) iterateVolumes(dispatch func(v *volumeDispatch)) {
-	tenants, err := dc.Config.ListTenants()
+	policies, err := dc.Config.ListPolicies()
 	if err != nil {
-		log.Warnf("Could not locate any tenant information; sleeping from error: %v.", err)
+		log.Warnf("Could not locate any policy information; sleeping from error: %v.", err)
 		return
 	}
 
-	for _, tenant := range tenants {
-		volumes, err := dc.Config.ListVolumes(tenant)
+	for _, policy := range policies {
+		volumes, err := dc.Config.ListVolumes(policy)
 		if err != nil {
-			log.Warnf("Could not list volumes for tenant %q: sleeping.", tenant)
+			log.Warnf("Could not list volumes for policy %q: sleeping.", policy)
 			return
 		}
 
-		dispatch(&volumeDispatch{dc, tenant, volumes})
+		dispatch(&volumeDispatch{dc, policy, volumes})
 	}
 }

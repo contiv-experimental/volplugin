@@ -19,7 +19,7 @@ import (
 type unmarshalledConfig struct {
 	Request VolumeRequest
 	Name    string
-	Tenant  string
+	Policy  string
 }
 
 var (
@@ -62,7 +62,7 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 		return nil, err
 	}
 
-	tenant, name, err := splitPath(vr.Name)
+	policy, name, err := splitPath(vr.Name)
 	if err != nil {
 		httpError(w, "Configuring volume", err)
 		return nil, err
@@ -71,7 +71,7 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 	uc := unmarshalledConfig{
 		Request: vr,
 		Name:    name,
-		Tenant:  tenant,
+		Policy:  policy,
 	}
 
 	return &uc, nil
@@ -141,14 +141,14 @@ func remove(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		vc, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
+		vc, err := requestVolumeConfig(master, uc.Policy, uc.Name)
 		if err != nil {
 			httpError(w, "Getting volume properties", err)
 			return
 		}
 
 		if vc.Options.Ephemeral {
-			if err := requestRemove(master, uc.Tenant, uc.Name); err != nil {
+			if err := requestRemove(master, uc.Policy, uc.Name); err != nil {
 				httpError(w, "Removing ephemeral volume", err)
 				return
 			}
@@ -172,8 +172,8 @@ func create(master string) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		if err := requestCreate(master, uc.Tenant, uc.Name, uc.Request.Opts); err != nil {
-			httpError(w, "Could not determine tenant configuration", err)
+		if err := requestCreate(master, uc.Policy, uc.Name, uc.Request.Opts); err != nil {
+			httpError(w, "Could not determine policy configuration", err)
 			return
 		}
 
@@ -190,9 +190,9 @@ func getPath(master string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Returning mount path to docker for volume: %q", uc.Request.Name)
 
-		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
+		volConfig, err := requestVolumeConfig(master, uc.Policy, uc.Name)
 		if err != nil {
-			httpError(w, "Requesting tenant configuration", err)
+			httpError(w, "Requesting policy configuration", err)
 			return
 		}
 
@@ -211,9 +211,9 @@ func mount(master, host string, ttl time.Duration) func(http.ResponseWriter, *ht
 		// FIXME check if we're holding the mount already
 		log.Infof("Mounting volume %q", uc.Request.Name)
 
-		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
+		volConfig, err := requestVolumeConfig(master, uc.Policy, uc.Name)
 		if err != nil {
-			httpError(w, "Could not determine tenant configuration", err)
+			httpError(w, "Could not determine policy configuration", err)
 			return
 		}
 
@@ -284,9 +284,9 @@ func unmount(master, host string) func(http.ResponseWriter, *http.Request) {
 
 		log.Infof("Unmounting volume %q", uc.Request.Name)
 
-		volConfig, err := requestVolumeConfig(master, uc.Tenant, uc.Name)
+		volConfig, err := requestVolumeConfig(master, uc.Policy, uc.Name)
 		if err != nil {
-			httpError(w, "Could not determine tenant configuration", err)
+			httpError(w, "Could not determine policy configuration", err)
 			return
 		}
 

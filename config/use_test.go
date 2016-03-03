@@ -10,8 +10,8 @@ import (
 )
 
 var testUseVolumeConfigs = map[string]*VolumeConfig{
-	"basic":  {TenantName: "tenant1", VolumeName: "quux"},
-	"basic2": {TenantName: "tenant2", VolumeName: "baz"},
+	"basic":  {PolicyName: "policy1", VolumeName: "quux"},
+	"basic2": {PolicyName: "policy2", VolumeName: "baz"},
 }
 
 var testUseConfigs = map[string]*UseConfig{
@@ -48,7 +48,7 @@ func (s *configSuite) TestUseCRUD(c *C) {
 	c.Assert(err, IsNil)
 
 	sort.Strings(mounts)
-	c.Assert([]string{"tenant1/quux", "tenant2/baz"}, DeepEquals, mounts)
+	c.Assert([]string{"policy1/quux", "policy2/baz"}, DeepEquals, mounts)
 
 	basicTmp := *testUseConfigs["basic"]
 	basicTmp.Hostname = "quux"
