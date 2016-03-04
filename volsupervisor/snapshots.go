@@ -44,7 +44,7 @@ func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfi
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: strings.Join([]string{volume.TenantName, volume.VolumeName}, "."),
+			Name: strings.Join([]string{volume.PolicyName, volume.VolumeName}, "."),
 			Params: storage.Params{
 				"pool": pool,
 			},
@@ -77,7 +77,7 @@ func (dc *DaemonConfig) runSnapshot(pool string, volume *config.VolumeConfig) {
 	driver := ceph.NewDriver()
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: strings.Join([]string{volume.TenantName, volume.VolumeName}, "."),
+			Name: strings.Join([]string{volume.PolicyName, volume.VolumeName}, "."),
 			Params: storage.Params{
 				"pool": pool,
 			},

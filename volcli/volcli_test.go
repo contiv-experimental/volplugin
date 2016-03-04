@@ -22,23 +22,23 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 		args []string
 		err  error
 	}{
-		"tenantUpload": {
-			f:    tenantUpload,
+		"policyUpload": {
+			f:    policyUpload,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"tenantDelete": {
-			f:    tenantDelete,
+		"policyDelete": {
+			f:    policyDelete,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"tenantGet": {
-			f:    tenantGet,
+		"policyGet": {
+			f:    policyGet,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"tenantList": {
-			f:    tenantList,
+		"policyList": {
+			f:    policyList,
 			args: []string{"foo"},
 			err:  errorInvalidArgCount(1, 0, []string{"foo"}),
 		},
@@ -47,40 +47,40 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"volumeCreateInvalidTenant": {
+		"volumeCreateInvalidPolicy": {
 			f:    volumeCreate,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 		"volumeGet": {
 			f:    volumeGet,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"volumeGetInvalidTenant": {
+		"volumeGetInvalidPolicy": {
 			f:    volumeGet,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 		"volumeForceRemove": {
 			f:    volumeForceRemove,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"volumeForceRemoveInvalidTenant": {
+		"volumeForceRemoveInvalidPolicy": {
 			f:    volumeForceRemove,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 		"volumeRemove": {
 			f:    volumeRemove,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"volumeRemoveInvalidTenant": {
+		"volumeRemoveInvalidPolicy": {
 			f:    volumeRemove,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 		"volumeList": {
 			f:    volumeList,
@@ -102,20 +102,20 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"useGetInvalidTenant": {
+		"useGetInvalidPolicy": {
 			f:    useGet,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 		"useTheForce": {
 			f:    useTheForce,
 			args: []string{},
 			err:  errorInvalidArgCount(0, 1, []string{}),
 		},
-		"useTheForceInvalidTenant": {
+		"useTheForceInvalidPolicy": {
 			f:    useTheForce,
 			args: []string{"foo"},
-			err:  errorInvalidVolumeSyntax("foo", `<tenantName>/<volumeName>`),
+			err:  errorInvalidVolumeSyntax("foo", `<policyName>/<volumeName>`),
 		},
 	}
 

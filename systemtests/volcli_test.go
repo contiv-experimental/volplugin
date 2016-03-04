@@ -9,54 +9,54 @@ import (
 	"github.com/contiv/volplugin/config"
 )
 
-func (s *systemtestSuite) TestVolCLITenant(c *C) {
+func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	intent1, err := s.readIntent("testdata/intent1.json")
 	c.Assert(err, IsNil)
 
 	intent2, err := s.readIntent("testdata/intent2.json")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("tenant upload test1 < /testdata/intent1.json")
+	_, err = s.volcli("policy upload test1 < /testdata/intent1.json")
 	c.Assert(err, IsNil)
 
 	defer func() {
-		_, err := s.volcli("tenant delete test1")
+		_, err := s.volcli("policy delete test1")
 		c.Assert(err, IsNil)
 
-		_, err = s.volcli("tenant get test1")
+		_, err = s.volcli("policy get test1")
 		c.Assert(err, NotNil)
 	}()
 
-	_, err = s.volcli("tenant upload test2 < /testdata/intent2.json")
+	_, err = s.volcli("policy upload test2 < /testdata/intent2.json")
 	c.Assert(err, IsNil)
 
 	defer func() {
-		_, err := s.volcli("tenant delete test2")
+		_, err := s.volcli("policy delete test2")
 		c.Assert(err, IsNil)
 
-		_, err = s.volcli("tenant get test2")
+		_, err = s.volcli("policy get test2")
 		c.Assert(err, NotNil)
 	}()
 
-	out, err := s.volcli("tenant get test1")
+	out, err := s.volcli("policy get test1")
 	c.Assert(err, IsNil)
 
-	intentTarget := &config.TenantConfig{}
+	intentTarget := &config.PolicyConfig{}
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
 	c.Assert(intent1, DeepEquals, intentTarget)
 	c.Assert(err, IsNil)
 
-	out, err = s.volcli("tenant get test2")
+	out, err = s.volcli("policy get test2")
 	c.Assert(err, IsNil)
-	intentTarget = &config.TenantConfig{}
+	intentTarget = &config.PolicyConfig{}
 
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	intent2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(intent2, DeepEquals, intentTarget)
 
-	out, err = s.volcli("tenant list")
+	out, err = s.volcli("policy list")
 	c.Assert(err, IsNil)
 
 	// matches assertion below doesn't handle newlines too well
@@ -69,22 +69,22 @@ func (s *systemtestSuite) TestVolCLITenant(c *C) {
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	// XXX note that this is removed as a standard part of the tests and may error,
 	// so we don't check it.
-	defer s.volcli("volume remove tenant1/foo")
+	defer s.volcli("volume remove policy1/foo")
 
-	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	_, err := s.docker("run --rm -v tenant1/foo:/mnt alpine ls")
+	_, err := s.docker("run --rm -v policy1/foo:/mnt alpine ls")
 	c.Assert(err, IsNil)
 
-	out, err := s.volcli("volume list tenant1")
+	out, err := s.volcli("volume list policy1")
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "foo")
 
 	out, err = s.volcli("volume list-all")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
 
-	out, err = s.volcli("volume get tenant1/foo")
+	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
 	cfg := &config.VolumeConfig{}
@@ -100,22 +100,22 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 
-	_, err = s.volcli("volume remove tenant1/foo")
+	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume create tenant1/foo")
+	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1/foo")
+	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume get tenant1/foo")
+	_, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, NotNil)
 
-	_, err = s.volcli("volume create tenant1/foo --opt snapshots=false")
+	_, err = s.volcli("volume create policy1/foo --opt snapshots=false")
 	c.Assert(err, IsNil)
 
-	out, err = s.volcli("volume get tenant1/foo")
+	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
 	cfg = &config.VolumeConfig{}
@@ -129,16 +129,16 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 }
 
 func (s *systemtestSuite) TestVolCLIUse(c *C) {
-	c.Assert(s.createVolume("mon0", "tenant1", "foo", nil), IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	id, err := s.docker("run -itd -v tenant1/foo:/mnt alpine sleep 10m")
+	id, err := s.docker("run -itd -v policy1/foo:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)
 
 	out, err := s.volcli("use list")
 	c.Assert(err, IsNil)
-	c.Assert(strings.TrimSpace(out), Equals, "tenant1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
 
-	out, err = s.volcli("use get tenant1/foo")
+	out, err = s.volcli("use get policy1/foo")
 	c.Assert(err, IsNil)
 
 	ut := &config.UseConfig{}
@@ -146,7 +146,7 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(ut.Volume, NotNil)
 	c.Assert(ut.Hostname, Equals, "mon0")
 
-	_, err = s.volcli("use force-remove tenant1/foo")
+	_, err = s.volcli("use force-remove policy1/foo")
 	c.Assert(err, IsNil)
 
 	out, err = s.volcli("use list")
@@ -156,23 +156,23 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	_, err = s.docker("rm -f " + id)
 	c.Assert(err, IsNil)
 
-	_, err = s.docker("volume rm tenant1/foo")
+	_, err = s.docker("volume rm policy1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume remove tenant1/foo")
+	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
-	defer s.purgeVolume("mon0", "tenant1", "foo", true)
-	_, err = s.volcli("volume create tenant1/foo")
+	defer s.purgeVolume("mon0", "policy1", "foo", true)
+	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
 
 	// ensure that double-create does nothing (for now, at least)
-	_, err = s.volcli("volume create tenant1/foo")
+	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("volume get tenant1/foo")
+	_, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
 	// this test should never fail; we should always fail because of an exit code

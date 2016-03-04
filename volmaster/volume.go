@@ -13,16 +13,16 @@ import (
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
 
-func createVolume(tenant *config.TenantConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
+func createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
 	)
 
-	if tenant.FileSystems == nil {
+	if policy.FileSystems == nil {
 		fscmd = defaultFsCmd
 	} else {
-		fscmd, ok = tenant.FileSystems[config.Options.FileSystem]
+		fscmd, ok = policy.FileSystems[config.Options.FileSystem]
 		if !ok {
 			return storage.DriverOptions{}, fmt.Errorf("Invalid filesystem %q", config.Options.FileSystem)
 		}

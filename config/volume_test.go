@@ -36,14 +36,14 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	vc := &VolumeConfig{
 		Options:    nil,
 		VolumeName: "foo",
-		TenantName: "tenant1",
+		PolicyName: "policy1",
 	}
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &VolumeConfig{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "",
-		TenantName: "tenant1",
+		PolicyName: "policy1",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
@@ -51,7 +51,7 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	vc = &VolumeConfig{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "foo",
-		TenantName: "",
+		PolicyName: "",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
@@ -59,7 +59,7 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 	vc = &VolumeConfig{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "foo",
-		TenantName: "tenant1",
+		PolicyName: "policy1",
 	}
 
 	c.Assert(vc.Validate(), IsNil)
@@ -87,28 +87,28 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 }
 
 func (s *configSuite) TestVolumeCRUD(c *C) {
-	tenantNames := []string{"foo", "bar"}
+	policyNames := []string{"foo", "bar"}
 	volumeNames := []string{"baz", "quux"}
 	sort.Strings(volumeNames) // lazy
 
 	_, err := s.tlc.CreateVolume(RequestCreate{})
 	c.Assert(err, NotNil)
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "Doesn'tExist"})
+	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "Doesn'tExist"})
 	c.Assert(err, NotNil)
 
-	// populate the tenants so the next few tests don't give false positives
-	for _, tenant := range tenantNames {
-		c.Assert(s.tlc.PublishTenant(tenant, testTenantConfigs["basic"]), IsNil)
+	// populate the policies so the next few tests don't give false positives
+	for _, policy := range policyNames {
+		c.Assert(s.tlc.PublishPolicy(policy, testPolicyConfigs["basic"]), IsNil)
 	}
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
+	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
 	c.Assert(err, NotNil)
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: "bar", Opts: map[string]string{"pool": ""}})
+	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"pool": ""}})
 	c.Assert(err, NotNil)
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Tenant: "foo", Volume: ""})
+	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: ""})
 	c.Assert(err, NotNil)
 
 	_, err = s.tlc.GetVolume("foo", "bar")
@@ -117,23 +117,23 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 	_, err = s.tlc.ListVolumes("quux")
 	c.Assert(err, NotNil)
 
-	for _, tenant := range tenantNames {
+	for _, policy := range policyNames {
 		for _, volume := range volumeNames {
-			vcfg, err := s.tlc.CreateVolume(RequestCreate{Tenant: tenant, Volume: volume, Opts: map[string]string{"filesystem": ""}})
+			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume, Opts: map[string]string{"filesystem": ""}})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), Equals, ErrExist)
 
 			c.Assert(vcfg.Options.FileSystem, Equals, "ext4")
 
-			defer func(tenant, volume string) { c.Assert(s.tlc.RemoveVolume(tenant, volume), IsNil) }(tenant, volume)
+			defer func(policy, volume string) { c.Assert(s.tlc.RemoveVolume(policy, volume), IsNil) }(policy, volume)
 
 			c.Assert(vcfg.VolumeName, Equals, volume)
-			opts := testTenantConfigs["basic"].DefaultVolumeOptions
+			opts := testPolicyConfigs["basic"].DefaultVolumeOptions
 			opts.Pool = "rbd"
 			c.Assert(vcfg.Options, DeepEquals, &opts)
 
-			vcfg2, err := s.tlc.GetVolume(tenant, volume)
+			vcfg2, err := s.tlc.GetVolume(policy, volume)
 			c.Assert(err, IsNil)
 
 			c.Assert(vcfg, DeepEquals, vcfg2)
@@ -143,7 +143,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 			c.Assert(s.tlc.PublishVolume(vcfg), NotNil)
 		}
 
-		volumes, err := s.tlc.ListVolumes(tenant)
+		volumes, err := s.tlc.ListVolumes(policy)
 		c.Assert(err, IsNil)
 
 		volumeKeys := []string{}
@@ -164,9 +164,9 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	allNames := []string{}
 
-	for _, tenant := range tenantNames {
+	for _, policy := range policyNames {
 		for _, volume := range volumeNames {
-			allNames = append(allNames, path.Join(tenant, volume))
+			allNames = append(allNames, path.Join(policy, volume))
 		}
 	}
 

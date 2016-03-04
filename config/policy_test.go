@@ -2,7 +2,7 @@ package config
 
 import . "gopkg.in/check.v1"
 
-var testTenantConfigs = map[string]*TenantConfig{
+var testPolicyConfigs = map[string]*PolicyConfig{
 	"basic": {
 		DefaultVolumeOptions: VolumeOptions{
 			Pool:         "rbd",
@@ -85,26 +85,26 @@ var testTenantConfigs = map[string]*TenantConfig{
 	},
 }
 
-func (s *configSuite) TestBasicTenant(c *C) {
-	c.Assert(s.tlc.PublishTenant("quux", testTenantConfigs["basic"]), IsNil)
+func (s *configSuite) TestBasicPolicy(c *C) {
+	c.Assert(s.tlc.PublishPolicy("quux", testPolicyConfigs["basic"]), IsNil)
 
-	cfg, err := s.tlc.GetTenant("quux")
+	cfg, err := s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testTenantConfigs["basic"])
+	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic"])
 
-	c.Assert(s.tlc.PublishTenant("bar", testTenantConfigs["basic2"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("bar", testPolicyConfigs["basic2"]), IsNil)
 
-	cfg, err = s.tlc.GetTenant("bar")
+	cfg, err = s.tlc.GetPolicy("bar")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testTenantConfigs["basic2"])
+	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic2"])
 
-	tenants, err := s.tlc.ListTenants()
+	policies, err := s.tlc.ListPolicies()
 	c.Assert(err, IsNil)
 
-	for _, tenant := range tenants {
+	for _, policy := range policies {
 		found := false
 		for _, name := range []string{"bar", "quux"} {
-			if tenant == name {
+			if policy == name {
 				found = true
 			}
 		}
@@ -112,50 +112,50 @@ func (s *configSuite) TestBasicTenant(c *C) {
 		c.Assert(found, Equals, true)
 	}
 
-	c.Assert(s.tlc.DeleteTenant("bar"), IsNil)
-	_, err = s.tlc.GetTenant("bar")
+	c.Assert(s.tlc.DeletePolicy("bar"), IsNil)
+	_, err = s.tlc.GetPolicy("bar")
 	c.Assert(err, NotNil)
 
-	cfg, err = s.tlc.GetTenant("quux")
+	cfg, err = s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testTenantConfigs["basic"])
+	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic"])
 }
 
-func (s *configSuite) TestTenantValidate(c *C) {
+func (s *configSuite) TestPolicyValidate(c *C) {
 	for _, key := range []string{"basic", "basic2", "nilfs"} {
-		c.Assert(testTenantConfigs[key].Validate(), IsNil)
+		c.Assert(testPolicyConfigs[key].Validate(), IsNil)
 	}
 
 	// FIXME: ensure the default filesystem option is set when validate is called.
 	//        honestly, this both a pretty lousy way to do it and test it, we should do
 	//        something better.
-	c.Assert(testTenantConfigs["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
+	c.Assert(testPolicyConfigs["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
 
-	c.Assert(testTenantConfigs["untouchedwithzerosize"].Validate(), NotNil)
-	c.Assert(testTenantConfigs["nopool"].Validate(), NotNil)
-	c.Assert(testTenantConfigs["badsize"].Validate(), NotNil)
-	c.Assert(testTenantConfigs["badsize2"].Validate(), NotNil)
-	_, err := testTenantConfigs["badsize3"].DefaultVolumeOptions.ActualSize()
+	c.Assert(testPolicyConfigs["untouchedwithzerosize"].Validate(), NotNil)
+	c.Assert(testPolicyConfigs["nopool"].Validate(), NotNil)
+	c.Assert(testPolicyConfigs["badsize"].Validate(), NotNil)
+	c.Assert(testPolicyConfigs["badsize2"].Validate(), NotNil)
+	_, err := testPolicyConfigs["badsize3"].DefaultVolumeOptions.ActualSize()
 	c.Assert(err, NotNil)
 }
 
-func (s *configSuite) TestTenantBadPublish(c *C) {
+func (s *configSuite) TestPolicyBadPublish(c *C) {
 	for _, key := range []string{"badsize", "badsize2", "badsize3", "nopool", "badsnaps"} {
-		c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
+		c.Assert(s.tlc.PublishPolicy("test", testPolicyConfigs[key]), NotNil)
 	}
 }
 
-func (s *configSuite) TestTenantPublishEtcdDown(c *C) {
+func (s *configSuite) TestPolicyPublishEtcdDown(c *C) {
 	stopStartEtcd(c, func() {
 		for _, key := range []string{"basic", "basic2"} {
-			c.Assert(s.tlc.PublishTenant("test", testTenantConfigs[key]), NotNil)
+			c.Assert(s.tlc.PublishPolicy("test", testPolicyConfigs[key]), NotNil)
 		}
 	})
 }
 
-func (s *configSuite) TestTenantListEtcdDown(c *C) {
+func (s *configSuite) TestPolicyListEtcdDown(c *C) {
 	stopStartEtcd(c, func() {
-		_, err := s.tlc.ListTenants()
+		_, err := s.tlc.ListPolicies()
 		c.Assert(err, NotNil)
 	})
 }

@@ -11,10 +11,10 @@ import (
 const (
 	rootVolume = "volumes"
 	rootUse    = "users"
-	rootTenant = "tenants"
+	rootPolicy = "policies"
 )
 
-var defaultPaths = []string{rootVolume, rootUse, rootTenant}
+var defaultPaths = []string{rootVolume, rootUse, rootPolicy}
 
 // ErrExist indicates when a key in etcd exits already. Used for create logic.
 var ErrExist = errors.New("Already exists")
@@ -23,12 +23,12 @@ var ErrExist = errors.New("Already exists")
 // volmaster.
 type Request struct {
 	Volume string `json:"volume"`
-	Tenant string `json:"tenant"`
+	Policy string `json:"policy"`
 }
 
 // RequestCreate provides a request structure for creating new volumes.
 type RequestCreate struct {
-	Tenant string            `json:"tenant"`
+	Policy string            `json:"policy"`
 	Volume string            `json:"volume"`
 	Opts   map[string]string `json:"opts"`
 }

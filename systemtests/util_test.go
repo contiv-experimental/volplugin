@@ -25,13 +25,13 @@ func (s *systemtestSuite) volcli(command string) (string, error) {
 	return s.mon0cmd("volcli " + command)
 }
 
-func (s *systemtestSuite) readIntent(fn string) (*config.TenantConfig, error) {
+func (s *systemtestSuite) readIntent(fn string) (*config.PolicyConfig, error) {
 	content, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := &config.TenantConfig{}
+	cfg := &config.PolicyConfig{}
 
 	if err := json.Unmarshal(content, cfg); err != nil {
 		return nil, err
@@ -40,19 +40,19 @@ func (s *systemtestSuite) readIntent(fn string) (*config.TenantConfig, error) {
 	return cfg, nil
 }
 
-func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool) error {
+func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool) error {
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
-	s.vagrant.GetNode(host).RunCommand(fmt.Sprintf("docker volume rm %s/%s", tenant, name))
+	s.vagrant.GetNode(host).RunCommand(fmt.Sprintf("docker volume rm %s/%s", policy, name))
 
 	defer func() {
 		if purgeCeph {
-			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", tenant, name))
+			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", policy, name))
 		}
 	}()
 
-	if out, err := s.volcli(fmt.Sprintf("volume remove %s/%s", tenant, name)); err != nil {
+	if out, err := s.volcli(fmt.Sprintf("volume remove %s/%s", policy, name)); err != nil {
 		log.Error(out)
 		return err
 	}
@@ -60,16 +60,16 @@ func (s *systemtestSuite) purgeVolume(host, tenant, name string, purgeCeph bool)
 	return nil
 }
 
-func (s *systemtestSuite) purgeVolumeHost(tenant, host string, purgeCeph bool) {
-	s.purgeVolume(host, tenant, host, purgeCeph)
+func (s *systemtestSuite) purgeVolumeHost(policy, host string, purgeCeph bool) {
+	s.purgeVolume(host, policy, host, purgeCeph)
 }
 
-func (s *systemtestSuite) createVolumeHost(tenant, host string, opts map[string]string) error {
-	return s.createVolume(host, tenant, host, opts)
+func (s *systemtestSuite) createVolumeHost(policy, host string, opts map[string]string) error {
+	return s.createVolume(host, policy, host, opts)
 }
 
-func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[string]string) error {
-	log.Infof("Creating %s/%s on %q", tenant, name, host)
+func (s *systemtestSuite) createVolume(host, policy, name string, opts map[string]string) error {
+	log.Infof("Creating %s/%s on %q", policy, name, host)
 
 	optsStr := []string{}
 
@@ -80,14 +80,14 @@ func (s *systemtestSuite) createVolume(host, tenant, name string, opts map[strin
 		}
 	}
 
-	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", tenant, name, strings.Join(optsStr, " "))
+	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
 
 	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(cmd); err != nil {
 		log.Info(string(out))
 		return err
 	}
 
-	if out, err := s.volcli(fmt.Sprintf("volume get %s/%s", tenant, name)); err != nil {
+	if out, err := s.volcli(fmt.Sprintf("volume get %s/%s", policy, name)); err != nil {
 		log.Error(out)
 		return err
 	}
@@ -146,16 +146,16 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	if _, err := s.uploadIntent("tenant1", "intent1"); err != nil {
+	if _, err := s.uploadIntent("policy1", "intent1"); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *systemtestSuite) uploadIntent(tenantName, fileName string) (string, error) {
-	log.Infof("Uploading intent %q as tenant %q", fileName, tenantName)
-	return s.volcli(fmt.Sprintf("tenant upload %s < /testdata/%s.json", tenantName, fileName))
+func (s *systemtestSuite) uploadIntent(policyName, fileName string) (string, error) {
+	log.Infof("Uploading intent %q as policy %q", fileName, policyName)
+	return s.volcli(fmt.Sprintf("policy upload %s < /testdata/%s.json", policyName, fileName))
 }
 
 func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int) error {

@@ -28,7 +28,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 			errChan := make(chan error, len(nodes))
 
 			for _, node := range nodes {
-				c.Assert(s.createVolume(node.GetName(), "tenant1", fmt.Sprintf("test%d", x), nil), IsNil)
+				c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
 			}
 
 			contID := ""
@@ -39,7 +39,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 				go func(node vagrantssh.TestbedNode, x int) {
 					log.Infof("Running alpine container for %d on %q", x, node.GetName())
 
-					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v tenant1/test%d:/mnt alpine sleep 10m", x)); err != nil {
+					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v policy1/test%d:/mnt alpine sleep 10m", x)); err != nil {
 						errChan <- err
 					} else {
 						contID = out
@@ -74,7 +74,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	outwg.Wait()
 	errChan := make(chan error, count)
 	for x := 0; x < count; x++ {
-		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
+		go func(x int) { errChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
 	}
 
 	var realErr error
@@ -109,9 +109,9 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 				wg.Add(1)
 				go func(node vagrantssh.TestbedNode, x int) {
 					defer wg.Done()
-					log.Infof("Creating image tenant1/test%d on %q", x, node.GetName())
+					log.Infof("Creating image policy1/test%d on %q", x, node.GetName())
 
-					if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create tenant1/test%d", x)); err != nil {
+					if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
 						log.Error(out)
 						log.Error(err)
 						errChan <- err
@@ -140,7 +140,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 	errChan := make(chan error, count)
 	for x := 0; x < count; x++ {
-		go func(x int) { errChan <- s.purgeVolume("mon0", "tenant1", fmt.Sprintf("test%d", x), true) }(x)
+		go func(x int) { errChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
 	}
 
 	var realErr error

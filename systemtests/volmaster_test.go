@@ -14,16 +14,16 @@ func (s *systemtestSuite) TestVolmasterNoGlobalConfiguration(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.vagrant.IterateNodes(startVolmaster), IsNil)
 
-	c.Assert(s.createVolume("mon0", "tenant1", "test", nil), IsNil)
-	_, err = s.docker("run -v tenant1/test:/mnt alpine echo")
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	_, err = s.docker("run -v policy1/test:/mnt alpine echo")
 	c.Assert(err, IsNil)
 }
 
 func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
-	_, err := s.uploadIntent("tenant2", "fs")
+	_, err := s.uploadIntent("policy2", "fs")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "tenant2", "testfalse", map[string]string{"filesystem": "falsefs"}), NotNil)
-	_, err = s.volcli("volume remove tenant2/testfalse")
+	c.Assert(s.createVolume("mon0", "policy2", "testfalse", map[string]string{"filesystem": "falsefs"}), NotNil)
+	_, err = s.volcli("volume remove policy2/testfalse")
 	c.Assert(err, IsNil)
 }
 
