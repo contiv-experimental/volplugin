@@ -3,7 +3,7 @@ GUESTGOPATH=$(GUESTPREFIX)/src/github.com/contiv/volplugin
 GUESTBINPATH=$(GUESTPREFIX)/bin
 
 start: install-ansible
-	vagrant up
+	if [ "x${PROVIDER}" = "x" ]; then vagrant up; else vagrant up --provider=${PROVIDER}; fi
 	make build
 
 big:
