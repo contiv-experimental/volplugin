@@ -207,7 +207,7 @@ func (s *systemtestSuite) pullDebian() error {
 
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %q", node.GetName())
-	return node.RunCommandBackground("(sudo -E nohup `which volsupervisor` --debug </dev/null 2>&1 | sudo tee -a /tmp/volsupervisor.log) &")
+	return node.RunCommandBackground("(sudo -E nohup `which volsupervisor` </dev/null 2>&1 | sudo tee -a /tmp/volsupervisor.log) &")
 }
 
 func stopVolsupervisor(node vagrantssh.TestbedNode) error {

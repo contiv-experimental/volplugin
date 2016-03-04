@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/config"
@@ -13,20 +12,13 @@ import (
 )
 
 func start(ctx *cli.Context) {
-	if ctx.Bool("debug") {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug logging enabled")
-	}
-
 	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	dc := &volsupervisor.DaemonConfig{
-		Config:  cfg,
-		Debug:   ctx.Bool("debug"),
-		Timeout: time.Duration(ctx.Int("timeout")) * time.Minute,
+		Config: cfg,
 	}
 
 	dc.Daemon()
@@ -38,11 +30,6 @@ func main() {
 	app.Usage = "Control many volplugins"
 	app.Action = start
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:   "debug",
-			Usage:  "turn on debugging",
-			EnvVar: "DEBUG",
-		},
 		cli.StringFlag{
 			Name:  "prefix",
 			Usage: "prefix key used in etcd for namespacing",
@@ -52,11 +39,6 @@ func main() {
 			Name:  "etcd",
 			Usage: "URL for etcd",
 			Value: &cli.StringSlice{"http://localhost:2379"},
-		},
-		cli.IntFlag{
-			Name:  "timeout",
-			Usage: "Set timeout for ceph commands; in minutes",
-			Value: 5,
 		},
 	}
 
