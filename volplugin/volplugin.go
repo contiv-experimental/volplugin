@@ -16,6 +16,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
+	"github.com/contiv/volplugin/lock/client"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/gorilla/mux"
 )
@@ -28,6 +29,7 @@ type DaemonConfig struct {
 	Master string
 	Host   string
 	Global *config.Global
+	Client *client.Driver
 }
 
 // VolumeRequest is taken from
@@ -52,6 +54,8 @@ type volumeGet struct {
 
 // Daemon starts the volplugin service.
 func (dc *DaemonConfig) Daemon() error {
+	dc.Client = client.NewDriver(dc.Master)
+
 	dc.getGlobal()
 
 	if dc.Global == nil {
@@ -93,15 +97,15 @@ func (dc *DaemonConfig) Daemon() error {
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
-		"/Plugin.Activate":      activate,
-		"/Plugin.Deactivate":    nilAction,
-		"/VolumeDriver.Create":  create(dc.Master),
-		"/VolumeDriver.Remove":  remove(dc.Master),
-		"/VolumeDriver.List":    list(dc.Master),
-		"/VolumeDriver.Get":     get(dc.Master),
-		"/VolumeDriver.Path":    getPath(dc.Master),
-		"/VolumeDriver.Mount":   mount(dc.Master, dc.Host, dc.Global.TTL),
-		"/VolumeDriver.Unmount": unmount(dc.Master, dc.Host),
+		"/Plugin.Activate":      dc.activate,
+		"/Plugin.Deactivate":    dc.nilAction,
+		"/VolumeDriver.Create":  dc.create,
+		"/VolumeDriver.Remove":  dc.remove,
+		"/VolumeDriver.List":    dc.list,
+		"/VolumeDriver.Get":     dc.get,
+		"/VolumeDriver.Path":    dc.getPath,
+		"/VolumeDriver.Mount":   dc.mount,
+		"/VolumeDriver.Unmount": dc.unmount,
 	}
 
 	router := mux.NewRouter()
@@ -113,7 +117,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 	}
 
 	if dc.Global.Debug {
-		s.HandleFunc("{action:.*}", action)
+		s.HandleFunc("{action:.*}", dc.action)
 	}
 
 	return router
@@ -183,7 +187,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 		log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-		volConfig, err := requestVolumeConfig(dc.Master, parts[0], parts[1])
+		volConfig, err := dc.requestVolumeConfig(parts[0], parts[1])
 		switch err {
 		case errVolumeNotFound:
 			log.Warnf("Volume %q not found in database, skipping")
@@ -192,20 +196,20 @@ func (dc *DaemonConfig) updateMounts() error {
 			log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
 		}
 
-		payload := &config.UseConfig{
+		payload := &config.UseMount{
 			Hostname: dc.Host,
 			Volume:   volConfig,
 		}
 
-		if err := reportMount(dc.Master, payload); err != nil {
-			if err := reportMountStatus(dc.Master, payload); err != nil {
+		if err := dc.Client.ReportMount(payload); err != nil {
+			if err := dc.Client.ReportMountStatus(payload); err != nil {
 				// FIXME everything is effed up. what should we really be doing here?
 				return err
 			}
 		}
 
-		stop := addStopChan(mount.Volume.Name)
-		go heartbeatMount(dc.Master, dc.Global.TTL, payload, stop)
+		stop := dc.Client.AddStopChan(mount.Volume.Name)
+		go dc.Client.HeartbeatMount(dc.Global.TTL, payload, stop)
 	}
 
 	return nil

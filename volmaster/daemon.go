@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
+	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
@@ -205,45 +207,45 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uc := &config.UseConfig{
+	uc := &config.UseMount{
 		Volume:   vc,
-		Reason:   "Remove",
+		Reason:   lock.ReasonRemove,
 		Hostname: hostname,
 	}
 
-	if err := d.Config.PublishUse(uc); err != nil {
-		httpError(w, "Creating use lock", err)
-		return
-	}
+	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(d *lock.Driver, uc config.UseLocker) error {
+		if err := removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
+			return fmt.Errorf("Removing image: %v", err)
+		}
 
-	defer d.Config.RemoveUse(uc, false)
+		if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
+			return fmt.Errorf("Clearing volume records: %v", err)
+		}
 
-	if err := removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
-		httpError(w, "removing image", err)
-		return
-	}
+		return nil
+	})
 
-	if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-		httpError(w, "clearing volume records", err)
-		return
+	if err != nil {
+		httpError(w, "Removing volume", err)
 	}
 }
 
 func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalUseConfig(r)
+	req, err := unmarshalUseMount(r)
 	if err != nil {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
-	mt, err := d.Config.GetUse(req.Volume)
-	if err != nil {
+	mt := &config.UseMount{}
+
+	if err := d.Config.GetUse(mt, req.Volume); err != nil {
 		httpError(w, "Could not retrieve mount information", err)
 		return
 	}
 
 	if mt.Hostname == req.Hostname {
-		req.Reason = "Mount"
+		req.Reason = lock.ReasonMount
 		if err := d.Config.RemoveUse(req, false); err != nil {
 			httpError(w, "Could not publish mount information", err)
 			return
@@ -252,12 +254,12 @@ func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Request, exist client.PrevExistType) error {
-	req, err := unmarshalUseConfig(r)
+	req, err := unmarshalUseMount(r)
 	if err != nil {
 		return err
 	}
 
-	req.Reason = "Mount"
+	req.Reason = lock.ReasonMount
 
 	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.Global.TTL)*time.Second, exist); err != nil {
 		return err
@@ -344,40 +346,36 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uc := &config.UseConfig{
+	uc := &config.UseMount{
 		Volume:   volConfig,
-		Reason:   "Create",
+		Reason:   lock.ReasonCreate,
 		Hostname: hostname,
 	}
 
-	if err := d.Config.PublishUse(uc); err == nil {
-		defer func() {
-			if err := d.Config.RemoveUse(uc, false); err != nil {
-				log.Errorf("Could not remove use lock on create for %q", hostname)
-			}
-		}()
-
+	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(d *lock.Driver, uc config.UseLocker) error {
 		do, err := createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
-			goto finish
+			return nil
 		} else if err != nil {
-			httpError(w, "Creating volume", err)
-			return
+			return fmt.Errorf("Creating volume: %v", err)
 		}
 
 		if err := d.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
-			httpError(w, "Publishing volume", err)
-			return
+			return fmt.Errorf("Publishing volume: %v", err)
 		}
 
 		if err := formatVolume(volConfig, do); err != nil {
-			httpError(w, "Formatting volume", err)
-			return
+			return fmt.Errorf("Formatting volume: %v", err)
 		}
-	}
 
-finish:
+		return nil
+	})
+
+	if err != nil && err != lock.ErrPublish {
+		httpError(w, "Creating volume", err)
+		return
+	}
 
 	content, err = json.Marshal(volConfig)
 	if err != nil {

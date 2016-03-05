@@ -164,7 +164,7 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	out, err = s.volcli("use get policy1/foo")
 	c.Assert(err, IsNil)
 
-	ut := &config.UseConfig{}
+	ut := &config.UseMount{}
 	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
 	c.Assert(ut.Volume, NotNil)
 	c.Assert(ut.Hostname, Equals, "mon0")

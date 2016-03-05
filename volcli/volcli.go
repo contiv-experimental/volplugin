@@ -478,7 +478,7 @@ func useList(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	uses, err := cfg.ListUses()
+	uses, err := cfg.ListUses("mount")
 	if err != nil {
 		return false, err
 	}
@@ -515,8 +515,9 @@ func useGet(ctx *cli.Context) (bool, error) {
 		VolumeName: volume,
 	}
 
-	mount, err := cfg.GetUse(vc)
-	if err != nil {
+	mount := &config.UseMount{}
+
+	if err := cfg.GetUse(mount, vc); err != nil {
 		return false, err
 	}
 
@@ -556,7 +557,7 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		VolumeName: volume,
 	}
 
-	if err := cfg.RemoveUse(&config.UseConfig{Volume: vc}, true); err != nil {
+	if err := cfg.RemoveUse(&config.UseMount{Volume: vc}, true); err != nil {
 		return false, err
 	}
 
