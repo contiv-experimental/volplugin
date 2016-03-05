@@ -49,7 +49,7 @@ func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfi
 				"pool": pool,
 			},
 		},
-		Timeout: dc.Timeout,
+		Timeout: dc.Global.Timeout,
 	}
 
 	list, err := driver.ListSnapshots(driverOpts)
@@ -82,7 +82,7 @@ func (dc *DaemonConfig) runSnapshot(pool string, volume *config.VolumeConfig) {
 				"pool": pool,
 			},
 		},
-		Timeout: dc.Timeout,
+		Timeout: dc.Global.Timeout,
 	}
 
 	if err := driver.CreateSnapshot(now.String(), driverOpts); err != nil {
