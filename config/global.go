@@ -15,23 +15,26 @@ import (
 const DefaultGlobalTTL = 30 * time.Second
 
 var (
-	timeoutFixBase = time.Minute
-	ttlFixBase     = time.Second
+	timeoutFixBase   = time.Minute
+	ttlFixBase       = time.Second
+	defaultMountPath = "/mnt/ceph"
 )
 
 // Global is the global configuration.
 type Global struct {
-	Debug   bool
-	Timeout time.Duration
-	TTL     time.Duration
-	Backend string
+	Debug     bool
+	Timeout   time.Duration
+	TTL       time.Duration
+	Backend   string
+	MountPath string
 }
 
 // NewGlobalConfig returns global config with preset defaults
 func NewGlobalConfig() *Global {
 	return &Global{
-		TTL:     DefaultGlobalTTL,
-		Backend: ceph.BackendName,
+		TTL:       DefaultGlobalTTL,
+		Backend:   ceph.BackendName,
+		MountPath: defaultMountPath,
 	}
 }
 
@@ -63,7 +66,19 @@ func (tlc *TopLevelConfig) GetGlobal() (*Global, error) {
 		return nil, err
 	}
 
+	global.fixupParameters()
+
 	return global, nil
+}
+
+func (global *Global) fixupParameters() {
+	if global.TTL == 0 {
+		global.TTL = DefaultGlobalTTL
+	}
+
+	if global.MountPath == "" {
+		global.MountPath = defaultMountPath
+	}
 }
 
 // MultiplyGlobalParameters multiplies the paramters by a fixed base to allow them to
@@ -102,6 +117,8 @@ func (tlc *TopLevelConfig) WatchGlobal(activity chan *Global) {
 			time.Sleep(1 * time.Second)
 			continue
 		}
+
+		global.fixupParameters()
 
 		activity <- global
 	}

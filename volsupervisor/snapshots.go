@@ -40,7 +40,7 @@ func (dc *DaemonConfig) scheduleSnapshotPrune() {
 func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfig) {
 	log.Debugf("starting snapshot prune for %q", volume.VolumeName)
 
-	driver, err := backend.NewDriver(volume.Options.Backend)
+	driver, err := backend.NewDriver(volume.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		log.Errorf("failed to get driver: %v", err)
 		return
@@ -78,7 +78,7 @@ func (dc *DaemonConfig) runSnapshotPrune(pool string, volume *config.VolumeConfi
 func (dc *DaemonConfig) runSnapshot(pool string, volume *config.VolumeConfig) {
 	now := time.Now()
 	log.Infof("Snapping volume %q at %v", volume, now)
-	driver, err := backend.NewDriver(volume.Options.Backend)
+	driver, err := backend.NewDriver(volume.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		log.Errorf("failed to get driver: %v", err)
 		return

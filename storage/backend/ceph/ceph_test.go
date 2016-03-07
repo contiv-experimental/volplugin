@@ -13,6 +13,8 @@ import (
 	"github.com/contiv/volplugin/storage"
 )
 
+const myMountpath = "/mnt/ceph"
+
 var filesystems = map[string]storage.FSOptions{
 	"ext4": {
 		Type:          "ext4",
@@ -63,7 +65,7 @@ func (s *cephSuite) readWriteTest(c *C, mountDir string) {
 
 func (s *cephSuite) TestMkfsVolume(c *C) {
 	// Create a new driver; the ceph driver is needed
-	driver := Driver{}
+	driver := Driver{mountpath: myMountpath}
 
 	err := driver.mkfsVolume("echo %s; sleep 1", "fake-fake-fake", 3*time.Second)
 	c.Assert(err, IsNil)
@@ -74,7 +76,7 @@ func (s *cephSuite) TestMkfsVolume(c *C) {
 
 func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
-	driver := NewDriver()
+	driver := NewDriver(myMountpath)
 
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
@@ -95,13 +97,13 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	c.Assert(ms.DevMajor, Equals, uint(252))
 	c.Assert(ms.DevMinor, Equals, uint(0))
 	c.Assert(strings.HasPrefix(ms.Device, "/dev/rbd"), Equals, true)
-	s.readWriteTest(c, MountPath(ms.Volume.Params["pool"], ms.Volume.Name))
+	s.readWriteTest(c, driver.MountPath(driverOpts))
 	c.Assert(driver.Unmount(driverOpts), IsNil)
 	c.Assert(driver.Destroy(driverOpts), IsNil)
 }
 
 func (s *cephSuite) TestSnapshots(c *C) {
-	driver := NewDriver()
+	driver := NewDriver(myMountpath)
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
@@ -127,7 +129,7 @@ func (s *cephSuite) TestSnapshots(c *C) {
 }
 
 func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
-	driver := NewDriver()
+	driver := NewDriver(myMountpath)
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
@@ -162,7 +164,7 @@ func (s *cephSuite) TestTemplateFSCmd(c *C) {
 }
 
 func (s *cephSuite) TestMounted(c *C) {
-	driver := NewDriver()
+	driver := NewDriver(myMountpath)
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
@@ -186,7 +188,7 @@ func (s *cephSuite) TestMounted(c *C) {
 			Device:   "/dev/rbd0",
 			DevMajor: 252,
 			DevMinor: 0,
-			Path:     "/mnt/ceph/rbd/pithos",
+			Path:     strings.Join([]string{myMountpath, volumeSpec.Params["pool"], volumeSpec.Name}, "/"),
 			Volume: storage.Volume{
 				Name: "pithos",
 				Params: map[string]string{
@@ -201,7 +203,7 @@ func (s *cephSuite) TestMounted(c *C) {
 }
 
 func (s *cephSuite) TestInternalNames(c *C) {
-	driver := NewDriver()
+	driver := NewDriver(myMountpath)
 	out, err := driver.InternalName("tenant1/test")
 	c.Assert(err, IsNil)
 	c.Assert(out, Equals, "tenant1.test")

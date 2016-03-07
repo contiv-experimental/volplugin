@@ -8,16 +8,17 @@ import (
 	"github.com/contiv/volplugin/storage/backend/null"
 )
 
-// NewDriver instantiates and return a storage backend instance of the specified type
-func NewDriver(backend string) (storage.Driver, error) {
-	drivers := map[string]func() storage.Driver{
-		ceph.BackendName: ceph.NewDriver,
-		null.BackendName: null.NewDriver,
-	}
+// Drivers is the map of string to storage.Driver.
+var Drivers = map[string]func(string) storage.Driver{
+	ceph.BackendName: ceph.NewDriver,
+	null.BackendName: null.NewDriver,
+}
 
-	f, ok := drivers[backend]
+// NewDriver instantiates and return a storage backend instance of the specified type
+func NewDriver(backend, mountpath string) (storage.Driver, error) {
+	f, ok := Drivers[backend]
 	if !ok {
 		return nil, fmt.Errorf("invalid driver backend: %q", backend)
 	}
-	return f(), nil
+	return f(mountpath), nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
-	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
@@ -144,7 +144,6 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := volumeList{Volumes: []volume{}}
-
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
 		// FIXME make this take a single string and not a split one
@@ -154,7 +153,29 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: ceph.MountPath(volConfig.Options.Pool, vol)})
+		driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+		if err != nil {
+			httpError(w, "Initializing driver", err)
+			return
+		}
+
+		intName, err := driver.InternalName(volConfig.String())
+		if err != nil {
+			httpError(w, "Calculating internal name", err)
+			return
+		}
+
+		do := storage.DriverOptions{
+			Volume: storage.Volume{
+				Name: intName,
+				Params: storage.Params{
+					"pool": volConfig.Options.Pool,
+				},
+			},
+			Timeout: d.Global.Timeout,
+		}
+
+		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: driver.MountPath(do)})
 	}
 
 	content, err := json.Marshal(response)
@@ -177,7 +198,29 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vol := volume{Name: volName, Mountpoint: ceph.MountPath(volConfig.Options.Pool, volName)}
+	driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+	if err != nil {
+		httpError(w, "Initializing backend", err)
+		return
+	}
+
+	intName, err := driver.InternalName(volConfig.String())
+	if err != nil {
+		httpError(w, "Calculating internal name", err)
+		return
+	}
+
+	do := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: intName,
+			Params: storage.Params{
+				"pool": volConfig.Options.Pool,
+			},
+		},
+		Timeout: d.Global.Timeout,
+	}
+
+	vol := volume{Name: volName, Mountpoint: driver.MountPath(do)}
 
 	content, err := json.Marshal(volumeGet{Volume: vol})
 	if err != nil {
@@ -213,12 +256,12 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(d *lock.Driver, uc config.UseLocker) error {
-		if err := removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
+	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+		if err := d.removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
 			return fmt.Errorf("Removing image: %v", err)
 		}
 
-		if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
+		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
 			return fmt.Errorf("Clearing volume records: %v", err)
 		}
 
@@ -352,8 +395,8 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(d *lock.Driver, uc config.UseLocker) error {
-		do, err := createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
+	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+		do, err := d.createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			return nil
@@ -361,11 +404,11 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("Creating volume: %v", err)
 		}
 
-		if err := d.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
 			return fmt.Errorf("Publishing volume: %v", err)
 		}
 
-		if err := formatVolume(volConfig, do); err != nil {
+		if err := d.formatVolume(volConfig, do); err != nil {
 			return fmt.Errorf("Formatting volume: %v", err)
 		}
 

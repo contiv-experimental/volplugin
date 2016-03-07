@@ -13,7 +13,7 @@ import (
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
 
-func createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
+func (dc *DaemonConfig) createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
@@ -33,7 +33,7 @@ func createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, time
 		return storage.DriverOptions{}, err
 	}
 
-	driver, err := backend.NewDriver(config.Options.Backend)
+	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
@@ -62,13 +62,13 @@ func createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, time
 	return driverOpts, driver.Create(driverOpts)
 }
 
-func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
+func (dc *DaemonConfig) formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
 	actualSize, err := config.Options.ActualSize()
 	if err != nil {
 		return err
 	}
 
-	driver, err := backend.NewDriver(config.Options.Backend)
+	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		return err
 	}
@@ -81,8 +81,8 @@ func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
 	return driver.Format(do)
 }
 
-func removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
-	driver, err := backend.NewDriver(config.Options.Backend)
+func (dc *DaemonConfig) removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
+	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		return err
 	}

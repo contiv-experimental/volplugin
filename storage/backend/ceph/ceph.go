@@ -19,7 +19,6 @@ import (
 
 const (
 	deviceBase = "/dev/rbd"
-	mountBase  = "/mnt/ceph"
 	// BackendName is string for ceph storage backend
 	BackendName = "ceph"
 )
@@ -34,12 +33,14 @@ var spaceSplitRegex = regexp.MustCompile(`\s+`)
 // work. Therefore, if no pool is specified, the best error condition will be
 // raised.
 //
-type Driver struct{}
+type Driver struct {
+	mountpath string
+}
 
 // NewDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
-func NewDriver() storage.Driver {
-	return &Driver{}
+func NewDriver(mountpath string) storage.Driver {
+	return &Driver{mountpath: mountpath}
 }
 
 // Name returns the ceph backend string
@@ -164,7 +165,7 @@ func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 // prefer that to `ext4` which is the default.
 func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	// Directory to mount the volume
-	volumePath := filepath.Join(mountBase, do.Volume.Params["pool"], do.Volume.Name)
+	volumePath := filepath.Join(c.mountpath, do.Volume.Params["pool"], do.Volume.Name)
 
 	devName, err := c.mapImage(do)
 	if err != nil {
@@ -172,8 +173,8 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	}
 
 	// Create directory to mount
-	if err := os.MkdirAll(mountBase, 0700); err != nil && !os.IsExist(err) {
-		return nil, fmt.Errorf("error creating %q directory: %v", mountBase, err)
+	if err := os.MkdirAll(c.mountpath, 0700); err != nil && !os.IsExist(err) {
+		return nil, fmt.Errorf("error creating %q directory: %v", c.mountpath, err)
 	}
 
 	if err := os.MkdirAll(volumePath, 0700); err != nil && !os.IsExist(err) {
@@ -211,7 +212,7 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	// Directory to mount the volume
-	volumeDir := filepath.Join(mountBase, poolName, do.Volume.Name)
+	volumeDir := filepath.Join(c.mountpath, poolName, do.Volume.Name)
 
 	// Unmount the RBD
 	//

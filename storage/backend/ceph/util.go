@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/contiv/volplugin/executor"
+	"github.com/contiv/volplugin/storage"
 )
 
 func (c *Driver) poolExists(poolName string) (bool, error) {
@@ -31,8 +32,8 @@ func (c *Driver) poolExists(poolName string) (bool, error) {
 }
 
 // MountPath returns the path of a mount for a pool/volume.
-func MountPath(poolName, volumeName string) string {
-	return filepath.Join(mountBase, poolName, volumeName)
+func (c *Driver) MountPath(do storage.DriverOptions) string {
+	return filepath.Join(c.mountpath, do.Volume.Params["pool"], do.Volume.Name)
 }
 
 // FIXME maybe this belongs in storage/ as it's more general?

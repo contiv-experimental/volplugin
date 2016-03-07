@@ -85,8 +85,6 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 		return err
 	}
 
-	fmt.Printf("%#v\n", d)
-
 	resp, err := http.Post(fmt.Sprintf("http://%s/%s", d.master, endpoint), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
