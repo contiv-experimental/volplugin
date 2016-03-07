@@ -65,6 +65,6 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	c.Assert(s.pullDebian(), IsNil)
 	c.Assert(s.rebootstrap(), IsNil)
 
-	_, err = s.uploadIntent("policy1", "intent1")
-	c.Assert(err, IsNil)
+	out, err := s.uploadIntent("policy1", "intent1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
 }

@@ -55,6 +55,7 @@ var Commands = []cli.Command{
 		Subcommands: []cli.Command{
 			{
 				Name:        "upload",
+				Flags:       VolmasterFlags,
 				ArgsUsage:   "[policy name]. accepts from stdin",
 				Description: "Uploads a policy to etcd. Accepts JSON. Requires direct, unauthenticated access to etcd.",
 				Usage:       "Upload a policy to etcd",

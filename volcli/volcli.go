@@ -53,64 +53,86 @@ func ppJSON(v interface{}) ([]byte, error) {
 
 // GlobalGet retrives the global configuration and displays it on standard output.
 func GlobalGet(ctx *cli.Context) {
-	if len(ctx.Args()) != 0 {
-		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
-	}
+	execCliAndExit(ctx, globalGet)
+}
 
+func queryGlobalConfig(ctx *cli.Context) (*config.Global, error) {
 	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.String("volmaster")))
 	if err != nil {
-		errExit(ctx, err, false)
+		return nil, err
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errExit(ctx, err, false)
+		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		errExit(ctx, fmt.Errorf("Status code was %d not 200: %s", resp.StatusCode, string(content)), false)
+		return nil, fmt.Errorf("Status code was %d not 200: %s", resp.StatusCode, string(content))
 	}
 
 	// rebuild and divide the contents so they are cast out of their internal
 	// representation.
-	global := &config.Global{}
+	global := config.NewGlobalConfig()
 
 	if err := json.Unmarshal(content, global); err != nil {
-		errExit(ctx, err, false)
+		return nil, err
 	}
 
-	content, err = json.Marshal(config.DivideGlobalParameters(global))
+	return global, nil
+}
+
+func globalGet(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 0 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
+	}
+
+	global, err := queryGlobalConfig(ctx)
 	if err != nil {
-		errExit(ctx, err, false)
+		return false, err
+	}
+
+	// rebuild and divide the contents so they are cast out of their internal
+	// representation.
+	content, err := json.Marshal(config.DivideGlobalParameters(global))
+	if err != nil {
+		return false, err
 	}
 
 	fmt.Println(string(content))
+	return false, nil
 }
 
 // GlobalUpload uploads the global configuration
 func GlobalUpload(ctx *cli.Context) {
+	execCliAndExit(ctx, globalUpload)
+}
+
+func globalUpload(ctx *cli.Context) (bool, error) {
 	if len(ctx.Args()) != 0 {
-		errExit(ctx, fmt.Errorf("Invalid arguments"), true)
+		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
 	content, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		errExit(ctx, err, false)
+		return false, err
 	}
 
-	global := &config.Global{}
+	global := config.NewGlobalConfig()
 	if err := json.Unmarshal(content, global); err != nil {
-		errExit(ctx, err, false)
+		return false, err
 	}
 
 	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
-		errExit(ctx, err, false)
+		return false, err
 	}
 
 	if err := cfg.PublishGlobal(global); err != nil {
-		errExit(ctx, err, false)
+		return false, err
 	}
+
+	return false, nil
 }
 
 // PolicyUpload uploads a Policy intent from stdin.
@@ -133,7 +155,12 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	policy := &config.PolicyConfig{}
+	global, err := queryGlobalConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	policy := config.NewPolicyConfig(global.Backend)
 
 	if err := json.Unmarshal(content, policy); err != nil {
 		return false, err

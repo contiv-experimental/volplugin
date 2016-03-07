@@ -6,7 +6,7 @@ import (
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
-	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -33,7 +33,11 @@ func createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, time
 		return storage.DriverOptions{}, err
 	}
 
-	driver := ceph.NewDriver()
+	driver, err := backend.NewDriver(config.Options.Backend)
+	if err != nil {
+		return storage.DriverOptions{}, err
+	}
+
 	intName, err := driver.InternalName(config.String())
 	if err != nil {
 		return storage.DriverOptions{}, err
@@ -64,18 +68,24 @@ func formatVolume(config *config.VolumeConfig, do storage.DriverOptions) error {
 		return err
 	}
 
-	driver := ceph.NewDriver()
+	driver, err := backend.NewDriver(config.Options.Backend)
+	if err != nil {
+		return err
+	}
 	intName, err := driver.InternalName(config.String())
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", intName, config.Options.Pool, config.Options.FileSystem, actualSize)
-	return ceph.NewDriver().Format(do)
+	return driver.Format(do)
 }
 
 func removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
-	driver := ceph.NewDriver()
+	driver, err := backend.NewDriver(config.Options.Backend)
+	if err != nil {
+		return err
+	}
 	intName, err := driver.InternalName(config.String())
 	if err != nil {
 		return err

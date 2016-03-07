@@ -28,6 +28,7 @@ type VolumeOptions struct {
 	FileSystem   string          `json:"filesystem" merge:"filesystem"`
 	Ephemeral    bool            `json:"ephemeral,omitempty" merge:"ephemeral"`
 	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
+	Backend      string          `json:"backend"`
 
 	actualSize units.Base2Bytes
 }

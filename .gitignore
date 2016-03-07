@@ -13,3 +13,5 @@ node_modules
 dist
 docs/docs
 .DS_Store
+*.swp
+cscope.*

@@ -16,6 +16,15 @@ type PolicyConfig struct {
 	FileSystems          map[string]string `json:"filesystems"`
 }
 
+// NewPolicyConfig return policy config with specified backend preset
+func NewPolicyConfig(backend string) *PolicyConfig {
+	return &PolicyConfig{
+		DefaultVolumeOptions: VolumeOptions{
+			Backend: backend,
+		},
+	}
+}
+
 var defaultFilesystems = map[string]string{
 	"ext4": "mkfs.ext4 -m0 %",
 }
