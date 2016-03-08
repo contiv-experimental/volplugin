@@ -14,7 +14,7 @@ var testUseVolumeConfigs = map[string]*VolumeConfig{
 	"basic2": {PolicyName: "policy2", VolumeName: "baz"},
 }
 
-var testUseConfigs = map[string]*UseConfig{
+var testUseMounts = map[string]*UseMount{
 	"basic": {
 		Volume:   testUseVolumeConfigs["basic"],
 		Hostname: "hostname",
@@ -26,31 +26,31 @@ var testUseConfigs = map[string]*UseConfig{
 }
 
 func (s *configSuite) TestUseCRUD(c *C) {
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic"]), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic"]), NotNil)
-	c.Assert(s.tlc.RemoveUse(testUseConfigs["basic"], false), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic"]), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), NotNil)
+	c.Assert(s.tlc.RemoveUse(testUseMounts["basic"], false), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), IsNil)
 
-	mt, err := s.tlc.GetUse(testUseVolumeConfigs["basic"])
-	c.Assert(err, IsNil)
-	c.Assert(testUseConfigs["basic"], DeepEquals, mt)
+	mt := &UseMount{}
 
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic2"]), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic2"]), NotNil)
-	c.Assert(s.tlc.RemoveUse(testUseConfigs["basic2"], false), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseConfigs["basic2"]), IsNil)
+	c.Assert(s.tlc.GetUse(mt, testUseVolumeConfigs["basic"]), IsNil)
+	c.Assert(testUseMounts["basic"], DeepEquals, mt)
 
-	mt, err = s.tlc.GetUse(testUseVolumeConfigs["basic2"])
-	c.Assert(err, IsNil)
-	c.Assert(testUseConfigs["basic2"], DeepEquals, mt)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), NotNil)
+	c.Assert(s.tlc.RemoveUse(testUseMounts["basic2"], false), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
 
-	mounts, err := s.tlc.ListUses()
+	c.Assert(s.tlc.GetUse(mt, testUseVolumeConfigs["basic2"]), IsNil)
+	c.Assert(testUseMounts["basic2"], DeepEquals, mt)
+
+	mounts, err := s.tlc.ListUses("mount")
 	c.Assert(err, IsNil)
 
 	sort.Strings(mounts)
 	c.Assert([]string{"policy1/quux", "policy2/baz"}, DeepEquals, mounts)
 
-	basicTmp := *testUseConfigs["basic"]
+	basicTmp := *testUseMounts["basic"]
 	basicTmp.Hostname = "quux"
 
 	c.Assert(s.tlc.RemoveUse(&basicTmp, false), NotNil)
@@ -58,23 +58,21 @@ func (s *configSuite) TestUseCRUD(c *C) {
 }
 
 func (s *configSuite) TestUseCRUDWithTTL(c *C) {
-	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevNoExist), IsNil)
-	use, err := s.tlc.GetUse(testUseVolumeConfigs["basic"])
-	c.Assert(err, IsNil)
-	c.Assert(use, DeepEquals, testUseConfigs["basic"])
+	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
+	use := &UseMount{}
+	c.Assert(s.tlc.GetUse(use, testUseVolumeConfigs["basic"]), IsNil)
+	c.Assert(use, DeepEquals, testUseMounts["basic"])
 	time.Sleep(10 * time.Second)
-	use, err = s.tlc.GetUse(testUseVolumeConfigs["basic"])
-	c.Assert(err, NotNil)
-	c.Assert(use, IsNil)
+	c.Assert(s.tlc.GetUse(use, testUseVolumeConfigs["basic"]), NotNil)
 
-	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevNoExist), IsNil)
-	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic"], 5*time.Second, client.PrevExist), IsNil)
-	c.Assert(s.tlc.PublishUseWithTTL(testUseConfigs["basic2"], 5*time.Second, client.PrevNoExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic2"], 5*time.Second, client.PrevNoExist), IsNil)
 }
 
 func (s *configSuite) TestUseListEtcdDown(c *C) {
 	stopStartEtcd(c, func() {
-		_, err := s.tlc.ListUses()
+		_, err := s.tlc.ListUses("mount")
 		c.Assert(err, NotNil)
 	})
 }

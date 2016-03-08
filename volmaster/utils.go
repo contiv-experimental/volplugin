@@ -45,8 +45,8 @@ func unmarshalRequest(r *http.Request) (config.Request, error) {
 	return cfg, nil
 }
 
-func unmarshalUseConfig(r *http.Request) (*config.UseConfig, error) {
-	cfg := &config.UseConfig{}
+func unmarshalUseMount(r *http.Request) (*config.UseMount, error) {
+	cfg := &config.UseMount{}
 
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {

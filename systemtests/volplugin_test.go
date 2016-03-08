@@ -75,7 +75,7 @@ func (s *systemtestSuite) TestVolpluginHostLabel(c *C) {
 	defer s.purgeVolume("mon0", "policy1", "foo", true)
 	defer s.docker("rm -f " + out)
 
-	ut := &config.UseConfig{}
+	ut := &config.UseMount{}
 
 	// we know the pool is rbd here, so cheat a little.
 	out, err = s.volcli("use get policy1/foo")

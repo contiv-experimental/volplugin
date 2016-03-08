@@ -3,6 +3,7 @@ package systemtests
 import (
 	"encoding/json"
 	"io/ioutil"
+	"strings"
 
 	"github.com/contiv/volplugin/config"
 	. "gopkg.in/check.v1"
@@ -59,4 +60,34 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 
 	c.Assert(globalBase1, Not(DeepEquals), global)
 	c.Assert(globalBase2, DeepEquals, global)
+}
+
+func (s *systemtestSuite) TestVolmasterMultiRemove(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	errChan := make(chan error, 5)
+	outChan := make(chan string, 5)
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			out, err := s.volcli("volume remove policy1/test")
+			outChan <- out
+			errChan <- err
+		}()
+	}
+
+	errs := 0
+
+	for i := 0; i < 5; i++ {
+		err := <-errChan
+		out := <-outChan
+		if err != nil {
+			errs++
+		}
+		if out != "" {
+			c.Assert(strings.Contains(out, "Could not publish use lock"), Equals, true)
+		}
+	}
+
+	c.Assert(errs, Equals, 4)
 }
