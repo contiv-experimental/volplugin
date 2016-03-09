@@ -36,12 +36,11 @@ const (
 // Driver is the top-level struct for lock objects
 type Driver struct {
 	Config *config.TopLevelConfig
-	Global *config.Global
 }
 
 // NewDriver creates a Driver. Requires a configured TopLevelConfig.
-func NewDriver(config *config.TopLevelConfig, global *config.Global) *Driver {
-	return &Driver{Config: config, Global: global}
+func NewDriver(config *config.TopLevelConfig) *Driver {
+	return &Driver{Config: config}
 }
 
 // ExecuteWithUseLock executes a function within a lock/context of the passed

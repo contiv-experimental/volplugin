@@ -256,7 +256,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
 		if err := d.removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
 			return fmt.Errorf("Removing image: %v", err)
 		}
@@ -395,7 +395,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config, d.Global).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
