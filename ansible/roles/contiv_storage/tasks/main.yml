@@ -4,14 +4,15 @@
 - name: download storage service binaries
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/volplugin/releases/download/v0.0.0-12-14-2015.00-48-49.UTC/volplugin-v0.0.0-12-14-2015.00-48-49.UTC.tar.bz2
-    dest: /tmp/contivvol.tar.bz2
+    url: "{{ contiv_storage_src_file }}"
+    dest: "{{ contiv_storage_dest_file }}"
+  register: download_result
 
 - name: install storage service
-  shell: tar vxjf /tmp/contivvol.tar.bz2
+  shell: tar vxjf {{ contiv_storage_dest_file }}
   args:
     chdir: /usr/bin/
-    creates: volmaster
+  when: download_result | changed 
 
 - name: copy environment file for volmaster
   copy: src=volmaster dest=/etc/default/volmaster
