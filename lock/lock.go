@@ -47,7 +47,7 @@ func NewDriver(config *config.TopLevelConfig) *Driver {
 // *config.UseMount.
 func (d *Driver) ExecuteWithUseLock(uc config.UseLocker, runFunc func(d *Driver, uc config.UseLocker) error) error {
 	if err := d.Config.PublishUse(uc); err != nil {
-		log.Errorf("Could not publish use lock %#v: %v", uc, err)
+		log.Debugf("Could not publish use lock %#v: %v", uc, err)
 		return ErrPublish
 	}
 
