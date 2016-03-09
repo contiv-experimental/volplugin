@@ -11,6 +11,14 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func (s *systemtestSuite) TestVolpluginVolmasterDown(c *C) {
+	c.Assert(stopVolmaster(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(startVolmaster(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+}
+
 func (s *systemtestSuite) TestVolpluginCleanupSocket(c *C) {
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	defer c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
