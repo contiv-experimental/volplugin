@@ -44,7 +44,7 @@ func (s *configSuite) TestGlobalWatch(c *C) {
 
 	// XXX this leaks but w/e, we should probably implement a stop chan. not a
 	// real world problem
-	go s.tlc.WatchGlobal(activity)
+	s.tlc.WatchGlobal(activity)
 
 	c.Assert(s.tlc.PublishGlobal(global), IsNil)
 	global2 := DivideGlobalParameters(<-activity)

@@ -35,7 +35,7 @@ func (dc *DaemonConfig) Daemon() {
 	dc.setDebug()
 
 	globalChan := make(chan *config.Global)
-	go dc.Config.WatchGlobal(globalChan)
+	dc.Config.WatchGlobal(globalChan)
 	go func() {
 		for {
 			dc.Global = <-globalChan

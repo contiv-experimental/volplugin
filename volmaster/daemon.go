@@ -63,7 +63,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	go info.HandleDebugSignal()
 
 	activity := make(chan *config.Global)
-	go d.Config.WatchGlobal(activity)
+	d.Config.WatchGlobal(activity)
 	go func() {
 		for {
 			d.Global = <-activity
