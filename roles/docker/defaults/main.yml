@@ -1,4 +1,6 @@
 ---
 # Default values for docker role
 
+docker_api_port: 2385
+
 docker_version: 1.9.1

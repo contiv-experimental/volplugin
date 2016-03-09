@@ -20,20 +20,21 @@
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/netplugin/releases/download/v0.1-02-06-2016.14-42-05.UTC/netplugin-v0.1-02-06-2016.14-42-05.UTC.tar.bz2
-    dest: /tmp/contivnet.tar.bz2
+    url: "{{ contiv_network_src_file }}"
+    dest: "{{ contiv_network_dest_file }}" 
+  register: download_result
 
 - name: ensure netplugin directory exists
   file: path=/usr/bin/contiv/netplugin state=directory
 
 - name: install netmaster and netplugin
-  shell: tar vxjf /tmp/contivnet.tar.bz2
+  shell: tar vxjf {{ contiv_network_dest_file }}
   args:
     chdir: /usr/bin/contiv/netplugin
-    creates: netmaster
+  when: download_result | changed 
 
 - name: create links for netplugin binaries
-  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link
+  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link force=yes
   with_items:
     - netctl
     - netmaster
@@ -73,15 +74,16 @@
 - name: download contivctl
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/contiv/contivctl/releases/download/v0.0.0-01-31-2016.17-56-53.UTC/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
-    dest: /tmp/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
+    url: "{{ contivctl_src_file }}"
+    dest: "{{ contivctl_dest_file }}"
     force: no
+  register: download_result
 
 - name: install contivctl
-  shell: tar vxjf /tmp/contivctl-v0.0.0-01-31-2016.17-56-53.UTC.tar.bz2
+  shell: tar vxjf {{ contivctl_dest_file }}
   args:
     chdir: /usr/bin/
-    creates: contivctl
+  when: download_result | changed
 
 - include: aci_tasks.yml
   when: (run_as == "master") and (contiv_network_mode == "aci")
