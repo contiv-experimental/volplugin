@@ -1,6 +1,7 @@
 package null
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/contiv/volplugin/storage"
@@ -12,12 +13,14 @@ const BackendName = "null"
 // Driver implements a no-op storage driver for volplugin.
 //
 // This is intended for regressing volplugin
-type Driver struct{}
+type Driver struct {
+	mountpath string
+}
 
 // NewDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
-func NewDriver() storage.Driver {
-	return &Driver{}
+func NewDriver(mountpath string) storage.Driver {
+	return &Driver{mountpath: mountpath}
 }
 
 // Name returns the null backend string
@@ -88,4 +91,9 @@ func (d *Driver) InternalName(s string) (string, error) {
 // InternalNameToVolpluginName returns the passed string as is.
 func (d *Driver) InternalNameToVolpluginName(s string) string {
 	return s
+}
+
+// MountPath describes the path at which the volume should be mounted.
+func (d *Driver) MountPath(do storage.DriverOptions) string {
+	return filepath.Join(d.mountpath, do.Volume.Name)
 }

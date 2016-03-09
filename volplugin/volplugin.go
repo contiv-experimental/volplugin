@@ -17,7 +17,7 @@ import (
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock/client"
-	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend"
 	"github.com/gorilla/mux"
 )
 
@@ -166,50 +166,56 @@ func (dc *DaemonConfig) getGlobal() {
 
 func (dc *DaemonConfig) watchGlobal() error {
 	for {
-		time.Sleep(1 * time.Minute)
+		time.Sleep(1 * time.Second)
 		dc.getGlobal()
 	}
 }
 
 func (dc *DaemonConfig) updateMounts() error {
-	cd := ceph.NewDriver()
-	mounts, err := cd.Mounted(dc.Global.Timeout)
-	if err != nil {
-		return err
-	}
-
-	for _, mount := range mounts {
-		parts := strings.Split(mount.Volume.Name, "/")
-		if len(parts) != 2 {
-			log.Warnf("Invalid volume named %q in ceph scan: skipping refresh", mount.Volume.Name)
-			continue
+	for driverName := range backend.Drivers {
+		cd, err := backend.NewDriver(driverName, dc.Global.MountPath)
+		if err != nil {
+			return err
 		}
 
-		log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
-
-		volConfig, err := dc.requestVolumeConfig(parts[0], parts[1])
-		switch err {
-		case errVolumeNotFound:
-			log.Warnf("Volume %q not found in database, skipping")
-			continue
-		case errVolumeResponse:
-			log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
+		mounts, err := cd.Mounted(dc.Global.Timeout)
+		if err != nil {
+			return err
 		}
 
-		payload := &config.UseMount{
-			Hostname: dc.Host,
-			Volume:   volConfig,
-		}
-
-		if err := dc.Client.ReportMount(payload); err != nil {
-			if err := dc.Client.ReportMountStatus(payload); err != nil {
-				// FIXME everything is effed up. what should we really be doing here?
-				return err
+		for _, mount := range mounts {
+			parts := strings.Split(mount.Volume.Name, "/")
+			if len(parts) != 2 {
+				log.Warnf("Invalid volume named %q in mount scan: skipping refresh", mount.Volume.Name)
+				continue
 			}
-		}
 
-		stop := dc.Client.AddStopChan(mount.Volume.Name)
-		go dc.Client.HeartbeatMount(dc.Global.TTL, payload, stop)
+			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
+
+			volConfig, err := dc.requestVolumeConfig(parts[0], parts[1])
+			switch err {
+			case errVolumeNotFound:
+				log.Warnf("Volume %q not found in database, skipping")
+				continue
+			case errVolumeResponse:
+				log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
+			}
+
+			payload := &config.UseMount{
+				Hostname: dc.Host,
+				Volume:   volConfig,
+			}
+
+			if err := dc.Client.ReportMount(payload); err != nil {
+				if err := dc.Client.ReportMountStatus(payload); err != nil {
+					// FIXME everything is effed up. what should we really be doing here?
+					return err
+				}
+			}
+
+			stop := dc.Client.AddStopChan(mount.Volume.Name)
+			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, stop)
+		}
 	}
 
 	return nil

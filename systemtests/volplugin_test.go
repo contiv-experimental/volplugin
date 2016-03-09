@@ -83,3 +83,12 @@ func (s *systemtestSuite) TestVolpluginHostLabel(c *C) {
 	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
 	c.Assert(ut.Hostname, Equals, "quux")
 }
+
+func (s *systemtestSuite) TestVolpluginMountPath(c *C) {
+	c.Assert(s.uploadGlobal("mountpath_global"), IsNil)
+	time.Sleep(1 * time.Second)
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	_, err := s.docker("run -d -v policy1/test:/mnt alpine sleep 10m")
+	c.Assert(err, IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("sudo test -d /mnt/test/rbd/policy1.test"), IsNil)
+}

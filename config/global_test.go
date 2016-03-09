@@ -7,10 +7,11 @@ func (s *configSuite) TestGlobal(c *C) {
 	c.Assert(err, NotNil)
 
 	global := &Global{
-		Debug:   true,
-		TTL:     10,
-		Timeout: 1,
-		Backend: "foo",
+		Debug:     true,
+		TTL:       10,
+		Timeout:   1,
+		Backend:   "foo",
+		MountPath: defaultMountPath,
 	}
 
 	c.Assert(s.tlc.PublishGlobal(global), IsNil)
@@ -19,14 +20,26 @@ func (s *configSuite) TestGlobal(c *C) {
 	c.Assert(global, DeepEquals, DivideGlobalParameters(global2))
 }
 
+func (s *configSuite) TestGlobalEmpty(c *C) {
+	c.Assert(s.tlc.PublishGlobal(&Global{}), IsNil)
+	global, err := s.tlc.GetGlobal()
+	c.Assert(err, IsNil)
+
+	c.Assert(global, DeepEquals, &Global{
+		TTL:       DefaultGlobalTTL,
+		MountPath: defaultMountPath,
+	})
+}
+
 func (s *configSuite) TestGlobalWatch(c *C) {
 	activity := make(chan *Global)
 
 	global := &Global{
-		Debug:   true,
-		TTL:     10,
-		Timeout: 1,
-		Backend: "foo",
+		Debug:     true,
+		TTL:       10,
+		Timeout:   1,
+		Backend:   "foo",
+		MountPath: defaultMountPath,
 	}
 
 	// XXX this leaks but w/e, we should probably implement a stop chan. not a

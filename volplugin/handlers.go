@@ -11,7 +11,6 @@ import (
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -141,7 +140,8 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	driver, err := backend.NewDriver(vc.Options.Backend)
+
+	driver, err := backend.NewDriver(vc.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -152,7 +152,16 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 		httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(vc.Options.Pool, name), Err: ""})
+	do := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: name,
+			Params: storage.Params{
+				"pool": vc.Options.Pool,
+			},
+		},
+	}
+
+	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do), Err: ""})
 }
 
 func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
@@ -183,8 +192,28 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
+	if err != nil {
+		httpError(w, fmt.Sprintf("loading driver"), err)
+		return
+	}
+
+	name, err := driver.InternalName(uc.Request.Name)
+	if err != nil {
+		httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
+	}
+
+	do := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: name,
+			Params: storage.Params{
+				"pool": volConfig.Options.Pool,
+			},
+		},
+	}
+
 	// FIXME need to ensure that the mount exists before returning to docker
-	writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, uc.Name)})
+	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do)})
 }
 
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +231,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend)
+	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -260,7 +289,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, intName)})
+	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
 }
 
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +306,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend)
+	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -316,7 +345,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: ceph.MountPath(volConfig.Options.Pool, intName)})
+	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
 }
 
 // Catchall for additional driver functions.

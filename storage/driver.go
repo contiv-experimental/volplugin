@@ -98,5 +98,8 @@ type Driver interface {
 
 	// InternalNameToVolpluginName translates an internal name to a volplugin
 	// `tenant/volume` syntax name.
-	InternalNameToVolpluginName(s string) string
+	InternalNameToVolpluginName(string) string
+
+	// MountPath describes the path at which the volume should be mounted.
+	MountPath(DriverOptions) string
 }
