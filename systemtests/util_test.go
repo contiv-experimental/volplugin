@@ -207,6 +207,16 @@ func (s *systemtestSuite) pullDebian() error {
 	return s.vagrant.SSHExecAllNodes("docker pull alpine")
 }
 
+func restartNetplugin(node vagrantssh.TestbedNode) error {
+	log.Infof("Restarting netplugin on %q", node.GetName())
+	err := node.RunCommand("sudo systemctl restart netplugin netmaster")
+	if err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+	return nil
+}
+
 func startVolsupervisor(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %q", node.GetName())
 	return node.RunCommandBackground("(sudo -E nohup `which volsupervisor` </dev/null 2>&1 | sudo tee -a /tmp/volsupervisor.log) &")
@@ -254,6 +264,10 @@ func restartDockerHost(node vagrantssh.TestbedNode) error {
 
 func (s *systemtestSuite) restartDocker() error {
 	return s.vagrant.IterateNodes(restartDockerHost)
+}
+
+func (s *systemtestSuite) restartNetplugin() error {
+	return s.vagrant.IterateNodes(restartNetplugin)
 }
 
 func (s *systemtestSuite) clearContainerHost(node vagrantssh.TestbedNode) error {

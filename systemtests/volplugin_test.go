@@ -19,6 +19,7 @@ func (s *systemtestSuite) TestVolpluginCleanupSocket(c *C) {
 }
 
 func (s *systemtestSuite) TestVolpluginFDLeak(c *C) {
+	c.Assert(s.restartNetplugin(), IsNil)
 	iterations := 2000
 	subIterations := 50
 
