@@ -56,11 +56,18 @@ type volumeGet struct {
 func (dc *DaemonConfig) Daemon() error {
 	dc.Client = client.NewDriver(dc.Master)
 
-	dc.getGlobal()
+	for {
+		dc.getGlobal()
 
-	if dc.Global == nil {
-		log.Fatal("Global configuration is missing; aborting.")
+		if dc.Global != nil {
+			break
+		}
+
+		log.Errorf("Global configuration is missing; waiting for volmaster at %q.", dc.Master)
+		time.Sleep(1 * time.Second)
 	}
+
+	log.Infof("Reached volmaster at %q. Continuing startup.", dc.Master)
 
 	if err := dc.updateMounts(); err != nil {
 		return err
