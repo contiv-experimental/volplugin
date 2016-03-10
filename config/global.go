@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
@@ -103,23 +104,18 @@ func DivideGlobalParameters(global *Global) *Global {
 
 // WatchGlobal watches a global and updates it as soon as the config changes.
 func (tlc *TopLevelConfig) WatchGlobal(activity chan *Global) {
-	watcher := tlc.etcdClient.Watcher(tlc.prefixed("global-config"), &client.WatcherOptions{Recursive: false})
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
+	w := watch.NewWatcher(activity, tlc.prefixed("global-config"), func(node *client.Node, w *watch.Watcher) {
 		global := NewGlobalConfig()
-		if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
+		if err := json.Unmarshal([]byte(node.Value), global); err != nil {
 			log.Error("Error decoding global config, not updating")
 			time.Sleep(1 * time.Second)
-			continue
+			return
 		}
 
 		global.fixupParameters()
 
-		activity <- global
-	}
+		w.Channel.(chan *Global) <- global
+	})
+
+	watch.Create(w)
 }

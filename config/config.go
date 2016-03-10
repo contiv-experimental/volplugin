@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path"
 
+	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -55,6 +56,8 @@ func NewTopLevelConfig(prefix string, etcdHosts []string) (*TopLevelConfig, erro
 		prefix:     prefix,
 		etcdClient: client.NewKeysAPI(etcdClient),
 	}
+
+	watch.Init(config.etcdClient)
 
 	config.etcdClient.Set(context.Background(), config.prefix, "", &client.SetOptions{Dir: true})
 	for _, path := range defaultPaths {
