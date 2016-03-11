@@ -4,6 +4,8 @@ import (
 	"path"
 	"sort"
 
+	"github.com/contiv/volplugin/watch"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -84,6 +86,23 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 	c.Assert(opts.Validate(), NotNil)
 	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}, Pool: "rbd", actualSize: 10}
 	c.Assert(opts.Validate(), IsNil)
+}
+
+func (s *configSuite) TestWatchVolumes(c *C) {
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicyConfigs["basic"]), IsNil)
+	volumeChan := make(chan *watch.Watch)
+	s.tlc.WatchVolumes(volumeChan)
+
+	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
+	c.Assert(err, IsNil)
+	c.Assert(s.tlc.PublishVolume(vol), IsNil)
+	vol2 := <-volumeChan
+	c.Assert(vol2.Key, Equals, "policy1/test")
+	c.Assert(vol2.Config, NotNil)
+	volConfig := vol2.Config.(*VolumeConfig)
+	c.Assert(vol.PolicyName, Equals, volConfig.PolicyName)
+	c.Assert(vol.VolumeName, Equals, volConfig.VolumeName)
+	c.Assert(vol.Options, DeepEquals, volConfig.Options)
 }
 
 func (s *configSuite) TestVolumeCRUD(c *C) {

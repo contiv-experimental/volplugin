@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/contiv/volplugin/watch"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/alecthomas/units"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -202,6 +206,39 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+// WatchVolumes watches the volumes tree and returns data back to the activity channel.
+func (c *TopLevelConfig) WatchVolumes(activity chan *watch.Watch) {
+	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
+		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
+
+		if !resp.Node.Dir {
+			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
+			if resp.Action != "delete" {
+				volume := &VolumeConfig{}
+
+				if resp.Node.Value != "" {
+					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
+						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
+						time.Sleep(1 * time.Second)
+						return
+					}
+
+					if err := volume.Validate(); err != nil {
+						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
+						time.Sleep(1 * time.Second)
+						return
+					}
+					vw.Config = volume
+				}
+			}
+
+			w.Channel <- vw
+		}
+	})
+
+	watch.Create(w)
 }
 
 // Validate options for a volume. Should be called anytime options are

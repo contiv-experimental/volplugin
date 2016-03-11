@@ -73,6 +73,13 @@ func (dc *DaemonConfig) Daemon() error {
 		return err
 	}
 
+	if dc.Global.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	go info.HandleDebugSignal()
+	go dc.watchGlobal()
+
 	driverPath := path.Join(basePath, "volplugin.sock")
 	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
 		return err
@@ -85,13 +92,6 @@ func (dc *DaemonConfig) Daemon() error {
 	if err != nil {
 		return err
 	}
-
-	if dc.Global.Debug {
-		log.SetLevel(log.DebugLevel)
-	}
-
-	go info.HandleDebugSignal()
-	go dc.watchGlobal()
 
 	srv := http.Server{Handler: dc.configureRouter()}
 	srv.SetKeepAlivesEnabled(false)

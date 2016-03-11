@@ -51,11 +51,12 @@ type Executor struct {
 
 	timeout time.Duration
 
-	command         *exec.Cmd
-	stdout          io.ReadCloser
-	stderr          io.ReadCloser
-	startTime       time.Time
-	terminateLogger chan struct{}
+	command          *exec.Cmd
+	stdout           io.ReadCloser
+	stderr           io.ReadCloser
+	startTime        time.Time
+	terminateLogger  chan struct{}
+	timeoutTerminate chan struct{}
 }
 
 // New creates a new executor from an *exec.Cmd. You may modify the values
@@ -135,8 +136,11 @@ func (e *Executor) TimeRunning() time.Duration {
 }
 
 func (e *Executor) terminateTimeout() {
-	time.Sleep(e.timeout)
-	e.TerminateChan <- true
+	select {
+	case <-e.timeoutTerminate:
+	case <-time.After(e.timeout):
+		e.TerminateChan <- true
+	}
 }
 
 func (e *Executor) waitForStop() {
@@ -157,11 +161,10 @@ func (e *Executor) waitForStop() {
 
 func (e *Executor) logInterval() {
 	for {
-		time.Sleep(e.LogInterval)
 		select {
 		case <-e.terminateLogger:
 			return
-		default:
+		case <-time.After(e.LogInterval):
 			e.LogFunc("%v has been running for %v", e, e.TimeRunning())
 		}
 	}
@@ -203,6 +206,10 @@ func (e *Executor) Wait() (*ExecResult, error) {
 	err = e.command.Wait()
 
 	e.TerminateChan <- false // signal goroutines to terminate gracefully
+	select {
+	case e.timeoutTerminate <- struct{}{}:
+	default:
+	}
 
 	if err != nil {
 		// if not exiterror, do not yield an execresult

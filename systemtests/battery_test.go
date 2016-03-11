@@ -3,6 +3,7 @@ package systemtests
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	. "gopkg.in/check.v1"
@@ -42,7 +43,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 					if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v policy1/test%d:/mnt alpine sleep 10m", x)); err != nil {
 						errChan <- err
 					} else {
-						contID = out
+						contID = strings.TrimSpace(out)
 						contNode = &node
 					}
 

@@ -81,6 +81,29 @@ func (dc *DaemonConfig) formatVolume(config *config.VolumeConfig, do storage.Dri
 	return driver.Format(do)
 }
 
+func (dc *DaemonConfig) existsVolume(config *config.VolumeConfig) (bool, error) {
+	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
+	if err != nil {
+		return false, err
+	}
+	intName, err := driver.InternalName(config.String())
+	if err != nil {
+		return false, err
+	}
+
+	driverOpts := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: intName,
+			Params: storage.Params{
+				"pool": config.Options.Pool,
+			},
+		},
+		Timeout: dc.Global.Timeout,
+	}
+
+	return driver.Exists(driverOpts)
+}
+
 func (dc *DaemonConfig) removeVolume(config *config.VolumeConfig, timeout time.Duration) error {
 	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
 	if err != nil {

@@ -37,8 +37,8 @@ func (s *watchSuite) SetUpTest(c *C) {
 }
 
 func (s *watchSuite) TestBasic(c *C) {
-	w := NewWatcher(make(chan bool), "/watch", func(node *client.Node, w *Watcher) {
-		w.Channel.(chan bool) <- true
+	w := NewWatcher(make(chan *Watch), "/watch", func(resp *client.Response, w *Watcher) {
+		w.Channel <- &Watch{Key: resp.Node.Key, Config: true}
 	})
 
 	Create(w)
@@ -58,7 +58,7 @@ func (s *watchSuite) TestBasic(c *C) {
 	}
 
 	for i := 0; i < 10; i++ {
-		c.Assert(<-w.Channel.(chan bool), Equals, true)
+		c.Assert((<-w.Channel).Config.(bool), Equals, true)
 	}
 
 	Stop(w.Path)
@@ -77,7 +77,7 @@ func (s *watchSuite) TestBasic(c *C) {
 
 	for i := 0; i < 10; i++ {
 		select {
-		case <-w.Channel.(chan bool):
+		case <-w.Channel:
 			x++
 		default:
 		}

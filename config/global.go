@@ -103,18 +103,20 @@ func DivideGlobalParameters(global *Global) *Global {
 }
 
 // WatchGlobal watches a global and updates it as soon as the config changes.
-func (tlc *TopLevelConfig) WatchGlobal(activity chan *Global) {
-	w := watch.NewWatcher(activity, tlc.prefixed("global-config"), func(node *client.Node, w *watch.Watcher) {
-		global := NewGlobalConfig()
-		if err := json.Unmarshal([]byte(node.Value), global); err != nil {
-			log.Error("Error decoding global config, not updating")
-			time.Sleep(1 * time.Second)
-			return
+func (tlc *TopLevelConfig) WatchGlobal(activity chan *watch.Watch) {
+	w := watch.NewWatcher(activity, tlc.prefixed("global-config"), func(resp *client.Response, w *watch.Watcher) {
+		if resp.Action != "delete" {
+			global := NewGlobalConfig()
+			if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
+				log.Error("Error decoding global config, not updating")
+				time.Sleep(1 * time.Second)
+				return
+			}
+
+			global.fixupParameters()
+
+			w.Channel <- &watch.Watch{Key: resp.Node.Key, Config: global}
 		}
-
-		global.fixupParameters()
-
-		w.Channel.(chan *Global) <- global
 	})
 
 	watch.Create(w)

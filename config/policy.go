@@ -5,7 +5,6 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/client"
-
 	"golang.org/x/net/context"
 )
 

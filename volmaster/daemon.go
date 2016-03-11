@@ -18,6 +18,7 @@ import (
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
+	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
@@ -62,11 +63,11 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 
 	go info.HandleDebugSignal()
 
-	activity := make(chan *config.Global)
+	activity := make(chan *watch.Watch)
 	d.Config.WatchGlobal(activity)
 	go func() {
 		for {
-			d.Global = <-activity
+			d.Global = (<-activity).Config.(*config.Global)
 		}
 	}()
 
@@ -256,8 +257,22 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		if err := d.removeVolume(vc, time.Duration(d.Global.Timeout)*time.Second); err != nil {
+	snapUC := &config.UseSnapshot{
+		Volume: vc,
+		Reason: lock.ReasonRemove,
+	}
+
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+		exists, err := d.existsVolume(vc)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return fmt.Errorf("Volume %q no longer exists", vc.String())
+		}
+
+		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
 			return fmt.Errorf("Removing image: %v", err)
 		}
 
@@ -396,7 +411,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		do, err := d.createVolume(policy, volConfig, time.Duration(d.Global.Timeout)*time.Second)
+		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
 		if err == storage.ErrVolumeExist {
 			log.Errorf("Volume exists, cleaning up")
 			return nil

@@ -1,0 +1,7 @@
+{ 
+  "default-options": {
+    "pool": "rbd",
+    "size": "10MB",
+    "snapshots": false
+  }
+}

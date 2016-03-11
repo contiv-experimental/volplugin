@@ -1,6 +1,9 @@
 package config
 
-import . "gopkg.in/check.v1"
+import (
+	"github.com/contiv/volplugin/watch"
+	. "gopkg.in/check.v1"
+)
 
 func (s *configSuite) TestGlobal(c *C) {
 	_, err := s.tlc.GetGlobal()
@@ -32,7 +35,7 @@ func (s *configSuite) TestGlobalEmpty(c *C) {
 }
 
 func (s *configSuite) TestGlobalWatch(c *C) {
-	activity := make(chan *Global)
+	activity := make(chan *watch.Watch)
 
 	global := &Global{
 		Debug:     true,
@@ -47,7 +50,7 @@ func (s *configSuite) TestGlobalWatch(c *C) {
 	s.tlc.WatchGlobal(activity)
 
 	c.Assert(s.tlc.PublishGlobal(global), IsNil)
-	global2 := DivideGlobalParameters(<-activity)
+	global2 := DivideGlobalParameters((<-activity).Config.(*Global))
 	c.Assert(global2, NotNil)
 	c.Assert(global, DeepEquals, global2)
 }
