@@ -26,4 +26,4 @@ validate_certs: "yes"
 # service_vip:
 # control_interface:
 
-host_capability: "compute, storage, network"
+host_capability: "can-run-user-containers, storage"
