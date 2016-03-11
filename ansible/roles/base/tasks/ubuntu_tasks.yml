@@ -27,4 +27,4 @@
     validate_certs: "{{ validate_certs }}"
 
 - name: install ansible (debian)
-  apt: name=ansible state=present
+  apt: name=ansible state=latest
