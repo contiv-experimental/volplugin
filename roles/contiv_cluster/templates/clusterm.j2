@@ -3,7 +3,7 @@ Description=Clusterm
 After=auditd.service systemd-user-sessions.service time-sync.target serf.service collins.service
 
 [Service]
-EnvironmentFile=/etc/default/clusterm
+EnvironmentFile=/etc/default/clusterm/{{ clusterm_args_file }}
 ExecStart=/usr/bin/clusterm $CLUSTERM_ARGS
 Restart=on-failure
 RestartSec=10
