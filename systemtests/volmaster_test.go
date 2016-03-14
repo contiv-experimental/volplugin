@@ -85,7 +85,7 @@ func (s *systemtestSuite) TestVolmasterMultiRemove(c *C) {
 			errs++
 		}
 		if out != "" {
-			c.Assert(strings.Contains(out, "Could not publish use lock"), Equals, true)
+			c.Assert(strings.Contains(out, `Volume "policy1/test" no longer exists`), Equals, true)
 		}
 	}
 

@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	. "gopkg.in/check.v1"
@@ -169,7 +170,8 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(ut.Volume, NotNil)
 	c.Assert(ut.Hostname, Equals, "mon0")
 
-	_, err = s.volcli("use force-remove policy1/foo")
+	out, err = s.volcli("use force-remove policy1/foo")
+	fmt.Println(out)
 	c.Assert(err, IsNil)
 
 	out, err = s.volcli("use list")

@@ -10,6 +10,7 @@ package lock
 
 import (
 	"errors"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -31,6 +32,14 @@ const (
 	ReasonMount = "Mount"
 	// ReasonRemove is the "remove" reason for the lock
 	ReasonRemove = "Remove"
+
+	// ReasonSnapshot is the "snapshot" reason for the lock
+	ReasonSnapshot = "Snapshot"
+	// ReasonSnapshotPrune is the prune operation for snapshots
+	ReasonSnapshotPrune = "SnapshotPrune"
+
+	// ReasonMaintenance indicates that an operator is acquiring the lock.
+	ReasonMaintenance = "Maintenance"
 )
 
 // Driver is the top-level struct for lock objects
@@ -58,4 +67,38 @@ func (d *Driver) ExecuteWithUseLock(uc config.UseLocker, runFunc func(d *Driver,
 	}()
 
 	return runFunc(d, uc)
+}
+
+// ExecuteWithMultiUseLock takes several UseLockers and tries to lock them all
+// at the same time. If it fails, it returns an error. If wait is true, it will
+// attempt to wait for the provided timeout and only return an error if it
+// fails to acquire them in time.
+func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, wait bool, timeout time.Duration, runFunc func(d *Driver, ucs []config.UseLocker) error) error {
+	defer func() {
+		for _, uc := range ucs {
+			if err := d.Config.RemoveUse(uc, false); err != nil {
+				log.Errorf("Could not remove use lock %#v: %v", uc, err)
+			}
+		}
+	}()
+
+	now := time.Now()
+
+	for _, uc := range ucs {
+	retry:
+		if err := d.Config.PublishUse(uc); err != nil {
+			log.Warnf("Could not acquire %q lock for %q", uc.GetReason(), uc.GetVolume())
+			if wait {
+				if time.Now().Sub(now) < timeout {
+					log.Warnf("Waiting 100ms for %q lock on %q to free", uc.GetReason(), uc.GetVolume())
+					time.Sleep(100 * time.Millisecond)
+					goto retry
+				}
+			} else {
+				return ErrPublish
+			}
+		}
+	}
+
+	return runFunc(d, ucs)
 }

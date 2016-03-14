@@ -49,6 +49,7 @@ func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool)
 
 	defer func() {
 		if purgeCeph {
+			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd snap purge rbd/%s.%s", policy, name))
 			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", policy, name))
 		}
 	}()

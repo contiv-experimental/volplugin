@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -15,26 +14,6 @@ func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 	// this not-very-obvious test ensures that the policy can be uploaded after
 	// the volplugin/volmaster pair are started.
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
-}
-
-func (s *systemtestSuite) TestIntegratedSnapshotSchedule(c *C) {
-	_, err := s.uploadIntent("policy1", "fastsnap")
-	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
-
-	time.Sleep(2 * time.Second)
-
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
-	c.Assert(err, IsNil)
-	c.Assert(len(strings.Split(out, "\n")) > 2, Equals, true)
-
-	time.Sleep(15 * time.Second)
-
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
-	c.Assert(err, IsNil)
-	mylen := len(strings.Split(out, "\n"))
-	c.Assert(mylen, Not(Equals), 0)
-	c.Assert(mylen >= 5 && mylen <= 10, Equals, true)
 }
 
 func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
@@ -193,6 +172,8 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
+	c.Assert(s.uploadGlobal("global-fasttimeout"), IsNil)
+
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 	_, err := s.docker("run -itd -v policy1/test:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)

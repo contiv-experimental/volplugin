@@ -12,10 +12,17 @@ import (
 	"golang.org/x/net/context"
 )
 
+// Watch is a struct providing a generic way of passing key/value information
+// from etcd that is already unmarshalled.
+type Watch struct {
+	Key    string
+	Config interface{}
+}
+
 // WatcherFunc is the function that's fired anytime the watch recieves an event
 // that is not an error. It is expected that the WatcherFunc send to the
 // channel on success.
-type WatcherFunc func(*client.Node, *Watcher)
+type WatcherFunc func(*client.Response, *Watcher)
 
 // Watcher is a struct that describes the various channels and data that
 // comprise a successful watch on etcd.
@@ -26,7 +33,7 @@ type WatcherFunc func(*client.Node, *Watcher)
 type Watcher struct {
 	WatcherFunc
 	Path         string
-	Channel      interface{}
+	Channel      chan *Watch
 	StopChannel  chan struct{}
 	ErrorChannel chan error
 	StopOnError  bool
@@ -50,7 +57,7 @@ func Init(ec client.KeysAPI) {
 
 // NewWatcher creates a basic Watcher with the channel, path, and WatcherFunc.
 // NewWatcher will create the other channels and set recursive.
-func NewWatcher(channel interface{}, path string, fun WatcherFunc) *Watcher {
+func NewWatcher(channel chan *Watch, path string, fun WatcherFunc) *Watcher {
 	return &Watcher{
 		WatcherFunc:  fun,
 		Channel:      channel,
@@ -99,7 +106,7 @@ func Create(w *Watcher) {
 				continue
 			}
 
-			w.WatcherFunc(resp.Node, w)
+			w.WatcherFunc(resp, w)
 		}
 	}(w)
 
@@ -122,6 +129,7 @@ func Stop(path string) {
 
 	for _, w := range watchers[path] {
 		w.StopChannel <- struct{}{}
+		close(w.ErrorChannel)
 	}
 
 	delete(watchers, path)

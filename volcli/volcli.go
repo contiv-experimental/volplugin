@@ -558,7 +558,11 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 	}
 
 	if err := cfg.RemoveUse(&config.UseMount{Volume: vc}, true); err != nil {
-		return false, err
+		fmt.Fprintf(os.Stderr, "Trouble removing mount lock (may be harmless) for %q: %v", vc, err)
+	}
+
+	if err := cfg.RemoveUse(&config.UseSnapshot{Volume: vc}, true); err != nil {
+		fmt.Fprintf(os.Stderr, "Trouble removing snapshot lock (may be harmless) for %q: %v", vc, err)
 	}
 
 	return false, nil
