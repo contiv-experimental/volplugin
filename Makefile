@@ -47,6 +47,7 @@ install-ansible:
 	[ -n "`which ansible`" ] || sudo pip install ansible
 
 ci:
+	GOPATH=${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" go get -u github.com/kr/godep
 	GOPATH=/tmp/volplugin:${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
 
 godep:
