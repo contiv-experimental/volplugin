@@ -15,10 +15,11 @@ import (
 
 	"github.com/contiv/volplugin/executor"
 	"github.com/contiv/volplugin/storage"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	deviceBase = "/dev/rbd"
 	// BackendName is string for ceph storage backend
 	BackendName = "ceph"
 )
@@ -319,6 +320,66 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	}
 
 	return names, nil
+}
+
+// CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
+// snap and volume name (string). Returns error on failure.
+func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string) error {
+	list, err := c.List(storage.ListOptions{Params: storage.Params{"pool": do.Volume.Params["pool"]}})
+	for _, vol := range list {
+		if newName == vol.Name {
+			return fmt.Errorf("Volume %q already exists", vol.Name)
+		}
+	}
+
+	errChan := make(chan error, 1)
+
+	cmd := exec.Command("rbd", "snap", "protect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+
+	if err != nil {
+		errChan <- err
+		return err
+	}
+
+	defer func() {
+		select {
+		case err := <-errChan:
+			log.Warnf("Error received while copying snapshot: %v. Attempting to cleanup.", err)
+			cmd = exec.Command("rbd", "rm", newName, "--pool", do.Volume.Params["pool"])
+			if er, err := executor.NewWithTimeout(cmd, do.Timeout).Run(); err != nil || er.ExitStatus != 0 {
+				log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
+				return
+			}
+			cmd := exec.Command("rbd", "snap", "unprotect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+			if er, err := executor.NewWithTimeout(cmd, do.Timeout).Run(); err != nil || er.ExitStatus != 0 {
+				log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
+				return
+			}
+		default:
+		}
+	}()
+
+	if er.ExitStatus != 0 {
+		newerr := fmt.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		errChan <- newerr
+		return newerr
+	}
+
+	cmd = exec.Command("rbd", "clone", do.Volume.Name, newName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
+	if err != nil {
+		errChan <- err
+		return err
+	}
+
+	if er.ExitStatus != 0 {
+		newerr := fmt.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		errChan <- newerr
+		return err
+	}
+
+	return nil
 }
 
 // Mounted describes all the volumes currently mapped on to the host.

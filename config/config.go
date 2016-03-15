@@ -23,8 +23,9 @@ var ErrExist = errors.New("Already exists")
 // Request provides a request structure for communicating with the
 // volmaster.
 type Request struct {
-	Volume string `json:"volume"`
-	Policy string `json:"policy"`
+	Volume  string `json:"volume"`
+	Policy  string `json:"policy"`
+	Options map[string]string
 }
 
 // RequestCreate provides a request structure for creating new volumes.

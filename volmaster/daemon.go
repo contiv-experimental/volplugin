@@ -76,6 +76,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	postRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/request":      d.handleRequest,
 		"/create":       d.handleCreate,
+		"/copy":         d.handleCopy,
 		"/mount":        d.handleMount,
 		"/mount-report": d.handleMountReport,
 		"/unmount":      d.handleUnmount,
@@ -87,9 +88,10 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/list":                  d.handleList,
-		"/get/{policy}/{volume}": d.handleGet,
-		"/global":                d.handleGlobal,
+		"/list":                        d.handleList,
+		"/get/{policy}/{volume}":       d.handleGet,
+		"/global":                      d.handleGlobal,
+		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
 	}
 
 	for path, f := range getRouter {
@@ -126,6 +128,167 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stderr, r.Body)
 	w.WriteHeader(404)
+}
+
+func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request) {
+	volName := strings.TrimPrefix(r.URL.Path, "/snapshots/")
+	parts := strings.SplitN(volName, "/", 2)
+
+	if len(parts) != 2 {
+		httpError(w, fmt.Sprintf("Invalid request for path in snapshot list: %q", r.URL.Path), nil)
+		return
+	}
+
+	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	driver, err := backend.NewDriver(d.Global.Backend, d.Global.MountPath)
+	if err != nil {
+		httpError(w, "Constructing driver:", err)
+		return
+	}
+
+	intName, err := driver.InternalName(volConfig.String())
+	if err != nil {
+		httpError(w, "Calculating internal name", err)
+		return
+	}
+
+	do := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: intName,
+			Params: storage.Params{
+				"pool": volConfig.Options.Pool,
+			},
+		},
+		Timeout: d.Global.Timeout,
+	}
+
+	results, err := driver.ListSnapshots(do)
+	if err != nil {
+		httpError(w, "Listing snapshots", err)
+		return
+	}
+
+	content, err := json.Marshal(results)
+	if err != nil {
+		httpError(w, "Marshalling results", err)
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalRequest(r)
+	if err != nil {
+		httpError(w, "Unmarshalling request", err)
+		return
+	}
+
+	if _, ok := req.Options["snapshot"]; !ok {
+		httpError(w, "Could not find snapshot option in request: cannot copy.", nil)
+		return
+	}
+
+	if _, ok := req.Options["target"]; !ok {
+		httpError(w, "Could not find target option in request: cannot copy.", nil)
+		return
+	}
+
+	if strings.Contains(req.Options["target"], "/") {
+		httpError(w, "Volume target contains invalid characters: /", nil)
+		return
+	}
+
+	driver, err := backend.NewDriver(d.Global.Backend, d.Global.MountPath)
+	if err != nil {
+		httpError(w, "Constructing driver:", err)
+		return
+	}
+
+	volConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	newVolConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	newVolConfig.VolumeName = req.Options["target"]
+
+	intName, err := driver.InternalName(volConfig.String())
+	if err != nil {
+		httpError(w, fmt.Sprintf("Converting %q to internal name", volConfig), err)
+		return
+	}
+
+	do := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name: intName,
+			Params: storage.Params{
+				"pool": volConfig.Options.Pool,
+			},
+		},
+		Timeout: d.Global.Timeout,
+	}
+
+	newIntName, err := driver.InternalName(newVolConfig.String())
+	if err != nil {
+		httpError(w, fmt.Sprintf("Converting %q to internal name", newVolConfig), err)
+		return
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Retrieving hostname", err)
+		return
+	}
+
+	uc := &config.UseMount{
+		Volume:   volConfig,
+		Reason:   lock.ReasonRemove,
+		Hostname: host,
+	}
+
+	snapUC := &config.UseSnapshot{
+		Volume: volConfig,
+		Reason: lock.ReasonRemove,
+	}
+
+	newUC := &config.UseMount{
+		Volume:   newVolConfig,
+		Reason:   lock.ReasonRemove,
+		Hostname: host,
+	}
+
+	newSnapUC := &config.UseSnapshot{
+		Volume: newVolConfig,
+		Reason: lock.ReasonRemove,
+	}
+
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+		if err := d.Config.PublishVolume(newVolConfig); err != nil {
+			return err
+		}
+
+		if err := driver.CopySnapshot(do, req.Options["snapshot"], newIntName); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		httpError(w, fmt.Sprintf("Creating new volume %q from volume %q, snapshot %q", req.Options["target"], volConfig.String(), req.Options["snapshot"]), err)
+		return
+	}
 }
 
 func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {

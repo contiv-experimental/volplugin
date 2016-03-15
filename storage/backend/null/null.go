@@ -73,6 +73,11 @@ func (d *Driver) RemoveSnapshot(s string, do storage.DriverOptions) error {
 	return nil
 }
 
+// CopySnapshot is a noop.
+func (d *Driver) CopySnapshot(do storage.DriverOptions, s, s2 string) error {
+	return nil
+}
+
 // ListSnapshots returns an empty list.
 func (d *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	return []string{}, nil
