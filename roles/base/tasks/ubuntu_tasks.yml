@@ -9,13 +9,8 @@
   with_items:
     - unzip
     - bzip2
-    - vim-nox
     - curl
     - python-software-properties
-    - git
-    - mercurial
-    - build-essential
-    - perl
     - librbd-dev
     - lshw
     - bash-completion
