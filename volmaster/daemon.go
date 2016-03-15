@@ -192,6 +192,11 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	volName := strings.TrimPrefix(r.URL.Path, "/get/")
 	parts := strings.SplitN(volName, "/", 2)
 
+	if len(parts) != 2 {
+		httpError(w, fmt.Sprintf("Invalid request for path in get: %q", r.URL.Path), nil)
+		return
+	}
+
 	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 	if err != nil {
 		log.Warn(err)
