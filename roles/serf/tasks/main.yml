@@ -1,6 +1,23 @@
 ---
 # This role contains tasks for configuring and starting serf service
 
+- name: install lshw (debian)
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - lshw
+  when: ansible_os_family == "Debian"
+
+- name: install/upgrade base packages (redhat)
+  yum:
+    name: "{{ item }}"
+    update_cache: true
+    state: latest
+  with_items:
+    - lshw
+  when: ansible_os_family == "RedHat"
+
 - name: download serf binary
   get_url:
     validate_certs: "{{ validate_certs }}"

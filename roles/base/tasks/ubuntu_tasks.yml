@@ -6,13 +6,13 @@
 - name: install base packages (debian)
   apt:
     name: "{{ item }}"
+    state: latest
   with_items:
     - unzip
     - bzip2
     - curl
     - python-software-properties
     - librbd-dev
-    - lshw
     - bash-completion
 
 - name: add ansible apt repository (debian)
