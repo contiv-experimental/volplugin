@@ -8,11 +8,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/lock"
+	"github.com/kr/pty"
 )
 
 func errorInvalidVolumeSyntax(rcvd, exptd string) error {
@@ -566,4 +571,74 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// UseExec acquires a lock (waiting if necessary) and executes a command when it takes it.
+func UseExec(ctx *cli.Context) {
+	execCliAndExit(ctx, useExec)
+}
+
+func useExec(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) < 2 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 2, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	vc := &config.VolumeConfig{
+		PolicyName: policy,
+		VolumeName: volume,
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		return false, err
+	}
+
+	um := &config.UseMount{
+		Volume:   vc,
+		Reason:   lock.ReasonMaintenance,
+		Hostname: host,
+	}
+
+	us := &config.UseSnapshot{
+		Volume: vc,
+		Reason: lock.ReasonMaintenance,
+	}
+
+	args := ctx.Args()[1:]
+	if args[0] == "--" {
+		if len(args) < 2 {
+			return true, fmt.Errorf("You must supply a command to run")
+		}
+		args = args[1:]
+	}
+
+	err = lock.NewDriver(cfg).ExecuteWithMultiUseLock([]config.UseLocker{um, us}, true, 0, func(ld *lock.Driver, uls []config.UseLocker) error {
+		cmd := exec.Command("/bin/sh", "-c", strings.Join(args, " "))
+
+		signals := make(chan os.Signal)
+
+		go signal.Notify(signals, syscall.SIGINT)
+		go func() {
+			<-signals
+			cmd.Process.Signal(syscall.SIGINT)
+		}()
+
+		if _, err := pty.Start(cmd); err != nil {
+			return err
+		}
+
+		return cmd.Wait()
+	})
+
+	return false, err
 }

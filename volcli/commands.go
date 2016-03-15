@@ -162,6 +162,13 @@ var Commands = []cli.Command{
 				Description: "Force-remove a use. Use this to correct unuseing errors or failing hosts if necessary. Requires that you know the policy and image name.",
 				Action:      UseTheForce,
 			},
+			{
+				Name:        "exec",
+				ArgsUsage:   "[policy name]/[volume name] -- [command] ...",
+				Usage:       "Execute a command when use locks free.",
+				Description: "When both snapshot and mount locks are freed, take the locks and execute the command.",
+				Action:      UseExec,
+			},
 		},
 	},
 }
