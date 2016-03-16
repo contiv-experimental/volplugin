@@ -39,7 +39,7 @@ On the host, equivalent or greater:
 
 * 12GB of free RAM. Ceph likes RAM.
 * [VirtualBox](https://virtualbox.org) 5.0.2 or greater
-* [Vagrant](https://vagrantup.com) 1.7.4
+* [Vagrant](https://vagrantup.com) 1.8.x
 * [Ansible](https://ansible.com) 2.0+
   * install with pip; you'll want to install `python-pip` and `python-dev` on
     ubuntu machines, then `sudo pip install ansible`. `brew install ansible`
@@ -48,7 +48,7 @@ On the host, equivalent or greater:
     already installed, which requires `pip`. If you are not root, it may fail
     to perform this operation. The solution to this problem is to install
     ansible independently as described above.
-* [Go](https://golang.org) to run the system tests.
+* [Go](https://golang.org) 1.6 to run the system tests.
 
 Your guests will configure themselves.
 
