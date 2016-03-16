@@ -12,7 +12,7 @@ func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
 	c.Assert(err, IsNil)
@@ -32,7 +32,7 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
 	c.Assert(err, IsNil)
@@ -52,7 +52,7 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
 	c.Assert(err, IsNil)
@@ -64,7 +64,7 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
 	c.Assert(err, IsNil)
@@ -76,7 +76,7 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 	c.Assert(startVolsupervisor(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolsupervisor(s.vagrant.GetNode("mon0")), IsNil)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
 	c.Assert(err, IsNil)
