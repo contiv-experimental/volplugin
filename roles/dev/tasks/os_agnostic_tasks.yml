@@ -7,7 +7,7 @@
   register: download_result
 
 - name: install Golang
-  shell: tar xfvz /tmp/go1.6.linux-amd64.tar.gz
+  shell: rm -rf go/ && tar xfvz /tmp/go1.6.linux-amd64.tar.gz
   args:
     chdir: /usr/local/
   when: download_result | changed
