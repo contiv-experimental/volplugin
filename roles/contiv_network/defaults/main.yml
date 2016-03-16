@@ -7,6 +7,14 @@
 contiv_network_mode: "standalone" # Accepted values: standalone, aci
 netplugin_mode: "docker" # Accepted values: docker, kubernetes
 fwd_mode: "bridge" #Accepted values: bridge , routing
+ofnet_master_port: 9001
+ofnet_agent_port1: 9002
+ofnet_agent_port2: 9003
+netmaster_port: 9999
+gobgp_grpc_port: 8080
+bgp_port: 179
+vxlan_port: 4789
+netplugin_rule_comment: "contiv network traffic"
 
 contiv_network_version: "v0.1-03-05-2016.09-42-48.UTC"
 contiv_network_tar_file: "netplugin-{{ contiv_network_version }}.tar.bz2"

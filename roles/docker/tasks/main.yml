@@ -47,6 +47,14 @@
   tags:
     - prebake-for-dev
 
+- name: setup iptables for docker
+  shell: >
+      ( iptables -L INPUT | grep "{{ docker_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ docker_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ docker_api_port }}"
+
 - name: copy systemd units for docker(enable cluster store) (debian)
   template: src=docker-svc.j2 dest=/lib/systemd/system/docker.service
   when: ansible_os_family == "Debian"
