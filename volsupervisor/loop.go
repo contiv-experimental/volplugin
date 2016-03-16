@@ -131,10 +131,10 @@ func (dc *DaemonConfig) loop() {
 				}
 
 				if time.Now().Unix()%int64(freq.Seconds()) == 0 {
-					go func() {
+					go func(volume string, val *config.VolumeConfig) {
 						dc.createSnapshot(volume, val)
 						dc.pruneSnapshots(volume, val)
-					}()
+					}(volume, val)
 				}
 			}
 		}
