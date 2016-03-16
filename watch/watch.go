@@ -129,7 +129,6 @@ func Stop(path string) {
 
 	for _, w := range watchers[path] {
 		w.StopChannel <- struct{}{}
-		close(w.ErrorChannel)
 	}
 
 	delete(watchers, path)

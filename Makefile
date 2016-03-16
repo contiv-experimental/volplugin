@@ -31,14 +31,14 @@ ssh:
 
 golint-host:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
-	golint ./...
+	set -e; for i in $$(godep go list ./... | grep -v vendor); do golint $$i; done
 
 golint:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
 
 # -composites=false is required to work around bug https://github.com/golang/go/issues/11394
 govet-host:
-	go tool vet -composites=false `find . -name '*.go' | grep -v Godeps`
+	go tool vet -composites=false `find . -name '*.go' | grep -v vendor`
 
 govet:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
@@ -47,11 +47,10 @@ install-ansible:
 	[ -n "`which ansible`" ] || sudo pip install ansible
 
 ci:
-	GOPATH=${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" go get -u github.com/kr/godep
 	GOPATH=/tmp/volplugin:${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
 
 godep:
-	[ -n "`which godep`" ] || go get github.com/kr/godep
+	go get -u github.com/kr/godep
 
 test: godep unit-test system-test
 
@@ -59,7 +58,7 @@ unit-test:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-host"'
 
 unit-test-host: godep golint-host govet-host
-	godep go list ./... | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
+	godep go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
 
 unit-test-nocoverage:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-nocoverage-host"'
@@ -100,9 +99,8 @@ run-volmaster:
 run-build: godep
 	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 
-system-test: build godep
-	rm -rf Godeps/_workspace/pkg
-	godep go test -v -timeout 240m ./systemtests -check.v
+system-test: godep build
+	if [ "x${WORKSPACE}" != "x" ]; then GOPATH=/tmp/volplugin:${WORKSPACE} godep go test -v -timeout 240m ./systemtests -check.v; else godep go test -v -timeout 240m ./systemtests -check.v; fi
 
 system-test-big:
 	BIG=1 make system-test

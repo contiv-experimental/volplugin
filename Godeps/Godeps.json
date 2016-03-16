@@ -1,14 +1,18 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.6",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/Microsoft/go-winio",
+			"Rev": "f778f05015353be65d242f3fedc18695756153bb"
+		},
+		{
 			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.8.7-53-g446d1c1",
-			"Rev": "446d1c146faa8ed3f4218f056fcd165f6bcfda81"
+			"Comment": "v0.8.7-55-gf7f79f7",
+			"Rev": "f7f79f729e0fbe2fcc061db48a9ba0263f588252"
 		},
 		{
 			"ImportPath": "github.com/alecthomas/units",
@@ -16,8 +20,8 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-179-g0302d39",
-			"Rev": "0302d3914d2a6ad61404584cdae6e6dbc9c03599"
+			"Comment": "1.2.0-155-g96f1fed",
+			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
@@ -28,34 +32,54 @@
 			"Rev": "772f193af15fb2f70b5b054edf195c80ec566034"
 		},
 		{
+			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v2.2.2",
-			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v2.2.2",
-			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/testutil",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v2.2.2",
-			"Rev": "b4bddf685b26b4aa70e939445044bdeac822d042"
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/plugins",
-			"Comment": "v1.4.1-9497-g7aafa76",
-			"Rev": "7aafa76662986c4268f1130447c1534ae5fc1f1a"
+			"Comment": "v1.4.1-10794-gb9361f0",
+			"Rev": "b9361f02da25108af75238093959634e433d72a0"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/plugins/transport",
+			"Comment": "v1.4.1-10794-gb9361f0",
+			"Rev": "b9361f02da25108af75238093959634e433d72a0"
 		},
 		{
 			"ImportPath": "github.com/docker/go-connections/sockets",
-			"Comment": "v0.1.2-2-g082e382",
-			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
+			"Comment": "v0.2.0",
+			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
 		},
 		{
 			"ImportPath": "github.com/docker/go-connections/tlsconfig",
-			"Comment": "v0.1.2-2-g082e382",
-			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
+			"Comment": "v0.2.0",
+			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -63,24 +87,33 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
-			"Rev": "47e8f450ef38c857cdd922ec08862ca9d65a1c6d"
+			"Rev": "8096f47503459bcc74d1f4c487b7e6e42e5746b5"
 		},
 		{
 			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
-			"Comment": "v0.0.6-82-g59f3066",
-			"Rev": "59f3066c39b242a1e34d9c65e582346bf170919e"
+			"Comment": "v0.0.3-14-g9be9157",
+			"Rev": "9be9157fc5cd9cf59c155fe194a0acc5f1e6f926"
 		},
 		{
-			"ImportPath": "github.com/ugorji/go/codec",
-			"Rev": "3f41379a4bdd0906316978f4f99166fdbe960be4"
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.0-71-g0d5a14c",
+			"Rev": "0d5a14c5a477957864f3b747d95255ad4e34bcc0"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+		},
+		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "9946ad7d5eae91d8edca4f54d1a1e130a052e823"
+			"Rev": "195180cfebf7362bd243a52477697895128c8777"
+		},
+		{
+			"ImportPath": "golang.org/x/net/proxy",
+			"Rev": "195180cfebf7362bd243a52477697895128c8777"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",

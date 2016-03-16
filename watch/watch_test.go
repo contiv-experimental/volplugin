@@ -67,12 +67,6 @@ func (s *watchSuite) TestBasic(c *C) {
 		setKey(fmt.Sprintf("/watch/test%d", i), "")
 	}
 
-	select {
-	case err := <-w.ErrorChannel:
-		c.Assert(err, IsNil) // won't be, but at least we'll get the message this way
-	default:
-	}
-
 	var x = 0
 
 	for i := 0; i < 10; i++ {
