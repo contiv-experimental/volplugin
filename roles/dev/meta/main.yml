@@ -13,6 +13,7 @@
 
 dependencies:
 - { role: ceph-install, tags: 'prebake-for-dev' }
+- { role: ansible, tags: 'prebake-for-dev' }
 - { role: etcd }
 - { role: docker }
 - { role: swarm }
