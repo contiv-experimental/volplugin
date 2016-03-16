@@ -152,6 +152,29 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 }
 
+func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
+	out, err := s.volcli("policy upload test1 < /testdata/intent1.json")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume create test1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("policy upload test1 < /testdata/intent2.json")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume create test1/bar")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume list-all")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	// matches assertion below doesn't handle newlines too well
+	out = strings.Replace(out, "\n", " ", -1)
+
+	c.Assert(out, Matches, ".*test1/foo.*", Commentf("output: %s", out))
+	c.Assert(out, Matches, ".*test1/bar.*", Commentf("output: %s", out))
+}
+
 func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
