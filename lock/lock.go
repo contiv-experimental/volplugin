@@ -89,8 +89,8 @@ func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, wait bool, time
 		if err := d.Config.PublishUse(uc); err != nil {
 			log.Warnf("Could not acquire %q lock for %q", uc.GetReason(), uc.GetVolume())
 			if wait {
-				if time.Now().Sub(now) < timeout {
-					log.Warnf("Waiting 100ms for %q lock on %q to free", uc.GetReason(), uc.GetVolume())
+				if timeout == 0 || time.Now().Sub(now) < timeout {
+					log.Warnf("Waiting 100ms for lock on %q to free", uc.GetVolume())
 					time.Sleep(100 * time.Millisecond)
 					goto retry
 				}
