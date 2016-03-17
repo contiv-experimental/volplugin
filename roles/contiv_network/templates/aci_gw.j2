@@ -15,6 +15,7 @@ start)
     -e "APIC_USERNAME={{ apic_username }}" \
     -e "APIC_PASSWORD={{ apic_password }}" \
     -e "APIC_LEAF_NODE={{ apic_leaf_nodes }}" \
+    -e "APIC_PHYS_DOMAIN={{ apic_phys_domain }}" \
     --name=contiv-aci-gw \
     contiv/aci-gw
     ;;

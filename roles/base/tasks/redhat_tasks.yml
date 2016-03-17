@@ -1,46 +1,23 @@
-- name: upgrade system (redhat)
-  yum:
-    update_cache: true
-    name: '*'
-    state: latest
-
 # install epel-release first to ensure the extra packages can be installed later
 - name: install epel release package (redhat)
   yum:
     name: epel-release
+    state: latest
 
-- name: install base packages (redhat)
+- name: install/upgrade base packages (redhat)
   yum:
     name: "{{ item }}"
+    update_cache: true
+    state: latest
   with_items:
     - ntp
     - unzip
     - bzip2
-    - vim
     - curl
-    - git
-    - mercurial
-    - gcc
-    - perl
     - librbd1-devel
-    - lshw
     - python-requests # XXX required by ceph repo, but it has a bad package on it
     - bash-completion
+    - kernel #keep kernel up to date
 
 - name: install and start ntp
   shell: systemctl enable ntpd
-
-- name: install python-crypto
-  yum: name=python-crypto state=present
-  register: python_crypto_result
-  ignore_errors: yes
-
-- name: remove python crypt egg file to work-around https://bugs.centos.org/view.php?id=9896&nbn=2
-  shell: rm -rf /usr/lib64/python2.7/site-packages/pycrypto-*.egg-info
-  when: '"Error unpacking rpm package python2-crypto-" in python_crypto_result.msg'
-
-- name: install ansible (redhat)
-  yum:
-    name: ansible
-    enablerepo: epel-testing
-    state: latest

@@ -33,11 +33,22 @@
     chdir: /usr/bin/
   when: download_result | changed 
 
-- name: copy environment file for clusterm
-  copy: src=clusterm dest=/etc/default/clusterm
+- name: create conf dir for clusterm
+  file:
+    name: /etc/default/clusterm/
+    state: directory
+
+- name: copy conf files for clusterm
+  copy:
+    src: "{{ item }}"
+    dest: /etc/default/clusterm/{{ item }}
+    force: yes
+  with_items:
+    - "{{ clusterm_args_file }}"
+    - "{{ clusterm_conf_file }}"
 
 - name: copy systemd units for clusterm
-  copy: src=clusterm.service dest=/etc/systemd/system/clusterm.service
+  template: src=clusterm.j2 dest=/etc/systemd/system/clusterm.service
 
 - name: start clusterm
   service: name=clusterm state=started

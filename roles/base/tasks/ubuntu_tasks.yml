@@ -6,25 +6,11 @@
 - name: install base packages (debian)
   apt:
     name: "{{ item }}"
+    state: latest
   with_items:
     - unzip
     - bzip2
-    - vim-nox
     - curl
     - python-software-properties
-    - git
-    - mercurial
-    - build-essential
-    - perl
     - librbd-dev
-    - lshw
     - bash-completion
-
-- name: add ansible apt repository (debian)
-  apt_repository:
-    repo: ppa:ansible/ansible
-    state: present
-    validate_certs: "{{ validate_certs }}"
-
-- name: install ansible (debian)
-  apt: name=ansible state=latest
