@@ -10,6 +10,9 @@ big:
 	BIG=1 vagrant up
 	make build
 
+demo:
+	DEMO=1 make restart
+
 stop:
 	vagrant destroy -f
 	make clean
@@ -78,7 +81,7 @@ docker-push: docker
 
 run:
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/global1.json'
-	@set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
+	@set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -c running) - 2))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
 run-etcd:

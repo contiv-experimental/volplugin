@@ -35,6 +35,18 @@ be extremely volatile and it is not suggested that you use this in production.
 
 ### Prerequisites:
 
+For a small VM (1 VM, 2048MB ram) for running just the tools and trying it out,
+you can run:
+
+```
+$ make demo
+```
+
+Note that you will still need ansible, virtualbox, and vagrant.
+
+For a more comprehensive version of the system including swarm support across
+several hosts, see below:
+
 On the host, equivalent or greater:
 
 * 12GB of free RAM. Ceph likes RAM.
