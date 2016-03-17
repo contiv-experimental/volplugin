@@ -9,6 +9,11 @@ OSX_VMWARE_DIR = "/Applications/VMware Fusion.app/Contents/Library/"
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
+if ENV["DEMO"]
+  settings["vms"] = 1
+  settings["memory"] = 2048
+end
+
 NMONS        = ENV["VMS"] || settings['vms']
 SUBNET       = settings['subnet']
 BOX          = settings['vagrant_box']
