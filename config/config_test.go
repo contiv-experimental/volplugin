@@ -9,7 +9,7 @@ import (
 )
 
 type configSuite struct {
-	tlc *TopLevelConfig
+	tlc *Client
 }
 
 var _ = Suite(&configSuite{})
@@ -21,7 +21,7 @@ func (s *configSuite) SetUpTest(c *C) {
 }
 
 func (s *configSuite) SetUpSuite(c *C) {
-	tlc, err := NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
+	tlc, err := NewClient("/volplugin", []string{"http://127.0.0.1:2379"})
 	if err != nil {
 		c.Fatal(err)
 	}

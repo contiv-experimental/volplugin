@@ -15,13 +15,13 @@ import (
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
 	Global   *config.Global
-	Config   *config.TopLevelConfig
+	Config   *config.Client
 	Hostname string
 }
 
 // Daemon is the top-level entrypoint for the volsupervisor from the CLI.
 func Daemon(ctx *cli.Context) {
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Fatal(err)
 	}

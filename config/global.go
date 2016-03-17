@@ -40,7 +40,7 @@ func NewGlobalConfig() *Global {
 }
 
 // PublishGlobal publishes the global configuration.
-func (tlc *TopLevelConfig) PublishGlobal(g *Global) error {
+func (tlc *Client) PublishGlobal(g *Global) error {
 	gcPath := tlc.prefixed("global-config")
 
 	value, err := json.Marshal(MultiplyGlobalParameters(g))
@@ -56,7 +56,7 @@ func (tlc *TopLevelConfig) PublishGlobal(g *Global) error {
 }
 
 // GetGlobal retrieves the global configuration.
-func (tlc *TopLevelConfig) GetGlobal() (*Global, error) {
+func (tlc *Client) GetGlobal() (*Global, error) {
 	resp, err := tlc.etcdClient.Get(context.Background(), tlc.prefixed("global-config"), nil)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func DivideGlobalParameters(global *Global) *Global {
 }
 
 // WatchGlobal watches a global and updates it as soon as the config changes.
-func (tlc *TopLevelConfig) WatchGlobal(activity chan *watch.Watch) {
+func (tlc *Client) WatchGlobal(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, tlc.prefixed("global-config"), func(resp *client.Response, w *watch.Watcher) {
 		if resp.Action != "delete" {
 			global := NewGlobalConfig()

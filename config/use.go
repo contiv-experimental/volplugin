@@ -77,12 +77,12 @@ func (us *UseSnapshot) Type() string {
 	return UseTypeSnapshot
 }
 
-func (c *TopLevelConfig) use(typ string, vc *VolumeConfig) string {
+func (c *Client) use(typ string, vc *VolumeConfig) string {
 	return c.prefixed(rootUse, typ, vc.String())
 }
 
 // PublishUse pushes the use to etcd.
-func (c *TopLevelConfig) PublishUse(ut UseLocker) error {
+func (c *Client) PublishUse(ut UseLocker) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (c *TopLevelConfig) PublishUse(ut UseLocker) error {
 
 // PublishUseWithTTL pushes the use to etcd, with a TTL that expires the record
 // if it has not been updated within that time.
-func (c *TopLevelConfig) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client.PrevExistType) error {
+func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client.PrevExistType) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (c *TopLevelConfig) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exis
 
 // RemoveUse will remove a user from etcd. Does not fail if the user does
 // not exist.
-func (c *TopLevelConfig) RemoveUse(ut UseLocker, force bool) error {
+func (c *Client) RemoveUse(ut UseLocker, force bool) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (c *TopLevelConfig) RemoveUse(ut UseLocker, force bool) error {
 }
 
 // GetUse retrieves the UseMount for the given volume name.
-func (c *TopLevelConfig) GetUse(ut UseLocker, vc *VolumeConfig) error {
+func (c *Client) GetUse(ut UseLocker, vc *VolumeConfig) error {
 	resp, err := c.etcdClient.Get(context.Background(), c.use(ut.Type(), vc), nil)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (c *TopLevelConfig) GetUse(ut UseLocker, vc *VolumeConfig) error {
 }
 
 // ListUses lists the items in use.
-func (c *TopLevelConfig) ListUses(typ string) ([]string, error) {
+func (c *Client) ListUses(typ string) ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootUse, typ), &client.GetOptions{Sort: true, Recursive: true})
 	if err != nil {
 		return nil, err

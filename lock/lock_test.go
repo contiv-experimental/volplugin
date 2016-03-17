@@ -15,7 +15,7 @@ import (
 )
 
 type lockSuite struct {
-	tlc *config.TopLevelConfig
+	tlc *config.Client
 }
 
 var _ = Suite(&lockSuite{})
@@ -24,7 +24,7 @@ func TestLock(t *T) { TestingT(t) }
 
 func (s *lockSuite) SetUpTest(c *C) {
 	exec.Command("/bin/sh", "-c", "etcdctl rm --recursive /volplugin").Run()
-	tlc, err := config.NewTopLevelConfig("/volplugin", []string{"http://127.0.0.1:2379"})
+	tlc, err := config.NewClient("/volplugin", []string{"http://127.0.0.1:2379"})
 	if err != nil {
 		c.Fatal(err)
 	}

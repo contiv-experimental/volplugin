@@ -35,15 +35,15 @@ type RequestCreate struct {
 	Opts   map[string]string `json:"opts"`
 }
 
-// TopLevelConfig is the top-level struct for communicating with the intent store.
-type TopLevelConfig struct {
+// Client is the top-level struct for communicating with the intent store.
+type Client struct {
 	etcdClient client.KeysAPI
 	prefix     string
 }
 
-// NewTopLevelConfig creates a TopLevelConfig struct which can drive communication
+// NewClient creates a Client struct which can drive communication
 // with the configuration store.
-func NewTopLevelConfig(prefix string, etcdHosts []string) (*TopLevelConfig, error) {
+func NewClient(prefix string, etcdHosts []string) (*Client, error) {
 	etcdCfg := client.Config{
 		Endpoints: etcdHosts,
 	}
@@ -53,7 +53,7 @@ func NewTopLevelConfig(prefix string, etcdHosts []string) (*TopLevelConfig, erro
 		return nil, err
 	}
 
-	config := &TopLevelConfig{
+	config := &Client{
 		prefix:     prefix,
 		etcdClient: client.NewKeysAPI(etcdClient),
 	}
@@ -68,7 +68,7 @@ func NewTopLevelConfig(prefix string, etcdHosts []string) (*TopLevelConfig, erro
 	return config, nil
 }
 
-func (c *TopLevelConfig) prefixed(strs ...string) string {
+func (c *Client) prefixed(strs ...string) string {
 	str := c.prefix
 	for _, s := range strs {
 		str = path.Join(str, s)

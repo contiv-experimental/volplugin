@@ -30,12 +30,12 @@ var defaultFilesystems = map[string]string{
 
 const defaultFilesystem = "ext4"
 
-func (c *TopLevelConfig) policy(name string) string {
+func (c *Client) policy(name string) string {
 	return c.prefixed(rootPolicy, name)
 }
 
 // PublishPolicy publishes policy intent to the configuration store.
-func (c *TopLevelConfig) PublishPolicy(name string, cfg *PolicyConfig) error {
+func (c *Client) PublishPolicy(name string, cfg *PolicyConfig) error {
 	if err := cfg.DefaultVolumeOptions.computeSize(); err != nil {
 		return err
 	}
@@ -63,13 +63,13 @@ func (c *TopLevelConfig) PublishPolicy(name string, cfg *PolicyConfig) error {
 }
 
 // DeletePolicy removes a policy from the configuration store.
-func (c *TopLevelConfig) DeletePolicy(name string) error {
+func (c *Client) DeletePolicy(name string) error {
 	_, err := c.etcdClient.Delete(context.Background(), c.policy(name), nil)
 	return err
 }
 
 // GetPolicy retrieves a policy from the configuration store.
-func (c *TopLevelConfig) GetPolicy(name string) (*PolicyConfig, error) {
+func (c *Client) GetPolicy(name string) (*PolicyConfig, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.policy(name), nil)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (c *TopLevelConfig) GetPolicy(name string) (*PolicyConfig, error) {
 
 // ListPolicies provides an array of strings corresponding to the name of each
 // policy.
-func (c *TopLevelConfig) ListPolicies() ([]string, error) {
+func (c *Client) ListPolicies() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootPolicy), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err

@@ -46,11 +46,11 @@ const (
 
 // Driver is the top-level struct for lock objects
 type Driver struct {
-	Config *config.TopLevelConfig
+	Config *config.Client
 }
 
-// NewDriver creates a Driver. Requires a configured TopLevelConfig.
-func NewDriver(config *config.TopLevelConfig) *Driver {
+// NewDriver creates a Driver. Requires a configured Client.
+func NewDriver(config *config.Client) *Driver {
 	return &Driver{Config: config}
 }
 
