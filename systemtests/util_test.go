@@ -26,13 +26,13 @@ func (s *systemtestSuite) volcli(command string) (string, error) {
 	return s.mon0cmd("volcli " + command)
 }
 
-func (s *systemtestSuite) readIntent(fn string) (*config.PolicyConfig, error) {
+func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 	content, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := config.NewPolicyConfig(ceph.BackendName)
+	cfg := config.NewPolicy(ceph.BackendName)
 
 	if err := json.Unmarshal(content, cfg); err != nil {
 		return nil, err

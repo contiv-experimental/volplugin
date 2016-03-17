@@ -8,16 +8,16 @@ import (
 	"golang.org/x/net/context"
 )
 
-// PolicyConfig is the configuration of the policy. It includes default
+// Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
-type PolicyConfig struct {
+type Policy struct {
 	DefaultVolumeOptions VolumeOptions     `json:"default-options"`
 	FileSystems          map[string]string `json:"filesystems"`
 }
 
-// NewPolicyConfig return policy config with specified backend preset
-func NewPolicyConfig(backend string) *PolicyConfig {
-	return &PolicyConfig{
+// NewPolicy return policy config with specified backend preset
+func NewPolicy(backend string) *Policy {
+	return &Policy{
 		DefaultVolumeOptions: VolumeOptions{
 			Backend: backend,
 		},
@@ -35,7 +35,7 @@ func (c *Client) policy(name string) string {
 }
 
 // PublishPolicy publishes policy intent to the configuration store.
-func (c *Client) PublishPolicy(name string, cfg *PolicyConfig) error {
+func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 	if err := cfg.DefaultVolumeOptions.computeSize(); err != nil {
 		return err
 	}
@@ -69,13 +69,13 @@ func (c *Client) DeletePolicy(name string) error {
 }
 
 // GetPolicy retrieves a policy from the configuration store.
-func (c *Client) GetPolicy(name string) (*PolicyConfig, error) {
+func (c *Client) GetPolicy(name string) (*Policy, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.policy(name), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	tc := &PolicyConfig{}
+	tc := &Policy{}
 	if err := json.Unmarshal([]byte(resp.Node.Value), tc); err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (c *Client) ListPolicies() ([]string, error) {
 }
 
 // Validate ensures the structure of the policy is sane.
-func (cfg *PolicyConfig) Validate() error {
+func (cfg *Policy) Validate() error {
 	if cfg.FileSystems == nil {
 		cfg.FileSystems = defaultFilesystems
 	}

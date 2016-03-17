@@ -2,7 +2,7 @@ package config
 
 import . "gopkg.in/check.v1"
 
-var testPolicyConfigs = map[string]*PolicyConfig{
+var testPolicys = map[string]*Policy{
 	"basic": {
 		DefaultVolumeOptions: VolumeOptions{
 			Pool:         "rbd",
@@ -86,17 +86,17 @@ var testPolicyConfigs = map[string]*PolicyConfig{
 }
 
 func (s *configSuite) TestBasicPolicy(c *C) {
-	c.Assert(s.tlc.PublishPolicy("quux", testPolicyConfigs["basic"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("quux", testPolicys["basic"]), IsNil)
 
 	cfg, err := s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic"])
+	c.Assert(cfg, DeepEquals, testPolicys["basic"])
 
-	c.Assert(s.tlc.PublishPolicy("bar", testPolicyConfigs["basic2"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("bar", testPolicys["basic2"]), IsNil)
 
 	cfg, err = s.tlc.GetPolicy("bar")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic2"])
+	c.Assert(cfg, DeepEquals, testPolicys["basic2"])
 
 	policies, err := s.tlc.ListPolicies()
 	c.Assert(err, IsNil)
@@ -118,37 +118,37 @@ func (s *configSuite) TestBasicPolicy(c *C) {
 
 	cfg, err = s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicyConfigs["basic"])
+	c.Assert(cfg, DeepEquals, testPolicys["basic"])
 }
 
 func (s *configSuite) TestPolicyValidate(c *C) {
 	for _, key := range []string{"basic", "basic2", "nilfs"} {
-		c.Assert(testPolicyConfigs[key].Validate(), IsNil)
+		c.Assert(testPolicys[key].Validate(), IsNil)
 	}
 
 	// FIXME: ensure the default filesystem option is set when validate is called.
 	//        honestly, this both a pretty lousy way to do it and test it, we should do
 	//        something better.
-	c.Assert(testPolicyConfigs["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
+	c.Assert(testPolicys["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
 
-	c.Assert(testPolicyConfigs["untouchedwithzerosize"].Validate(), NotNil)
-	c.Assert(testPolicyConfigs["nopool"].Validate(), NotNil)
-	c.Assert(testPolicyConfigs["badsize"].Validate(), NotNil)
-	c.Assert(testPolicyConfigs["badsize2"].Validate(), NotNil)
-	_, err := testPolicyConfigs["badsize3"].DefaultVolumeOptions.ActualSize()
+	c.Assert(testPolicys["untouchedwithzerosize"].Validate(), NotNil)
+	c.Assert(testPolicys["nopool"].Validate(), NotNil)
+	c.Assert(testPolicys["badsize"].Validate(), NotNil)
+	c.Assert(testPolicys["badsize2"].Validate(), NotNil)
+	_, err := testPolicys["badsize3"].DefaultVolumeOptions.ActualSize()
 	c.Assert(err, NotNil)
 }
 
 func (s *configSuite) TestPolicyBadPublish(c *C) {
 	for _, key := range []string{"badsize", "badsize2", "badsize3", "nopool", "badsnaps"} {
-		c.Assert(s.tlc.PublishPolicy("test", testPolicyConfigs[key]), NotNil)
+		c.Assert(s.tlc.PublishPolicy("test", testPolicys[key]), NotNil)
 	}
 }
 
 func (s *configSuite) TestPolicyPublishEtcdDown(c *C) {
 	stopStartEtcd(c, func() {
 		for _, key := range []string{"basic", "basic2"} {
-			c.Assert(s.tlc.PublishPolicy("test", testPolicyConfigs[key]), NotNil)
+			c.Assert(s.tlc.PublishPolicy("test", testPolicys[key]), NotNil)
 		}
 	})
 }

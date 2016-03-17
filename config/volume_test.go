@@ -89,7 +89,7 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 }
 
 func (s *configSuite) TestWatchVolumes(c *C) {
-	c.Assert(s.tlc.PublishPolicy("policy1", testPolicyConfigs["basic"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicys["basic"]), IsNil)
 	volumeChan := make(chan *watch.Watch)
 	s.tlc.WatchVolumes(volumeChan)
 
@@ -118,7 +118,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	// populate the policies so the next few tests don't give false positives
 	for _, policy := range policyNames {
-		c.Assert(s.tlc.PublishPolicy(policy, testPolicyConfigs["basic"]), IsNil)
+		c.Assert(s.tlc.PublishPolicy(policy, testPolicys["basic"]), IsNil)
 	}
 
 	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
@@ -148,7 +148,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 			defer func(policy, volume string) { c.Assert(s.tlc.RemoveVolume(policy, volume), IsNil) }(policy, volume)
 
 			c.Assert(vcfg.VolumeName, Equals, volume)
-			opts := testPolicyConfigs["basic"].DefaultVolumeOptions
+			opts := testPolicys["basic"].DefaultVolumeOptions
 			opts.Pool = "rbd"
 			c.Assert(vcfg.Options, DeepEquals, &opts)
 

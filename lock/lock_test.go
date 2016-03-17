@@ -34,7 +34,7 @@ func (s *lockSuite) SetUpTest(c *C) {
 	content, err := ioutil.ReadFile("policy.json")
 	c.Assert(err, IsNil)
 
-	policy := &config.PolicyConfig{}
+	policy := &config.Policy{}
 
 	c.Assert(json.Unmarshal(content, policy), IsNil)
 

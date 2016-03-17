@@ -13,7 +13,7 @@ import (
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
 
-func (dc *DaemonConfig) createVolume(policy *config.PolicyConfig, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
+func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.VolumeConfig, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
