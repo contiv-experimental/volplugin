@@ -42,7 +42,7 @@ func (dc *DaemonConfig) updatePolicies() {
 				delete(volumes, volume.Key)
 			} else {
 				log.Debugf("Adding volume %q to cache", volume.Key)
-				volumes[volume.Key] = volume.Config.(*config.VolumeConfig)
+				volumes[volume.Key] = volume.Config.(*config.Volume)
 			}
 			volumeMutex.Unlock()
 		}

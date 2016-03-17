@@ -49,7 +49,7 @@ func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	out, err := s.volcli("volume get policy1/test")
 	c.Assert(err, IsNil)
 
-	vc := &config.VolumeConfig{}
+	vc := &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
 	actualSize, err := vc.Options.ActualSize()
 	c.Assert(err, IsNil)
@@ -71,7 +71,7 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 	out, err := s.volcli("volume get policy1/test")
 	c.Assert(err, IsNil)
 
-	vc := &config.VolumeConfig{}
+	vc := &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
 	actualSize, err := vc.Options.ActualSize()
 	c.Assert(err, IsNil)

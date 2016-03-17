@@ -48,8 +48,8 @@ func marshalResponse(vr VolumeResponse) ([]byte, error) {
 	return json.Marshal(vr)
 }
 
-func (dc *DaemonConfig) requestVolumeConfig(policy, name string) (*config.VolumeConfig, error) {
-	var volConfig *config.VolumeConfig
+func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, error) {
+	var volConfig *config.Volume
 
 	content, err := json.Marshal(config.Request{Volume: name, Policy: policy})
 	if err != nil {

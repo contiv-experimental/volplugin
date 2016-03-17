@@ -34,15 +34,15 @@ func (s *configSuite) TestActualSize(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *configSuite) TestVolumeConfigValidate(c *C) {
-	vc := &VolumeConfig{
+func (s *configSuite) TestVolumeValidate(c *C) {
+	vc := &Volume{
 		Options:    nil,
 		VolumeName: "foo",
 		PolicyName: "policy1",
 	}
 	c.Assert(vc.Validate(), NotNil)
 
-	vc = &VolumeConfig{
+	vc = &Volume{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "",
 		PolicyName: "policy1",
@@ -50,7 +50,7 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 
 	c.Assert(vc.Validate(), NotNil)
 
-	vc = &VolumeConfig{
+	vc = &Volume{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "foo",
 		PolicyName: "",
@@ -58,7 +58,7 @@ func (s *configSuite) TestVolumeConfigValidate(c *C) {
 
 	c.Assert(vc.Validate(), NotNil)
 
-	vc = &VolumeConfig{
+	vc = &Volume{
 		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
 		VolumeName: "foo",
 		PolicyName: "policy1",
@@ -99,7 +99,7 @@ func (s *configSuite) TestWatchVolumes(c *C) {
 	vol2 := <-volumeChan
 	c.Assert(vol2.Key, Equals, "policy1/test")
 	c.Assert(vol2.Config, NotNil)
-	volConfig := vol2.Config.(*VolumeConfig)
+	volConfig := vol2.Config.(*Volume)
 	c.Assert(vol.PolicyName, Equals, volConfig.PolicyName)
 	c.Assert(vol.VolumeName, Equals, volConfig.VolumeName)
 	c.Assert(vol.Options, DeepEquals, volConfig.Options)

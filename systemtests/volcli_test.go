@@ -111,7 +111,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
-	cfg := &config.VolumeConfig{}
+	cfg := &config.Volume{}
 
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 
@@ -142,7 +142,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
-	cfg = &config.VolumeConfig{}
+	cfg = &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 	cfg.Options.FileSystem = "ext4"
 	intent1, err = s.readIntent("testdata/intent1.json")

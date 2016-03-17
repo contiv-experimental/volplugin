@@ -605,7 +605,7 @@ func useGet(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}
@@ -647,7 +647,7 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}
@@ -683,7 +683,7 @@ func useExec(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}

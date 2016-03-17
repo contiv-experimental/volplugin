@@ -128,7 +128,7 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vc, err := dc.requestVolumeConfig(uc.Policy, uc.Name)
+	vc, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
 		httpError(w, "Getting volume properties", err)
 		return
@@ -186,7 +186,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Returning mount path to docker for volume: %q", uc.Request.Name)
 
-	volConfig, err := dc.requestVolumeConfig(uc.Policy, uc.Name)
+	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
 		httpError(w, "Requesting policy configuration", err)
 		return
@@ -225,7 +225,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	// FIXME check if we're holding the mount already
 	log.Infof("Mounting volume %q", uc.Request.Name)
 
-	volConfig, err := dc.requestVolumeConfig(uc.Policy, uc.Name)
+	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
 		httpError(w, "Could not determine policy configuration", err)
 		return
@@ -300,7 +300,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Unmounting volume %q", uc.Request.Name)
 
-	volConfig, err := dc.requestVolumeConfig(uc.Policy, uc.Name)
+	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
 		httpError(w, "Could not determine policy configuration", err)
 		return
