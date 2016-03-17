@@ -252,26 +252,31 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if volConfig.VolumeName == newVolConfig.VolumeName {
+		httpError(w, fmt.Sprintf("You cannot copy volume %q onto itself.", volConfig.VolumeName), nil)
+		return
+	}
+
 	uc := &config.UseMount{
 		Volume:   volConfig,
-		Reason:   lock.ReasonRemove,
+		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	snapUC := &config.UseSnapshot{
 		Volume: volConfig,
-		Reason: lock.ReasonRemove,
+		Reason: lock.ReasonCopy,
 	}
 
 	newUC := &config.UseMount{
 		Volume:   newVolConfig,
-		Reason:   lock.ReasonRemove,
+		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	newSnapUC := &config.UseSnapshot{
 		Volume: newVolConfig,
-		Reason: lock.ReasonRemove,
+		Reason: lock.ReasonCopy,
 	}
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
