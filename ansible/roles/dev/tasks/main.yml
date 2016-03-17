@@ -13,6 +13,16 @@
 # it explicitly here
 
 
+- include: ubuntu_tasks.yml
+  when: ansible_os_family == "Debian"
+  tags:
+    - prebake-for-dev
+
+- include: redhat_tasks.yml
+  when: ansible_os_family == "RedHat"
+  tags:
+    - prebake-for-dev
+
 - include: os_agnostic_tasks.yml
   tags:
     - prebake-for-dev
