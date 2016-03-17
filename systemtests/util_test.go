@@ -148,7 +148,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	if out, err := s.uploadIntent("policy1", "intent1"); err != nil {
+	if out, err := s.uploadIntent("policy1", "policy1"); err != nil {
 		log.Errorf("Intent upload failed. Error: %v, Output: %s", err, out)
 		return err
 	}
