@@ -9,18 +9,18 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-var testUseVolumeConfigs = map[string]*VolumeConfig{
+var testUseVolumes = map[string]*Volume{
 	"basic":  {PolicyName: "policy1", VolumeName: "quux"},
 	"basic2": {PolicyName: "policy2", VolumeName: "baz"},
 }
 
 var testUseMounts = map[string]*UseMount{
 	"basic": {
-		Volume:   testUseVolumeConfigs["basic"],
+		Volume:   testUseVolumes["basic"],
 		Hostname: "hostname",
 	},
 	"basic2": {
-		Volume:   testUseVolumeConfigs["basic2"],
+		Volume:   testUseVolumes["basic2"],
 		Hostname: "hostname",
 	},
 }
@@ -33,7 +33,7 @@ func (s *configSuite) TestUseCRUD(c *C) {
 
 	mt := &UseMount{}
 
-	c.Assert(s.tlc.GetUse(mt, testUseVolumeConfigs["basic"]), IsNil)
+	c.Assert(s.tlc.GetUse(mt, testUseVolumes["basic"]), IsNil)
 	c.Assert(testUseMounts["basic"], DeepEquals, mt)
 
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
@@ -41,7 +41,7 @@ func (s *configSuite) TestUseCRUD(c *C) {
 	c.Assert(s.tlc.RemoveUse(testUseMounts["basic2"], false), IsNil)
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
 
-	c.Assert(s.tlc.GetUse(mt, testUseVolumeConfigs["basic2"]), IsNil)
+	c.Assert(s.tlc.GetUse(mt, testUseVolumes["basic2"]), IsNil)
 	c.Assert(testUseMounts["basic2"], DeepEquals, mt)
 
 	mounts, err := s.tlc.ListUses("mount")
@@ -60,10 +60,10 @@ func (s *configSuite) TestUseCRUD(c *C) {
 func (s *configSuite) TestUseCRUDWithTTL(c *C) {
 	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
 	use := &UseMount{}
-	c.Assert(s.tlc.GetUse(use, testUseVolumeConfigs["basic"]), IsNil)
+	c.Assert(s.tlc.GetUse(use, testUseVolumes["basic"]), IsNil)
 	c.Assert(use, DeepEquals, testUseMounts["basic"])
 	time.Sleep(10 * time.Second)
-	c.Assert(s.tlc.GetUse(use, testUseVolumeConfigs["basic"]), NotNil)
+	c.Assert(s.tlc.GetUse(use, testUseVolumes["basic"]), NotNil)
 
 	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
 	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevExist), IsNil)

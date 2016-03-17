@@ -20,7 +20,7 @@ func makeLimit(mc *storage.Mount, limit uint64) []byte {
 	return []byte(fmt.Sprintf("%d:%d %d\n", mc.DevMajor, mc.DevMinor, limit))
 }
 
-func applyCGroupRateLimit(vc *config.VolumeConfig, mc *storage.Mount) error {
+func applyCGroupRateLimit(vc *config.Volume, mc *storage.Mount) error {
 	opMap := map[string]uint64{
 		writeIOPSFile: uint64(vc.Options.RateLimit.WriteIOPS),
 		readIOPSFile:  uint64(vc.Options.RateLimit.ReadIOPS),

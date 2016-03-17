@@ -24,7 +24,7 @@ var (
 // volume, removing a volume, snapshotting a volume. These are supplied in the
 // `Reason` field as text.
 type UseMount struct {
-	Volume   *VolumeConfig
+	Volume   *Volume
 	Hostname string
 	Reason   string
 }
@@ -33,22 +33,22 @@ type UseMount struct {
 // for snapshots this time. Taking snapshots can block certain actions such as
 // taking other snapshots or deleting snapshots.
 type UseSnapshot struct {
-	Volume *VolumeConfig
+	Volume *Volume
 	Reason string
 }
 
 // UseLocker is an interface to locks controlled in etcd, or what we call "users".
 type UseLocker interface {
-	// GetVolume gets the *VolumeConfig for this use.
-	GetVolume() *VolumeConfig
+	// GetVolume gets the *Volume for this use.
+	GetVolume() *Volume
 	// GetReason gets the reason for this use.
 	GetReason() string
 	// Type returns the type of lock.
 	Type() string
 }
 
-// GetVolume gets the *VolumeConfig for this use.
-func (um *UseMount) GetVolume() *VolumeConfig {
+// GetVolume gets the *Volume for this use.
+func (um *UseMount) GetVolume() *Volume {
 	return um.Volume
 }
 
@@ -62,8 +62,8 @@ func (um *UseMount) Type() string {
 	return UseTypeMount
 }
 
-// GetVolume gets the *VolumeConfig for this use.
-func (us *UseSnapshot) GetVolume() *VolumeConfig {
+// GetVolume gets the *Volume for this use.
+func (us *UseSnapshot) GetVolume() *Volume {
 	return us.Volume
 }
 
@@ -77,12 +77,12 @@ func (us *UseSnapshot) Type() string {
 	return UseTypeSnapshot
 }
 
-func (c *TopLevelConfig) use(typ string, vc *VolumeConfig) string {
+func (c *Client) use(typ string, vc *Volume) string {
 	return c.prefixed(rootUse, typ, vc.String())
 }
 
 // PublishUse pushes the use to etcd.
-func (c *TopLevelConfig) PublishUse(ut UseLocker) error {
+func (c *Client) PublishUse(ut UseLocker) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (c *TopLevelConfig) PublishUse(ut UseLocker) error {
 
 // PublishUseWithTTL pushes the use to etcd, with a TTL that expires the record
 // if it has not been updated within that time.
-func (c *TopLevelConfig) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client.PrevExistType) error {
+func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client.PrevExistType) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (c *TopLevelConfig) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exis
 
 // RemoveUse will remove a user from etcd. Does not fail if the user does
 // not exist.
-func (c *TopLevelConfig) RemoveUse(ut UseLocker, force bool) error {
+func (c *Client) RemoveUse(ut UseLocker, force bool) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (c *TopLevelConfig) RemoveUse(ut UseLocker, force bool) error {
 }
 
 // GetUse retrieves the UseMount for the given volume name.
-func (c *TopLevelConfig) GetUse(ut UseLocker, vc *VolumeConfig) error {
+func (c *Client) GetUse(ut UseLocker, vc *Volume) error {
 	resp, err := c.etcdClient.Get(context.Background(), c.use(ut.Type(), vc), nil)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (c *TopLevelConfig) GetUse(ut UseLocker, vc *VolumeConfig) error {
 }
 
 // ListUses lists the items in use.
-func (c *TopLevelConfig) ListUses(typ string) ([]string, error) {
+func (c *Client) ListUses(typ string) ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootUse, typ), &client.GetOptions{Sort: true, Recursive: true})
 	if err != nil {
 		return nil, err

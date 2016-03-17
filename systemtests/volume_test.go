@@ -42,7 +42,7 @@ func (s *systemtestSuite) TestVolumeCreateMultiHostCrossHostMount(c *C) {
 }
 
 func (s *systemtestSuite) TestVolumeMultiPolicyCreate(c *C) {
-	_, err := s.uploadIntent("policy2", "intent2")
+	_, err := s.uploadIntent("policy2", "policy2")
 	c.Assert(err, IsNil)
 
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)

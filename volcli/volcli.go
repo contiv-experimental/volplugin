@@ -128,7 +128,7 @@ func globalUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -150,7 +150,7 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -165,7 +165,7 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	policy := config.NewPolicyConfig(global.Backend)
+	policy := config.NewPolicy(global.Backend)
 
 	if err := json.Unmarshal(content, policy); err != nil {
 		return false, err
@@ -190,7 +190,7 @@ func policyDelete(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -217,7 +217,7 @@ func policyGet(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -247,7 +247,7 @@ func policyList(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -329,7 +329,7 @@ func volumeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -364,7 +364,7 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -424,7 +424,7 @@ func volumeList(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -541,7 +541,7 @@ func volumeListAll(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -568,7 +568,7 @@ func useList(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
@@ -600,12 +600,12 @@ func useGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}
@@ -642,12 +642,12 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}
@@ -678,12 +678,12 @@ func useExec(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
 	if err != nil {
 		return false, err
 	}
 
-	vc := &config.VolumeConfig{
+	vc := &config.Volume{
 		PolicyName: policy,
 		VolumeName: volume,
 	}

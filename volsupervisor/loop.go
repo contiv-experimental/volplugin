@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	volumes     = map[string]*config.VolumeConfig{}
+	volumes     = map[string]*config.Volume{}
 	volumeMutex = &sync.Mutex{}
 )
 
-func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.VolumeConfig) {
+func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	log.Infof("starting snapshot prune for %q", val.VolumeName)
 
 	uc := &config.UseSnapshot{
@@ -71,7 +71,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.VolumeConfig) 
 	}
 }
 
-func (dc *DaemonConfig) createSnapshot(volume string, val *config.VolumeConfig) {
+func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 	log.Infof("Snapshotting %q.", volume)
 
 	uc := &config.UseSnapshot{
@@ -114,7 +114,7 @@ func (dc *DaemonConfig) loop() {
 		time.Sleep(1 * time.Second)
 
 		// XXX this copy is so we can free the mutex quickly for more additions
-		volumeCopy := map[string]*config.VolumeConfig{}
+		volumeCopy := map[string]*config.Volume{}
 
 		volumeMutex.Lock()
 		for volume, val := range volumes {
@@ -130,7 +130,7 @@ func (dc *DaemonConfig) loop() {
 				}
 
 				if time.Now().Unix()%int64(freq.Seconds()) == 0 {
-					go func(volume string, val *config.VolumeConfig) {
+					go func(volume string, val *config.Volume) {
 						dc.createSnapshot(volume, val)
 						dc.pruneSnapshots(volume, val)
 					}(volume, val)

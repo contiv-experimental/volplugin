@@ -15,9 +15,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// VolumeConfig is the configuration of the policy. It includes pool and
+// Volume is the configuration of the policy. It includes pool and
 // snapshot information.
-type VolumeConfig struct {
+type Volume struct {
 	PolicyName string         `json:"policy"`
 	VolumeName string         `json:"name"`
 	Options    *VolumeOptions `json:"options"`
@@ -51,13 +51,13 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
-func (c *TopLevelConfig) volume(policy, name string) string {
+func (c *Client) volume(policy, name string) string {
 	return c.prefixed(rootVolume, policy, name)
 }
 
 // CreateVolume sets the appropriate config metadata for a volume creation
-// operation, and returns the VolumeConfig that was copied in.
-func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
+// operation, and returns the Volume that was copied in.
+func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 	resp, err := c.GetPolicy(rc.Policy)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 		return nil, err
 	}
 
-	vc := &VolumeConfig{
+	vc := &Volume{
 		Options:    &resp.DefaultVolumeOptions,
 		PolicyName: rc.Policy,
 		VolumeName: rc.Volume,
@@ -89,7 +89,7 @@ func (c *TopLevelConfig) CreateVolume(rc RequestCreate) (*VolumeConfig, error) {
 }
 
 // PublishVolume writes a volume to etcd.
-func (c *TopLevelConfig) PublishVolume(vc *VolumeConfig) error {
+func (c *Client) PublishVolume(vc *Volume) error {
 	if err := vc.Validate(); err != nil {
 		return err
 	}
@@ -131,15 +131,15 @@ func (vo *VolumeOptions) computeSize() error {
 	return nil
 }
 
-// GetVolume returns the VolumeConfig for a given volume.
-func (c *TopLevelConfig) GetVolume(policy, name string) (*VolumeConfig, error) {
+// GetVolume returns the Volume for a given volume.
+func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 	// FIXME make this take a single string and not a split one
 	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := &VolumeConfig{}
+	ret := &Volume{}
 
 	if err := json.Unmarshal([]byte(resp.Node.Value), ret); err != nil {
 		return nil, err
@@ -153,14 +153,14 @@ func (c *TopLevelConfig) GetVolume(policy, name string) (*VolumeConfig, error) {
 }
 
 // RemoveVolume removes a volume from configuration.
-func (c *TopLevelConfig) RemoveVolume(policy, name string) error {
+func (c *Client) RemoveVolume(policy, name string) error {
 	// FIXME might be a consistency issue here; pass around volume structs instead.
 	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{})
 	return err
 }
 
-// ListVolumes returns a map of volume name -> VolumeConfig.
-func (c *TopLevelConfig) ListVolumes(policy string) (map[string]*VolumeConfig, error) {
+// ListVolumes returns a map of volume name -> Volume.
+func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 	policyPath := c.prefixed(rootVolume, policy)
 
 	resp, err := c.etcdClient.Get(context.Background(), policyPath, &client.GetOptions{Recursive: true, Sort: true})
@@ -168,14 +168,14 @@ func (c *TopLevelConfig) ListVolumes(policy string) (map[string]*VolumeConfig, e
 		return nil, err
 	}
 
-	configs := map[string]*VolumeConfig{}
+	configs := map[string]*Volume{}
 
 	for _, node := range resp.Node.Nodes {
 		if node.Value == "" {
 			continue
 		}
 
-		config := &VolumeConfig{}
+		config := &Volume{}
 		if err := json.Unmarshal([]byte(node.Value), config); err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func (c *TopLevelConfig) ListVolumes(policy string) (map[string]*VolumeConfig, e
 // ListAllVolumes returns an array with all the named policies and volumes the
 // volmaster knows about. Volumes have syntax: policy/volumeName which will be
 // reflected in the returned string.
-func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
+func (c *Client) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
@@ -209,14 +209,14 @@ func (c *TopLevelConfig) ListAllVolumes() ([]string, error) {
 }
 
 // WatchVolumes watches the volumes tree and returns data back to the activity channel.
-func (c *TopLevelConfig) WatchVolumes(activity chan *watch.Watch) {
+func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
 		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
 
 		if !resp.Node.Dir {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
-				volume := &VolumeConfig{}
+				volume := &Volume{}
 
 				if resp.Node.Value != "" {
 					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
@@ -267,7 +267,7 @@ func (vo *VolumeOptions) Validate() error {
 }
 
 // Validate validates a volume configuration, returning error on any issue.
-func (cfg *VolumeConfig) Validate() error {
+func (cfg *Volume) Validate() error {
 	if cfg.VolumeName == "" {
 		return fmt.Errorf("Volume Name was omitted")
 	}
@@ -283,6 +283,6 @@ func (cfg *VolumeConfig) Validate() error {
 	return cfg.Options.Validate()
 }
 
-func (cfg *VolumeConfig) String() string {
+func (cfg *Volume) String() string {
 	return path.Join(cfg.PolicyName, cfg.VolumeName)
 }

@@ -25,7 +25,7 @@ import (
 
 // DaemonConfig is the configuration struct used by the volmaster to hold globals.
 type DaemonConfig struct {
-	Config   *config.TopLevelConfig
+	Config   *config.Client
 	MountTTL int
 	Timeout  time.Duration
 	Global   *config.Global

@@ -12,13 +12,13 @@ import (
 )
 
 func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
-	intent1, err := s.readIntent("testdata/intent1.json")
+	policy1, err := s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
 
-	intent2, err := s.readIntent("testdata/intent2.json")
+	policy2, err := s.readIntent("testdata/policy2.json")
 	c.Assert(err, IsNil)
 
-	_, err = s.volcli("policy upload test1 < /testdata/intent1.json")
+	_, err = s.volcli("policy upload test1 < /testdata/policy1.json")
 	c.Assert(err, IsNil)
 
 	defer func() {
@@ -29,7 +29,7 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 		c.Assert(err, NotNil)
 	}()
 
-	_, err = s.volcli("policy upload test2 < /testdata/intent2.json")
+	_, err = s.volcli("policy upload test2 < /testdata/policy2.json")
 	c.Assert(err, IsNil)
 
 	defer func() {
@@ -43,20 +43,20 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	out, err := s.volcli("policy get test1")
 	c.Assert(err, IsNil)
 
-	intentTarget := config.NewPolicyConfig(ceph.BackendName)
+	intentTarget := config.NewPolicy(ceph.BackendName)
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
-	intent1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+	policy1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
-	c.Assert(intent1, DeepEquals, intentTarget)
+	c.Assert(policy1, DeepEquals, intentTarget)
 	c.Assert(err, IsNil)
 
 	out, err = s.volcli("policy get test2")
 	c.Assert(err, IsNil)
 
-	intentTarget = config.NewPolicyConfig(ceph.BackendName)
+	intentTarget = config.NewPolicy(ceph.BackendName)
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
-	intent2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
-	c.Assert(intent2, DeepEquals, intentTarget)
+	policy2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+	c.Assert(policy2, DeepEquals, intentTarget)
 
 	out, err = s.volcli("policy list")
 	c.Assert(err, IsNil)
@@ -84,7 +84,7 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 
 	out, err := s.volcli("policy get test")
 	c.Assert(err, IsNil)
-	intentTarget := config.NewPolicyConfig("")
+	intentTarget := config.NewPolicy("")
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	nullDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(nullDriverIntent, DeepEquals, intentTarget)
@@ -111,18 +111,18 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
-	cfg := &config.VolumeConfig{}
+	cfg := &config.Volume{}
 
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 
 	cfg.Options.FileSystem = "ext4"
 
-	intent1, err := s.readIntent("testdata/intent1.json")
+	policy1, err := s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
 
-	intent1.DefaultVolumeOptions.FileSystem = "ext4"
+	policy1.DefaultVolumeOptions.FileSystem = "ext4"
 
-	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 
 	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
@@ -142,24 +142,24 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)
 
-	cfg = &config.VolumeConfig{}
+	cfg = &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 	cfg.Options.FileSystem = "ext4"
-	intent1, err = s.readIntent("testdata/intent1.json")
+	policy1, err = s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
-	intent1.DefaultVolumeOptions.FileSystem = "ext4"
-	intent1.DefaultVolumeOptions.UseSnapshots = false
-	c.Assert(intent1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	policy1.DefaultVolumeOptions.FileSystem = "ext4"
+	policy1.DefaultVolumeOptions.UseSnapshots = false
+	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
 }
 
 func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
-	out, err := s.volcli("policy upload test1 < /testdata/intent1.json")
+	out, err := s.volcli("policy upload test1 < /testdata/policy1.json")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume create test1/foo")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("policy upload test1 < /testdata/intent2.json")
+	out, err = s.volcli("policy upload test1 < /testdata/policy2.json")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume create test1/bar")

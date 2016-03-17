@@ -26,13 +26,13 @@ func (s *systemtestSuite) volcli(command string) (string, error) {
 	return s.mon0cmd("volcli " + command)
 }
 
-func (s *systemtestSuite) readIntent(fn string) (*config.PolicyConfig, error) {
+func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 	content, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := config.NewPolicyConfig(ceph.BackendName)
+	cfg := config.NewPolicy(ceph.BackendName)
 
 	if err := json.Unmarshal(content, cfg); err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		return err
 	}
 
-	if out, err := s.uploadIntent("policy1", "intent1"); err != nil {
+	if out, err := s.uploadIntent("policy1", "policy1"); err != nil {
 		log.Errorf("Intent upload failed. Error: %v, Output: %s", err, out)
 		return err
 	}

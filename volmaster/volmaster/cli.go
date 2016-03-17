@@ -18,7 +18,7 @@ func start(ctx *cli.Context) {
 		log.Debug("Debug logging enabled")
 	}
 
-	cfg, err := config.NewTopLevelConfig(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Fatal(err)
 	}
