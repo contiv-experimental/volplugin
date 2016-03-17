@@ -60,7 +60,6 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.VolumeConfig) 
 			log.Infof("Removing snapshot %q for volume %q", list[i], val.VolumeName)
 			if err := driver.RemoveSnapshot(list[i], driverOpts); err != nil {
 				log.Errorf("Removing snapshot %q for volume %q failed: %v", list[i], val.VolumeName, err)
-				return err
 			}
 		}
 
@@ -131,10 +130,10 @@ func (dc *DaemonConfig) loop() {
 				}
 
 				if time.Now().Unix()%int64(freq.Seconds()) == 0 {
-					go func() {
+					go func(volume string, val *config.VolumeConfig) {
 						dc.createSnapshot(volume, val)
 						dc.pruneSnapshots(volume, val)
-					}()
+					}(volume, val)
 				}
 			}
 		}

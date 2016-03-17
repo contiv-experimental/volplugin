@@ -3,6 +3,7 @@ package ceph
 import (
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	. "testing"
 	"time"
@@ -222,4 +223,30 @@ func (s *cephSuite) TestInternalNames(c *C) {
 
 	c.Assert(driver.InternalNameToVolpluginName("tenant1.test"), Equals, "tenant1/test")
 	c.Assert(driver.InternalNameToVolpluginName("tenant1.test.two"), Equals, "tenant1/test.two")
+}
+
+func (s *cephSuite) TestSnapshotClone(c *C) {
+	driver := NewDriver(myMountpath)
+
+	driverOpts := storage.DriverOptions{
+		Volume:    volumeSpec,
+		FSOptions: filesystems["ext4"],
+	}
+
+	c.Assert(driver.Create(driverOpts), IsNil)
+	c.Assert(driver.CreateSnapshot("test", driverOpts), IsNil)
+	c.Assert(driver.CopySnapshot(driverOpts, "test", "testImage"), IsNil)
+	defer func(driverOpts storage.DriverOptions) {
+		driverOpts.Volume.Name = "testImage"
+		c.Assert(driver.Destroy(driverOpts), IsNil)
+		c.Assert(exec.Command("rbd", "snap", "unprotect", volumeSpec.Name, "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run(), IsNil)
+		driverOpts.Volume.Name = "pithos"
+		c.Assert(driver.Destroy(driverOpts), IsNil)
+	}(driverOpts)
+
+	content, err := exec.Command("rbd", "ls").CombinedOutput()
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "testImage"), Equals, true)
+	c.Assert(driver.CopySnapshot(driverOpts, "foo", "testImage"), NotNil)
+	c.Assert(driver.CopySnapshot(driverOpts, "test", "testImage"), NotNil)
 }

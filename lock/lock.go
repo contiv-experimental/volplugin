@@ -38,6 +38,8 @@ const (
 	// ReasonSnapshotPrune is the prune operation for snapshots
 	ReasonSnapshotPrune = "SnapshotPrune"
 
+	// ReasonCopy indicates a copy from snapshot operation.
+	ReasonCopy = "Copy"
 	// ReasonMaintenance indicates that an operator is acquiring the lock.
 	ReasonMaintenance = "Maintenance"
 )

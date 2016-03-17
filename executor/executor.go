@@ -63,12 +63,14 @@ type Executor struct {
 // before calling Start(). See Executor for more information.
 func New(cmd *exec.Cmd) *Executor {
 	return &Executor{
-		LogInterval:   1 * time.Minute,
-		TerminateChan: make(chan bool, 1),
-		LogFunc:       logrus.Debugf,
-		command:       cmd,
-		stdout:        nil,
-		stderr:        nil,
+		LogInterval:      1 * time.Minute,
+		TerminateChan:    make(chan bool, 1),
+		LogFunc:          logrus.Debugf,
+		command:          cmd,
+		stdout:           nil,
+		stderr:           nil,
+		terminateLogger:  make(chan struct{}, 1),
+		timeoutTerminate: make(chan struct{}, 1),
 	}
 }
 
@@ -99,7 +101,6 @@ func (e *Executor) Start() error {
 	e.command.Stdin = e.Stdin
 
 	e.startTime = time.Now()
-	e.terminateLogger = make(chan struct{}, 1)
 
 	var err error
 
@@ -206,9 +207,9 @@ func (e *Executor) Wait() (*ExecResult, error) {
 	err = e.command.Wait()
 
 	e.TerminateChan <- false // signal goroutines to terminate gracefully
-	select {
-	case e.timeoutTerminate <- struct{}{}:
-	default:
+
+	if e.timeout != 0 {
+		e.timeoutTerminate <- struct{}{}
 	}
 
 	if err != nil {

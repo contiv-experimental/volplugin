@@ -4,7 +4,7 @@
     "size": "10MB",
     "snapshots": true,
     "snapshot": {
-      "frequency": "1s",
+      "frequency": "2s",
       "keep": 5
     }
   }

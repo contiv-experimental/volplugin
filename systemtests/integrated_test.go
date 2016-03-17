@@ -3,7 +3,9 @@ package systemtests
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -185,4 +187,59 @@ func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 
 	_, err = s.volcli("volume remove policy1/test")
 	c.Assert(err, IsNil)
+}
+
+func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
+	_, err := s.uploadIntent("policy1", "fastsnap")
+	c.Assert(err, IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	time.Sleep(4 * time.Second)
+
+	out, err := s.volcli("volume snapshot list policy1/test")
+	c.Assert(err, IsNil)
+
+	lines := strings.Split(out, "\n")
+	c.Assert(len(lines), Not(Equals), 0)
+
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test2", lines[0]))
+	c.Assert(err, IsNil)
+
+	defer func() {
+		c.Assert(s.purgeVolume("mon0", "policy1", "test2", true), IsNil)
+		_, err := s.mon0cmd(fmt.Sprintf("sudo rbd snap unprotect policy1.test --snap %s --pool rbd", lines[0]))
+		c.Assert(err, IsNil)
+		c.Assert(s.purgeVolume("mon0", "policy1", "test", true), IsNil)
+	}()
+
+	out, err = s.volcli("volume list-all")
+	c.Assert(err, IsNil)
+
+	lines2 := strings.Split(out, "\n")
+
+	sort.Strings(lines2)
+
+	// off-by-one because of the initial newline in the volcli output
+	c.Assert([]string{"policy1/test", "policy1/test2"}, DeepEquals, lines2[1:])
+}
+
+func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
+	_, err := s.uploadIntent("policy1", "fastsnap")
+	c.Assert(err, IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	time.Sleep(4 * time.Second)
+
+	out, err := s.volcli("volume snapshot list policy1/test")
+	c.Assert(err, IsNil)
+
+	lines := strings.Split(out, "\n")
+	c.Assert(len(lines), Not(Equals), 0)
+
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test", lines[0]))
+	c.Assert(err, NotNil)
+	_, err = s.volcli("volume snapshot copy policy1/test foo test2")
+	c.Assert(err, NotNil)
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/nonexistent %s test2", lines[0]))
+	c.Assert(err, NotNil)
 }

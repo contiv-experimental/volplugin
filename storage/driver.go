@@ -88,6 +88,10 @@ type Driver interface {
 	// of snapshots to be returned. Any error will be returned.
 	ListSnapshots(DriverOptions) ([]string, error)
 
+	// CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
+	// snap and volume name (string). Returns error on failure.
+	CopySnapshot(DriverOptions, string, string) error
+
 	// Mounted shows any volumes that belong to volplugin on the host, in
 	// their native representation. They yield a *Mount.
 	Mounted(time.Duration) ([]*Mount, error)

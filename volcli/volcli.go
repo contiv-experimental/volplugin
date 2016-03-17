@@ -441,6 +441,96 @@ func volumeList(ctx *cli.Context) (bool, error) {
 	return false, nil
 }
 
+// VolumeSnapshotCopy lists all snapshots for a given volume.
+func VolumeSnapshotCopy(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeSnapshotCopy)
+}
+
+func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 3 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 3, ctx.Args())
+	}
+
+	policy, volume1, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	snapName := ctx.Args()[1]
+	volume2 := ctx.Args()[2]
+
+	req := &config.Request{
+		Volume: volume1,
+		Policy: policy,
+		Options: map[string]string{
+			"target":   volume2,
+			"snapshot": snapName,
+		},
+	}
+
+	content, err := json.Marshal(req)
+	if err != nil {
+		return false, fmt.Errorf("Could not create request JSON: %v", err)
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/copy", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		content, _ := ioutil.ReadAll(resp.Body)
+		if content != nil {
+			fmt.Println(string(content))
+		}
+		return false, fmt.Errorf("Status was not 200: was %d: %v", resp.StatusCode, resp.Status)
+	}
+
+	return false, nil
+}
+
+// VolumeSnapshotList lists all snapshots for a given volume.
+func VolumeSnapshotList(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeSnapshotList)
+}
+
+func volumeSnapshotList(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/snapshots/%s/%s", ctx.String("volmaster"), policy, volume))
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		return false, fmt.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var results []string
+
+	if err := json.Unmarshal(content, &results); err != nil {
+		return false, err
+	}
+
+	for _, result := range results {
+		fmt.Println(result)
+	}
+
+	return false, nil
+}
+
 // VolumeListAll returns a list of the pools the volmaster knows about.
 func VolumeListAll(ctx *cli.Context) {
 	execCliAndExit(ctx, volumeListAll)
