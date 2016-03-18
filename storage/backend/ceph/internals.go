@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/contiv/volplugin/executor"
+	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 
 	log "github.com/Sirupsen/logrus"

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/contiv/volplugin/executor"
+	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 )
 
