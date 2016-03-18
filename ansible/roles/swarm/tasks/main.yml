@@ -1,10 +1,19 @@
 ---
 # This role contains tasks for configuring and starting swarm service
+- name: check for swarm image
+  shell: "docker images | grep swarm | grep -q {{ swarm_version }}"
+  ignore_errors: true
+  register: swarm_exists
+
+- name: "swarm exists"
+  debug:
+    var: swarm_exists
 
 - name: download swarm container image
   shell: docker pull swarm:{{ swarm_version }}
   tags:
     - prebake-for-dev
+  when: not swarm_exists|success
 
 - name: copy the swarm start/stop script
   template: src=swarm.j2 dest=/usr/bin/swarm.sh mode=u=rwx,g=rx,o=rx
