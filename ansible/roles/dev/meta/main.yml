@@ -17,7 +17,6 @@ dependencies:
 - { role: etcd }
 - { role: docker }
 - { role: swarm }
-- { role: ucp }
 - { role: contiv_cluster }
 - { role: contiv_network }
 - { role: contiv_storage }
