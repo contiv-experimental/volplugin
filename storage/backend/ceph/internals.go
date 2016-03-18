@@ -71,14 +71,17 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 
 	for _, rbd := range rbdmap {
 		if rbd.Name == do.Volume.Name && rbd.Pool == do.Volume.Params["pool"] {
+			var retried bool
+
 		retry:
 			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbd.Device))
 			er, err := executor.New(exec.Command("rbd", "unmap", rbd.Device)).Run()
-			if err != nil || er.ExitStatus != 0 {
+			if !retried && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbd.Device, er, err, er.Stderr)
 				if er.ExitStatus == 4096 {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
+					retried = true
 					goto retry
 				}
 				return err
@@ -91,9 +94,11 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 
 			for _, rbd2 := range rbdmap2 {
 				if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
+					retried = true
 					goto retry
 				}
 			}
+			break
 		}
 	}
 

@@ -394,10 +394,6 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 		return nil, err
 	}
 
-	if len(hostMounts) != len(mapped) {
-		return nil, errored.Errorf("Mounted and mapped volumes do not align.")
-	}
-
 	mounts := []*storage.Mount{}
 
 	for _, hostMount := range hostMounts {
@@ -413,10 +409,6 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 				break
 			}
 		}
-	}
-
-	if len(mounts) != len(hostMounts) || len(mounts) != len(mapped) {
-		return nil, errored.Errorf("Did not align all mounts between mapped and mounted volumes.")
 	}
 
 	return mounts, nil
