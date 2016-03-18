@@ -108,6 +108,8 @@
   service:
     name: docker
     state: started
+  tags:
+    - prebake-for-dev
 
 - stat: path=/var/docker_images
   register: docker_images
