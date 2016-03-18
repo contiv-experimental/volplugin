@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 
 	log "github.com/Sirupsen/logrus"
@@ -96,7 +97,7 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 	}
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
@@ -127,7 +128,7 @@ func (d *Driver) ReportUnmount(ut *config.UseMount) error {
 	content, err = ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil

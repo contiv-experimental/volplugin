@@ -2,11 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/watch"
 
 	log "github.com/Sirupsen/logrus"
@@ -245,7 +245,7 @@ func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 // considered.
 func (vo *VolumeOptions) Validate() error {
 	if vo.Pool == "" {
-		return fmt.Errorf("No Pool specified")
+		return errored.Errorf("No Pool specified")
 	}
 
 	if vo.actualSize == 0 {
@@ -255,12 +255,12 @@ func (vo *VolumeOptions) Validate() error {
 		}
 
 		if actualSize == 0 {
-			return fmt.Errorf("Config for policy has a zero size")
+			return errored.Errorf("Config for policy has a zero size")
 		}
 	}
 
 	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {
-		return fmt.Errorf("Snapshots are configured but cannot be used due to blank settings")
+		return errored.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
 	return nil
@@ -269,15 +269,15 @@ func (vo *VolumeOptions) Validate() error {
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *Volume) Validate() error {
 	if cfg.VolumeName == "" {
-		return fmt.Errorf("Volume Name was omitted")
+		return errored.Errorf("Volume Name was omitted")
 	}
 
 	if cfg.PolicyName == "" {
-		return fmt.Errorf("Policy name was omitted")
+		return errored.Errorf("Policy name was omitted")
 	}
 
 	if cfg.Options == nil {
-		return fmt.Errorf("Options were omitted from volume creation")
+		return errored.Errorf("Options were omitted from volume creation")
 	}
 
 	return cfg.Options.Validate()

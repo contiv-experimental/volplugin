@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 )
 
@@ -68,7 +69,7 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+		return nil, errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	if err != nil { // error is from the ReadAll above; we just care more about the status code is all
@@ -96,7 +97,7 @@ func (dc *DaemonConfig) requestRemove(policy, name string) error {
 	content, err = ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
@@ -113,10 +114,11 @@ func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]s
 		return err
 	}
 
+	// FIXME no error checking!
 	content, err = ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
+		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
@@ -125,7 +127,7 @@ func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]s
 func splitPath(name string) (string, string, error) {
 	parts := strings.SplitN(name, "/", 2)
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("Invalid volume name %q", name)
+		return "", "", errored.Errorf("Invalid volume name %q", name)
 	}
 
 	return parts[0], parts[1], nil

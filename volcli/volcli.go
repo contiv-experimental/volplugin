@@ -15,17 +15,18 @@ import (
 	"syscall"
 
 	"github.com/codegangsta/cli"
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/lock"
 	"github.com/kr/pty"
 )
 
 func errorInvalidVolumeSyntax(rcvd, exptd string) error {
-	return fmt.Errorf("Invalid syntax: %q must be in the form of %q)", rcvd, exptd)
+	return errored.Errorf("Invalid syntax: %q must be in the form of %q)", rcvd, exptd)
 }
 
 func errorInvalidArgCount(rcvd, exptd int, args []string) error {
-	return fmt.Errorf("Invalid number of arguments: expected %d but received %d %v", exptd, rcvd, args)
+	return errored.Errorf("Invalid number of arguments: expected %d but received %d %v", exptd, rcvd, args)
 }
 
 func splitVolume(ctx *cli.Context) (string, string, error) {
@@ -73,7 +74,7 @@ func queryGlobalConfig(ctx *cli.Context) (*config.Global, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Status code was %d not 200: %s", resp.StatusCode, string(content))
+		return nil, errored.Errorf("Status code was %d not 200: %s", resp.StatusCode, string(content))
 	}
 
 	// rebuild and divide the contents so they are cast out of their internal
@@ -285,7 +286,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 	for _, str := range ctx.StringSlice("opt") {
 		pair := strings.SplitN(str, "=", 2)
 		if len(pair) < 2 {
-			return false, fmt.Errorf("Mismatched option pair %q", pair)
+			return false, errored.Errorf("Mismatched option pair %q", pair)
 		}
 
 		opts[pair[0]] = pair[1]
@@ -299,7 +300,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 
 	content, err := json.Marshal(tc)
 	if err != nil {
-		return false, fmt.Errorf("Could not create request JSON: %v", err)
+		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
@@ -308,7 +309,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return false, fmt.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	return false, nil
@@ -408,7 +409,7 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 
 	if resp.StatusCode != 200 {
 		io.Copy(os.Stderr, resp.Body)
-		return false, fmt.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	return false, nil
@@ -470,7 +471,7 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 
 	content, err := json.Marshal(req)
 	if err != nil {
-		return false, fmt.Errorf("Could not create request JSON: %v", err)
+		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/copy", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
@@ -483,7 +484,7 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 		if content != nil {
 			fmt.Println(string(content))
 		}
-		return false, fmt.Errorf("Status was not 200: was %d: %v", resp.StatusCode, resp.Status)
+		return false, errored.Errorf("Status was not 200: was %d: %v", resp.StatusCode, resp.Status)
 	}
 
 	return false, nil
@@ -510,7 +511,7 @@ func volumeSnapshotList(ctx *cli.Context) (bool, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return false, fmt.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
@@ -707,7 +708,7 @@ func useExec(ctx *cli.Context) (bool, error) {
 	args := ctx.Args()[1:]
 	if args[0] == "--" {
 		if len(args) < 2 {
-			return true, fmt.Errorf("You must supply a command to run")
+			return true, errored.Errorf("You must supply a command to run")
 		}
 		args = args[1:]
 	}

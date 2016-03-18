@@ -13,6 +13,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
@@ -442,15 +443,15 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !exists {
-			return fmt.Errorf("Volume %q no longer exists", vc.String())
+			return errored.Errorf("Volume %q no longer exists", vc.String())
 		}
 
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
-			return fmt.Errorf("Removing image: %v", err)
+			return errored.Errorf("Removing image").Combine(err.(*errored.Error))
 		}
 
 		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return fmt.Errorf("Clearing volume records: %v", err)
+			return errored.Errorf("Clearing volume records").Combine(err.(*errored.Error))
 		}
 
 		return nil
@@ -589,15 +590,15 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("Volume exists, cleaning up")
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("Creating volume: %v", err)
+			return errored.Errorf("Creating volume").Combine(err.(*errored.Error))
 		}
 
 		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
-			return fmt.Errorf("Publishing volume: %v", err)
+			return errored.Errorf("Publishing volume").Combine(err.(*errored.Error))
 		}
 
 		if err := d.formatVolume(volConfig, do); err != nil {
-			return fmt.Errorf("Formatting volume: %v", err)
+			return errored.Errorf("Formatting volume").Combine(err.(*errored.Error))
 		}
 
 		return nil

@@ -1,7 +1,6 @@
 package ceph
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 
@@ -54,11 +54,11 @@ func (c *Driver) Name() string {
 func (c *Driver) InternalName(s string) (string, error) {
 	strs := strings.SplitN(s, "/", 2)
 	if strings.Contains(strs[0], ".") {
-		return "", fmt.Errorf("Invalid tenant name %q, cannot contain '.'", strs[0])
+		return "", errored.Errorf("Invalid tenant name %q, cannot contain '.'", strs[0])
 	}
 
 	if strings.Contains(strs[1], "/") {
-		return "", fmt.Errorf("Invalid volume name %q, cannot contain '/'", strs[0])
+		return "", errored.Errorf("Invalid volume name %q, cannot contain '/'", strs[0])
 	}
 
 	return strings.Join(strs, "."), nil
@@ -80,7 +80,7 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 	}
 
 	if !ok {
-		return fmt.Errorf("Pool %q does not exist", poolName)
+		return errored.Errorf("Pool %q does not exist", poolName)
 	}
 
 	cmd := exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)
@@ -92,7 +92,7 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 	if er.ExitStatus == 4352 {
 		return storage.ErrVolumeExist
 	} else if er.ExitStatus != 0 {
-		return fmt.Errorf("Creating disk %q: %v", do.Volume.Name, er)
+		return errored.Errorf("Creating disk %q: %v", do.Volume.Name, er)
 	}
 
 	return nil
@@ -123,7 +123,7 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 		return err
 	}
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er)
+		return errored.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er)
 	}
 
 	cmd = exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)
@@ -133,7 +133,7 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stderr)
+		return errored.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stderr)
 	}
 
 	return nil
@@ -148,7 +148,7 @@ func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 	}
 
 	if er.ExitStatus != 0 {
-		return nil, fmt.Errorf("Listing pool %q: %v", poolName, er)
+		return nil, errored.Errorf("Listing pool %q: %v", poolName, er)
 	}
 
 	list := []storage.Volume{}
@@ -175,18 +175,18 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 
 	// Create directory to mount
 	if err := os.MkdirAll(c.mountpath, 0700); err != nil && !os.IsExist(err) {
-		return nil, fmt.Errorf("error creating %q directory: %v", c.mountpath, err)
+		return nil, errored.Errorf("error creating %q directory: %v", c.mountpath, err)
 	}
 
 	if err := os.MkdirAll(volumePath, 0700); err != nil && !os.IsExist(err) {
-		return nil, fmt.Errorf("error creating %q directory: %v", volumePath, err)
+		return nil, errored.Errorf("error creating %q directory: %v", volumePath, err)
 	}
 
 	// Obtain the major and minor node information about the device we're mounting.
 	// This is critical for tuning cgroups and obtaining metrics for this device only.
 	fi, err := os.Stat(devName)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to stat rbd device %q: %v", devName, err)
+		return nil, errored.Errorf("Failed to stat rbd device %q: %v", devName, err)
 	}
 
 	rdev := fi.Sys().(*syscall.Stat_t).Rdev
@@ -196,7 +196,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 
 	// Mount the RBD
 	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil && err != unix.EBUSY {
-		return nil, fmt.Errorf("Failed to mount RBD dev %q: %v", devName, err.Error())
+		return nil, errored.Errorf("Failed to mount RBD dev %q: %v", devName, err)
 	}
 
 	return &storage.Mount{
@@ -225,7 +225,7 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 	// modes where multiple containers will be affecting a single volume.
 	// FIXME loop over unmount and ensure the unmount finished before removing dir
 	if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
-		return fmt.Errorf("Failed to unmount %q: %v", volumeDir, err)
+		return errored.Errorf("Failed to unmount %q: %v", volumeDir, err)
 	}
 
 	// Remove the mounted directory
@@ -235,7 +235,7 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 			return nil
 		}
 
-		return fmt.Errorf("error removing %q directory: %v", volumeDir, err)
+		return errored.Errorf("error removing %q directory: %v", volumeDir, err)
 	}
 
 	if err := c.unmapImage(do); err != os.ErrNotExist {
@@ -271,7 +271,7 @@ func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Creating snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+		return errored.Errorf("Creating snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
 	}
 
 	return nil
@@ -286,7 +286,7 @@ func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error
 	}
 
 	if er.ExitStatus != 0 {
-		return fmt.Errorf("Removing snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+		return errored.Errorf("Removing snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
 	}
 
 	return nil
@@ -302,7 +302,7 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	}
 
 	if er.ExitStatus != 0 {
-		return nil, fmt.Errorf("Listing snapshots for (volume %q): %v", do.Volume.Name, er)
+		return nil, errored.Errorf("Listing snapshots for (volume %q): %v", do.Volume.Name, er)
 	}
 
 	names := []string{}
@@ -328,7 +328,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	list, err := c.List(storage.ListOptions{Params: storage.Params{"pool": do.Volume.Params["pool"]}})
 	for _, vol := range list {
 		if newName == vol.Name {
-			return fmt.Errorf("Volume %q already exists", vol.Name)
+			return errored.Errorf("Volume %q already exists", vol.Name)
 		}
 	}
 
@@ -361,7 +361,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	}()
 
 	if er.ExitStatus != 0 {
-		newerr := fmt.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		newerr := errored.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
 		errChan <- newerr
 		return newerr
 	}
@@ -374,7 +374,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	}
 
 	if er.ExitStatus != 0 {
-		newerr := fmt.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		newerr := errored.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
 		errChan <- newerr
 		return err
 	}
@@ -395,7 +395,7 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	}
 
 	if len(hostMounts) != len(mapped) {
-		return nil, fmt.Errorf("Mounted and mapped volumes do not align.")
+		return nil, errored.Errorf("Mounted and mapped volumes do not align.")
 	}
 
 	mounts := []*storage.Mount{}
@@ -416,7 +416,7 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	}
 
 	if len(mounts) != len(hostMounts) || len(mounts) != len(mapped) {
-		return nil, fmt.Errorf("Did not align all mounts between mapped and mounted volumes.")
+		return nil, errored.Errorf("Did not align all mounts between mapped and mounted volumes.")
 	}
 
 	return mounts, nil

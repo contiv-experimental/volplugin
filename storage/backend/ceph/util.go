@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 )
@@ -13,11 +14,11 @@ import (
 func (c *Driver) poolExists(poolName string) (bool, error) {
 	er, err := executor.New(exec.Command("ceph", "osd", "pool", "ls")).Run()
 	if err != nil {
-		return false, fmt.Errorf("Problem listing pools: %v", err)
+		return false, errored.Errorf("Problem listing pools: %v", err)
 	}
 
 	if er.ExitStatus != 0 {
-		return false, fmt.Errorf("Problem listing pools: %v", er)
+		return false, errored.Errorf("Problem listing pools: %v", er)
 	}
 
 	lines := strings.Split(er.Stdout, "\n")

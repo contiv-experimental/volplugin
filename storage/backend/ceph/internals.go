@@ -2,11 +2,11 @@ package ceph
 
 import (
 	"encoding/json"
-	"fmt"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 
@@ -25,7 +25,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	cmd := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)
 	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
-		return "", fmt.Errorf("Could not map %q: %v (%v) (%v)", do.Volume.Name, er, err, er.Stderr)
+		return "", errored.Errorf("Could not map %q: %v (%v) (%v)", do.Volume.Name, er, err, er.Stderr)
 	}
 
 	var device string
@@ -43,7 +43,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	}
 
 	if device == "" {
-		return "", fmt.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
+		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", do.Volume.Name, do.Volume.Params["pool"])
 	}
 
 	log.Debugf("mapped volume %q as %q", do.Volume.Name, device)
@@ -56,7 +56,7 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) err
 	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
 	er, err := executor.NewWithTimeout(cmd, timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
-		return fmt.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
+		return errored.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
 
 	return nil
@@ -115,7 +115,7 @@ func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {
 	rbdmap := rbdMap{}
 
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		return nil, fmt.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+		return nil, errored.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
 	}
 
 	return rbdmap, nil

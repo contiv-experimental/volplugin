@@ -134,6 +134,6 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 		c.Assert(fs.Parse(test.args), IsNil)
 		ctx := cli.NewContext(nil, fs, nil)
 		_, err := test.f(ctx)
-		c.Assert(err, DeepEquals, test.err, Commentf("test key: %q", key))
+		c.Assert(err.Error(), Equals, test.err.Error(), Commentf("test key: %q", key))
 	}
 }

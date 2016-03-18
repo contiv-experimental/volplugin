@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
@@ -101,7 +102,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.StatusCode != 200 {
-		httpError(w, "Retrieving volume", fmt.Errorf("Status was not 200: was %d", resp.StatusCode))
+		httpError(w, "Retrieving volume", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
 	}
 
 	io.Copy(w, resp.Body)
@@ -115,7 +116,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.StatusCode != 200 {
-		httpError(w, "Retrieving list", fmt.Errorf("Status was not 200: was %d", resp.StatusCode))
+		httpError(w, "Retrieving list", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
 		return
 	}
 

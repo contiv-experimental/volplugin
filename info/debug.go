@@ -1,7 +1,6 @@
 package info
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,6 +10,7 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 )
 
 func numFileDescriptors() int {
@@ -25,7 +25,7 @@ func getCephVersion() (string, error) {
 	cmd := exec.Command("ceph", "version")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("encountered error: %v", err)
+		return "", errored.Errorf("encountered error: %v", err)
 	}
 
 	output := strings.TrimLeft(string(out), "ceph version ")
