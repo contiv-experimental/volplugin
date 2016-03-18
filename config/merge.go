@@ -1,9 +1,10 @@
 package config
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
+
+	"github.com/contiv/errored"
 )
 
 // mergeOpts is used to merge docker's driver options (which are flat) with our
@@ -65,12 +66,12 @@ func setKey(typeinfo reflect.Type, valinfo *reflect.Value, key string, value str
 		}
 	}
 
-	return fmt.Errorf("Key not found")
+	return errored.Errorf("Key not found")
 }
 
 func setValueWithType(field *reflect.Value, val string) error {
 	if !field.CanSet() {
-		return fmt.Errorf("Cannot set value %q for struct element %q", val, field.Kind().String())
+		return errored.Errorf("Cannot set value %q for struct element %q", val, field.Kind().String())
 	}
 
 	// navigate the kinds using the reflect types. fallthrough until we can get
@@ -129,5 +130,5 @@ func setValueWithType(field *reflect.Value, val string) error {
 		return nil
 	}
 
-	return fmt.Errorf("Could not find appropriate type %q", field.Kind().String())
+	return errored.Errorf("Could not find appropriate type %q", field.Kind().String())
 }

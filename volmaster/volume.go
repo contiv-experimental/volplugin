@@ -1,9 +1,9 @@
 package volmaster
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
@@ -24,7 +24,7 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 	} else {
 		fscmd, ok = policy.FileSystems[config.Options.FileSystem]
 		if !ok {
-			return storage.DriverOptions{}, fmt.Errorf("Invalid filesystem %q", config.Options.FileSystem)
+			return storage.DriverOptions{}, errored.Errorf("Invalid filesystem %q", config.Options.FileSystem)
 		}
 	}
 

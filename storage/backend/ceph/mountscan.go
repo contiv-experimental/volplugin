@@ -2,11 +2,11 @@ package ceph
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 )
 
@@ -34,7 +34,7 @@ func rbdDevID() (string, error) {
 		if strings.HasSuffix(line, " rbd") {
 			parts := strings.Split(line, " ")
 			if len(parts) != 2 {
-				return "", fmt.Errorf("Invalid input from file %q", deviceInfoFile)
+				return "", errored.Errorf("Invalid input from file %q", deviceInfoFile)
 			}
 
 			return parts[0], nil
@@ -71,7 +71,7 @@ func getMounts() ([]*storage.Mount, error) {
 		parts := strings.Split(line, " ")
 		devParts := strings.Split(parts[2], ":")
 		if len(devParts) != 2 {
-			return nil, fmt.Errorf("Could not parse %q properly.", mountInfoFile)
+			return nil, errored.Errorf("Could not parse %q properly.", mountInfoFile)
 		}
 
 		if devParts[0] == devid {
