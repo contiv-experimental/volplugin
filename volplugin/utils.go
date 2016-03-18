@@ -63,6 +63,9 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 	}
 
 	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errored.Errorf("Could not read response body: %v", err)
+	}
 
 	if resp.StatusCode == 404 {
 		return nil, errVolumeNotFound
@@ -95,6 +98,9 @@ func (dc *DaemonConfig) requestRemove(policy, name string) error {
 	}
 
 	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errored.Errorf("Could not read response body: %v", err)
+	}
 
 	if resp.StatusCode != 200 {
 		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
@@ -114,8 +120,10 @@ func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]s
 		return err
 	}
 
-	// FIXME no error checking!
 	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errored.Errorf("Could not read response body: %v", err)
+	}
 
 	if resp.StatusCode != 200 {
 		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
