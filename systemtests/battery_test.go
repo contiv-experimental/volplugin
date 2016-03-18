@@ -12,6 +12,26 @@ import (
 	"github.com/contiv/vagrantssh"
 )
 
+func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
+	c.Skip("Can't be run until docker fixes this bug")
+	count := 25
+	errChan := make(chan error, count)
+
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	dockerCmd := "docker run -d -v policy1/test:/mnt alpine sleep 10m"
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
+
+	for x := 0; x < count; x++ {
+		go func() {
+			dockerCmd := "docker run -d -v policy1/test:/mnt alpine sleep 10m"
+			errChan <- s.vagrant.GetNode("mon0").RunCommand(dockerCmd)
+		}()
+	}
+
+	for x := 0; x < count; x++ {
+		c.Assert(<-errChan, NotNil)
+	}
+}
 func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	nodes := s.vagrant.GetNodes()
 	count := 10
