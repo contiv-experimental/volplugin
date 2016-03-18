@@ -11,10 +11,16 @@
   tags:
     - prebake-for-dev
 
+- name: check for collins image
+  shell: "docker images | grep {{ collins_image }} | grep -q {{ collins_image_version }}"
+  ignore_errors: true
+  register: collins_exists
+
 - name: pull collins container image
-  shell: docker pull {{ collins_image }}
+  shell: "docker pull {{ collins_image }}:{{ collins_image_version }}"
   tags:
     - prebake-for-dev
+  when: not collins_exists|success
 
 - name: start collins
   service: name=collins state=started
