@@ -13,10 +13,10 @@
 
 dependencies:
 - { role: ceph-install, tags: 'prebake-for-dev' }
+- { role: ansible, tags: 'prebake-for-dev' }
 - { role: etcd }
 - { role: docker }
 - { role: swarm }
-- { role: ucp }
 - { role: contiv_cluster }
 - { role: contiv_network }
 - { role: contiv_storage }
