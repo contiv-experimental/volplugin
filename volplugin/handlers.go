@@ -45,6 +45,7 @@ func (dc *DaemonConfig) deactivate(w http.ResponseWriter, r *http.Request) {
 }
 
 func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledConfig, error) {
+	defer r.Body.Close()
 	vr, err := unmarshalRequest(r.Body)
 	if err != nil {
 		httpError(w, "Could not unmarshal request", err)
@@ -82,6 +83,8 @@ func writeResponse(w http.ResponseWriter, r *http.Request, vr *VolumeResponse) {
 }
 
 func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "Retrieving volume", err)
@@ -101,6 +104,8 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		httpError(w, "Retrieving volume", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
 	}
@@ -114,6 +119,8 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Retrieving list", err)
 		return
 	}
+
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		httpError(w, "Retrieving list", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
@@ -351,6 +358,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 // Catchall for additional driver functions.
 func (dc *DaemonConfig) action(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	log.Debugf("Unknown driver action at %q", r.URL.Path)
 	content, _ := ioutil.ReadAll(r.Body)
 	log.Debug("Body content:", string(content))

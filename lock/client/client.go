@@ -91,9 +91,11 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return errored.Errorf("Could not read response body: %v", err)
 	}
 
 	if resp.StatusCode != 200 {
@@ -125,7 +127,12 @@ func (d *Driver) ReportUnmount(ut *config.UseMount) error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errored.Errorf("Could not read response body: %v", err)
+	}
 
 	if resp.StatusCode != 200 {
 		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
