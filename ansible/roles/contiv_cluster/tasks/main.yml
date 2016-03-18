@@ -15,6 +15,8 @@
   shell: "docker images | grep {{ collins_image }} | grep -q {{ collins_image_version }}"
   ignore_errors: true
   register: collins_exists
+  tags:
+    - prebake-for-dev
 
 - name: pull collins container image
   shell: "docker pull {{ collins_image }}:{{ collins_image_version }}"

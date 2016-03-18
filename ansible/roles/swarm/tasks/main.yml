@@ -4,6 +4,8 @@
   shell: "docker images | grep swarm | grep -q {{ swarm_version }}"
   ignore_errors: true
   register: swarm_exists
+  tags:
+    - prebake-for-dev
 
 - name: download swarm container image
   shell: docker pull swarm:{{ swarm_version }}
