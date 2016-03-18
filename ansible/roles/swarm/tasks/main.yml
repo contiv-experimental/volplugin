@@ -5,10 +5,6 @@
   ignore_errors: true
   register: swarm_exists
 
-- name: "swarm exists"
-  debug:
-    var: swarm_exists
-
 - name: download swarm container image
   shell: docker pull swarm:{{ swarm_version }}
   tags:
