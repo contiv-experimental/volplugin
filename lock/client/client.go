@@ -91,6 +91,8 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return errored.Errorf("Could not read response body: %v", err)
@@ -124,6 +126,8 @@ func (d *Driver) ReportUnmount(ut *config.UseMount) error {
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
 
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {

@@ -62,6 +62,8 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 		return nil, errVolumeResponse
 	}
 
+	defer resp.Body.Close()
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errored.Errorf("Could not read response body: %v", err)
@@ -97,6 +99,8 @@ func (dc *DaemonConfig) requestRemove(policy, name string) error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return errored.Errorf("Could not read response body: %v", err)
@@ -119,6 +123,8 @@ func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]s
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
 
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
