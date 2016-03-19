@@ -117,6 +117,7 @@ func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {
 		if err != nil || er.ExitStatus == 3072 {
 			log.Warnf("Could not show mapped volumes. Retrying")
 			time.Sleep(100 * time.Millisecond)
+			continue
 		} else {
 			break
 		}
