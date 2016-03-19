@@ -223,9 +223,20 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 	//
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
-	// FIXME loop over unmount and ensure the unmount finished before removing dir
-	if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
-		return errored.Errorf("Failed to unmount %q: %v", volumeDir, err)
+	var retries int
+	var lastErr error
+
+retry:
+	if retries < 3 {
+		if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
+			lastErr = errored.Errorf("Failed to unmount %q (retrying): %v", volumeDir, err)
+			log.Error(lastErr)
+			retries++
+			time.Sleep(100 * time.Millisecond)
+			goto retry
+		}
+	} else {
+		return errored.Errorf("Failed to umount after 3 retries").Combine(lastErr.(*errored.Error))
 	}
 
 	// Remove the mounted directory

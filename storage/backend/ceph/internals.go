@@ -2,6 +2,7 @@ package ceph
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -69,12 +70,17 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		return err
 	}
 
+	var retried bool
+retry:
 	for _, rbd := range rbdmap {
 		if rbd.Name == do.Volume.Name && rbd.Pool == do.Volume.Params["pool"] {
-			var retried bool
-
-		retry:
 			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbd.Device))
+
+			if _, err := os.Stat(rbd.Device); err != nil {
+				log.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", poolName, do.Volume.Name, rbd.Device)
+				continue
+			}
+
 			er, err := executor.New(exec.Command("rbd", "unmap", rbd.Device)).Run()
 			if !retried && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbd.Device, er, err, er.Stderr)
@@ -87,15 +93,17 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 				return err
 			}
 
-			rbdmap2, err := c.showMapped(do.Timeout)
-			if err != nil {
-				return err
-			}
+			if !retried {
+				rbdmap2, err := c.showMapped(do.Timeout)
+				if err != nil {
+					return err
+				}
 
-			for _, rbd2 := range rbdmap2 {
-				if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
-					retried = true
-					goto retry
+				for _, rbd2 := range rbdmap2 {
+					if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
+						retried = true
+						goto retry
+					}
 				}
 			}
 			break
