@@ -35,9 +35,9 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 		return "", err
 	}
 
-	for i := range rbdmap {
-		if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
-			device = rbdmap[i].Device
+	for _, rbd := range rbdmap {
+		if rbd.Name == do.Volume.Name && rbd.Pool == do.Volume.Params["pool"] {
+			device = rbd.Device
 			break
 		}
 	}
@@ -52,7 +52,6 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 }
 
 func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) error {
-	// Create ext4 filesystem on the device. this will take a while
 	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
 	er, err := executor.NewWithTimeout(cmd, timeout).Run()
 	if err != nil || er.ExitStatus != 0 {
@@ -70,24 +69,35 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		return err
 	}
 
-	for i := range rbdmap {
-		if rbdmap[i].Name == do.Volume.Name && rbdmap[i].Pool == do.Volume.Params["pool"] {
-			for {
-				log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbdmap[i].Device))
-				er, err := executor.New(exec.Command("rbd", "unmap", rbdmap[i].Device)).Run()
-				if err != nil || er.ExitStatus != 0 {
-					log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbdmap[i].Device, er, err, er.Stderr)
-					if er.ExitStatus == 4096 {
-						log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbdmap[i].Device)
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					return err
-				}
+	for _, rbd := range rbdmap {
+		if rbd.Name == do.Volume.Name && rbd.Pool == do.Volume.Params["pool"] {
+			var retried bool
 
-				break
+		retry:
+			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbd.Device))
+			er, err := executor.New(exec.Command("rbd", "unmap", rbd.Device)).Run()
+			if !retried && (err != nil || er.ExitStatus != 0) {
+				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbd.Device, er, err, er.Stderr)
+				if er.ExitStatus == 4096 {
+					log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbd.Device)
+					time.Sleep(100 * time.Millisecond)
+					retried = true
+					goto retry
+				}
+				return err
 			}
 
+			rbdmap2, err := c.showMapped(do.Timeout)
+			if err != nil {
+				return err
+			}
+
+			for _, rbd2 := range rbdmap2 {
+				if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
+					retried = true
+					goto retry
+				}
+			}
 			break
 		}
 	}
@@ -129,13 +139,13 @@ func (c *Driver) getMapped(timeout time.Duration) ([]*storage.Mount, error) {
 
 	mounts := []*storage.Mount{}
 
-	for i := range rbdmap {
+	for _, rbd := range rbdmap {
 		mounts = append(mounts, &storage.Mount{
-			Device: rbdmap[i].Device,
+			Device: rbd.Device,
 			Volume: storage.Volume{
-				Name: strings.Replace(rbdmap[i].Name, ".", "/", -1),
+				Name: strings.Replace(rbd.Name, ".", "/", -1),
 				Params: map[string]string{
-					"pool": rbdmap[i].Pool,
+					"pool": rbd.Pool,
 				},
 			},
 		})

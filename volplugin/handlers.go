@@ -230,7 +230,6 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FIXME check if we're holding the mount already
 	log.Infof("Mounting volume %q", uc.Request.Name)
 
 	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
@@ -245,29 +244,15 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ut := &config.UseMount{
-		Volume:   volConfig,
-		Hostname: dc.Host,
-	}
-
-	if err := dc.Client.ReportMount(ut); err != nil {
-		httpError(w, "Reporting mount to master", err)
-		return
-	}
-
-	stopChan := dc.Client.AddStopChan(uc.Request.Name)
-	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, stopChan)
-
-	actualSize, err := volConfig.Options.ActualSize()
-	if err != nil {
-		dc.Client.RemoveStopChan(uc.Request.Name)
-		httpError(w, "Computing size of volume", err)
-		return
-	}
-
 	intName, err := driver.InternalName(uc.Request.Name)
 	if err != nil {
 		httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)
+		return
+	}
+
+	actualSize, err := volConfig.Options.ActualSize()
+	if err != nil {
+		httpError(w, "Computing size of volume", err)
 		return
 	}
 
@@ -283,6 +268,35 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 			Type: volConfig.Options.FileSystem,
 		},
 	}
+
+	// if we're mounted already on this host, the mount publish will succeed and
+	// we will have two mounts, which will cause trouble at unmount time.
+
+	mounts, err := driver.Mounted(dc.Global.Timeout)
+	if err != nil {
+		httpError(w, "System failure retrieving mounts", err)
+		return
+	}
+
+	for _, mount := range mounts {
+		if mount.Path == driver.MountPath(driverOpts) {
+			httpError(w, "Mount already exists on this host", nil)
+			return
+		}
+	}
+
+	ut := &config.UseMount{
+		Volume:   volConfig,
+		Hostname: dc.Host,
+	}
+
+	if err := dc.Client.ReportMount(ut); err != nil {
+		httpError(w, "Reporting mount to master", err)
+		return
+	}
+
+	stopChan := dc.Client.AddStopChan(uc.Request.Name)
+	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, stopChan)
 
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
@@ -340,15 +354,15 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		Hostname: dc.Host,
 	}
 
-	dc.Client.RemoveStopChan(uc.Request.Name)
-
 	if err := driver.Unmount(driverOpts); err != nil {
-		dc.Client.AddStopChan(uc.Request.Name)
 		httpError(w, "Could not unmount image", err)
 		return
 	}
 
+	dc.Client.RemoveStopChan(uc.Request.Name)
+
 	if err := dc.Client.ReportUnmount(ut); err != nil {
+		dc.Client.AddStopChan(uc.Request.Name)
 		httpError(w, "Reporting unmount to master", err)
 		return
 	}
