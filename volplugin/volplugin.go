@@ -14,6 +14,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock/client"
@@ -71,10 +72,6 @@ func (dc *DaemonConfig) Daemon() error {
 
 	if err := dc.updateMounts(); err != nil {
 		return err
-	}
-
-	if dc.Global.Debug {
-		log.SetLevel(log.DebugLevel)
 	}
 
 	go info.HandleDebugSignal()
@@ -175,6 +172,12 @@ func (dc *DaemonConfig) watchGlobal() error {
 	for {
 		time.Sleep(1 * time.Second)
 		dc.getGlobal()
+
+		if dc.Global.Debug {
+			log.SetLevel(log.DebugLevel)
+			errored.AlwaysTrace = true
+			errored.AlwaysDebug = true
+		}
 	}
 }
 

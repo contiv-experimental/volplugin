@@ -69,6 +69,11 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	go func() {
 		for {
 			d.Global = (<-activity).Config.(*config.Global)
+
+			if d.Global.Debug {
+				errored.AlwaysDebug = true
+				errored.AlwaysTrace = true
+			}
 		}
 	}()
 
