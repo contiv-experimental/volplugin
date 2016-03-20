@@ -82,7 +82,7 @@ func (s *lockSuite) TestExecuteWithUseLock(c *C) {
 		uc := &config.UseMount{
 			Volume:   vc,
 			Reason:   ReasonCreate,
-			Hostname: fmt.Sprintf("mon%d", i), // doubly ensure we try to write a use lock at this point
+			Hostname: fmt.Sprintf("mon%d", i+1), // doubly ensure we try to write a use lock at this point
 		}
 
 		go func() {
@@ -169,7 +169,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 		}()
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		c.Assert(<-chErr, Equals, ErrPublish)
 	}
 

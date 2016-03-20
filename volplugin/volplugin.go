@@ -223,8 +223,7 @@ func (dc *DaemonConfig) updateMounts() error {
 				}
 			}
 
-			stop := dc.Client.AddStopChan(mount.Volume.Name)
-			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, stop)
+			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
 		}
 	}
 

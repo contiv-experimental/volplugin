@@ -119,22 +119,21 @@ func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {
 		err error
 	)
 
-	for { // ugly
-		cmd := exec.Command("rbd", "showmapped", "--format", "json")
-		er, err = executor.NewWithTimeout(cmd, timeout).Run()
-		if err != nil || er.ExitStatus == 3072 {
-			log.Warnf("Could not show mapped volumes. Retrying")
-			time.Sleep(100 * time.Millisecond)
-			continue
-		} else {
-			break
-		}
-	}
-
+retry:
 	rbdmap := rbdMap{}
 
+	cmd := exec.Command("rbd", "showmapped", "--format", "json")
+	er, err = executor.NewWithTimeout(cmd, timeout).Run()
+	if err != nil || er.ExitStatus == 3072 {
+		log.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
+		time.Sleep(100 * time.Millisecond)
+		goto retry
+	}
+
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		return nil, errored.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+		log.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
+		time.Sleep(100 * time.Second)
+		goto retry
 	}
 
 	return rbdmap, nil

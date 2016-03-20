@@ -106,8 +106,14 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 404 {
+		w.Write([]byte("{}"))
+		return
+	}
+
 	if resp.StatusCode != 200 {
 		httpError(w, "Retrieving volume", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
+		return
 	}
 
 	io.Copy(w, resp.Body)
@@ -295,21 +301,21 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stopChan := dc.Client.AddStopChan(uc.Request.Name)
-	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, stopChan)
-
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
-		dc.Client.RemoveStopChan(uc.Request.Name)
 		httpError(w, "Volume could not be mounted", err)
+		if err := dc.Client.ReportUnmount(ut); err != nil {
+			log.Errorf("Could not report unmount: %v", err)
+		}
 		return
 	}
 
 	if err := applyCGroupRateLimit(volConfig, mc); err != nil {
-		dc.Client.RemoveStopChan(uc.Request.Name)
 		httpError(w, "Applying cgroups", err)
 		return
 	}
+
+	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, dc.Client.AddStopChan(uc.Request.Name))
 
 	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
 }
@@ -362,8 +368,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	dc.Client.RemoveStopChan(uc.Request.Name)
 
 	if err := dc.Client.ReportUnmount(ut); err != nil {
-		dc.Client.AddStopChan(uc.Request.Name)
-		httpError(w, "Reporting unmount to master", err)
+		httpError(w, fmt.Sprintf("Reporting unmount for volume %v, to master", volConfig), err)
 		return
 	}
 

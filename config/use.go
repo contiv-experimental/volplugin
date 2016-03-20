@@ -45,6 +45,8 @@ type UseLocker interface {
 	GetReason() string
 	// Type returns the type of lock.
 	Type() string
+	// MayExist determines if a key may exist during initial write
+	MayExist() bool
 }
 
 // GetVolume gets the *Volume for this use.
@@ -62,6 +64,11 @@ func (um *UseMount) Type() string {
 	return UseTypeMount
 }
 
+// MayExist determines if a key may exist during initial write
+func (um *UseMount) MayExist() bool {
+	return true
+}
+
 // GetVolume gets the *Volume for this use.
 func (us *UseSnapshot) GetVolume() *Volume {
 	return us.Volume
@@ -77,6 +84,11 @@ func (us *UseSnapshot) Type() string {
 	return UseTypeSnapshot
 }
 
+// MayExist determines if a key may exist during initial write
+func (us *UseSnapshot) MayExist() bool {
+	return false
+}
+
 func (c *Client) use(typ string, vc *Volume) string {
 	return c.prefixed(rootUse, typ, vc.String())
 }
@@ -89,6 +101,13 @@ func (c *Client) PublishUse(ut UseLocker) error {
 	}
 
 	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
+	if _, ok := err.(client.Error); ok && err.(client.Error).Code == client.ErrorCodeNodeExist {
+		if ut.MayExist() {
+			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevValue: string(content)})
+			return err
+		}
+	}
+
 	log.Debugf("Publishing use: (error: %v) %#v", err, ut)
 	return err
 }

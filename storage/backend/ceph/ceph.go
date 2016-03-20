@@ -106,7 +106,9 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 	}
 
 	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device, do.Timeout); err != nil {
-		c.unmapImage(do)
+		if err := c.unmapImage(do); err != nil {
+			log.Errorf("Error while trying to unmap after failed filesystem creation: %v", err)
+		}
 		return err
 	}
 
@@ -228,7 +230,7 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 
 retry:
 	if retries < 3 {
-		if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
+		if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT && err != unix.EINVAL {
 			lastErr = errored.Errorf("Failed to unmount %q (retrying): %v", volumeDir, err)
 			log.Error(lastErr)
 			retries++
