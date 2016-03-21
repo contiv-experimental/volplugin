@@ -37,17 +37,6 @@
   tags:
     - prebake-for-dev
 
-- stat: path=/var/docker_images
-  register: docker_images
-  tags:
-    - prebake-for-dev
-
-- name: Import saved docker images
-  shell: set -e; cd /var/docker_images; images=$(ls); for i in $images; do docker load -i $i; rm $i; done
-  when: docker_images.stat.isdir is defined and docker_images.stat.isdir
-  tags:
-    - prebake-for-dev
-
 - name: setup iptables for docker
   shell: >
       ( iptables -L INPUT | grep "{{ docker_rule_comment }} ({{ item }})" ) || \
