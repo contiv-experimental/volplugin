@@ -3,6 +3,18 @@
   apt:
     update-cache: yes
 
+- name: check for a ceph socket
+  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
+  changed_when: false
+  failed_when: false
+  register: socket
+
+- name: check for a rados gateway socket
+  shell: "stat {{ rbd_client_admin_socket_path }}*.asok > /dev/null 2>&1"
+  changed_when: false
+  failed_when: false
+  register: socketrgw
+
 - name: restart ceph mons
   command: service ceph restart mon
   when:
