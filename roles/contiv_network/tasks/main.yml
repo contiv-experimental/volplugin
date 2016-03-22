@@ -67,7 +67,12 @@
   shell: systemctl daemon-reload && systemctl start netplugin
 
 - name: setup netmaster host alias
-  shell: echo "{{ service_vip }} netmaster" >> /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ service_vip }} netmaster"
+    regexp: " netmaster$"
+    state: present
+  become: true
 
 - name: copy environment file for netmaster
   copy: src=netmaster dest=/etc/default/netmaster

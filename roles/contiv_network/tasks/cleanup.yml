@@ -7,6 +7,13 @@
 - name: stop netplugin
   service: name=netplugin state=stopped
 
+- name: cleanup netmaster host alias
+  lineinfile:
+    dest: /etc/hosts
+    regexp: " netmaster$"
+    state: absent
+  become: true
+
 - name: cleanup iptables for contiv network control plane
   shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
   become: true
