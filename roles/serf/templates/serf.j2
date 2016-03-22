@@ -37,7 +37,7 @@ start)
         /sbin/iptables -I INPUT 1 {{ serf_tcp_rule }} )
 
     echo starting serf
-    label=$(hostname)
+    label=$(hostname -s)
     serial=$(lshw -c system | grep serial | awk '{print $2}')
     addr=$(ip addr list dev {{ serf_discovery_interface }} | \
             grep inet | grep {{ serf_discovery_interface }} | \
@@ -48,7 +48,7 @@ start)
     fi
 
     # start serf
-    serf agent -discover mycluster -iface eth1 \
+    /usr/bin/serf agent -discover mycluster -iface {{ serf_discovery_interface }} \
         -tag NodeLabel=$label \
         -tag NodeSerial=$serial \
         -tag NodeAddr=$addr
