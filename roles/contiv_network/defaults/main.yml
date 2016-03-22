@@ -17,3 +17,6 @@ contivctl_version: "v0.0.0-03-07-2016.23-26-25.UTC"
 contivctl_tar_file: "contivctl-{{ contivctl_version }}.tar.bz2"
 contivctl_src_file: "https://github.com/contiv/contivctl/releases/download/{{ contivctl_version }}/{{ contivctl_tar_file }}"
 contivctl_dest_file: "/tmp/{{ contivctl_tar_file }}"
+
+apic_epg_bridge_domain: "not_specified"
+apic_contracts_unrestricted_mode: "no"
