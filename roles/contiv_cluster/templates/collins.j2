@@ -11,7 +11,7 @@ start)
     set -e
 
     /usr/bin/docker run -t -p {{ collins_host_port }}:{{ collins_guest_port }} \
-        --name collins {{ collins_image }}
+        --name collins {{ collins_image }}:{{ collins_image_version }}
     ;;
 
 stop)
