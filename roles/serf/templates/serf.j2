@@ -48,7 +48,7 @@ start)
     fi
 
     # start serf
-    /usr/bin/serf agent -discover mycluster -iface {{ serf_discovery_interface }} \
+    /usr/bin/serf agent -node="$label-$serial" -discover mycluster -iface {{ serf_discovery_interface }} \
         -tag NodeLabel=$label \
         -tag NodeSerial=$serial \
         -tag NodeAddr=$addr
