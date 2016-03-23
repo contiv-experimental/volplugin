@@ -18,23 +18,29 @@ import (
 // Volume is the configuration of the policy. It includes pool and
 // snapshot information.
 type Volume struct {
-	PolicyName string         `json:"policy"`
-	VolumeName string         `json:"name"`
-	Options    *VolumeOptions `json:"options"`
+	PolicyName     string            `json:"policy"`
+	VolumeName     string            `json:"name"`
+	DriverOptions  map[string]string `json:"driver"`
+	CreateOptions  `json:"create"`
+	RuntimeOptions `json:"runtime"`
+	Backend        string
 }
 
-// VolumeOptions comprises the optional paramters a volume can accept.
-type VolumeOptions struct {
-	Pool         string          `json:"pool" merge:"pool"`
-	Size         string          `json:"size" merge:"size"`
-	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
-	Snapshot     SnapshotConfig  `json:"snapshot"`
-	FileSystem   string          `json:"filesystem" merge:"filesystem"`
-	Ephemeral    bool            `json:"ephemeral,omitempty" merge:"ephemeral"`
-	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
-	Backend      string          `json:"backend"`
+// CreateOptions are the set of options used by volmaster during the volume
+// create operation.
+type CreateOptions struct {
+	Size       string `json:"size"`
+	FileSystem string `json:"filesystem"`
 
 	actualSize units.Base2Bytes
+}
+
+// RuntimeOptions are the set of options used by volplugin when mounting the
+// volume, and by volsupervisor for calculating periodic work.
+type RuntimeOptions struct {
+	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
+	Snapshot     SnapshotConfig  `json:"snapshot"`
+	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
 }
 
 // RateLimitConfig is the configuration for limiting the rate of disk access.
@@ -63,7 +69,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		return nil, err
 	}
 
-	if err := mergeOpts(&resp.DefaultVolumeOptions, rc.Opts); err != nil {
+	if err := mergeOpts(&resp.RuntimeOptions, rc.Opts); err != nil {
 		return nil, err
 	}
 
@@ -72,17 +78,20 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 	}
 
 	vc := &Volume{
-		Options:    &resp.DefaultVolumeOptions,
-		PolicyName: rc.Policy,
-		VolumeName: rc.Volume,
+		Backend:        resp.Backend,
+		DriverOptions:  resp.DriverOptions,
+		CreateOptions:  resp.CreateOptions,
+		RuntimeOptions: resp.RuntimeOptions,
+		PolicyName:     rc.Policy,
+		VolumeName:     rc.Volume,
 	}
 
 	if err := vc.Validate(); err != nil {
 		return nil, err
 	}
 
-	if vc.Options.FileSystem == "" {
-		vc.Options.FileSystem = defaultFilesystem
+	if vc.CreateOptions.FileSystem == "" {
+		vc.CreateOptions.FileSystem = defaultFilesystem
 	}
 
 	return vc, nil
@@ -109,23 +118,23 @@ func (c *Client) PublishVolume(vc *Volume) error {
 }
 
 // ActualSize returns the size of the volume as an integer of megabytes.
-func (vo *VolumeOptions) ActualSize() (uint64, error) {
-	if err := vo.computeSize(); err != nil {
+func (co *CreateOptions) ActualSize() (uint64, error) {
+	if err := co.computeSize(); err != nil {
 		return 0, err
 	}
-	return uint64(vo.actualSize), nil
+	return uint64(co.actualSize), nil
 }
 
-func (vo *VolumeOptions) computeSize() error {
+func (co *CreateOptions) computeSize() error {
 	var err error
 
-	vo.actualSize, err = units.ParseBase2Bytes(vo.Size)
+	co.actualSize, err = units.ParseBase2Bytes(co.Size)
 	if err != nil {
 		return err
 	}
 
-	if vo.actualSize != 0 {
-		vo.actualSize = vo.actualSize / units.Mebibyte
+	if co.actualSize != 0 {
+		co.actualSize = co.actualSize / units.Mebibyte
 	}
 
 	return nil
@@ -243,13 +252,9 @@ func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 
 // Validate options for a volume. Should be called anytime options are
 // considered.
-func (vo *VolumeOptions) Validate() error {
-	if vo.Pool == "" {
-		return errored.Errorf("No Pool specified")
-	}
-
-	if vo.actualSize == 0 {
-		actualSize, err := vo.ActualSize()
+func (co *CreateOptions) Validate() error {
+	if co.actualSize == 0 {
+		actualSize, err := co.ActualSize()
 		if err != nil {
 			return err
 		}
@@ -259,7 +264,13 @@ func (vo *VolumeOptions) Validate() error {
 		}
 	}
 
-	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {
+	return nil
+}
+
+// Validate options for a volume. Should be called anytime options are
+// considered.
+func (ro *RuntimeOptions) Validate() error {
+	if ro.UseSnapshots && (ro.Snapshot.Frequency == "" || ro.Snapshot.Keep == 0) {
 		return errored.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
@@ -268,19 +279,23 @@ func (vo *VolumeOptions) Validate() error {
 
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *Volume) Validate() error {
+	if cfg.Backend == "" {
+		return errored.Errorf("No storage backend selected for volume %v", cfg)
+	}
+
 	if cfg.VolumeName == "" {
-		return errored.Errorf("Volume Name was omitted")
+		return errored.Errorf("Volume Name was omitted for volume %v", cfg)
 	}
 
 	if cfg.PolicyName == "" {
-		return errored.Errorf("Policy name was omitted")
+		return errored.Errorf("Policy name was omitted for volume %v", cfg)
 	}
 
-	if cfg.Options == nil {
-		return errored.Errorf("Options were omitted from volume creation")
+	if err := cfg.CreateOptions.Validate(); err != nil {
+		return err
 	}
 
-	return cfg.Options.Validate()
+	return cfg.RuntimeOptions.Validate()
 }
 
 func (cfg *Volume) String() string {
