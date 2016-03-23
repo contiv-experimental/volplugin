@@ -4,36 +4,48 @@
 
 **Note:** we have extended documentation for users @ http://docs.contiv.io
 
-volplugin controls [Ceph](http://ceph.com/) RBD devices with a master/slave
-model to orchestrate the mounting (and cross-host remounting) of volumes
-scheduled with containers. You can control docker to mount these volumes with a
-plugin, or you can (soon) use schedulers, as well as docker-compose to manage
-your application alongside Ceph volumes.
+volplugin controls [Ceph](http://ceph.com/) RBD devices in a way that makes
+them easy to use for devs with docker, and flexible to configure for ops.
+Reference your volumes with docker from anywhere Ceph is available, and they are located
+and mounted. It's great with [Compose](https://github.com/docker/compose) and
+[Swarm](https://github.com/docker/swarm)!
+
+Our profiles system makes instantiating lots of similar class volumes a snap,
+allowing for a variety of use cases:
+
+* Give your dev teams full-stack dev environments (complete with state) that
+  arrive on demand. They can configure them.
+* Scale your stateful containers in a snap with our snapshot facilities, just
+  `volcli volume snapshot copy` and refer to the volume immediately. Anywhere.
+* Container crashed? Host died? volplugin's got you. Just re-init your
+  container on another host with the same volume name.
 
 volplugin currently only supports Docker volume plugins. First class scheduler support for:
-[Kubernetes](https://github.com/kubernetes/kubernetes), [Swarm](https://github.com/docker/swarm),
-and [Mesos](http://mesos.apache.org/) will be available before the first stable release.
+[Kubernetes](https://github.com/kubernetes/kubernetes) and
+[Mesos](http://mesos.apache.org/) will be available before the first stable
+release.
 
 The master/slave model allows us to support a number of features, such as:
 
 * On-the-fly image creation and (re)mount from any Ceph source, by referencing
   a tenant and volume name.
-* Multiple pool management
 * Manage many kinds of filesystems, including providing mkfs commands.
-* Snapshot frequency and pruning
+* Snapshot frequency and pruning. Also copy snapshots to new volumes!
 * Ephemeral (removed on container teardown) volumes
 * IOPS limiting (via blkio cgroup)
-
-Currently planned, but unfinished features:
-
-* Backup management (via shell commands/scripts with parameters)
 
 volplugin is still alpha at the time of this writing; features and the API may
 be extremely volatile and it is not suggested that you use this in production.
 
 ## Try it out
 
+volplugin currently *does not run in a container*. The other components do, but
+`volplugin` does not. volplugin must be run on the host where the volumes are
+to be mounted.
+
 ### Prerequisites:
+
+**Note:** this takes a little more dedication than we'd like. We're working on it!
 
 For a small VM (1 VM, 2048MB ram) for running just the tools and trying it out,
 you can run:
