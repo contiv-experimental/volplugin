@@ -1,4 +1,4 @@
-[![Build Status](http://contiv.ngrok.io/buildStatus/icon?job=Volplugin Push Build Master)](http://contiv.ngrok.io/job/Volplugin Push Build Master)
+[![Build-Status][Build-Status-Image]][Build-Status-URL] [![ReportCard][ReportCard-Image]][ReportCard-URL]
 
 # volplugin: cluster-wide ceph volume management for container ecosystems
 
@@ -104,3 +104,8 @@ however, on other platforms).
 If you wish to run the tests, `make test`. The unit tests (`make unit-test`)
 live throughout the codebase as `*_test` files. The system tests / integration
 tests (`make system-test`) live in the `systemtests` directory.
+
+[ReportCard-URL]: https://goreportcard.com/report/github.com/contiv/volplugin
+[ReportCard-Image]: http://goreportcard.com/badge/contiv/volplugin
+[Build-Status-URL]: http://contiv.ngrok.io/job/Volplugin%20Push%20Build%20Master
+[Build-Status-Image]: http://contiv.ngrok.io/buildStatus/icon?job=Volplugin%20Push%20Build%20Master
