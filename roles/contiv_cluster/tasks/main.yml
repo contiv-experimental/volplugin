@@ -20,9 +20,9 @@
 
 - name: pull collins container image
   shell: "docker pull {{ collins_image }}:{{ collins_image_version }}"
+  when: not collins_exists|success
   tags:
     - prebake-for-dev
-  when: not collins_exists|success
 
 - name: start collins
   service: name=collins state=started
