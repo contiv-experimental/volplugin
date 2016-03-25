@@ -20,4 +20,4 @@
     - kernel #keep kernel up to date
 
 - name: install and start ntp
-  shell: systemctl enable ntpd
+  service: name=ntpd state=started enabled=yes

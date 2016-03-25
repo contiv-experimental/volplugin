@@ -20,7 +20,6 @@
   environment: '{{ env }}'
   roles: 
   - { role: base }
-  - { role: dev, run_as: master }
   - { role: vagrant }
   - { role: ucarp }
   - { role: etcd, run_as: master }
@@ -60,11 +59,11 @@
   - { role: ucarp }
   - { role: docker }
   - { role: etcd, run_as: master }
-  #- { role: ceph-mon, mon_group_name: service-master }
-  #- { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master }
-  - { role: scheduler_stack, run_as: master }
-  - { role: contiv_network, run_as: master }
-  #- { role: contiv_storage, run_as: master }
+#  - { role: ceph-mon, mon_group_name: service-master, when: host_capability|match('.*can-run-user-containers.*') }
+#  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master, when: host_capability|match('.*storage.*') }
+  - { role: scheduler_stack, run_as: master, when: host_capability|match('.*can-run-user-containers.*') }
+  - { role: contiv_network, run_as: master, when: host_capability|match('.*can-run-user-containers.*') }
+#  - { role: contiv_storage, run_as: master }
 
 # service-worker hosts correspond to cluster machines that run the worker/driver
 # logic of the infra services.
@@ -75,10 +74,10 @@
   - { role: base }
   - { role: docker }
   - { role: etcd, run_as: worker }
-  #- { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker }
-  - { role: scheduler_stack, run_as: worker }
-  - { role: contiv_network, run_as: worker }
-  #- { role: contiv_storage, run_as: worker }
+#  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker, when: host_capability|match('.*storage.*') }
+  - { role: scheduler_stack, run_as: worker, when: host_capability|match('.*can-run-user-containers.*') }
+  - { role: contiv_network, run_as: worker, when: host_capability|match('.*can-run-user-containers.*') }
+#  - { role: contiv_storage, run_as: worker }
 
 # netplugin-node hosts set up netmast/netplugin in a cluster
 - hosts: netplugin-node

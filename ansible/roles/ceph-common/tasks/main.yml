@@ -37,18 +37,6 @@
     radosgw_frontend == 'apache' and
     rgw_group_name in group_names
 
-- name: check for a ceph socket
-  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
-  changed_when: false
-  failed_when: false
-  register: socket
-
-- name: check for a rados gateway socket
-  shell: "stat {{ rbd_client_admin_socket_path }}*.asok > /dev/null 2>&1"
-  changed_when: false
-  failed_when: false
-  register: socketrgw
-
 - name: create a local fetch directory if it doesn't exist
   local_action: file path={{ fetch_directory }} state=directory
   changed_when: false
@@ -86,6 +74,8 @@
     group: root
     mode: 0644
   notify:
+    - check for a ceph socket
+    - check for a rados gateway socket
     - restart ceph mons
     - restart ceph mons on ubuntu
     - restart ceph mons with systemd

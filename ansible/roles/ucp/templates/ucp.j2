@@ -16,8 +16,8 @@ start)
     out=$(/usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
         docker/ucp install --host-address={{ node_addr }} \
-          --image-version={{ ucp_version }})
-    echo ${out}
+          --swarm-port={{ ucp_swarm_port }} --controller-port={{ ucp_controller_port }} \
+          --image-version={{ ucp_version }} | tee /dev/stdout)
 
     # copy out the instance ID
     instanceId=$(echo ${out} | egrep -o 'UCP instance ID: [a-zA-Z0-9:_]*' | \
@@ -42,6 +42,7 @@ start)
         -v /var/run/docker.sock:/var/run/docker.sock \
         -e UCP_ADMIN_USER={{ ucp_admin_user }} -e UCP_ADMIN_PASSWORD={{ ucp_admin_password }} \
         docker/ucp join --host-address={{ node_addr }} \
+          --swarm-port={{ ucp_swarm_port }} --controller-port={{ ucp_controller_port }} \
           --image-version={{ ucp_version }} \
           --url="https://{{ service_vip }}:443" \
     {% if run_as == "master" -%}
