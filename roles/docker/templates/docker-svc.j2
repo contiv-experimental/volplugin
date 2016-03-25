@@ -5,8 +5,13 @@ After=network.target docker.socket
 Requires=docker.socket
 
 [Service]
+TimeoutStartSec=5m
 Type=notify
-ExecStart=/usr/bin/docker daemon -s overlay -H fd:// --cluster-store=etcd://localhost:{{ etcd_client_port1 }}
+{% if docker_device != "" %}
+ExecStart=/usr/bin/docker daemon --storage-opt dm.thinpooldev=/dev/mapper/contiv-dockerthin -H fd:// --cluster-store=etcd://localhost:{{ etcd_client_port1 }}
+{% else %}
+ExecStart=/usr/bin/docker daemon -H fd:// --cluster-store=etcd://localhost:{{ etcd_client_port1 }}
+{% endif %}
 MountFlags=slave
 LimitNOFILE=1048576
 LimitNPROC=1048576

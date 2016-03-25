@@ -1,10 +1,25 @@
 ---
 # This role contains tasks for configuring and starting swarm service
+- name: check for swarm image
+  shell: "docker images | grep swarm | grep -q {{ swarm_version }}"
+  ignore_errors: true
+  register: swarm_exists
+  tags:
+    - prebake-for-dev
 
 - name: download swarm container image
   shell: docker pull swarm:{{ swarm_version }}
   tags:
     - prebake-for-dev
+  when: not swarm_exists|success
+
+- name: setup iptables for swarm
+  shell: >
+      ( iptables -L INPUT | grep "{{ swarm_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ swarm_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ swarm_api_port }}"
 
 - name: copy the swarm start/stop script
   template: src=swarm.j2 dest=/usr/bin/swarm.sh mode=u=rwx,g=rx,o=rx

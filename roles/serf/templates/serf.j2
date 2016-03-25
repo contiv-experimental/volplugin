@@ -6,19 +6,38 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
+{% set mdns_sport_comment="'serf discovery sport'" -%}
+{%- set mdns_sport_rule="-p udp --sport 5353 -i " + 
+        serf_discovery_interface + 
+        " -j ACCEPT -m comment --comment " +
+        mdns_sport_comment -%}
+{%- set mdns_dport_comment="'serf discovery dport'" -%}
+{%- set mdns_dport_rule="-p udp --dport 5353 -i " +
+        serf_discovery_interface +
+        " -j ACCEPT -m comment --comment " +
+        mdns_dport_comment -%}
+{%- set serf_tcp_comment="'serf control'" -%}
+{%- set serf_tcp_rule="-p tcp --dport 7946 -i " +
+        serf_discovery_interface +
+        " -j ACCEPT -m comment --comment " +
+        serf_tcp_comment -%}
+
 case $1 in
 start)
     # fail on error
     set -e
 
-    # install necessary iptables to let mdns work
-    # XXX: the interface name should be discovered
-    echo setting up iptables for mdns
-    iptables -I INPUT -p udp --dport 5353 -i {{ serf_discovery_interface }}  -j ACCEPT && \
-    iptables -I INPUT -p udp --sport 5353 -i {{ serf_discovery_interface }}  -j ACCEPT
+    # install necessary iptables to let serf work
+    echo setting up iptables for serf
+    ( /sbin/iptables -L INPUT | grep {{ mdns_sport_comment }} || \
+        /sbin/iptables -I INPUT 1 {{ mdns_sport_rule }} )
+    ( /sbin/iptables -L INPUT | grep {{ mdns_dport_comment }} || \
+        /sbin/iptables -I INPUT 1 {{ mdns_dport_rule }} )
+    ( /sbin/iptables -L INPUT | grep {{ serf_tcp_comment }} || \
+        /sbin/iptables -I INPUT 1 {{ serf_tcp_rule }} )
 
     echo starting serf
-    label=$(hostname)
+    label=$(hostname -s)
     serial=$(lshw -c system | grep serial | awk '{print $2}')
     addr=$(ip addr list dev {{ serf_discovery_interface }} | \
             grep inet | grep {{ serf_discovery_interface }} | \
@@ -29,10 +48,17 @@ start)
     fi
 
     # start serf
-    serf agent -discover mycluster -iface eth1 \
+    /usr/bin/serf agent -node="$label-$serial" -discover mycluster -iface {{ serf_discovery_interface }} \
         -tag NodeLabel=$label \
         -tag NodeSerial=$serial \
         -tag NodeAddr=$addr
+    ;;
+
+stop)
+    # cleanup iptables
+    /sbin/iptables -D INPUT {{ mdns_sport_rule }}
+    /sbin/iptables -D INPUT {{ mdns_dport_rule }}
+    /sbin/iptables -D INPUT {{ serf_tcp_rule }}
     ;;
 
 *)

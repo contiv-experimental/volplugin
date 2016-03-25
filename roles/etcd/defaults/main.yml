@@ -6,9 +6,9 @@ etcd_client_port2: 4001
 etcd_peer_port1: 2380
 etcd_peer_port2: 7001
 etcd_peers_group: "service-master"
-etcd_peer_interface: "{{ control_interface }}"
 etcd_init_cluster: true
 etcd_tmp_filename: "/tmp/etcd.existing"
+etcd_rule_comment: "etcd traffic"
 
 # following variables are used in one or more roles, but have no good default value to pick from.
 # Leaving them as commented so that playbooks can fail early with variable not defined error.

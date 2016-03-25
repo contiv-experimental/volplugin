@@ -10,3 +10,15 @@
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
     - "{{ ucp_fifo_file }}"
+
+- name: cleanup iptables for ucp
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ ucp_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ ucp_port1 }}"
+    - "{{ ucp_port2 }}"
+    - "{{ ucp_port3 }}"
+    - "{{ ucp_port4 }}"
+    - "{{ ucp_port5 }}"
+    - "{{ ucp_swarm_port }}"
+    - "{{ ucp_controller_port }}"
