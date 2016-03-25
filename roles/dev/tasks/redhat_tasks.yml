@@ -9,3 +9,5 @@
     - mercurial
     - gcc
     - perl
+    - time
+    - tcpdump
