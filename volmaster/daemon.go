@@ -586,10 +586,15 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+	snapUC := &config.UseSnapshot{
+		Volume: volConfig,
+		Reason: lock.ReasonCreate,
+	}
+
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
 		if err == storage.ErrVolumeExist {
-			log.Errorf("Volume exists, cleaning up")
+			log.Errorf("Volume %v exists, cleaning up", volConfig)
 			return nil
 		} else if err != nil {
 			return errored.Errorf("Creating volume").Combine(err.(*errored.Error))
