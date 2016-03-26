@@ -448,22 +448,22 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !exists {
-			return errored.Errorf("Volume %q no longer exists", vc.String())
+			return errored.Errorf("Volume %v no longer exists", vc)
 		}
 
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
-			return errored.Errorf("Removing image").Combine(err.(*errored.Error))
+			return errored.Errorf("Removing image %q", vc).Combine(err.(*errored.Error))
 		}
 
 		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return errored.Errorf("Clearing volume records").Combine(err.(*errored.Error))
+			return errored.Errorf("Clearing volume records for %q", vc).Combine(err.(*errored.Error))
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		httpError(w, "Removing volume", err)
+		httpError(w, fmt.Sprintf("Removing volume %v", vc), err)
 		return
 	}
 }
