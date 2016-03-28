@@ -99,7 +99,7 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 func (s *configSuite) TestWatchVolumes(c *C) {
 	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
 	volumeChan := make(chan *watch.Watch)
-	s.tlc.WatchVolumes(volumeChan)
+	s.tlc.WatchVolumeCreates(volumeChan)
 
 	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)

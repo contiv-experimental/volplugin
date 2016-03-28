@@ -57,8 +57,23 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
-func (c *Client) volume(policy, name string) string {
-	return c.prefixed(rootVolume, policy, name)
+func (c *Client) volume(policy, name, typ string) string {
+	return c.prefixed(rootVolume, policy, name, typ)
+}
+
+// PublishVolumeRuntime publishes the runtime parameters for each volume.
+func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
+	content, err := json.Marshal(ro)
+	if err != nil {
+		return err
+	}
+
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vo.PolicyName, vo.VolumeName), "", &client.SetOptions{Dir: true})
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vo.PolicyName, vo.VolumeName, "runtime"), string(content), nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateVolume sets the appropriate config metadata for a volume creation
@@ -108,13 +123,13 @@ func (c *Client) PublishVolume(vc *Volume) error {
 		return err
 	}
 
-	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName), "", &client.SetOptions{Dir: true})
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName, vc.VolumeName), "", &client.SetOptions{Dir: true})
 
-	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName, "create"), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return ErrExist
 	}
 
-	return nil
+	return c.PublishVolumeRuntime(vc, vc.RuntimeOptions)
 }
 
 // ActualSize returns the size of the volume as an integer of megabytes.
@@ -143,7 +158,7 @@ func (co *CreateOptions) computeSize() error {
 // GetVolume returns the Volume for a given volume.
 func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 	// FIXME make this take a single string and not a split one
-	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name), nil)
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "create"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +173,24 @@ func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 		return nil, err
 	}
 
+	resp, err = c.etcdClient.Get(context.Background(), c.volume(policy, name, "runtime"), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	runtime := RuntimeOptions{}
+
+	if err := json.Unmarshal([]byte(resp.Node.Value), &runtime); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
 // RemoveVolume removes a volume from configuration.
 func (c *Client) RemoveVolume(policy, name string) error {
 	// FIXME might be a consistency issue here; pass around volume structs instead.
-	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{})
+	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{Recursive: true})
 	return err
 }
 
@@ -180,18 +206,20 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 	configs := map[string]*Volume{}
 
 	for _, node := range resp.Node.Nodes {
-		if node.Value == "" {
-			continue
-		}
+		if len(node.Nodes) > 0 {
+			node = node.Nodes[0]
+			if !node.Dir && strings.HasSuffix(node.Key, "/create") {
+				config := &Volume{}
+				if err := json.Unmarshal([]byte(node.Value), config); err != nil {
+					return nil, err
+				}
 
-		config := &Volume{}
-		if err := json.Unmarshal([]byte(node.Value), config); err != nil {
-			return nil, err
+				key := strings.TrimPrefix(node.Key, policyPath)
+				key = strings.TrimSuffix(key, "/create")
+				// trim leading slash
+				configs[key[1:]] = config
+			}
 		}
-
-		key := strings.TrimPrefix(node.Key, policyPath)
-		// trim leading slash
-		configs[key[1:]] = config
 	}
 
 	return configs, nil
@@ -217,12 +245,48 @@ func (c *Client) ListAllVolumes() ([]string, error) {
 	return ret, nil
 }
 
-// WatchVolumes watches the volumes tree and returns data back to the activity channel.
-func (c *Client) WatchVolumes(activity chan *watch.Watch) {
+// WatchVolumeRuntimes watches the runtime portions of the volume and yields
+// back any information received through the activity channel.
+func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
 		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
 
-		if !resp.Node.Dir {
+		if !resp.Node.Dir && path.Base(resp.Node.Key) == "runtime" {
+			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
+			if resp.Action != "delete" {
+				volume := &RuntimeOptions{}
+
+				if resp.Node.Value != "" {
+					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
+						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
+						time.Sleep(1 * time.Second)
+						return
+					}
+
+					if err := volume.Validate(); err != nil {
+						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
+						time.Sleep(1 * time.Second)
+						return
+					}
+					policy, vol := path.Split(path.Dir(resp.Node.Key))
+					vw.Key = path.Join(path.Base(policy), vol)
+					vw.Config = volume
+				}
+			}
+
+			w.Channel <- vw
+		}
+	})
+
+	watch.Create(w)
+}
+
+// WatchVolumeCreates watches the volumes tree and returns data back to the activity channel.
+func (c *Client) WatchVolumeCreates(activity chan *watch.Watch) {
+	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
+		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
+
+		if !resp.Node.Dir && path.Base(resp.Node.Key) == "create" {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
 				volume := &Volume{}
@@ -239,6 +303,8 @@ func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 						time.Sleep(1 * time.Second)
 						return
 					}
+					policy, vol := path.Split(path.Dir(resp.Node.Key))
+					vw.Key = path.Join(path.Base(policy), vol)
 					vw.Config = volume
 				}
 			}
