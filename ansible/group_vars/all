@@ -25,3 +25,5 @@ validate_certs: "yes"
 # env:
 # service_vip:
 # control_interface:
+
+host_capability: "can-run-user-containers, storage"

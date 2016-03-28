@@ -5,6 +5,7 @@ After=network.target docker.socket
 Requires=docker.socket
 
 [Service]
+TimeoutStartSec=5m
 Type=notify
 {% if docker_device != "" %}
 ExecStart=/usr/bin/docker daemon --storage-opt dm.thinpooldev=/dev/mapper/contiv-dockerthin -H fd:// --cluster-store=etcd://localhost:{{ etcd_client_port1 }}

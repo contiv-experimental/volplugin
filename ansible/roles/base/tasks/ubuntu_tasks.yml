@@ -8,6 +8,7 @@
     name: "{{ item }}"
     state: latest
   with_items:
+    - ntp
     - unzip
     - bzip2
     - curl

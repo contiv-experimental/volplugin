@@ -13,7 +13,6 @@ vip=$2
     
 /sbin/ip link add name ${intf}_0 type dummy
 
-# XXX: the subnet needs to be derived from underlying parent interface
-/sbin/ip addr add ${vip}/24 dev ${intf}_0
+/sbin/ip addr add ${vip} dev ${intf}_0
 
 /sbin/ip link set dev ${intf}_0 up

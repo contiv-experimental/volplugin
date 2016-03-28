@@ -41,9 +41,9 @@ start)
         export ETCD_INITIAL_CLUSTER="
         {%- for host in groups[etcd_peers_group] -%}
         {%- if loop.last -%}
-        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
+        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
         {%- else -%}
-        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + etcd_peer_interface]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
+        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
         {%- endif -%}
         {% endfor -%}
         "
@@ -59,7 +59,7 @@ start)
             {%- endif %}
         {% endfor -%}
         {% if peers %}
-            {% set peer_addr=hostvars[peers[0]]['ansible_' + etcd_peer_interface]['ipv4']['address'] -%}
+            {% set peer_addr=hostvars[peers[0]]['ansible_' + hostvars[peers[0]]['control_interface']]['ipv4']['address'] -%}
             {{ add_member(peer_addr=peer_addr) }}
         {%- else -%}
         {# This condition shall not arise, so fail early #}

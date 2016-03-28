@@ -37,6 +37,14 @@
   tags:
     - prebake-for-dev
 
+- name: setup iptables for docker
+  shell: >
+      ( iptables -L INPUT | grep "{{ docker_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ docker_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ docker_api_port }}"
+
 - name: copy systemd units for docker(enable cluster store) (debian)
   template: src=docker-svc.j2 dest=/lib/systemd/system/docker.service
   when: ansible_os_family == "Debian"
@@ -47,6 +55,7 @@
 
 - name: check docker-tcp socket state
   shell: systemctl status docker-tcp.socket | grep 'Active.*active' -o
+  ignore_errors: true
   register: docker_tcp_socket_state
 
 - include: create_docker_device.yml
@@ -113,14 +122,10 @@
 
 - stat: path=/var/docker_images
   register: docker_images
-  tags:
-    - prebake-for-dev
 
 - name: Import saved docker images
   shell: set -e; cd /var/docker_images; images=$(ls); for i in $images; do docker load -i $i; rm $i; done
   when: docker_images.stat.isdir is defined and docker_images.stat.isdir
-  tags:
-    - prebake-for-dev
 
 - name: check docker-compose version
   shell: docker-compose --version

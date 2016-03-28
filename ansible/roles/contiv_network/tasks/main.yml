@@ -17,6 +17,19 @@
 # install can be conditional based on deployment environment.
 - include: ovs.yml
 
+- name: setup iptables for contiv network control plane
+  shell: >
+      ( iptables -L INPUT | grep "{{ netplugin_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ ofnet_master_port }}"
+    - "{{ ofnet_agent_port1 }}"
+    - "{{ ofnet_agent_port2 }}"
+    - "{{ netmaster_port }}"
+    - "{{ gobgp_grpc_port }}"
+    - "{{ bgp_port }}"
+
 - name: download netmaster and netplugin
   get_url:
     validate_certs: "{{ validate_certs }}"
@@ -54,7 +67,12 @@
   shell: systemctl daemon-reload && systemctl start netplugin
 
 - name: setup netmaster host alias
-  shell: echo "{{ service_vip }} netmaster" >> /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ service_vip }} netmaster"
+    regexp: " netmaster$"
+    state: present
+  become: true
 
 - name: copy environment file for netmaster
   copy: src=netmaster dest=/etc/default/netmaster
