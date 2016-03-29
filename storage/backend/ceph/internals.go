@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
@@ -24,7 +26,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	poolName := do.Volume.Params["pool"]
 
 	cmd := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil || er.ExitStatus != 0 {
 		return "", errored.Errorf("Could not map %q: %v (%v) (%v)", do.Volume.Name, er, err, er.Stderr)
 	}
@@ -54,7 +56,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 
 func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) error {
 	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
-	er, err := executor.NewWithTimeout(cmd, timeout).Run()
+	er, err := runWithTimeout(cmd, timeout)
 	if err != nil || er.ExitStatus != 0 {
 		return errored.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
@@ -81,10 +83,11 @@ retry:
 				continue
 			}
 
-			er, err := executor.New(exec.Command("rbd", "unmap", rbd.Device)).Run()
+			cmd := exec.Command("rbd", "unmap", rbd.Device)
+			er, err := runWithTimeout(cmd, do.Timeout)
 			if !retried && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbd.Device, er, err, er.Stderr)
-				if er.ExitStatus == 4096 {
+				if er.ExitStatus == 16 {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
 					retried = true
@@ -123,8 +126,9 @@ retry:
 	rbdmap := rbdMap{}
 
 	cmd := exec.Command("rbd", "showmapped", "--format", "json")
-	er, err = executor.NewWithTimeout(cmd, timeout).Run()
-	if err != nil || er.ExitStatus == 3072 {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	er, err = executor.NewCapture(cmd).Run(ctx)
+	if err != nil || er.ExitStatus == 12 || er.Stdout == "" {
 		log.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
 		time.Sleep(100 * time.Millisecond)
 		goto retry

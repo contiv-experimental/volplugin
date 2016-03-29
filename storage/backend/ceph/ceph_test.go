@@ -82,6 +82,7 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
 	}
 
 	// we don't care if there's an error here, just want to make sure the create
@@ -108,6 +109,7 @@ func (s *cephSuite) TestSnapshots(c *C) {
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
 	}
 
 	c.Assert(driver.Create(driverOpts), IsNil)
@@ -134,6 +136,7 @@ func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
 	}
 
 	// we don't care if there's an error here, just want to make sure the create
@@ -231,6 +234,7 @@ func (s *cephSuite) TestSnapshotClone(c *C) {
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
 	}
 
 	c.Assert(driver.Create(driverOpts), IsNil)

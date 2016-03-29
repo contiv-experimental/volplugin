@@ -173,6 +173,7 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 				"pool": vc.Options.Pool,
 			},
 		},
+		Timeout: dc.Global.Timeout,
 	}
 
 	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do), Err: ""})
@@ -224,6 +225,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 				"pool": volConfig.Options.Pool,
 			},
 		},
+		Timeout: dc.Global.Timeout,
 	}
 
 	// FIXME need to ensure that the mount exists before returning to docker
@@ -273,6 +275,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		FSOptions: storage.FSOptions{
 			Type: volConfig.Options.FileSystem,
 		},
+		Timeout: dc.Global.Timeout,
 	}
 
 	// if we're mounted already on this host, the mount publish will succeed and
@@ -353,6 +356,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 				"pool": volConfig.Options.Pool,
 			},
 		},
+		Timeout: dc.Global.Timeout,
 	}
 
 	ut := &config.UseMount{

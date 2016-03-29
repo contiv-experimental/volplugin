@@ -2,35 +2,10 @@ package ceph
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
-	"github.com/contiv/errored"
-	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
 )
-
-func (c *Driver) poolExists(poolName string) (bool, error) {
-	er, err := executor.New(exec.Command("ceph", "osd", "pool", "ls")).Run()
-	if err != nil {
-		return false, errored.Errorf("Problem listing pools: %v", err)
-	}
-
-	if er.ExitStatus != 0 {
-		return false, errored.Errorf("Problem listing pools: %v", er)
-	}
-
-	lines := strings.Split(er.Stdout, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == poolName {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
 
 // MountPath returns the path of a mount for a pool/volume.
 func (c *Driver) MountPath(do storage.DriverOptions) string {

@@ -36,6 +36,7 @@ func NewGlobalConfig() *Global {
 		TTL:       DefaultGlobalTTL,
 		Backend:   ceph.BackendName,
 		MountPath: defaultMountPath,
+		Timeout:   10 * time.Minute,
 	}
 }
 

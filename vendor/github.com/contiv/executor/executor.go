@@ -233,7 +233,8 @@ func (e *Executor) Wait(ctx context.Context) (*ExecResult, error) {
 }
 
 // Run calls Start(), then Wait(), and returns an ExecResult and error (if
-// any). If an error is returned, ExecResult will be nil.
+// any). The error may be of many types including *exec.ExitError and
+// context.Canceled, context.DeadlineExceeded.
 func (e *Executor) Run(ctx context.Context) (*ExecResult, error) {
 	if err := e.Start(); err != nil {
 		return nil, err
