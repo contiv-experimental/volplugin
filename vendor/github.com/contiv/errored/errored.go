@@ -13,13 +13,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+Package errored implements specialized errors for golang that come with:
+
+  * Debug and Trace modes
+  * Debug emits the location the error was created, Trace emits the whole stack.
+  * Error combination
+  * Make two errors into one; carries the trace information for both errors with it!
+
+Use it just like `fmt`:
+
+	package main
+
+	import "github.com/contiv/errored"
+
+	func main() {
+		err := errored.Errorf("a message")
+		err.SetDebug(true)
+		err.Error() // => "a message [ <file> <line> <line number> ]
+		err2 := errored.Errorf("another message")
+		combined := err.Combine(err2)
+		combined.SetTrace(true)
+		combined.Error() // => "a message: another message" + two stack traces
+	}
+
+*/
 package errored
 
 import (
 	"fmt"
 	"path"
 	"runtime"
-	"strings"
 )
 
 var (
@@ -59,10 +83,17 @@ func (e *Error) SetDebug(debug bool) {
 }
 
 // Combine combines two errors into a single one.
-func (e *Error) Combine(e2 *Error) *Error {
+func (e *Error) Combine(e2 error) *Error {
+	if _, ok := e2.(*Error); ok {
+		return &Error{
+			desc:  fmt.Sprintf("%v: %v", e.desc, e2.(*Error).desc),
+			stack: append(e.stack, e2.(*Error).stack...),
+		}
+	}
+
 	return &Error{
-		desc:  fmt.Sprintf("%v: %v", e.desc, e2.desc),
-		stack: append(e.stack, e2.stack...),
+		desc:  fmt.Sprintf("%v: %v", e.desc, e2.Error()),
+		stack: e.stack,
 	}
 }
 
@@ -118,13 +149,4 @@ func Errorf(f string, args ...interface{}) *Error {
 	e.stack = append(e.stack, errors)
 
 	return e
-}
-
-// ErrIfKeyExists checks if the error message contains "Key not found".
-func ErrIfKeyExists(err error) error {
-	if err == nil || strings.Contains(err.Error(), "Key not found") {
-		return nil
-	}
-
-	return err
 }
