@@ -452,11 +452,11 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
-			return errored.Errorf("Removing image %q", vc).Combine(err.(*errored.Error))
+			return errored.Errorf("Removing image %q", vc).Combine(err)
 		}
 
 		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return errored.Errorf("Clearing volume records for %q", vc).Combine(err.(*errored.Error))
+			return errored.Errorf("Clearing volume records for %q", vc).Combine(err)
 		}
 
 		return nil
@@ -597,14 +597,14 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("Volume %v exists, cleaning up", volConfig)
 			return nil
 		} else if err != nil {
-			return errored.Errorf("Creating volume").Combine(err.(*errored.Error))
+			return errored.Errorf("Creating volume").Combine(err)
 		}
 
 		if err := d.formatVolume(volConfig, do); err != nil {
 			if err := d.removeVolume(volConfig, d.Global.Timeout); err != nil {
 				log.Errorf("Error during cleanup of failed format: %v", err)
 			}
-			return errored.Errorf("Formatting volume").Combine(err.(*errored.Error))
+			return errored.Errorf("Formatting volume").Combine(err)
 		}
 
 		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
