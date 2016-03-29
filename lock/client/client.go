@@ -107,12 +107,12 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 		return errored.Errorf("Could not read response body: %v", err)
 	}
 
-	if resp.StatusCode != 200 {
-		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
 	if resp.StatusCode == 404 {
 		return errNotFound
+	}
+
+	if resp.StatusCode != 200 {
+		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
 	}
 
 	return nil
