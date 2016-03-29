@@ -1,5 +1,5 @@
 {
   "Debug": false,
-  "TTL": 10,
+  "TTL": 30,
   "Timeout": 30
 }

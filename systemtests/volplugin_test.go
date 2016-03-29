@@ -52,15 +52,16 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -itd -v policy1/test:/mnt alpine sleep 10m"), IsNil)
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(10 * time.Second) // this is based on a 5s ttl set at volmaster/volplugin startup
+	time.Sleep(45 * time.Second) // this is based on a 5s ttl set at volmaster/volplugin startup
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(1 * time.Second)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v policy1/test:/mnt alpine sleep 10m"), NotNil)
 
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(10 * time.Second)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(45 * time.Second)
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v policy1/test:/mnt alpine sleep 10m"), NotNil)
 
