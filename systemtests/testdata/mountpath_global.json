@@ -1,6 +1,6 @@
 {
   "TTL": 5,
   "Debug": true,
-  "Timeout": 10
+  "Timeout": 10,
   "MountPath": "/mnt/test"
 }
