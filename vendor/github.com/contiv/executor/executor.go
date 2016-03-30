@@ -1,16 +1,41 @@
-// Package executor implements a high level execution context with monitoring and
-// logging features.
+// Package executor implements a high level execution context with monitoring,
+// control, and logging features. It is made for services which execute lots of
+// small programs and need to carefully control i/o and processes.
 //
-// Please see Executor for more information.
+// Executor can:
+//
+//   * Terminate on signal or after a timeout via /x/net/context
+//   * Output a message on an interval if the program is still running.
+//   * Capture split-stream stdio, and make it easier to get at io pipes.
+//
+// Example:
+//
+//		e := executor.New(exec.Command("/bin/sh", "echo hello"))
+//		e.Start() // start
+//		fmt.Println(e.PID()) // get the pid
+//		fmt.Printf("%v\n", e) // pretty string output
+//		er, err := e.Wait(context.Background()) // wait for termination
+//		fmt.Println(er.ExitStatus) // => 0
+//
+//		// lets capture some io, and timeout after a while
+//		e := executor.NewCapture(exec.Command("/bin/sh", "yes"))
+// 		e.Start()
+//		ctx, _ := context.WithTimeout(context.Background(), 10 * time.Second)
+//		er, err := e.Wait(ctx) // wait for only 10 seconds
+//		fmt.Println(err == context.DeadlineExceeded)
+//		fmt.Println(er.Stdout) // yes\nyes\nyes\n...
+//
 package executor
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os/exec"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -21,7 +46,7 @@ import (
 type ExecResult struct {
 	Stdout     string
 	Stderr     string
-	ExitStatus uint32
+	ExitStatus int
 	Runtime    time.Duration
 
 	executor *Executor
@@ -30,7 +55,7 @@ type ExecResult struct {
 // Executor is the context used to execute a process. The runtime state is kept
 // here. Please see the struct fields for more information.
 //
-// New() is the appropriate way to initialize this type.
+// New(), NewIO(), or NewCapture() are the appropriate ways to initialize this type.
 //
 // No attempt is made to manage concurrent requests to this struct after
 // the program has started.
@@ -38,60 +63,61 @@ type Executor struct {
 	// The interval at which we will log that we are still running.
 	LogInterval time.Duration
 
-	// If a true value is passed into this channel, the process will be forcefully
-	// terminated. A false value terminates only the supervising goroutines, and
-	// is used by Wait().
-	TerminateChan chan bool
-
 	// The function used for logging. Expects a format-style string and trailing args.
 	LogFunc func(string, ...interface{})
 
 	// The stdin as passed to the process.
 	Stdin io.Reader
 
-	timeout time.Duration
-
-	command          *exec.Cmd
-	stdout           io.ReadCloser
-	stderr           io.ReadCloser
-	startTime        time.Time
-	terminateLogger  chan struct{}
-	timeoutTerminate chan struct{}
+	io              bool
+	capture         bool
+	command         *exec.Cmd
+	stdout          io.ReadCloser
+	stderr          io.ReadCloser
+	stdoutBuf       *bytes.Buffer
+	stderrBuf       *bytes.Buffer
+	startTime       time.Time
+	terminateLogger chan struct{}
 }
 
 // New creates a new executor from an *exec.Cmd. You may modify the values
-// before calling Start(). See Executor for more information.
+// before calling Start(). See Executor for more information. Use NewCapture if
+// you want executor to capture output for you.
 func New(cmd *exec.Cmd) *Executor {
-	return &Executor{
-		LogInterval:      1 * time.Minute,
-		TerminateChan:    make(chan bool, 1),
-		LogFunc:          logrus.Debugf,
-		command:          cmd,
-		stdout:           nil,
-		stderr:           nil,
-		terminateLogger:  make(chan struct{}, 1),
-		timeoutTerminate: make(chan struct{}, 1),
-	}
+	return newExecutor(false, false, cmd)
 }
 
-// NewWithTimeout creates a new executor from an *exec.Cmd and a timeout.
-// You may modify the values before calling Start(). See Executor for
-// more information.
-func NewWithTimeout(cmd *exec.Cmd, timeout time.Duration) *Executor {
-	exec := New(cmd)
-	exec.SetTimeout(timeout)
-	return exec
+// NewIO creates a new executor but allows the Out() and Err() methods to provide
+// a io.ReadCloser as a pipe from the stdout and error respectively. If you
+// wish to read large volumes of output this is the way to go.
+func NewIO(cmd *exec.Cmd) *Executor {
+	return newExecutor(true, false, cmd)
+}
+
+// NewCapture creates an instance of executor suitable for capturing output.
+// The Wait() call will automatically yield the stdout and stderr of the
+// program. NOTE: this can potentially use unbounded amounts of ram; use carefully.
+func NewCapture(cmd *exec.Cmd) *Executor {
+	return newExecutor(true, true, cmd)
+}
+
+func newExecutor(useIO, useCapture bool, cmd *exec.Cmd) *Executor {
+	return &Executor{
+		io:              useIO,
+		capture:         useCapture,
+		LogInterval:     1 * time.Minute,
+		LogFunc:         logrus.Debugf,
+		command:         cmd,
+		stdout:          nil,
+		stderr:          nil,
+		stdoutBuf:       nil,
+		stderrBuf:       nil,
+		terminateLogger: make(chan struct{}),
+	}
 }
 
 func (e *Executor) String() string {
 	return fmt.Sprintf("%v (%v) (pid: %v)", e.command.Args, e.command.Path, e.PID())
-}
-
-// SetTimeout sets the process timeout. If a non-zero timeout is provided, it
-// will forcefully terminate the process after it is reached. It must be called
-// before Start().
-func (e *Executor) SetTimeout(t time.Duration) {
-	e.timeout = t
 }
 
 // Start starts the command in the Executor context. It returns any error upon
@@ -104,25 +130,29 @@ func (e *Executor) Start() error {
 
 	var err error
 
-	e.stdout, err = e.command.StdoutPipe()
-	if err != nil {
-		return err
-	}
+	if e.io {
+		e.stdout, err = e.command.StdoutPipe()
+		if err != nil {
+			return err
+		}
 
-	e.stderr, err = e.command.StderrPipe()
-	if err != nil {
-		return err
+		e.stderr, err = e.command.StderrPipe()
+		if err != nil {
+			return err
+		}
+
+		if e.capture {
+			e.stdoutBuf = new(bytes.Buffer)
+			go io.Copy(e.stdoutBuf, e.stdout)
+
+			e.stderrBuf = new(bytes.Buffer)
+			go io.Copy(e.stderrBuf, e.stderr)
+		}
 	}
 
 	if err := e.command.Start(); err != nil {
 		e.LogFunc("Error executing %v: %v", e, err)
 		return err
-	}
-
-	go e.waitForStop()
-
-	if e.timeout != 0 {
-		go e.terminateTimeout()
 	}
 
 	go e.logInterval()
@@ -134,30 +164,6 @@ func (e *Executor) Start() error {
 // see ExecResult.Runtime.
 func (e *Executor) TimeRunning() time.Duration {
 	return time.Now().Sub(e.startTime)
-}
-
-func (e *Executor) terminateTimeout() {
-	select {
-	case <-e.timeoutTerminate:
-	case <-time.After(e.timeout):
-		e.TerminateChan <- true
-	}
-}
-
-func (e *Executor) waitForStop() {
-	terminate := <-e.TerminateChan
-
-	if terminate {
-		if e.command.Process == nil {
-			e.LogFunc("Could not terminate non-running command %v", e)
-		} else {
-			e.LogFunc("Command %v terminated due to timeout. It may not have finished!", e)
-			e.command.Process.Kill()
-		}
-	}
-
-	e.terminateLogger <- struct{}{}
-	return
 }
 
 func (e *Executor) logInterval() {
@@ -181,60 +187,62 @@ func (e *Executor) PID() uint32 {
 	return 0
 }
 
-// Wait waits for the process and return an ExecResult. The program died due to
-// another problem without returning an exit status, a nil result is yielded.B
+// Wait waits for the process and return an ExecResult and any error it
+// encountered along the way. While the error may or may not be nil, the
+// ExecResult will always exist with as much information as we could get.
 //
-// If the ExecResult is returned, error will be nil, regardless of the
-// ExitError returned by (*exec.Cmd).Wait(). If an error is returned it should
-// be handled appropriately.
-func (e *Executor) Wait() (*ExecResult, error) {
-	stdout, err := ioutil.ReadAll(e.stdout)
-	if err != nil {
-		return nil, err
-	}
+// Context is from https://godoc.org/golang.org/x/net/context (see
+// https://blog.golang.org/context for usage). You can use it to set timeouts
+// and cancel executions.
+func (e *Executor) Wait(ctx context.Context) (*ExecResult, error) {
+	defer close(e.terminateLogger)
 
-	stderr, err := ioutil.ReadAll(e.stderr)
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	errChan := make(chan error, 1)
 
-	res := &ExecResult{
-		executor: e,
-		Stdout:   string(stdout),
-		Stderr:   string(stderr),
-	}
+	go func() { errChan <- e.command.Wait() }()
 
-	err = e.command.Wait()
-
-	e.TerminateChan <- false // signal goroutines to terminate gracefully
-
-	if e.timeout != 0 {
-		e.timeoutTerminate <- struct{}{}
-	}
-
-	if err != nil {
-		// if not exiterror, do not yield an execresult
-		if exit, ok := err.(*exec.ExitError); ok {
-			res.ExitStatus = uint32(exit.Sys().(syscall.WaitStatus))
+	select {
+	case <-ctx.Done():
+		if e.command.Process == nil {
+			e.LogFunc("Could not terminate non-running command %v", e)
 		} else {
-			return nil, err
+			e.LogFunc("Command %v terminated due to timeout or cancellation. It may not have finished!", e)
+			e.command.Process.Kill()
+		}
+		err = ctx.Err()
+	case err = <-errChan:
+	}
+
+	res := &ExecResult{executor: e}
+
+	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			res.ExitStatus = int(exit.ProcessState.Sys().(syscall.WaitStatus) / 256)
 		}
 	}
 
+	if e.capture {
+		res.Stdout = string(e.stdoutBuf.Bytes())
+		res.Stderr = string(e.stderrBuf.Bytes())
+	}
+
 	res.Runtime = e.TimeRunning()
-	return res, nil
+
+	return res, err
 }
 
 // Run calls Start(), then Wait(), and returns an ExecResult and error (if
-// any). If an error is returned, ExecResult will be nil.
-func (e *Executor) Run() (*ExecResult, error) {
+// any). The error may be of many types including *exec.ExitError and
+// context.Canceled, context.DeadlineExceeded.
+func (e *Executor) Run(ctx context.Context) (*ExecResult, error) {
 	if err := e.Start(); err != nil {
 		return nil, err
 	}
 
-	er, err := e.Wait()
+	er, err := e.Wait(ctx)
 	if err != nil {
-		return nil, err
+		return er, err
 	}
 
 	return er, nil

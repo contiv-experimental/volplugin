@@ -69,6 +69,11 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	go func() {
 		for {
 			d.Global = (<-activity).Config.(*config.Global)
+
+			if d.Global.Debug {
+				errored.AlwaysDebug = true
+				errored.AlwaysTrace = true
+			}
 		}
 	}()
 
@@ -443,22 +448,23 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !exists {
-			return errored.Errorf("Volume %q no longer exists", vc.String())
+			return errored.Errorf("Volume %v no longer exists", vc)
 		}
 
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
-			return errored.Errorf("Removing image").Combine(err.(*errored.Error))
+			return errored.Errorf("Removing image %q", vc).Combine(err)
 		}
 
 		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return errored.Errorf("Clearing volume records").Combine(err.(*errored.Error))
+			return errored.Errorf("Clearing volume records for %q", vc).Combine(err)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		httpError(w, "Removing volume", err)
+		httpError(w, fmt.Sprintf("Removing volume %v", vc), err)
+		return
 	}
 }
 
@@ -469,47 +475,43 @@ func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mt := &config.UseMount{}
-
-	if err := d.Config.GetUse(mt, req.Volume); err != nil {
-		httpError(w, "Could not retrieve mount information", err)
+	req.Reason = lock.ReasonMount
+	if err := d.Config.RemoveUse(req, false); err != nil {
+		httpError(w, "Could not remove mount information", err)
 		return
 	}
-
-	if mt.Hostname == req.Hostname {
-		req.Reason = lock.ReasonMount
-		if err := d.Config.RemoveUse(req, false); err != nil {
-			httpError(w, "Could not publish mount information", err)
-			return
-		}
-	}
-}
-
-func (d *DaemonConfig) handleMountWithTTLFlag(w http.ResponseWriter, r *http.Request, exist client.PrevExistType) error {
-	req, err := unmarshalUseMount(r)
-	if err != nil {
-		return err
-	}
-
-	req.Reason = lock.ReasonMount
-
-	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.Global.TTL)*time.Second, exist); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (d *DaemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
-	if err := d.handleMountWithTTLFlag(w, r, client.PrevNoExist); err != nil {
+	req, err := unmarshalUseMount(r)
+	if err != nil {
+		httpError(w, "Could not publish mount information", err)
+		return
+	}
+
+	req.Reason = lock.ReasonMount
+	if err := d.Config.PublishUse(req); err != nil {
 		httpError(w, "Could not publish mount information", err)
 		return
 	}
 }
 
 func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
-	if err := d.handleMountWithTTLFlag(w, r, client.PrevExist); err != nil {
-		httpError(w, "Could not publish mount information", err)
+	req, err := unmarshalUseMount(r)
+	if err != nil {
+		httpError(w, "Could not refresh mount information", err)
+		return
+	}
+
+	if _, err := d.Config.GetVolume(req.Volume.PolicyName, req.Volume.VolumeName); err != nil {
+		httpError(w, "Cannot refresh mount information: volume no longer exists", err)
+		w.WriteHeader(404)
+		return
+	}
+
+	req.Reason = lock.ReasonMount
+	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.Global.TTL)*time.Second, client.PrevExist); err != nil {
+		httpError(w, "Could not refresh mount information", err)
 		return
 	}
 }
@@ -560,15 +562,15 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volConfig, err := d.Config.CreateVolume(req)
-	if err != nil {
-		httpError(w, "Creating volume", err)
-		return
-	}
-
 	policy, err := d.Config.GetPolicy(req.Policy)
 	if err != nil {
 		httpError(w, "Retrieving policy", err)
+		return
+	}
+
+	volConfig, err := d.Config.CreateVolume(req)
+	if err != nil {
+		httpError(w, "Creating volume", err)
 		return
 	}
 
@@ -584,23 +586,30 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Hostname: hostname,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
+	snapUC := &config.UseSnapshot{
+		Volume: volConfig,
+		Reason: lock.ReasonCreate,
+	}
+
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
 		if err == storage.ErrVolumeExist {
-			log.Errorf("Volume exists, cleaning up")
+			log.Errorf("Volume %v exists, cleaning up", volConfig)
 			return nil
 		} else if err != nil {
-			return errored.Errorf("Creating volume").Combine(err.(*errored.Error))
+			return errored.Errorf("Creating volume").Combine(err)
+		}
+
+		if err := d.formatVolume(volConfig, do); err != nil {
+			if err := d.removeVolume(volConfig, d.Global.Timeout); err != nil {
+				log.Errorf("Error during cleanup of failed format: %v", err)
+			}
+			return errored.Errorf("Formatting volume").Combine(err)
 		}
 
 		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
 			return errored.Errorf("Publishing volume").Combine(err.(*errored.Error))
 		}
-
-		if err := d.formatVolume(volConfig, do); err != nil {
-			return errored.Errorf("Formatting volume").Combine(err.(*errored.Error))
-		}
-
 		return nil
 	})
 

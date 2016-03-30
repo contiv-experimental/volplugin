@@ -140,7 +140,7 @@ var Commands = []cli.Command{
 				Description: "Snapshot management tools",
 				Usage:       "Snapshot management tools",
 				Subcommands: []cli.Command{
-					cli.Command{
+					{
 						Name:        "list",
 						ArgsUsage:   "[policy name]/[volume name]",
 						Description: "List snapshots",
@@ -148,7 +148,7 @@ var Commands = []cli.Command{
 						Flags:       VolmasterFlags,
 						Action:      VolumeSnapshotList,
 					},
-					cli.Command{
+					{
 						Name:        "copy",
 						ArgsUsage:   "[policy name]/[volume name] [snapshot name] [new volume name]",
 						Description: "Copies a volume with a given snapshot name to the new volume name. The policy will remain the same, as well as the volume parameters.",

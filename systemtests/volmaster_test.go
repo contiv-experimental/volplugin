@@ -25,7 +25,7 @@ func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy2", "testfalse", map[string]string{"filesystem": "falsefs"}), NotNil)
 	_, err = s.volcli("volume remove policy2/testfalse")
-	c.Assert(err, IsNil)
+	c.Assert(err, NotNil)
 }
 
 func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
@@ -85,7 +85,7 @@ func (s *systemtestSuite) TestVolmasterMultiRemove(c *C) {
 			errs++
 		}
 		if out != "" {
-			c.Assert(strings.Contains(out, `Volume "policy1/test" no longer exists`), Equals, true)
+			c.Assert(strings.Contains(out, `Removing volume policy1/test Volume policy1/test no longer exists`), Equals, true)
 		}
 	}
 

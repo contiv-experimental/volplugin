@@ -19,15 +19,24 @@ var testUseMounts = map[string]*UseMount{
 		Volume:   testUseVolumes["basic"],
 		Hostname: "hostname",
 	},
+	"basic-newhost": {
+		Volume:   testUseVolumes["basic"],
+		Hostname: "hostname2",
+	},
 	"basic2": {
 		Volume:   testUseVolumes["basic2"],
 		Hostname: "hostname",
+	},
+	"basic2-newhost": {
+		Volume:   testUseVolumes["basic2"],
+		Hostname: "hostname2",
 	},
 }
 
 func (s *configSuite) TestUseCRUD(c *C) {
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), NotNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), IsNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic-newhost"]), NotNil)
 	c.Assert(s.tlc.RemoveUse(testUseMounts["basic"], false), IsNil)
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic"]), IsNil)
 
@@ -37,7 +46,7 @@ func (s *configSuite) TestUseCRUD(c *C) {
 	c.Assert(testUseMounts["basic"], DeepEquals, mt)
 
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
-	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), NotNil)
+	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
 	c.Assert(s.tlc.RemoveUse(testUseMounts["basic2"], false), IsNil)
 	c.Assert(s.tlc.PublishUse(testUseMounts["basic2"]), IsNil)
 

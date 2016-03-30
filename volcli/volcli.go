@@ -305,7 +305,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return false, err
+		return false, errored.Errorf("Error in request: %v", err)
 	}
 
 	if resp.StatusCode != 200 {

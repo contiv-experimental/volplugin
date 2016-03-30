@@ -1,6 +1,8 @@
 package ceph
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 
 	"github.com/contiv/errored"
@@ -36,6 +39,11 @@ var spaceSplitRegex = regexp.MustCompile(`\s+`)
 //
 type Driver struct {
 	mountpath string
+}
+
+func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (*executor.ExecResult, error) {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	return executor.New(cmd).Run(ctx)
 }
 
 // NewDriver is a generator for Driver structs. It is used by the storage
@@ -72,27 +80,18 @@ func (c *Driver) InternalNameToVolpluginName(s string) string {
 
 // Create a volume.
 func (c *Driver) Create(do storage.DriverOptions) error {
-	poolName := do.Volume.Params["pool"]
+	cmd := exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", do.Volume.Params["pool"])
+	er, err := runWithTimeout(cmd, do.Timeout)
 
-	ok, err := c.poolExists(poolName)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return errored.Errorf("Pool %q does not exist", poolName)
-	}
-
-	cmd := exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", poolName)
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
-	if err != nil {
-		return err
-	}
-
-	if er.ExitStatus == 4352 {
-		return storage.ErrVolumeExist
-	} else if er.ExitStatus != 0 {
-		return errored.Errorf("Creating disk %q: %v", do.Volume.Name, er)
+	if er != nil {
+		if er.ExitStatus == 17 {
+			return storage.ErrVolumeExist
+		} else if er.ExitStatus != 0 {
+			return errored.Errorf("Creating disk %q: %v", do.Volume.Name, er)
+		}
+	} else if err != nil {
+		fmt.Println(err.(*exec.ExitError).ProcessState.Sys().(syscall.WaitStatus))
+		return errored.Errorf("%#v", err)
 	}
 
 	return nil
@@ -106,7 +105,9 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 	}
 
 	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device, do.Timeout); err != nil {
-		c.unmapImage(do)
+		if err := c.unmapImage(do); err != nil {
+			log.Errorf("Error while trying to unmap after failed filesystem creation: %v", err)
+		}
 		return err
 	}
 
@@ -118,22 +119,17 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
 
 	cmd := exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName)
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
-	if err != nil {
-		return err
-	}
+	er, _ := runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
-		return errored.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er)
+		return errored.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er.Stderr)
 	}
 
 	cmd = exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)
-	er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
-	if err != nil {
-		return err
-	}
-
+	er, _ = runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
-		return errored.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stderr)
+		er2, _ := executor.NewCapture(exec.Command("rbd", "ls")).Run(context.Background())
+
+		return errored.Errorf("Destroying disk %q: %v (%v) %v", do.Volume.Name, er, er.Stdout, er2.Stdout)
 	}
 
 	return nil
@@ -142,7 +138,9 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 // List all volumes.
 func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 	poolName := lo.Params["pool"]
-	er, err := executor.New(exec.Command("rbd", "ls", poolName)).Run()
+
+retry:
+	er, err := executor.NewCapture(exec.Command("rbd", "ls", poolName, "--format", "json")).Run(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +149,15 @@ func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 		return nil, errored.Errorf("Listing pool %q: %v", poolName, er)
 	}
 
+	textList := []string{}
+
+	if err := json.Unmarshal([]byte(er.Stdout), &textList); err != nil {
+		log.Errorf("Unmarshalling ls for pool %q: %v. Retrying.", poolName, err)
+		time.Sleep(100 * time.Millisecond)
+		goto retry
+	}
+
 	list := []storage.Volume{}
-	textList := strings.Split(er.Stdout, "\n")
 
 	for _, name := range textList {
 		list = append(list, storage.Volume{Name: strings.TrimSpace(name), Params: storage.Params{"pool": poolName}})
@@ -223,9 +228,20 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 	//
 	// The checks for ENOENT and EBUSY below are safeguards to prevent error
 	// modes where multiple containers will be affecting a single volume.
-	// FIXME loop over unmount and ensure the unmount finished before removing dir
-	if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT {
-		return errored.Errorf("Failed to unmount %q: %v", volumeDir, err)
+	var retries int
+	var lastErr error
+
+retry:
+	if retries < 3 {
+		if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT && err != unix.EINVAL {
+			lastErr = errored.Errorf("Failed to unmount %q (retrying): %v", volumeDir, err)
+			log.Error(lastErr)
+			retries++
+			time.Sleep(100 * time.Millisecond)
+			goto retry
+		}
+	} else {
+		return errored.Errorf("Failed to umount after 3 retries").Combine(lastErr.(*errored.Error))
 	}
 
 	// Remove the mounted directory
@@ -265,7 +281,7 @@ func (c *Driver) Exists(do storage.DriverOptions) (bool, error) {
 func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error {
 	snapName = strings.Replace(snapName, " ", "-", -1)
 	cmd := exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
 	}
@@ -280,7 +296,7 @@ func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error {
 	cmd := exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
 	}
@@ -296,7 +312,8 @@ func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error
 // of snapshots to be returned. Any error will be returned.
 func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	cmd := exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"])
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	ctx, _ := context.WithTimeout(context.Background(), do.Timeout)
+	er, err := executor.NewCapture(cmd).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +352,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	errChan := make(chan error, 1)
 
 	cmd := exec.Command("rbd", "snap", "protect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err := runWithTimeout(cmd, do.Timeout)
 
 	if err != nil {
 		errChan <- err
@@ -347,12 +364,12 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		case err := <-errChan:
 			log.Warnf("Error received while copying snapshot: %v. Attempting to cleanup.", err)
 			cmd = exec.Command("rbd", "rm", newName, "--pool", do.Volume.Params["pool"])
-			if er, err := executor.NewWithTimeout(cmd, do.Timeout).Run(); err != nil || er.ExitStatus != 0 {
+			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
 				log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
 				return
 			}
 			cmd := exec.Command("rbd", "snap", "unprotect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-			if er, err := executor.NewWithTimeout(cmd, do.Timeout).Run(); err != nil || er.ExitStatus != 0 {
+			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
 				log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
 				return
 			}
@@ -367,7 +384,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	}
 
 	cmd = exec.Command("rbd", "clone", do.Volume.Name, newName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-	er, err = executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err = runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		errChan <- err
 		return err

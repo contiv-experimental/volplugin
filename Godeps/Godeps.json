@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v58",
+	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
 	],
@@ -26,11 +26,11 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/errored",
-			"Rev": "23dd1e9452a8e2e2416a5d7ab5cf848ad8af7e16"
+			"Rev": "b0e254c415ecd809cd8fa0af8d3a4349e7044f18"
 		},
 		{
 			"ImportPath": "github.com/contiv/executor",
-			"Rev": "b6a8a0e4ce7d5952fe8e2d58b42389f4c346837e"
+			"Rev": "38f7b30f73e7d6fc53ed60238f3406d28ad02270"
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",

@@ -4,6 +4,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +17,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 )
+
+var errNotFound = errors.New("not found")
 
 // Driver is the main force behind the lock module, it controls all methods and
 // several variables.
@@ -72,7 +75,13 @@ func (d *Driver) HeartbeatMount(ttl time.Duration, payload *config.UseMount, sto
 		case <-stop:
 			return
 		case <-time.After(sleepTime):
+			log.Debugf("Reporting mount for volume %v", payload.Volume)
+
 			if err := d.ReportMountStatus(payload); err != nil {
+				if err == errNotFound {
+					break
+				}
+
 				log.Errorf("Could not report mount for host %q to master %q: %v", payload.Hostname, d.master, err)
 				continue
 			}
@@ -96,6 +105,10 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return errored.Errorf("Could not read response body: %v", err)
+	}
+
+	if resp.StatusCode == 404 {
+		return errNotFound
 	}
 
 	if resp.StatusCode != 200 {

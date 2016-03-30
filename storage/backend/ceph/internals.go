@@ -2,9 +2,12 @@ package ceph
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
@@ -23,7 +26,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	poolName := do.Volume.Params["pool"]
 
 	cmd := exec.Command("rbd", "map", do.Volume.Name, "--pool", poolName)
-	er, err := executor.NewWithTimeout(cmd, do.Timeout).Run()
+	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil || er.ExitStatus != 0 {
 		return "", errored.Errorf("Could not map %q: %v (%v) (%v)", do.Volume.Name, er, err, er.Stderr)
 	}
@@ -53,7 +56,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 
 func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) error {
 	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
-	er, err := executor.NewWithTimeout(cmd, timeout).Run()
+	er, err := runWithTimeout(cmd, timeout)
 	if err != nil || er.ExitStatus != 0 {
 		return errored.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
 	}
@@ -69,16 +72,22 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		return err
 	}
 
+	var retried bool
+retry:
 	for _, rbd := range rbdmap {
 		if rbd.Name == do.Volume.Name && rbd.Pool == do.Volume.Params["pool"] {
-			var retried bool
-
-		retry:
 			log.Debugf("Unmapping volume %s/%s at device %q", poolName, do.Volume.Name, strings.TrimSpace(rbd.Device))
-			er, err := executor.New(exec.Command("rbd", "unmap", rbd.Device)).Run()
+
+			if _, err := os.Stat(rbd.Device); err != nil {
+				log.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", poolName, do.Volume.Name, rbd.Device)
+				continue
+			}
+
+			cmd := exec.Command("rbd", "unmap", rbd.Device)
+			er, err := runWithTimeout(cmd, do.Timeout)
 			if !retried && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", do.Volume.Name, rbd.Device, er, err, er.Stderr)
-				if er.ExitStatus == 4096 {
+				if er.ExitStatus == 16 {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", do.Volume.Name, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
 					retried = true
@@ -87,15 +96,17 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 				return err
 			}
 
-			rbdmap2, err := c.showMapped(do.Timeout)
-			if err != nil {
-				return err
-			}
+			if !retried {
+				rbdmap2, err := c.showMapped(do.Timeout)
+				if err != nil {
+					return err
+				}
 
-			for _, rbd2 := range rbdmap2 {
-				if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
-					retried = true
-					goto retry
+				for _, rbd2 := range rbdmap2 {
+					if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
+						retried = true
+						goto retry
+					}
 				}
 			}
 			break
@@ -111,21 +122,22 @@ func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {
 		err error
 	)
 
-	for { // ugly
-		cmd := exec.Command("rbd", "showmapped", "--format", "json")
-		er, err = executor.NewWithTimeout(cmd, timeout).Run()
-		if err != nil || er.ExitStatus == 3072 {
-			log.Warnf("Could not show mapped volumes. Retrying")
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			break
-		}
-	}
-
+retry:
 	rbdmap := rbdMap{}
 
+	cmd := exec.Command("rbd", "showmapped", "--format", "json")
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	er, err = executor.NewCapture(cmd).Run(ctx)
+	if err != nil || er.ExitStatus == 12 || er.Stdout == "" {
+		log.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
+		time.Sleep(100 * time.Millisecond)
+		goto retry
+	}
+
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		return nil, errored.Errorf("Could not parse RBD showmapped output: %s", er.Stdout)
+		log.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
+		time.Sleep(100 * time.Second)
+		goto retry
 	}
 
 	return rbdmap, nil
