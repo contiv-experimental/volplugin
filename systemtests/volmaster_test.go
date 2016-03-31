@@ -14,6 +14,7 @@ func (s *systemtestSuite) TestVolmasterNoGlobalConfiguration(c *C) {
 	_, err := s.mon0cmd("etcdctl rm /volplugin/global-config")
 	c.Assert(err, IsNil)
 	c.Assert(s.vagrant.IterateNodes(startVolmaster), IsNil)
+	c.Assert(s.vagrant.IterateNodes(waitForVolmaster), IsNil)
 
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 	_, err = s.docker("run -v policy1/test:/mnt alpine echo")
