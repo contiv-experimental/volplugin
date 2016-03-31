@@ -96,6 +96,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/list":                        d.handleList,
 		"/get/{policy}/{volume}":       d.handleGet,
+		"/runtime/{policy}/{volume}":   d.handleRuntime,
 		"/global":                      d.handleGlobal,
 		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
 	}
@@ -134,6 +135,30 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stderr, r.Body)
 	w.WriteHeader(404)
+}
+
+func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
+	volName := strings.TrimPrefix(r.URL.Path, "/runtime/")
+	parts := strings.SplitN(volName, "/", 2)
+
+	if len(parts) != 2 {
+		httpError(w, fmt.Sprintf("Invalid request for path in snapshot list: %q", r.URL.Path), nil)
+		return
+	}
+
+	runtime, err := d.Config.GetVolumeRuntime(parts[0], parts[1])
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	content, err := json.Marshal(runtime)
+	if err != nil {
+		httpError(w, "Marshalling response", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request) {

@@ -32,7 +32,7 @@ func errorInvalidArgCount(rcvd, exptd int, args []string) error {
 func splitVolume(ctx *cli.Context) (string, string, error) {
 	volumeparts := strings.SplitN(ctx.Args()[0], "/", 2)
 
-	if len(volumeparts) < 2 {
+	if len(volumeparts) < 2 || volumeparts[0] == "" || volumeparts[1] == "" {
 		return "", "", errorInvalidVolumeSyntax(ctx.Args()[0], `<policyName>/<volumeName>`)
 	}
 
@@ -749,17 +749,27 @@ func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.String("volmaster"), policy, volume))
 	if err != nil {
 		return false, err
 	}
 
-	runtime, err := cfg.GetVolumeRuntime(policy, volume)
+	if resp.StatusCode != 200 {
+		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
 
-	content, err := ppJSON(runtime)
+	runtime := config.RuntimeOptions{}
+
+	if err := json.Unmarshal(content, &runtime); err != nil {
+		return false, err
+	}
+
+	content, err = ppJSON(runtime)
 	if err != nil {
 		return false, err
 	}

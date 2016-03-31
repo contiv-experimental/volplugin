@@ -168,6 +168,7 @@ var Commands = []cli.Command{
 						ArgsUsage:   "[policy name]/[volume name]",
 						Description: "Get runtime configuration",
 						Usage:       "Get runtime configuration",
+						Flags:       VolmasterFlags,
 						Action:      VolumeRuntimeGet,
 					},
 					{
