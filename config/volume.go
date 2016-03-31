@@ -173,18 +173,26 @@ func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 		return nil, err
 	}
 
-	resp, err = c.etcdClient.Get(context.Background(), c.volume(policy, name, "runtime"), nil)
+	runtime, err := c.GetVolumeRuntime(policy, name)
 	if err != nil {
 		return nil, err
 	}
 
-	runtime := RuntimeOptions{}
-
-	if err := json.Unmarshal([]byte(resp.Node.Value), &runtime); err != nil {
-		return nil, err
-	}
+	ret.RuntimeOptions = runtime
 
 	return ret, nil
+}
+
+// GetVolumeRuntime retrieves only the runtime parameters for the volume.
+func (c *Client) GetVolumeRuntime(policy, name string) (RuntimeOptions, error) {
+	runtime := RuntimeOptions{}
+
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "runtime"), nil)
+	if err != nil {
+		return runtime, err
+	}
+
+	return runtime, json.Unmarshal([]byte(resp.Node.Value), &runtime)
 }
 
 // RemoveVolume removes a volume from configuration.

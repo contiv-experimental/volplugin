@@ -158,6 +158,20 @@ var Commands = []cli.Command{
 					},
 				},
 			},
+			{
+				Name:        "runtime",
+				Description: "Runtime configuration management",
+				Usage:       "Runtime configuration management",
+				Subcommands: []cli.Command{
+					{
+						Name:        "get",
+						ArgsUsage:   "[policy name]/[volume name]",
+						Description: "Get runtime configuration",
+						Usage:       "Get runtime configuration",
+						Action:      VolumeRuntimeGet,
+					},
+				},
+			},
 		},
 	},
 	{

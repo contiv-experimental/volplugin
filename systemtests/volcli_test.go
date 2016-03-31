@@ -228,3 +228,18 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	// instead, which would happen above.
 	c.Assert(out, Equals, "")
 }
+
+func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	volcliOut, err := s.volcli("volume runtime get policy1/foo")
+	c.Assert(err, IsNil)
+	runtimeOptions := config.RuntimeOptions{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), &runtimeOptions), IsNil)
+
+	volcliOut, err = s.volcli("volume get policy1/foo")
+	c.Assert(err, IsNil)
+	volume := &config.Volume{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
+
+	c.Assert(volume.RuntimeOptions, DeepEquals, runtimeOptions)
+}

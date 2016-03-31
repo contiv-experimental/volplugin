@@ -733,3 +733,38 @@ func useExec(ctx *cli.Context) (bool, error) {
 
 	return false, err
 }
+
+// VolumeRuntimeGet retrieves the runtime configuration for a volume.
+func VolumeRuntimeGet(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeGet)
+}
+
+func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	runtime, err := cfg.GetVolumeRuntime(policy, volume)
+	if err != nil {
+		return false, err
+	}
+
+	content, err := ppJSON(runtime)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(content))
+
+	return false, nil
+}
