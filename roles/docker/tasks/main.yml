@@ -154,7 +154,7 @@
 - name: download contiv-compose
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://cisco.box.com/shared/static/eagplmveetdmwn7u2uwadna07l1m8t3s.bz2
+    url: https://cisco.box.com/shared/static/24q94bb94nz4wfnl20afwulffh3lcyt2.bz2
     dest: /tmp/contiv-compose.bz2
   when: docker_compose_version.stdout != "libcompose-cli version 0.0.0-dev (4c0c2dd)"
   tags:
