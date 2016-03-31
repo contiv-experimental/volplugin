@@ -100,7 +100,7 @@ func globalGet(ctx *cli.Context) (bool, error) {
 
 	// rebuild and divide the contents so they are cast out of their internal
 	// representation.
-	content, err := json.Marshal(config.DivideGlobalParameters(global))
+	content, err := ppJSON(config.DivideGlobalParameters(global))
 	if err != nil {
 		return false, err
 	}
