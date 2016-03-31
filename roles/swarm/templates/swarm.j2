@@ -13,6 +13,7 @@ start)
     /usr/bin/docker run -t -d -p {{ swarm_api_port }}:{{ swarm_api_port }} --name=swarm-manager \
         swarm:{{ swarm_version }} manage \
         -H :{{ swarm_api_port }} \
+        --strategy {{ swarm_strategy }} \
         --replication --advertise={{ node_addr }}:{{ swarm_api_port }} \
         etcd://{{ node_addr }}:{{ etcd_client_port1 }}
     {% endif %}
