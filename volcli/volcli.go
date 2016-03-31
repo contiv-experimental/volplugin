@@ -768,3 +768,46 @@ func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
 
 	return false, nil
 }
+
+// VolumeRuntimeUpload retrieves the runtime configuration for a volume.
+func VolumeRuntimeUpload(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeUpload)
+}
+
+func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	content, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return false, err
+	}
+
+	runtime := config.RuntimeOptions{}
+
+	if err := json.Unmarshal(content, &runtime); err != nil {
+		return false, err
+	}
+
+	vol, err := cfg.GetVolume(policy, volume)
+	if err != nil {
+		return false, err
+	}
+
+	if err := cfg.PublishVolumeRuntime(vol, runtime); err != nil {
+		return false, err
+	}
+
+	return false, nil
+}

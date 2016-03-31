@@ -170,6 +170,13 @@ var Commands = []cli.Command{
 						Usage:       "Get runtime configuration",
 						Action:      VolumeRuntimeGet,
 					},
+					{
+						Name:        "upload",
+						ArgsUsage:   "[policy name]/[volume name]",
+						Description: "Upload runtime configuration",
+						Usage:       "Upload runtime configuration",
+						Action:      VolumeRuntimeUpload,
+					},
 				},
 			},
 		},

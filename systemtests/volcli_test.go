@@ -242,4 +242,12 @@ func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
 	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
 
 	c.Assert(volume.RuntimeOptions, DeepEquals, runtimeOptions)
+	c.Assert(volume.RuntimeOptions.Snapshot.Keep, Equals, uint(20))
+
+	_, err = s.volcli("volume runtime upload policy1/foo < /testdata/runtime1.json")
+	volcliOut, err = s.volcli("volume get policy1/foo")
+	c.Assert(err, IsNil)
+	volume = &config.Volume{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
+	c.Assert(volume.RuntimeOptions.Snapshot.Keep, Equals, uint(15))
 }
