@@ -2,7 +2,7 @@
 
 # Role defaults for contiv_storage
 
-contiv_storage_version: "v0.0.0-03-19-2016.02-39-28.UTC"
+contiv_storage_version: "v0.0.0-03-29-2016.08-05-13.UTC"
 contiv_storage_tar_file: "volplugin-{{ contiv_storage_version }}.tar.bz2"
 contiv_storage_src_file: "https://github.com/contiv/volplugin/releases/download/{{ contiv_storage_version }}/{{ contiv_storage_tar_file }}"
 contiv_storage_dest_file: "/tmp/{{ contiv_storage_tar_file }}"
