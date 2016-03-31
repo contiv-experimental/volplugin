@@ -32,7 +32,7 @@ Vagrant.configure(2) do |config|
     config.vm.define node_name do |node|
         node.vm.hostname = node_name
         node.vm.box = "puppetlabs/centos-7.2-64-nocm"
-        node.vm.box_version = "1.0.0"
+        node.vm.box_version = "1.0.1"
         node.vm.provision "shell" do |s|
             #XXX: seems like the centos box has a broken packer binary which
             #get's stuck on issuing 'packer --version' removing it manually here
