@@ -148,14 +148,7 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vc.Options.Ephemeral {
-		if err := dc.requestRemove(uc.Policy, uc.Name); err != nil {
-			httpError(w, "Removing ephemeral volume", err)
-			return
-		}
-	}
-
-	driver, err := backend.NewDriver(vc.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(vc.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -168,10 +161,8 @@ func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: name,
-			Params: storage.Params{
-				"pool": vc.Options.Pool,
-			},
+			Name:   name,
+			Params: vc.DriverOptions,
 		},
 		Timeout: dc.Global.Timeout,
 	}
@@ -207,7 +198,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -220,10 +211,8 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: name,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   name,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: dc.Global.Timeout,
 	}
@@ -246,7 +235,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -258,7 +247,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actualSize, err := volConfig.Options.ActualSize()
+	actualSize, err := volConfig.CreateOptions.ActualSize()
 	if err != nil {
 		httpError(w, "Computing size of volume", err)
 		return
@@ -266,14 +255,12 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Size: actualSize,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Size:   actualSize,
+			Params: volConfig.DriverOptions,
 		},
 		FSOptions: storage.FSOptions{
-			Type: volConfig.Options.FileSystem,
+			Type: volConfig.CreateOptions.FileSystem,
 		},
 		Timeout: dc.Global.Timeout,
 	}
@@ -337,7 +324,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, fmt.Sprintf("loading driver"), err)
 		return
@@ -351,10 +338,8 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: dc.Global.Timeout,
 	}

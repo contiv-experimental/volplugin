@@ -22,18 +22,18 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 	if policy.FileSystems == nil {
 		fscmd = defaultFsCmd
 	} else {
-		fscmd, ok = policy.FileSystems[config.Options.FileSystem]
+		fscmd, ok = policy.FileSystems[config.CreateOptions.FileSystem]
 		if !ok {
-			return storage.DriverOptions{}, errored.Errorf("Invalid filesystem %q", config.Options.FileSystem)
+			return storage.DriverOptions{}, errored.Errorf("Invalid filesystem %q", config.CreateOptions.FileSystem)
 		}
 	}
 
-	actualSize, err := config.Options.ActualSize()
+	actualSize, err := config.CreateOptions.ActualSize()
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
 
-	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
@@ -45,30 +45,28 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Size: actualSize,
-			Params: storage.Params{
-				"pool": config.Options.Pool,
-			},
+			Name:   intName,
+			Size:   actualSize,
+			Params: config.DriverOptions,
 		},
 		FSOptions: storage.FSOptions{
-			Type:          config.Options.FileSystem,
+			Type:          config.CreateOptions.FileSystem,
 			CreateCommand: fscmd,
 		},
 		Timeout: timeout,
 	}
 
-	log.Infof("Creating volume %q (pool %q) with size %d", intName, config.Options.Pool, actualSize)
+	log.Infof("Creating volume %v with size %d", config, actualSize)
 	return driverOpts, driver.Create(driverOpts)
 }
 
 func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOptions) error {
-	actualSize, err := config.Options.ActualSize()
+	actualSize, err := config.CreateOptions.ActualSize()
 	if err != nil {
 		return err
 	}
 
-	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
 	if err != nil {
 		return err
 	}
@@ -77,12 +75,12 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 		return err
 	}
 
-	log.Infof("Formatting volume %q (pool %q, filesystem %q) with size %d", intName, config.Options.Pool, config.Options.FileSystem, actualSize)
+	log.Infof("Formatting volume %v (filesystem %q) with size %d", intName, config.CreateOptions.FileSystem, actualSize)
 	return driver.Format(do)
 }
 
 func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
-	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
 	if err != nil {
 		return false, err
 	}
@@ -93,10 +91,8 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": config.Options.Pool,
-			},
+			Name:   intName,
+			Params: config.DriverOptions,
 		},
 		Timeout: dc.Global.Timeout,
 	}
@@ -105,7 +101,7 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 }
 
 func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duration) error {
-	driver, err := backend.NewDriver(config.Options.Backend, dc.Global.MountPath)
+	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
 	if err != nil {
 		return err
 	}
@@ -116,15 +112,13 @@ func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duratio
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": config.Options.Pool,
-			},
+			Name:   intName,
+			Params: config.DriverOptions,
 		},
 		Timeout: timeout,
 	}
 
-	log.Infof("Destroying volume %q (pool %q)", intName, config.Options.Pool)
+	log.Infof("Destroying volume %v", config)
 
 	return driver.Destroy(driverOpts)
 }

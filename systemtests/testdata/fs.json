@@ -1,13 +1,18 @@
 { 
-  "default-options": {
-    "pool": "rbd",
+  "backend": "ceph",
+  "driver": {
+    "pool": "rbd"
+  },
+  "create": {
     "size": "10MB",
+    "filesystem": "btrfs"
+  },
+  "runtime": {
     "snapshots": true,
     "snapshot": {
       "frequency": "30m",
       "keep": 20
-    },
-    "filesystem": "btrfs"
+    }
   },
   "filesystems": {
     "ext4": "mkfs.ext4 -m0 %",

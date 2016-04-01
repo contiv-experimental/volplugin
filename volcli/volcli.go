@@ -100,7 +100,7 @@ func globalGet(ctx *cli.Context) (bool, error) {
 
 	// rebuild and divide the contents so they are cast out of their internal
 	// representation.
-	content, err := json.Marshal(config.DivideGlobalParameters(global))
+	content, err := ppJSON(config.DivideGlobalParameters(global))
 	if err != nil {
 		return false, err
 	}
@@ -732,4 +732,82 @@ func useExec(ctx *cli.Context) (bool, error) {
 	})
 
 	return false, err
+}
+
+// VolumeRuntimeGet retrieves the runtime configuration for a volume.
+func VolumeRuntimeGet(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeGet)
+}
+
+func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	runtime, err := cfg.GetVolumeRuntime(policy, volume)
+	if err != nil {
+		return false, err
+	}
+
+	content, err := ppJSON(runtime)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(content))
+
+	return false, nil
+}
+
+// VolumeRuntimeUpload retrieves the runtime configuration for a volume.
+func VolumeRuntimeUpload(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeUpload)
+}
+
+func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	content, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return false, err
+	}
+
+	runtime := config.RuntimeOptions{}
+
+	if err := json.Unmarshal(content, &runtime); err != nil {
+		return false, err
+	}
+
+	vol, err := cfg.GetVolume(policy, volume)
+	if err != nil {
+		return false, err
+	}
+
+	if err := cfg.PublishVolumeRuntime(vol, runtime); err != nil {
+		return false, err
+	}
+
+	return false, nil
 }

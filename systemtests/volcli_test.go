@@ -115,14 +115,14 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 
-	cfg.Options.FileSystem = "ext4"
+	cfg.CreateOptions.FileSystem = "ext4"
 
 	policy1, err := s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
 
-	policy1.DefaultVolumeOptions.FileSystem = "ext4"
+	policy1.CreateOptions.FileSystem = "ext4"
 
-	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
 
 	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
@@ -144,12 +144,13 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	cfg = &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
-	cfg.Options.FileSystem = "ext4"
+	cfg.CreateOptions.FileSystem = "ext4"
 	policy1, err = s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
-	policy1.DefaultVolumeOptions.FileSystem = "ext4"
-	policy1.DefaultVolumeOptions.UseSnapshots = false
-	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	policy1.CreateOptions.FileSystem = "ext4"
+	policy1.RuntimeOptions.UseSnapshots = false
+	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
+	c.Assert(policy1.RuntimeOptions, DeepEquals, cfg.RuntimeOptions)
 }
 
 func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
@@ -226,4 +227,27 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	// this test should never fail; we should always fail because of an exit code
 	// instead, which would happen above.
 	c.Assert(out, Equals, "")
+}
+
+func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	volcliOut, err := s.volcli("volume runtime get policy1/foo")
+	c.Assert(err, IsNil)
+	runtimeOptions := config.RuntimeOptions{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), &runtimeOptions), IsNil)
+
+	volcliOut, err = s.volcli("volume get policy1/foo")
+	c.Assert(err, IsNil)
+	volume := &config.Volume{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
+
+	c.Assert(volume.RuntimeOptions, DeepEquals, runtimeOptions)
+	c.Assert(volume.RuntimeOptions.Snapshot.Keep, Equals, uint(20))
+
+	_, err = s.volcli("volume runtime upload policy1/foo < /testdata/runtime1.json")
+	volcliOut, err = s.volcli("volume get policy1/foo")
+	c.Assert(err, IsNil)
+	volume = &config.Volume{}
+	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
+	c.Assert(volume.RuntimeOptions.Snapshot.Keep, Equals, uint(15))
 }
