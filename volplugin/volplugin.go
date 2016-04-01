@@ -104,7 +104,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 		"/Plugin.Activate":      dc.activate,
 		"/Plugin.Deactivate":    dc.nilAction,
 		"/VolumeDriver.Create":  dc.create,
-		"/VolumeDriver.Remove":  dc.remove,
+		"/VolumeDriver.Remove":  dc.getPath, // we never actually remove through docker's interface.
 		"/VolumeDriver.List":    dc.list,
 		"/VolumeDriver.Get":     dc.get,
 		"/VolumeDriver.Path":    dc.getPath,
