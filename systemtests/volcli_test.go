@@ -217,9 +217,9 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
 
-	// ensure that double-create does nothing (for now, at least)
+	// ensure that double-create errors
 	_, err = s.volcli("volume create policy1/foo")
-	c.Assert(err, IsNil)
+	c.Assert(err, NotNil)
 
 	_, err = s.volcli("volume get policy1/foo")
 	c.Assert(err, IsNil)

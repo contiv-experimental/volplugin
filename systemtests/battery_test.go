@@ -51,9 +51,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 		for x := 0; x < count; x++ {
 			go func(nodes []vagrantssh.TestbedNode, x int) {
-				for _, node := range nodes {
-					c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
-				}
+				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
 
 				contID := ""
 				var contNode *vagrantssh.TestbedNode
@@ -158,9 +156,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 						defer wg.Done()
 						log.Infof("Creating image policy1/test%d on %q", x, node.GetName())
 
-						if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
-							log.Error(out)
-							log.Error(err)
+						if _, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
 							errChan <- err
 						}
 					}(node, x)
@@ -172,14 +168,13 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 				for i := 0; i < len(nodes); i++ {
 					select {
-					case err := <-errChan:
-						log.Errorf("Processing %d: %v", x, err)
+					case <-errChan:
 						errs++
 					default:
 					}
 				}
 
-				c.Assert(errs, Equals, 0)
+				c.Assert(errs, Equals, 2)
 			}(nodes, x)
 		}
 

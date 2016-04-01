@@ -127,9 +127,7 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 	cmd = exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)
 	er, _ = runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
-		er2, _ := executor.NewCapture(exec.Command("rbd", "ls")).Run(context.Background())
-
-		return errored.Errorf("Destroying disk %q: %v (%v) %v", do.Volume.Name, er, er.Stdout, er2.Stdout)
+		return errored.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stdout)
 	}
 
 	return nil

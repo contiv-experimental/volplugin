@@ -67,14 +67,16 @@ func (s *systemtestSuite) TestVolumeMultiPolicyCreate(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *systemtestSuite) TestVolumeParallelCreate(c *C) {
-	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
-		return node.RunCommand("docker volume create -d volplugin --name policy1/test")
-	}), IsNil)
+func (s *systemtestSuite) TestVolumeMultiCreateThroughDocker(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "policy1.test")
+
+	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+		return node.RunCommand("docker volume create -d volplugin --name policy1/test")
+	}), IsNil)
 
 	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
 		return node.RunCommand("docker volume rm policy1/test")
