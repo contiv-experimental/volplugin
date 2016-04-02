@@ -12,7 +12,7 @@ import (
 //
 // most of the work is done in setKey() and setValueWithType().
 //
-func mergeOpts(v *VolumeOptions, opts map[string]string) error {
+func mergeOpts(v *RuntimeOptions, opts map[string]string) error {
 	for key, value := range opts {
 		ptrVal := reflect.ValueOf(v)
 		if err := setKey(reflect.TypeOf(*v), &ptrVal, key, value); err != nil {

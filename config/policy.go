@@ -11,16 +11,17 @@ import (
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
-	DefaultVolumeOptions VolumeOptions     `json:"default-options"`
-	FileSystems          map[string]string `json:"filesystems"`
+	CreateOptions  `json:"create"`
+	RuntimeOptions `json:"runtime"`
+	DriverOptions  map[string]string `json:"driver"`
+	FileSystems    map[string]string `json:"filesystems"`
+	Backend        string
 }
 
 // NewPolicy return policy config with specified backend preset
 func NewPolicy(backend string) *Policy {
 	return &Policy{
-		DefaultVolumeOptions: VolumeOptions{
-			Backend: backend,
-		},
+		Backend: backend,
 	}
 }
 
@@ -36,7 +37,7 @@ func (c *Client) policy(name string) string {
 
 // PublishPolicy publishes policy intent to the configuration store.
 func (c *Client) PublishPolicy(name string, cfg *Policy) error {
-	if err := cfg.DefaultVolumeOptions.computeSize(); err != nil {
+	if err := cfg.CreateOptions.computeSize(); err != nil {
 		return err
 	}
 
@@ -107,5 +108,9 @@ func (cfg *Policy) Validate() error {
 		cfg.FileSystems = defaultFilesystems
 	}
 
-	return cfg.DefaultVolumeOptions.Validate()
+	if err := cfg.CreateOptions.Validate(); err != nil {
+		return err
+	}
+
+	return cfg.RuntimeOptions.Validate()
 }

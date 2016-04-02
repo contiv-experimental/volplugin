@@ -115,14 +115,14 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
 
-	cfg.Options.FileSystem = "ext4"
+	cfg.CreateOptions.FileSystem = "ext4"
 
 	policy1, err := s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
 
-	policy1.DefaultVolumeOptions.FileSystem = "ext4"
+	policy1.CreateOptions.FileSystem = "ext4"
 
-	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
 
 	_, err = s.volcli("volume remove policy1/foo")
 	c.Assert(err, IsNil)
@@ -144,12 +144,13 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	cfg = &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), cfg), IsNil)
-	cfg.Options.FileSystem = "ext4"
+	cfg.CreateOptions.FileSystem = "ext4"
 	policy1, err = s.readIntent("testdata/policy1.json")
 	c.Assert(err, IsNil)
-	policy1.DefaultVolumeOptions.FileSystem = "ext4"
-	policy1.DefaultVolumeOptions.UseSnapshots = false
-	c.Assert(policy1.DefaultVolumeOptions, DeepEquals, *cfg.Options)
+	policy1.CreateOptions.FileSystem = "ext4"
+	policy1.RuntimeOptions.UseSnapshots = false
+	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
+	c.Assert(policy1.RuntimeOptions, DeepEquals, cfg.RuntimeOptions)
 }
 
 func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
