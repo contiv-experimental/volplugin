@@ -165,10 +165,8 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}
@@ -238,10 +236,8 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}
@@ -328,7 +324,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+		driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
 		if err != nil {
 			httpError(w, "Initializing driver", err)
 			return
@@ -342,10 +338,8 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 
 		do := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: intName,
-				Params: storage.Params{
-					"pool": volConfig.Options.Pool,
-				},
+				Name:   intName,
+				Params: volConfig.DriverOptions,
 			},
 			Timeout: d.Global.Timeout,
 		}
@@ -378,7 +372,7 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+	driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
 	if err != nil {
 		httpError(w, "Initializing backend", err)
 		return
@@ -392,10 +386,8 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}

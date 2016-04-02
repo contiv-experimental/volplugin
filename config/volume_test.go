@@ -10,88 +10,96 @@ import (
 )
 
 func (s *configSuite) TestActualSize(c *C) {
-	vo := &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd"}
+	vo := &CreateOptions{Size: "10MB"}
 	actualSize, err := vo.ActualSize()
 	c.Assert(err, IsNil)
 	c.Assert(int(actualSize), Equals, 10)
 
-	vo = &VolumeOptions{Size: "1GB", UseSnapshots: false, Pool: "rbd"}
+	vo = &CreateOptions{Size: "1GB"}
 	actualSize, err = vo.ActualSize()
 	c.Assert(err, IsNil)
 	c.Assert(int(actualSize), Equals, 1024)
 
-	vo = &VolumeOptions{Size: "0", UseSnapshots: false, Pool: "rbd"}
+	vo = &CreateOptions{Size: "0"}
 	actualSize, err = vo.ActualSize()
 	c.Assert(err, IsNil)
 	c.Assert(int(actualSize), Equals, 0)
 
-	vo = &VolumeOptions{Size: "10M", UseSnapshots: false, Pool: "rbd"}
+	vo = &CreateOptions{Size: "10M"}
 	_, err = vo.ActualSize()
 	c.Assert(err, NotNil)
 
-	vo = &VolumeOptions{Size: "garbage", UseSnapshots: false, Pool: "rbd"}
+	vo = &CreateOptions{Size: "garbage"}
 	_, err = vo.ActualSize()
 	c.Assert(err, NotNil)
 }
 
 func (s *configSuite) TestVolumeValidate(c *C) {
 	vc := &Volume{
-		Options:    nil,
 		VolumeName: "foo",
 		PolicyName: "policy1",
 	}
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
-		VolumeName: "",
-		PolicyName: "policy1",
+		DriverOptions:  map[string]string{"pool": "rbd"},
+		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
+		VolumeName:     "",
+		PolicyName:     "policy1",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
-		VolumeName: "foo",
-		PolicyName: "",
+		DriverOptions:  map[string]string{"pool": "rbd"},
+		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
+		VolumeName:     "foo",
+		PolicyName:     "",
 	}
 
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		Options:    &VolumeOptions{Size: "10MB", UseSnapshots: false, Pool: "rbd", actualSize: 10},
-		VolumeName: "foo",
-		PolicyName: "policy1",
+		Backend:        "ceph",
+		DriverOptions:  map[string]string{"pool": "rbd"},
+		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
+		VolumeName:     "foo",
+		PolicyName:     "policy1",
 	}
 
 	c.Assert(vc.Validate(), IsNil)
 }
 
 func (s *configSuite) TestVolumeOptionsValidate(c *C) {
-	opts := &VolumeOptions{}
+	opts := CreateOptions{}
 	c.Assert(opts.Validate(), NotNil)
+	opts2 := RuntimeOptions{}
+	c.Assert(opts2.Validate(), IsNil)
 
-	opts = &VolumeOptions{Size: "0"}
+	opts = CreateOptions{Size: "0"}
 	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: "10MB", Pool: "rbd", actualSize: 10}
+	opts = CreateOptions{Size: "10MB", actualSize: 10}
 	c.Assert(opts.Validate(), IsNil)
 
-	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Pool: "rbd", actualSize: 10}
-	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Snapshot: SnapshotConfig{}, Pool: "rbd", actualSize: 10}
-	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}, Pool: "rbd", actualSize: 10}
-	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}, Pool: "rbd", actualSize: 10}
-	c.Assert(opts.Validate(), NotNil)
-	opts = &VolumeOptions{Size: "10MB", UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}, Pool: "rbd", actualSize: 10}
-	c.Assert(opts.Validate(), IsNil)
+	opts2 = RuntimeOptions{UseSnapshots: true}
+	c.Assert(opts2.Validate(), NotNil)
+	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{}}
+	c.Assert(opts2.Validate(), NotNil)
+	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}}
+	c.Assert(opts2.Validate(), NotNil)
+	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}}
+	c.Assert(opts2.Validate(), NotNil)
+	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}}
+	c.Assert(opts2.Validate(), IsNil)
 }
 
 func (s *configSuite) TestWatchVolumes(c *C) {
-	c.Assert(s.tlc.PublishPolicy("policy1", testPolicys["basic"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
 	volumeChan := make(chan *watch.Watch)
-	s.tlc.WatchVolumes(volumeChan)
+	s.tlc.WatchVolumeCreates(volumeChan)
 
 	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)
@@ -102,7 +110,9 @@ func (s *configSuite) TestWatchVolumes(c *C) {
 	volConfig := vol2.Config.(*Volume)
 	c.Assert(vol.PolicyName, Equals, volConfig.PolicyName)
 	c.Assert(vol.VolumeName, Equals, volConfig.VolumeName)
-	c.Assert(vol.Options, DeepEquals, volConfig.Options)
+	c.Assert(vol.CreateOptions, DeepEquals, volConfig.CreateOptions)
+	c.Assert(vol.RuntimeOptions, DeepEquals, volConfig.RuntimeOptions)
+	c.Assert(vol.DriverOptions, DeepEquals, volConfig.DriverOptions)
 }
 
 func (s *configSuite) TestVolumeCRUD(c *C) {
@@ -118,13 +128,10 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	// populate the policies so the next few tests don't give false positives
 	for _, policy := range policyNames {
-		c.Assert(s.tlc.PublishPolicy(policy, testPolicys["basic"]), IsNil)
+		c.Assert(s.tlc.PublishPolicy(policy, testPolicies["basic"]), IsNil)
 	}
 
 	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
-	c.Assert(err, NotNil)
-
-	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"pool": ""}})
 	c.Assert(err, NotNil)
 
 	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: ""})
@@ -138,27 +145,22 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	for _, policy := range policyNames {
 		for _, volume := range volumeNames {
-			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume, Opts: map[string]string{"filesystem": ""}})
+			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), Equals, ErrExist)
 
-			c.Assert(vcfg.Options.FileSystem, Equals, "ext4")
-
 			defer func(policy, volume string) { c.Assert(s.tlc.RemoveVolume(policy, volume), IsNil) }(policy, volume)
 
 			c.Assert(vcfg.VolumeName, Equals, volume)
-			opts := testPolicys["basic"].DefaultVolumeOptions
-			opts.Pool = "rbd"
-			c.Assert(vcfg.Options, DeepEquals, &opts)
 
 			vcfg2, err := s.tlc.GetVolume(policy, volume)
 			c.Assert(err, IsNil)
 
 			c.Assert(vcfg, DeepEquals, vcfg2)
 
-			vcfg.Options.Size = "0"
-			vcfg.Options.actualSize = 0
+			vcfg.CreateOptions.Size = "0"
+			vcfg.CreateOptions.actualSize = 0
 			c.Assert(s.tlc.PublishVolume(vcfg), NotNil)
 		}
 

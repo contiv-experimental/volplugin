@@ -1,7 +1,12 @@
 { 
-  "default-options": {
-    "pool": "rbd",
-    "size": "10MB",
+  "backend": "ceph",
+  "driver": {
+    "pool": "rbd"
+  },
+  "create": {
+    "size": "10MB"
+  },
+  "runtime": {
     "snapshots": true,
     "snapshot": {
       "frequency": "30m",
