@@ -12,10 +12,10 @@ import (
 //
 // most of the work is done in setKey() and setValueWithType().
 //
-func mergeOpts(v *RuntimeOptions, opts map[string]string) error {
+func mergeOpts(v interface{}, opts map[string]string) error {
 	for key, value := range opts {
 		ptrVal := reflect.ValueOf(v)
-		if err := setKey(reflect.TypeOf(*v), &ptrVal, key, value); err != nil {
+		if err := setKey(reflect.TypeOf(v).Elem(), &ptrVal, key, value); err != nil {
 			return err
 		}
 	}
@@ -37,9 +37,14 @@ func setKey(typeinfo reflect.Type, valinfo *reflect.Value, key string, value str
 		// reflect gets a little confused by these.
 		if field.Type.Kind() == reflect.Struct {
 			if field.Type.NumField() > 0 {
-				// valinfo is holding a pointer, so we need to call Elem() to get at
-				// it.
-				valfield := valinfo.Elem().Field(x)
+				var valfield reflect.Value
+
+				if valinfo.Kind() == reflect.Ptr {
+					valfield = valinfo.Elem().Field(x)
+				} else {
+					valfield = valinfo.Field(x)
+				}
+
 				err := setKey(field.Type, &valfield, key, value)
 
 				// if the error is non-nil, we don't have a match. Try looping.
@@ -66,7 +71,7 @@ func setKey(typeinfo reflect.Type, valinfo *reflect.Value, key string, value str
 		}
 	}
 
-	return errored.Errorf("Key not found")
+	return errored.Errorf("Key not found: %q", key)
 }
 
 func setValueWithType(field *reflect.Value, val string) error {

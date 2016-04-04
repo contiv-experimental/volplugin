@@ -11,11 +11,11 @@ import (
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
-	CreateOptions  `json:"create"`
-	RuntimeOptions `json:"runtime"`
+	CreateOptions  CreateOptions     `json:"create"`
+	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	DriverOptions  map[string]string `json:"driver"`
 	FileSystems    map[string]string `json:"filesystems"`
-	Backend        string
+	Backend        string            `json:"backend"`
 }
 
 // NewPolicy return policy config with specified backend preset

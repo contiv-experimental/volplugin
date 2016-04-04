@@ -21,16 +21,16 @@ type Volume struct {
 	PolicyName     string            `json:"policy"`
 	VolumeName     string            `json:"name"`
 	DriverOptions  map[string]string `json:"driver"`
-	CreateOptions  `json:"create"`
-	RuntimeOptions `json:"runtime"`
-	Backend        string
+	CreateOptions  CreateOptions     `json:"create"`
+	RuntimeOptions RuntimeOptions    `json:"runtime"`
+	Backend        string            `json:"backend"`
 }
 
 // CreateOptions are the set of options used by volmaster during the volume
 // create operation.
 type CreateOptions struct {
-	Size       string `json:"size"`
-	FileSystem string `json:"filesystem"`
+	Size       string `json:"size" merge:"size"`
+	FileSystem string `json:"filesystem" merge:"filesystem"`
 
 	actualSize units.Base2Bytes
 }
@@ -84,7 +84,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		return nil, err
 	}
 
-	if err := mergeOpts(&resp.RuntimeOptions, rc.Opts); err != nil {
+	if err := mergeOpts(resp, rc.Opts); err != nil {
 		return nil, err
 	}
 

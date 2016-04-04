@@ -145,10 +145,12 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	for _, policy := range policyNames {
 		for _, volume := range volumeNames {
-			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume})
+			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume, Opts: map[string]string{"filesystem": ""}})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), Equals, ErrExist)
+
+			c.Assert(vcfg.CreateOptions.FileSystem, Equals, "ext4")
 
 			defer func(policy, volume string) { c.Assert(s.tlc.RemoveVolume(policy, volume), IsNil) }(policy, volume)
 

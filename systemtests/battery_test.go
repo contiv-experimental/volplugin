@@ -51,7 +51,9 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 		for x := 0; x < count; x++ {
 			go func(nodes []vagrantssh.TestbedNode, x int) {
-				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
+				for _, node := range nodes {
+					c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
+				}
 
 				contID := ""
 				var contNode *vagrantssh.TestbedNode
