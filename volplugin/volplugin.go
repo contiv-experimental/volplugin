@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -27,10 +28,13 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Master string
-	Host   string
-	Global *config.Global
-	Client *client.Driver
+	Master           string
+	Host             string
+	Global           *config.Global
+	Client           *client.Driver
+	runtimeMutex     *sync.RWMutex
+	runtimeVolumeMap map[string]config.RuntimeOptions
+	runtimeStopChans map[string]chan struct{}
 }
 
 // VolumeRequest is taken from
@@ -51,6 +55,18 @@ type VolumeResponse struct {
 // https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
 type volumeGet struct {
 	Name string
+}
+
+// NewDaemonConfig creates a DaemonConfig from the master host and hostname
+// arguments.
+func NewDaemonConfig(master, host string) *DaemonConfig {
+	return &DaemonConfig{
+		Master:           master,
+		Host:             host,
+		runtimeMutex:     new(sync.RWMutex),
+		runtimeVolumeMap: map[string]config.RuntimeOptions{},
+		runtimeStopChans: map[string]chan struct{}{},
+	}
 }
 
 // Daemon starts the volplugin service.

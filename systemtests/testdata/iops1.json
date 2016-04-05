@@ -1,0 +1,8 @@
+{
+  "rate-limit": {
+    "write-bps": 1000000,
+    "write-iops": 1000,
+    "read-bps": 10,
+    "read-iops": 1200
+  }
+}

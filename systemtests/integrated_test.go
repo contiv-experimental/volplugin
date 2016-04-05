@@ -131,6 +131,37 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 
 		c.Assert(found, Equals, true)
 	}
+
+	s.volcli("volume runtime upload policy1/test < /testdata/iops1.json")
+	// copied from iops1.json
+	opts = map[string]string{
+		"rate-limit.write.bps":  "1000000",
+		"rate-limit.write.iops": "1000",
+		"rate-limit.read.bps":   "10",
+		"rate-limit.read.iops":  "1200",
+	}
+
+	time.Sleep(30 * time.Second) // TTL
+
+	for key, fn := range optMap {
+		out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(fmt.Sprintf("sudo cat '%s'", fn))
+		c.Assert(err, IsNil)
+		var found bool
+
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.Split(line, " ")
+
+			if len(parts) < 2 {
+				continue
+			}
+
+			if parts[1] == opts[key] {
+				found = true
+			}
+		}
+
+		c.Assert(found, Equals, true)
+	}
 }
 
 func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {

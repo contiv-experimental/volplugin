@@ -45,10 +45,7 @@ func main() {
 }
 
 func run(ctx *cli.Context) {
-	dc := &volplugin.DaemonConfig{
-		Master: ctx.String("master"),
-		Host:   ctx.String("host-label"),
-	}
+	dc := volplugin.NewDaemonConfig(ctx.String("master"), ctx.String("host-label"))
 
 	if err := dc.Daemon(); err != nil {
 		fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)

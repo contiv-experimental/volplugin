@@ -210,13 +210,14 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
 		httpError(w, "Applying cgroups", err)
 		return
 	}
 
 	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, dc.Client.AddStopChan(uc.Request.Name))
 
+	go dc.startRuntimePoll(volConfig.String(), mc)
 	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
 }
 
@@ -245,6 +246,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dc.Client.RemoveStopChan(uc.Request.Name)
+	dc.stopRuntimePoll(uc.Request.Name)
 
 	if err := dc.Client.ReportUnmount(ut); err != nil {
 		httpError(w, fmt.Sprintf("Reporting unmount for volume %v, to master", volConfig), err)
