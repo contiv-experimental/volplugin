@@ -44,7 +44,6 @@
   shell: tar vxjf {{ contiv_network_dest_file }}
   args:
     chdir: /usr/bin/contiv/netplugin
-  when: download_result | changed 
 
 - name: create links for netplugin binaries
   file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link force=yes
@@ -101,7 +100,6 @@
   shell: tar vxjf {{ contivctl_dest_file }}
   args:
     chdir: /usr/bin/
-  when: download_result | changed
 
 - include: aci_tasks.yml
   when: (run_as == "master") and (contiv_network_mode == "aci")
