@@ -156,7 +156,8 @@
     validate_certs: "{{ validate_certs }}"
     url: https://cisco.box.com/shared/static/24q94bb94nz4wfnl20afwulffh3lcyt2.bz2
     dest: /tmp/contiv-compose.bz2
-  when: docker_compose_version.stdout != "libcompose-cli version 0.0.0-dev (4c0c2dd)"
+    force: yes
+  when: contiv_compose_version.stdout != "libcompose-cli version 0.0.0-dev (f6f7e5a)"
   tags:
     - prebake-for-dev
 
@@ -164,7 +165,6 @@
   shell: tar vxjf /tmp/contiv-compose.bz2
   args:
     chdir: /usr/bin/
-    creates: contiv-compose
-  when: docker_compose_version.stdout != "libcompose-cli version 0.0.0-dev (4c0c2dd)"
+  when: contiv_compose_version.stdout != "libcompose-cli version 0.0.0-dev (f6f7e5a)"
   tags:
     - prebake-for-dev
