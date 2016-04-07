@@ -218,7 +218,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-			volConfig, err := dc.requestVolume(parts[0], parts[1])
+			_, err := dc.requestVolume(parts[0], parts[1])
 			switch err {
 			case errVolumeNotFound:
 				log.Warnf("Volume %q not found in database, skipping")
@@ -229,7 +229,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			payload := &config.UseMount{
 				Hostname: dc.Host,
-				Volume:   volConfig,
+				Volume:   mount.Volume.Name,
 			}
 
 			if err := dc.Client.ReportMount(payload); err != nil {

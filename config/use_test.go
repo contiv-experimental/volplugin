@@ -16,19 +16,19 @@ var testUseVolumes = map[string]*Volume{
 
 var testUseMounts = map[string]*UseMount{
 	"basic": {
-		Volume:   testUseVolumes["basic"],
+		Volume:   testUseVolumes["basic"].String(),
 		Hostname: "hostname",
 	},
 	"basic-newhost": {
-		Volume:   testUseVolumes["basic"],
+		Volume:   testUseVolumes["basic"].String(),
 		Hostname: "hostname2",
 	},
 	"basic2": {
-		Volume:   testUseVolumes["basic2"],
+		Volume:   testUseVolumes["basic2"].String(),
 		Hostname: "hostname",
 	},
 	"basic2-newhost": {
-		Volume:   testUseVolumes["basic2"],
+		Volume:   testUseVolumes["basic2"].String(),
 		Hostname: "hostname2",
 	},
 }

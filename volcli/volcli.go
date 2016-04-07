@@ -653,11 +653,11 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		VolumeName: volume,
 	}
 
-	if err := cfg.RemoveUse(&config.UseMount{Volume: vc}, true); err != nil {
+	if err := cfg.RemoveUse(&config.UseMount{Volume: vc.String()}, true); err != nil {
 		fmt.Fprintf(os.Stderr, "Trouble removing mount lock (may be harmless) for %q: %v", vc, err)
 	}
 
-	if err := cfg.RemoveUse(&config.UseSnapshot{Volume: vc}, true); err != nil {
+	if err := cfg.RemoveUse(&config.UseSnapshot{Volume: vc.String()}, true); err != nil {
 		fmt.Fprintf(os.Stderr, "Trouble removing snapshot lock (may be harmless) for %q: %v", vc, err)
 	}
 
@@ -695,13 +695,13 @@ func useExec(ctx *cli.Context) (bool, error) {
 	}
 
 	um := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   lock.ReasonMaintenance,
 		Hostname: host,
 	}
 
 	us := &config.UseSnapshot{
-		Volume: vc,
+		Volume: vc.String(),
 		Reason: lock.ReasonMaintenance,
 	}
 

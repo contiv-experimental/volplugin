@@ -22,7 +22,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	log.Infof("starting snapshot prune for %q", val.VolumeName)
 
 	uc := &config.UseSnapshot{
-		Volume: val,
+		Volume: val.String(),
 		Reason: lock.ReasonSnapshotPrune,
 	}
 
@@ -75,7 +75,7 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 	log.Infof("Snapshotting %q.", volume)
 
 	uc := &config.UseSnapshot{
-		Volume: val,
+		Volume: val.String(),
 		Reason: lock.ReasonSnapshot,
 	}
 

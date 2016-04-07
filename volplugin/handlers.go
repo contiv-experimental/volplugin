@@ -192,7 +192,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ut := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Hostname: dc.Host,
 	}
 
@@ -236,7 +236,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ut := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Hostname: dc.Host,
 	}
 

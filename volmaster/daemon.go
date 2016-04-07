@@ -285,24 +285,24 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: volConfig,
+		Volume: volConfig.String(),
 		Reason: lock.ReasonCopy,
 	}
 
 	newUC := &config.UseMount{
-		Volume:   newVolConfig,
+		Volume:   newVolConfig.String(),
 		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	newSnapUC := &config.UseSnapshot{
-		Volume: newVolConfig,
+		Volume: newVolConfig.String(),
 		Reason: lock.ReasonCopy,
 	}
 
@@ -448,13 +448,13 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   lock.ReasonRemove,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: vc,
+		Volume: vc.String(),
 		Reason: lock.ReasonRemove,
 	}
 
@@ -520,7 +520,13 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if _, err := d.Config.GetVolume(req.Volume.PolicyName, req.Volume.VolumeName); err != nil {
+	parts := strings.SplitN(req.Volume, "/", 2)
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		httpError(w, "Invalid volume name", err)
+		return
+	}
+
+	if _, err := d.Config.GetVolume(parts[0], parts[1]); err != nil {
 		httpError(w, "Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
 		return
@@ -598,13 +604,13 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Reason:   lock.ReasonCreate,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: volConfig,
+		Volume: volConfig.String(),
 		Reason: lock.ReasonCreate,
 	}
 
