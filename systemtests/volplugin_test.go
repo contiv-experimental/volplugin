@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/contiv/volplugin/config"
@@ -61,11 +62,28 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+
+	_, err := s.volcli("volume runtime upload policy1/test < /testdata/iops1.json")
+	c.Assert(err, IsNil)
 	time.Sleep(45 * time.Second)
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo cat /sys/fs/cgroup/blkio/blkio.throttle.write_iops_device")
+	c.Assert(err, IsNil)
+	c.Assert(strings.TrimSpace(out), Not(Equals), "")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	var found bool
+	for _, line := range lines {
+		parts := strings.Split(line, " ")
+		c.Assert(len(parts), Equals, 2)
+		if parts[1] == "1000" {
+			found = true
+		}
+	}
+	c.Assert(found, Equals, true)
+
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v policy1/test:/mnt alpine sleep 10m"), NotNil)
 
-	s.clearContainers()
+	c.Assert(s.clearContainers(), IsNil)
 
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand("docker run -itd -v policy1/test:/mnt alpine sleep 10m"), IsNil)
