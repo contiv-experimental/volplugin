@@ -41,7 +41,7 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Drive
 	driverOpts := storage.DriverOptions{}
 	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
-		return nil, nil, driverOpts, errored.Errorf("Could not determine policy configuration").Combine(err)
+		return nil, nil, driverOpts, err
 	}
 
 	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)

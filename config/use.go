@@ -103,7 +103,7 @@ func (c *Client) PublishUse(ut UseLocker) error {
 	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
 	if _, ok := err.(client.Error); ok && err.(client.Error).Code == client.ErrorCodeNodeExist {
 		if ut.MayExist() {
-			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevValue: string(content)})
+			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevExist: client.PrevExist, PrevValue: string(content)})
 			return err
 		}
 	}
