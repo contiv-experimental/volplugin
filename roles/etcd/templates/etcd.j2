@@ -13,6 +13,8 @@ export ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_client_port1 }},http://0.0
 export ETCD_ADVERTISE_CLIENT_URLS=http://{{ node_addr }}:{{ etcd_client_port1 }},http://{{ node_addr }}:{{ etcd_client_port2 }}
 export ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }},http://{{ node_addr }}:{{ etcd_peer_port2 }}
 export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
+export ETCD_HEARTBEAT_INTERVAL={{ etcd_heartbeat_interval }}
+export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
 
 case $1 in
 start)
