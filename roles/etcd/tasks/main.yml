@@ -6,12 +6,13 @@
     validate_certs: "{{ validate_certs }}"
     url: https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz
     dest: /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz
-    force: no
   tags:
     - prebake-for-dev
 
 - name: install etcd
-  shell: creates=/usr/bin/etcd tar vxzf /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz && mv etcd-{{ etcd_version }}-linux-amd64/etcd* /usr/bin
+  shell: >
+      tar vxzf /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz && \
+      mv etcd-{{ etcd_version }}-linux-amd64/etcd* /usr/bin
   tags:
     - prebake-for-dev
 
