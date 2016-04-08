@@ -3,12 +3,9 @@
     validate_certs: "{{ validate_certs }}"
     url: https://releases.hashicorp.com/consul/0.5.2/consul_0.5.2_linux_amd64.zip
     dest: /tmp/consul_0.5.2_linux_amd64.zip
-    force: no
-  register: download_result
 
 - name: install consul
   unarchive:
     copy: no
     src: /tmp/consul_0.5.2_linux_amd64.zip
     dest: /usr/bin
-  when: download_result | changed

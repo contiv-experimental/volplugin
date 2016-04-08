@@ -32,14 +32,11 @@
     validate_certs: "{{ validate_certs }}"
     url: "{{ contiv_cluster_src_file }}" 
     dest: "{{ contiv_cluster_dest_file }}"
-    force: no
-  register: download_result
 
 - name: install clusterm
   shell: tar vxjf {{ contiv_cluster_dest_file }} 
   args:
     chdir: /usr/bin/
-  when: download_result | changed 
 
 - name: create conf dir for clusterm
   file:
