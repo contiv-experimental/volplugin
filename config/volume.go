@@ -216,17 +216,42 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 	for _, node := range resp.Node.Nodes {
 		if len(node.Nodes) > 0 {
 			node = node.Nodes[0]
+			key := strings.TrimPrefix(node.Key, policyPath)
 			if !node.Dir && strings.HasSuffix(node.Key, "/create") {
-				config := &Volume{}
+				key = strings.TrimSuffix(key, "/create")
+
+				config, ok := configs[key[1:]]
+				if !ok {
+					config = new(Volume)
+				}
+
 				if err := json.Unmarshal([]byte(node.Value), config); err != nil {
 					return nil, err
 				}
-
-				key := strings.TrimPrefix(node.Key, policyPath)
-				key = strings.TrimSuffix(key, "/create")
 				// trim leading slash
 				configs[key[1:]] = config
 			}
+
+			if !node.Dir && strings.HasSuffix(node.Key, "/runtime") {
+				key = strings.TrimSuffix(key, "/create")
+
+				config, ok := configs[key[1:]]
+				if !ok {
+					config = new(Volume)
+				}
+
+				if err := json.Unmarshal([]byte(node.Value), &config.RuntimeOptions); err != nil {
+					return nil, err
+				}
+				// trim leading slash
+				configs[key[1:]] = config
+			}
+		}
+	}
+
+	for _, config := range configs {
+		if _, err := config.CreateOptions.ActualSize(); err != nil {
+			return nil, err
 		}
 	}
 
@@ -263,41 +288,6 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
 				volume := &RuntimeOptions{}
-
-				if resp.Node.Value != "" {
-					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
-						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
-						return
-					}
-
-					if err := volume.Validate(); err != nil {
-						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
-						return
-					}
-					policy, vol := path.Split(path.Dir(resp.Node.Key))
-					vw.Key = path.Join(path.Base(policy), vol)
-					vw.Config = volume
-				}
-			}
-
-			w.Channel <- vw
-		}
-	})
-
-	watch.Create(w)
-}
-
-// WatchVolumeCreates watches the volumes tree and returns data back to the activity channel.
-func (c *Client) WatchVolumeCreates(activity chan *watch.Watch) {
-	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
-		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
-
-		if !resp.Node.Dir && path.Base(resp.Node.Key) == "create" {
-			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
-			if resp.Action != "delete" {
-				volume := &Volume{}
 
 				if resp.Node.Value != "" {
 					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {

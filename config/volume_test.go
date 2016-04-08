@@ -99,7 +99,7 @@ func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 func (s *configSuite) TestWatchVolumes(c *C) {
 	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
 	volumeChan := make(chan *watch.Watch)
-	s.tlc.WatchVolumeCreates(volumeChan)
+	s.tlc.WatchVolumeRuntimes(volumeChan)
 
 	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)
@@ -107,12 +107,8 @@ func (s *configSuite) TestWatchVolumes(c *C) {
 	vol2 := <-volumeChan
 	c.Assert(vol2.Key, Equals, "policy1/test")
 	c.Assert(vol2.Config, NotNil)
-	volConfig := vol2.Config.(*Volume)
-	c.Assert(vol.PolicyName, Equals, volConfig.PolicyName)
-	c.Assert(vol.VolumeName, Equals, volConfig.VolumeName)
-	c.Assert(vol.CreateOptions, DeepEquals, volConfig.CreateOptions)
-	c.Assert(vol.RuntimeOptions, DeepEquals, volConfig.RuntimeOptions)
-	c.Assert(vol.DriverOptions, DeepEquals, volConfig.DriverOptions)
+	volConfig := vol2.Config.(*RuntimeOptions)
+	c.Assert(vol.RuntimeOptions, DeepEquals, *volConfig)
 }
 
 func (s *configSuite) TestVolumeCRUD(c *C) {
@@ -181,6 +177,10 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 		sort.Strings(volumeKeys)
 
 		c.Assert(volumeNames, DeepEquals, volumeKeys)
+		for _, vol := range volumes {
+			c.Assert(vol.CreateOptions, DeepEquals, testPolicies["basic"].CreateOptions)
+			c.Assert(vol.RuntimeOptions, DeepEquals, testPolicies["basic"].RuntimeOptions)
+		}
 	}
 
 	allVols, err := s.tlc.ListAllVolumes()

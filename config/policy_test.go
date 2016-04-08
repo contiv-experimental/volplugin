@@ -9,6 +9,14 @@ var testPolicies = map[string]*Policy{
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
+			actualSize: 10,
+		},
+		RuntimeOptions: RuntimeOptions{
+			UseSnapshots: true,
+			Snapshot: SnapshotConfig{
+				Keep:      10,
+				Frequency: "1m",
+			},
 		},
 		FileSystems: defaultFilesystems,
 	},
