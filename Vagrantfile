@@ -143,6 +143,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       mon.vm.provider :virtualbox do |vb, override|
+        vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+
         override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
         override.vm.network :private_network, ip: "#{SUBNET}.2#{i}", virtualbox__intnet: true
 
