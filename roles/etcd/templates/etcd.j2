@@ -6,6 +6,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
+set -x
 export ETCD_NAME={{ node_name }}
 export ETCD_DATA_DIR=/var/lib/etcd
 export ETCD_INITIAL_CLUSTER_TOKEN=contiv-cluster
