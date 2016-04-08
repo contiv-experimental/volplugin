@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -13,32 +12,62 @@ import (
 )
 
 func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
-	c.Skip("Can't be run until docker fixes this bug")
+	outerCount := 5
 	count := 15
-	errChan := make(chan error, count)
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	dockerCmd := "docker run -d -v policy1/test:/mnt alpine sleep 10m"
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
+	for i := 0; i < outerCount; i++ {
+		syncChan := make(chan struct{})
 
-	for x := 0; x < count; x++ {
-		go func() {
-			dockerCmd := "docker run -d -v policy1/test:/mnt alpine sleep 10m"
-			errChan <- s.vagrant.GetNode("mon0").RunCommand(dockerCmd)
-		}()
-	}
-
-	var realErr error
-
-	for x := 0; x < count; x++ {
-		err := <-errChan
-		if err != nil {
-			realErr = err
+		for x := 0; x < count; x++ {
+			go func(x int) {
+				defer func() { syncChan <- struct{}{} }()
+				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
+				dockerCmd := fmt.Sprintf("run -d -v policy1/test%d:/mnt alpine sleep 10m", x)
+				out, err := s.docker(dockerCmd)
+				c.Assert(err, IsNil)
+				_, err = s.docker(dockerCmd)
+				c.Assert(err, NotNil)
+				_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%d", x))
+				c.Assert(err, IsNil)
+				out2, err := s.docker(fmt.Sprintf("exec %s ls /mnt", strings.TrimSpace(out)))
+				c.Assert(err, IsNil)
+				c.Assert(strings.TrimSpace(out2), Equals, "lost+found")
+				out3, err := s.docker(fmt.Sprintf("rm -f %s", strings.TrimSpace(out)))
+				if err != nil {
+					log.Info(strings.TrimSpace(out3))
+				}
+				c.Assert(err, IsNil)
+			}(x)
 		}
-	}
 
-	c.Assert(realErr, IsNil)
+		for x := 0; x < count; x++ {
+			<-syncChan
+		}
+
+		// FIXME netplugin is broken
+		c.Assert(s.restartNetplugin(), IsNil)
+		c.Assert(s.clearContainers(), IsNil)
+		c.Assert(s.restartNetplugin(), IsNil)
+
+		purgeChan := make(chan error, count)
+		for x := 0; x < count; x++ {
+			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
+		}
+
+		var errs int
+
+		for x := 0; x < count; x++ {
+			err := <-purgeChan
+			if err != nil {
+				log.Error(err)
+				errs++
+			}
+		}
+
+		c.Assert(errs, Equals, 0)
+	}
 }
+
 func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 	nodes := s.vagrant.GetNodes()
 	outerCount := 5
@@ -46,7 +75,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 	for outer := 0; outer < outerCount; outer++ {
 		syncChan := make(chan struct{}, len(nodes)*count)
-		errChan := make(chan error, len(nodes)*count)  // two potential errors per goroutine
+		errChan := make(chan error, len(nodes)*count)
 		outChan := make(chan string, len(nodes)*count) // diagnostics
 
 		for x := 0; x < count; x++ {
@@ -115,6 +144,8 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 			c.Fail()
 		}
 
+		c.Assert(s.clearContainers(), IsNil)
+
 		purgeChan := make(chan error, count)
 		for x := 0; x < count; x++ {
 			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
@@ -131,11 +162,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 		}
 
 		c.Assert(errs, Equals, 0)
-		// XXX docker seems to ignore the new create if it happens too quickly. File a
-		// bug for this.
 		c.Assert(s.restartDocker(), IsNil)
-		c.Assert(s.clearContainers(), IsNil)
-		time.Sleep(1 * time.Second)
 	}
 }
 

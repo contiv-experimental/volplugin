@@ -45,7 +45,9 @@ func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool)
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
-	s.vagrant.GetNode(host).RunCommand(fmt.Sprintf("docker volume rm %s/%s", policy, name))
+	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(fmt.Sprintf("docker volume rm %s/%s", policy, name)); err != nil {
+		log.Error(out, err)
+	}
 
 	defer func() {
 		if purgeCeph {

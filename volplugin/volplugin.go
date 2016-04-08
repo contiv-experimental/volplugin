@@ -35,6 +35,8 @@ type DaemonConfig struct {
 	runtimeMutex     *sync.RWMutex
 	runtimeVolumeMap map[string]config.RuntimeOptions
 	runtimeStopChans map[string]chan struct{}
+	mountMutex       *sync.Mutex
+	mountCount       map[string]int
 }
 
 // VolumeRequest is taken from
@@ -66,6 +68,8 @@ func NewDaemonConfig(master, host string) *DaemonConfig {
 		runtimeMutex:     new(sync.RWMutex),
 		runtimeVolumeMap: map[string]config.RuntimeOptions{},
 		runtimeStopChans: map[string]chan struct{}{},
+		mountMutex:       new(sync.Mutex),
+		mountCount:       map[string]int{},
 	}
 }
 
@@ -239,6 +243,7 @@ func (dc *DaemonConfig) updateMounts() error {
 				}
 			}
 
+			dc.mountIncrement(mount.Volume.Name)
 			go dc.startRuntimePoll(mount.Volume.Name, mount)
 			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
 		}

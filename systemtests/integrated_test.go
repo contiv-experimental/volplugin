@@ -32,6 +32,8 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 	}
 
 	c.Assert(s.clearContainers(), IsNil)
+	c.Assert(s.purgeVolume("mon1", "policy1", "test", false), IsNil)
+	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 	c.Assert(s.vagrant.GetNode("mon1").RunCommand(dockerCmd), IsNil)
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
