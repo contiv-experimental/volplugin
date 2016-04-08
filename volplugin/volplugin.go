@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -27,10 +28,13 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Master string
-	Host   string
-	Global *config.Global
-	Client *client.Driver
+	Master           string
+	Host             string
+	Global           *config.Global
+	Client           *client.Driver
+	runtimeMutex     *sync.RWMutex
+	runtimeVolumeMap map[string]config.RuntimeOptions
+	runtimeStopChans map[string]chan struct{}
 }
 
 // VolumeRequest is taken from
@@ -51,6 +55,18 @@ type VolumeResponse struct {
 // https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
 type volumeGet struct {
 	Name string
+}
+
+// NewDaemonConfig creates a DaemonConfig from the master host and hostname
+// arguments.
+func NewDaemonConfig(master, host string) *DaemonConfig {
+	return &DaemonConfig{
+		Master:           master,
+		Host:             host,
+		runtimeMutex:     new(sync.RWMutex),
+		runtimeVolumeMap: map[string]config.RuntimeOptions{},
+		runtimeStopChans: map[string]chan struct{}{},
+	}
 }
 
 // Daemon starts the volplugin service.
@@ -104,7 +120,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 		"/Plugin.Activate":      dc.activate,
 		"/Plugin.Deactivate":    dc.nilAction,
 		"/VolumeDriver.Create":  dc.create,
-		"/VolumeDriver.Remove":  dc.remove,
+		"/VolumeDriver.Remove":  dc.getPath, // we never actually remove through docker's interface.
 		"/VolumeDriver.List":    dc.list,
 		"/VolumeDriver.Get":     dc.get,
 		"/VolumeDriver.Path":    dc.getPath,
@@ -202,7 +218,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-			volConfig, err := dc.requestVolume(parts[0], parts[1])
+			_, err := dc.requestVolume(parts[0], parts[1])
 			switch err {
 			case errVolumeNotFound:
 				log.Warnf("Volume %q not found in database, skipping")
@@ -213,7 +229,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			payload := &config.UseMount{
 				Hostname: dc.Host,
-				Volume:   volConfig,
+				Volume:   mount.Volume.Name,
 			}
 
 			if err := dc.Client.ReportMount(payload); err != nil {
@@ -223,6 +239,7 @@ func (dc *DaemonConfig) updateMounts() error {
 				}
 			}
 
+			go dc.startRuntimePoll(mount.Volume.Name, mount)
 			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
 		}
 	}

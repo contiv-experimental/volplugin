@@ -18,23 +18,29 @@ import (
 // Volume is the configuration of the policy. It includes pool and
 // snapshot information.
 type Volume struct {
-	PolicyName string         `json:"policy"`
-	VolumeName string         `json:"name"`
-	Options    *VolumeOptions `json:"options"`
+	PolicyName     string            `json:"policy"`
+	VolumeName     string            `json:"name"`
+	DriverOptions  map[string]string `json:"driver"`
+	CreateOptions  CreateOptions     `json:"create"`
+	RuntimeOptions RuntimeOptions    `json:"runtime"`
+	Backend        string            `json:"backend"`
 }
 
-// VolumeOptions comprises the optional paramters a volume can accept.
-type VolumeOptions struct {
-	Pool         string          `json:"pool" merge:"pool"`
-	Size         string          `json:"size" merge:"size"`
-	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
-	Snapshot     SnapshotConfig  `json:"snapshot"`
-	FileSystem   string          `json:"filesystem" merge:"filesystem"`
-	Ephemeral    bool            `json:"ephemeral,omitempty" merge:"ephemeral"`
-	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
-	Backend      string          `json:"backend"`
+// CreateOptions are the set of options used by volmaster during the volume
+// create operation.
+type CreateOptions struct {
+	Size       string `json:"size" merge:"size"`
+	FileSystem string `json:"filesystem" merge:"filesystem"`
 
 	actualSize units.Base2Bytes
+}
+
+// RuntimeOptions are the set of options used by volplugin when mounting the
+// volume, and by volsupervisor for calculating periodic work.
+type RuntimeOptions struct {
+	UseSnapshots bool            `json:"snapshots" merge:"snapshots"`
+	Snapshot     SnapshotConfig  `json:"snapshot"`
+	RateLimit    RateLimitConfig `json:"rate-limit,omitempty"`
 }
 
 // RateLimitConfig is the configuration for limiting the rate of disk access.
@@ -51,8 +57,23 @@ type SnapshotConfig struct {
 	Keep      uint   `json:"keep" merge:"snapshots.keep"`
 }
 
-func (c *Client) volume(policy, name string) string {
-	return c.prefixed(rootVolume, policy, name)
+func (c *Client) volume(policy, name, typ string) string {
+	return c.prefixed(rootVolume, policy, name, typ)
+}
+
+// PublishVolumeRuntime publishes the runtime parameters for each volume.
+func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
+	content, err := json.Marshal(ro)
+	if err != nil {
+		return err
+	}
+
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vo.PolicyName, vo.VolumeName), "", &client.SetOptions{Dir: true})
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vo.PolicyName, vo.VolumeName, "runtime"), string(content), nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateVolume sets the appropriate config metadata for a volume creation
@@ -63,7 +84,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		return nil, err
 	}
 
-	if err := mergeOpts(&resp.DefaultVolumeOptions, rc.Opts); err != nil {
+	if err := mergeOpts(resp, rc.Opts); err != nil {
 		return nil, err
 	}
 
@@ -72,17 +93,20 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 	}
 
 	vc := &Volume{
-		Options:    &resp.DefaultVolumeOptions,
-		PolicyName: rc.Policy,
-		VolumeName: rc.Volume,
+		Backend:        resp.Backend,
+		DriverOptions:  resp.DriverOptions,
+		CreateOptions:  resp.CreateOptions,
+		RuntimeOptions: resp.RuntimeOptions,
+		PolicyName:     rc.Policy,
+		VolumeName:     rc.Volume,
 	}
 
 	if err := vc.Validate(); err != nil {
 		return nil, err
 	}
 
-	if vc.Options.FileSystem == "" {
-		vc.Options.FileSystem = defaultFilesystem
+	if vc.CreateOptions.FileSystem == "" {
+		vc.CreateOptions.FileSystem = defaultFilesystem
 	}
 
 	return vc, nil
@@ -99,33 +123,33 @@ func (c *Client) PublishVolume(vc *Volume) error {
 		return err
 	}
 
-	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName), "", &client.SetOptions{Dir: true})
+	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName, vc.VolumeName), "", &client.SetOptions{Dir: true})
 
-	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
+	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName, "create"), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
 		return ErrExist
 	}
 
-	return nil
+	return c.PublishVolumeRuntime(vc, vc.RuntimeOptions)
 }
 
 // ActualSize returns the size of the volume as an integer of megabytes.
-func (vo *VolumeOptions) ActualSize() (uint64, error) {
-	if err := vo.computeSize(); err != nil {
+func (co *CreateOptions) ActualSize() (uint64, error) {
+	if err := co.computeSize(); err != nil {
 		return 0, err
 	}
-	return uint64(vo.actualSize), nil
+	return uint64(co.actualSize), nil
 }
 
-func (vo *VolumeOptions) computeSize() error {
+func (co *CreateOptions) computeSize() error {
 	var err error
 
-	vo.actualSize, err = units.ParseBase2Bytes(vo.Size)
+	co.actualSize, err = units.ParseBase2Bytes(co.Size)
 	if err != nil {
 		return err
 	}
 
-	if vo.actualSize != 0 {
-		vo.actualSize = vo.actualSize / units.Mebibyte
+	if co.actualSize != 0 {
+		co.actualSize = co.actualSize / units.Mebibyte
 	}
 
 	return nil
@@ -134,7 +158,7 @@ func (vo *VolumeOptions) computeSize() error {
 // GetVolume returns the Volume for a given volume.
 func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 	// FIXME make this take a single string and not a split one
-	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name), nil)
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "create"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -149,13 +173,32 @@ func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 		return nil, err
 	}
 
+	runtime, err := c.GetVolumeRuntime(policy, name)
+	if err != nil {
+		return nil, err
+	}
+
+	ret.RuntimeOptions = runtime
+
 	return ret, nil
+}
+
+// GetVolumeRuntime retrieves only the runtime parameters for the volume.
+func (c *Client) GetVolumeRuntime(policy, name string) (RuntimeOptions, error) {
+	runtime := RuntimeOptions{}
+
+	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "runtime"), nil)
+	if err != nil {
+		return runtime, err
+	}
+
+	return runtime, json.Unmarshal([]byte(resp.Node.Value), &runtime)
 }
 
 // RemoveVolume removes a volume from configuration.
 func (c *Client) RemoveVolume(policy, name string) error {
 	// FIXME might be a consistency issue here; pass around volume structs instead.
-	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{})
+	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{Recursive: true})
 	return err
 }
 
@@ -171,18 +214,45 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 	configs := map[string]*Volume{}
 
 	for _, node := range resp.Node.Nodes {
-		if node.Value == "" {
-			continue
-		}
+		if len(node.Nodes) > 0 {
+			node = node.Nodes[0]
+			key := strings.TrimPrefix(node.Key, policyPath)
+			if !node.Dir && strings.HasSuffix(node.Key, "/create") {
+				key = strings.TrimSuffix(key, "/create")
 
-		config := &Volume{}
-		if err := json.Unmarshal([]byte(node.Value), config); err != nil {
+				config, ok := configs[key[1:]]
+				if !ok {
+					config = new(Volume)
+				}
+
+				if err := json.Unmarshal([]byte(node.Value), config); err != nil {
+					return nil, err
+				}
+				// trim leading slash
+				configs[key[1:]] = config
+			}
+
+			if !node.Dir && strings.HasSuffix(node.Key, "/runtime") {
+				key = strings.TrimSuffix(key, "/create")
+
+				config, ok := configs[key[1:]]
+				if !ok {
+					config = new(Volume)
+				}
+
+				if err := json.Unmarshal([]byte(node.Value), &config.RuntimeOptions); err != nil {
+					return nil, err
+				}
+				// trim leading slash
+				configs[key[1:]] = config
+			}
+		}
+	}
+
+	for _, config := range configs {
+		if _, err := config.CreateOptions.ActualSize(); err != nil {
 			return nil, err
 		}
-
-		key := strings.TrimPrefix(node.Key, policyPath)
-		// trim leading slash
-		configs[key[1:]] = config
 	}
 
 	return configs, nil
@@ -208,15 +278,16 @@ func (c *Client) ListAllVolumes() ([]string, error) {
 	return ret, nil
 }
 
-// WatchVolumes watches the volumes tree and returns data back to the activity channel.
-func (c *Client) WatchVolumes(activity chan *watch.Watch) {
+// WatchVolumeRuntimes watches the runtime portions of the volume and yields
+// back any information received through the activity channel.
+func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
 		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
 
-		if !resp.Node.Dir {
+		if !resp.Node.Dir && path.Base(resp.Node.Key) == "runtime" {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
-				volume := &Volume{}
+				volume := &RuntimeOptions{}
 
 				if resp.Node.Value != "" {
 					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
@@ -230,6 +301,8 @@ func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 						time.Sleep(1 * time.Second)
 						return
 					}
+					policy, vol := path.Split(path.Dir(resp.Node.Key))
+					vw.Key = path.Join(path.Base(policy), vol)
 					vw.Config = volume
 				}
 			}
@@ -243,13 +316,9 @@ func (c *Client) WatchVolumes(activity chan *watch.Watch) {
 
 // Validate options for a volume. Should be called anytime options are
 // considered.
-func (vo *VolumeOptions) Validate() error {
-	if vo.Pool == "" {
-		return errored.Errorf("No Pool specified")
-	}
-
-	if vo.actualSize == 0 {
-		actualSize, err := vo.ActualSize()
+func (co *CreateOptions) Validate() error {
+	if co.actualSize == 0 {
+		actualSize, err := co.ActualSize()
 		if err != nil {
 			return err
 		}
@@ -259,7 +328,13 @@ func (vo *VolumeOptions) Validate() error {
 		}
 	}
 
-	if vo.UseSnapshots && (vo.Snapshot.Frequency == "" || vo.Snapshot.Keep == 0) {
+	return nil
+}
+
+// Validate options for a volume. Should be called anytime options are
+// considered.
+func (ro *RuntimeOptions) Validate() error {
+	if ro.UseSnapshots && (ro.Snapshot.Frequency == "" || ro.Snapshot.Keep == 0) {
 		return errored.Errorf("Snapshots are configured but cannot be used due to blank settings")
 	}
 
@@ -268,19 +343,23 @@ func (vo *VolumeOptions) Validate() error {
 
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *Volume) Validate() error {
+	if cfg.Backend == "" {
+		return errored.Errorf("No storage backend selected for volume %v", cfg)
+	}
+
 	if cfg.VolumeName == "" {
-		return errored.Errorf("Volume Name was omitted")
+		return errored.Errorf("Volume Name was omitted for volume %v", cfg)
 	}
 
 	if cfg.PolicyName == "" {
-		return errored.Errorf("Policy name was omitted")
+		return errored.Errorf("Policy name was omitted for volume %v", cfg)
 	}
 
-	if cfg.Options == nil {
-		return errored.Errorf("Options were omitted from volume creation")
+	if err := cfg.CreateOptions.Validate(); err != nil {
+		return err
 	}
 
-	return cfg.Options.Validate()
+	return cfg.RuntimeOptions.Validate()
 }
 
 func (cfg *Volume) String() string {

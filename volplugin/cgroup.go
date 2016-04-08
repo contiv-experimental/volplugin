@@ -20,12 +20,12 @@ func makeLimit(mc *storage.Mount, limit uint64) []byte {
 	return []byte(fmt.Sprintf("%d:%d %d\n", mc.DevMajor, mc.DevMinor, limit))
 }
 
-func applyCGroupRateLimit(vc *config.Volume, mc *storage.Mount) error {
+func applyCGroupRateLimit(ro config.RuntimeOptions, mc *storage.Mount) error {
 	opMap := map[string]uint64{
-		writeIOPSFile: uint64(vc.Options.RateLimit.WriteIOPS),
-		readIOPSFile:  uint64(vc.Options.RateLimit.ReadIOPS),
-		writeBPSFile:  vc.Options.RateLimit.WriteBPS,
-		readBPSFile:   vc.Options.RateLimit.ReadBPS,
+		writeIOPSFile: uint64(ro.RateLimit.WriteIOPS),
+		readIOPSFile:  uint64(ro.RateLimit.ReadIOPS),
+		writeBPSFile:  ro.RateLimit.WriteBPS,
+		readBPSFile:   ro.RateLimit.ReadBPS,
 	}
 
 	for fn, val := range opMap {

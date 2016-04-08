@@ -24,7 +24,7 @@ var (
 // volume, removing a volume, snapshotting a volume. These are supplied in the
 // `Reason` field as text.
 type UseMount struct {
-	Volume   *Volume
+	Volume   string
 	Hostname string
 	Reason   string
 }
@@ -33,14 +33,14 @@ type UseMount struct {
 // for snapshots this time. Taking snapshots can block certain actions such as
 // taking other snapshots or deleting snapshots.
 type UseSnapshot struct {
-	Volume *Volume
+	Volume string
 	Reason string
 }
 
 // UseLocker is an interface to locks controlled in etcd, or what we call "users".
 type UseLocker interface {
-	// GetVolume gets the *Volume for this use.
-	GetVolume() *Volume
+	// GetVolume gets the volume name for this use.
+	GetVolume() string
 	// GetReason gets the reason for this use.
 	GetReason() string
 	// Type returns the type of lock.
@@ -50,7 +50,7 @@ type UseLocker interface {
 }
 
 // GetVolume gets the *Volume for this use.
-func (um *UseMount) GetVolume() *Volume {
+func (um *UseMount) GetVolume() string {
 	return um.Volume
 }
 
@@ -70,7 +70,7 @@ func (um *UseMount) MayExist() bool {
 }
 
 // GetVolume gets the *Volume for this use.
-func (us *UseSnapshot) GetVolume() *Volume {
+func (us *UseSnapshot) GetVolume() string {
 	return us.Volume
 }
 
@@ -89,8 +89,8 @@ func (us *UseSnapshot) MayExist() bool {
 	return false
 }
 
-func (c *Client) use(typ string, vc *Volume) string {
-	return c.prefixed(rootUse, typ, vc.String())
+func (c *Client) use(typ string, vc string) string {
+	return c.prefixed(rootUse, typ, vc)
 }
 
 // PublishUse pushes the use to etcd.
@@ -152,7 +152,7 @@ func (c *Client) RemoveUse(ut UseLocker, force bool) error {
 
 // GetUse retrieves the UseMount for the given volume name.
 func (c *Client) GetUse(ut UseLocker, vc *Volume) error {
-	resp, err := c.etcdClient.Get(context.Background(), c.use(ut.Type(), vc), nil)
+	resp, err := c.etcdClient.Get(context.Background(), c.use(ut.Type(), vc.String()), nil)
 	if err != nil {
 		return err
 	}

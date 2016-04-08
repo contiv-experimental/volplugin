@@ -158,9 +158,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 						defer wg.Done()
 						log.Infof("Creating image policy1/test%d on %q", x, node.GetName())
 
-						if out, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
-							log.Error(out)
-							log.Error(err)
+						if _, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
 							errChan <- err
 						}
 					}(node, x)
@@ -172,14 +170,13 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 				for i := 0; i < len(nodes); i++ {
 					select {
-					case err := <-errChan:
-						log.Errorf("Processing %d: %v", x, err)
+					case <-errChan:
 						errs++
 					default:
 					}
 				}
 
-				c.Assert(errs, Equals, 0)
+				c.Assert(errs, Equals, 2)
 			}(nodes, x)
 		}
 

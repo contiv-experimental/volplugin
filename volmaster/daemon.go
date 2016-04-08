@@ -96,6 +96,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
 		"/list":                        d.handleList,
 		"/get/{policy}/{volume}":       d.handleGet,
+		"/runtime/{policy}/{volume}":   d.handleRuntime,
 		"/global":                      d.handleGlobal,
 		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
 	}
@@ -136,6 +137,30 @@ func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
+func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
+	volName := strings.TrimPrefix(r.URL.Path, "/runtime/")
+	parts := strings.SplitN(volName, "/", 2)
+
+	if len(parts) != 2 {
+		httpError(w, fmt.Sprintf("Invalid request for path in snapshot list: %q", r.URL.Path), nil)
+		return
+	}
+
+	runtime, err := d.Config.GetVolumeRuntime(parts[0], parts[1])
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	content, err := json.Marshal(runtime)
+	if err != nil {
+		httpError(w, "Marshalling response", err)
+		return
+	}
+
+	w.Write(content)
+}
+
 func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request) {
 	volName := strings.TrimPrefix(r.URL.Path, "/snapshots/")
 	parts := strings.SplitN(volName, "/", 2)
@@ -165,10 +190,8 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}
@@ -238,10 +261,8 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}
@@ -264,24 +285,24 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: volConfig,
+		Volume: volConfig.String(),
 		Reason: lock.ReasonCopy,
 	}
 
 	newUC := &config.UseMount{
-		Volume:   newVolConfig,
+		Volume:   newVolConfig.String(),
 		Reason:   lock.ReasonCopy,
 		Hostname: host,
 	}
 
 	newSnapUC := &config.UseSnapshot{
-		Volume: newVolConfig,
+		Volume: newVolConfig.String(),
 		Reason: lock.ReasonCopy,
 	}
 
@@ -328,7 +349,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+		driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
 		if err != nil {
 			httpError(w, "Initializing driver", err)
 			return
@@ -342,10 +363,8 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 
 		do := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: intName,
-				Params: storage.Params{
-					"pool": volConfig.Options.Pool,
-				},
+				Name:   intName,
+				Params: volConfig.DriverOptions,
 			},
 			Timeout: d.Global.Timeout,
 		}
@@ -378,7 +397,7 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(volConfig.Options.Backend, d.Global.MountPath)
+	driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
 	if err != nil {
 		httpError(w, "Initializing backend", err)
 		return
@@ -392,10 +411,8 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
+			Name:   intName,
+			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
 	}
@@ -431,13 +448,13 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   lock.ReasonRemove,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: vc,
+		Volume: vc.String(),
 		Reason: lock.ReasonRemove,
 	}
 
@@ -503,7 +520,13 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if _, err := d.Config.GetVolume(req.Volume.PolicyName, req.Volume.VolumeName); err != nil {
+	parts := strings.SplitN(req.Volume, "/", 2)
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		httpError(w, "Invalid volume name", err)
+		return
+	}
+
+	if _, err := d.Config.GetVolume(parts[0], parts[1]); err != nil {
 		httpError(w, "Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
 		return
@@ -581,22 +604,19 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Reason:   lock.ReasonCreate,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: volConfig,
+		Volume: volConfig.String(),
 		Reason: lock.ReasonCreate,
 	}
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
-		if err == storage.ErrVolumeExist {
-			log.Errorf("Volume %v exists, cleaning up", volConfig)
-			return nil
-		} else if err != nil {
+		if err != nil {
 			return errored.Errorf("Creating volume").Combine(err)
 		}
 

@@ -10,8 +10,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
-	"github.com/contiv/volplugin/storage"
-	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -136,44 +134,16 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 }
 
-func (dc *DaemonConfig) remove(w http.ResponseWriter, r *http.Request) {
+func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
 		return
 	}
 
-	vc, err := dc.requestVolume(uc.Policy, uc.Name)
+	driver, _, do, err := dc.structsVolumeName(uc)
 	if err != nil {
-		httpError(w, "Getting volume properties", err)
+		httpError(w, "Configuring request", err)
 		return
-	}
-
-	if vc.Options.Ephemeral {
-		if err := dc.requestRemove(uc.Policy, uc.Name); err != nil {
-			httpError(w, "Removing ephemeral volume", err)
-			return
-		}
-	}
-
-	driver, err := backend.NewDriver(vc.Options.Backend, dc.Global.MountPath)
-	if err != nil {
-		httpError(w, fmt.Sprintf("loading driver"), err)
-		return
-	}
-
-	name, err := driver.InternalName(uc.Request.Name)
-	if err != nil {
-		httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
-	}
-
-	do := storage.DriverOptions{
-		Volume: storage.Volume{
-			Name: name,
-			Params: storage.Params{
-				"pool": vc.Options.Pool,
-			},
-		},
-		Timeout: dc.Global.Timeout,
 	}
 
 	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do), Err: ""})
@@ -193,109 +163,36 @@ func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, r, &VolumeResponse{Mountpoint: "", Err: ""})
 }
 
-func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
-	uc, err := unmarshalAndCheck(w, r)
-	if err != nil {
-		return
-	}
-
-	log.Infof("Returning mount path to docker for volume: %q", uc.Request.Name)
-
-	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
-	if err != nil {
-		httpError(w, "Requesting policy configuration", err)
-		return
-	}
-
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
-	if err != nil {
-		httpError(w, fmt.Sprintf("loading driver"), err)
-		return
-	}
-
-	name, err := driver.InternalName(uc.Request.Name)
-	if err != nil {
-		httpError(w, fmt.Sprintf("Removing volume %q", uc.Request.Name), err)
-	}
-
-	do := storage.DriverOptions{
-		Volume: storage.Volume{
-			Name: name,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
-		},
-		Timeout: dc.Global.Timeout,
-	}
-
-	// FIXME need to ensure that the mount exists before returning to docker
-	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do)})
-}
-
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
 		return
 	}
 
+	driver, volConfig, driverOpts, err := dc.structsVolumeName(uc)
+	if err != nil {
+		httpError(w, "Configuring request", err)
+		return
+	}
+
 	log.Infof("Mounting volume %q", uc.Request.Name)
-
-	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
-	if err != nil {
-		httpError(w, "Could not determine policy configuration", err)
-		return
-	}
-
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
-	if err != nil {
-		httpError(w, fmt.Sprintf("loading driver"), err)
-		return
-	}
-
-	intName, err := driver.InternalName(uc.Request.Name)
-	if err != nil {
-		httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)
-		return
-	}
-
-	actualSize, err := volConfig.Options.ActualSize()
-	if err != nil {
-		httpError(w, "Computing size of volume", err)
-		return
-	}
-
-	driverOpts := storage.DriverOptions{
-		Volume: storage.Volume{
-			Name: intName,
-			Size: actualSize,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
-		},
-		FSOptions: storage.FSOptions{
-			Type: volConfig.Options.FileSystem,
-		},
-		Timeout: dc.Global.Timeout,
-	}
 
 	// if we're mounted already on this host, the mount publish will succeed and
 	// we will have two mounts, which will cause trouble at unmount time.
 
-	mounts, err := driver.Mounted(dc.Global.Timeout)
+	exists, err := dc.mountExists(driver, driverOpts)
 	if err != nil {
-		httpError(w, "System failure retrieving mounts", err)
+		httpError(w, "Mountpoint existence check", err)
 		return
 	}
 
-	for _, mount := range mounts {
-		if mount.Path == driver.MountPath(driverOpts) {
-			httpError(w, "Mount already exists on this host", nil)
-			return
-		}
+	if exists {
+		httpError(w, "Mountpoint already in use", err)
+		return
 	}
 
 	ut := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Hostname: dc.Host,
 	}
 
@@ -313,13 +210,14 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := applyCGroupRateLimit(volConfig, mc); err != nil {
+	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
 		httpError(w, "Applying cgroups", err)
 		return
 	}
 
 	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, dc.Client.AddStopChan(uc.Request.Name))
 
+	go dc.startRuntimePoll(volConfig.String(), mc)
 	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
 }
 
@@ -331,36 +229,14 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Unmounting volume %q", uc.Request.Name)
 
-	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
+	driver, volConfig, driverOpts, err := dc.structsVolumeName(uc)
 	if err != nil {
-		httpError(w, "Could not determine policy configuration", err)
+		httpError(w, "Configuring request", err)
 		return
-	}
-
-	driver, err := backend.NewDriver(volConfig.Options.Backend, dc.Global.MountPath)
-	if err != nil {
-		httpError(w, fmt.Sprintf("loading driver"), err)
-		return
-	}
-
-	intName, err := driver.InternalName(uc.Request.Name)
-	if err != nil {
-		httpError(w, fmt.Sprintf("Volume %q does not satisfy name requirements", uc.Request.Name), err)
-		return
-	}
-
-	driverOpts := storage.DriverOptions{
-		Volume: storage.Volume{
-			Name: intName,
-			Params: storage.Params{
-				"pool": volConfig.Options.Pool,
-			},
-		},
-		Timeout: dc.Global.Timeout,
 	}
 
 	ut := &config.UseMount{
-		Volume:   volConfig,
+		Volume:   volConfig.String(),
 		Hostname: dc.Host,
 	}
 
@@ -370,6 +246,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dc.Client.RemoveStopChan(uc.Request.Name)
+	dc.stopRuntimePoll(uc.Request.Name)
 
 	if err := dc.Client.ReportUnmount(ut); err != nil {
 		httpError(w, fmt.Sprintf("Reporting unmount for volume %v, to master", volConfig), err)

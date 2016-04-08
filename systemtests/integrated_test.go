@@ -43,15 +43,19 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
+	c.Assert(err, IsNil)
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", map[string]string{"pool": "test"}), IsNil)
+	_, err = s.uploadIntent("testpool", "testpool")
+	c.Assert(err, IsNil)
 
-	out, err := s.volcli("volume get policy1/test")
+	c.Assert(s.createVolume("mon0", "testpool", "test", nil), IsNil)
+
+	out, err := s.volcli("volume get testpool/test")
 	c.Assert(err, IsNil)
 
 	vc := &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
-	actualSize, err := vc.Options.ActualSize()
+	actualSize, err := vc.CreateOptions.ActualSize()
 	c.Assert(err, IsNil)
 	c.Assert(actualSize, Equals, uint64(10))
 }
@@ -73,56 +77,12 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 
 	vc := &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(out), vc), IsNil)
-	actualSize, err := vc.Options.ActualSize()
+
+	actualSize, err := vc.CreateOptions.ActualSize()
 	c.Assert(err, IsNil)
 	c.Assert(actualSize, Equals, uint64(200))
-	c.Assert(vc.Options.Snapshot.Frequency, Equals, "100m")
-	c.Assert(vc.Options.Snapshot.Keep, Equals, uint(20))
-}
-
-func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
-	_, err := s.uploadIntent("policy2", "fs")
-	c.Assert(err, IsNil)
-
-	opts := map[string]string{
-		"size": "1GB",
-	}
-
-	c.Assert(s.createVolume("mon0", "policy2", "test", opts), IsNil)
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/test:/mnt alpine sleep 10m"), IsNil)
-
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
-	c.Assert(err, IsNil)
-
-	lines := strings.Split(out, "\n")
-	pass := false
-	for _, line := range lines {
-		// cheat.
-		if strings.Contains(line, "/dev/rbd") {
-			pass = true
-			break
-		}
-	}
-
-	c.Assert(pass, Equals, true)
-	c.Assert(s.createVolume("mon0", "policy2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
-
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/testext4:/mnt alpine sleep 10m"), IsNil)
-
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
-	c.Assert(err, IsNil)
-
-	lines = strings.Split(out, "\n")
-	pass = false
-	for _, line := range lines {
-		// cheat.
-		if strings.Contains(line, "/dev/rbd") {
-			pass = true
-			break
-		}
-	}
-
-	c.Assert(pass, Equals, true)
+	c.Assert(vc.RuntimeOptions.Snapshot.Frequency, Equals, "100m")
+	c.Assert(vc.RuntimeOptions.Snapshot.Keep, Equals, uint(20))
 }
 
 func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
@@ -151,6 +111,37 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 	c.Assert(s.createVolume("mon0", "policy1", "test", opts), IsNil)
 	_, err := s.docker("run -itd -v policy1/test:/mnt alpine sleep 10m")
 	c.Assert(err, IsNil)
+
+	for key, fn := range optMap {
+		out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(fmt.Sprintf("sudo cat '%s'", fn))
+		c.Assert(err, IsNil)
+		var found bool
+
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.Split(line, " ")
+
+			if len(parts) < 2 {
+				continue
+			}
+
+			if parts[1] == opts[key] {
+				found = true
+			}
+		}
+
+		c.Assert(found, Equals, true)
+	}
+
+	s.volcli("volume runtime upload policy1/test < /testdata/iops1.json")
+	// copied from iops1.json
+	opts = map[string]string{
+		"rate-limit.write.bps":  "1000000",
+		"rate-limit.write.iops": "1000",
+		"rate-limit.read.bps":   "10",
+		"rate-limit.read.iops":  "1200",
+	}
+
+	time.Sleep(30 * time.Second) // TTL
 
 	for key, fn := range optMap {
 		out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(fmt.Sprintf("sudo cat '%s'", fn))
@@ -242,4 +233,49 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
 	c.Assert(err, NotNil)
 	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/nonexistent %s test2", lines[0]))
 	c.Assert(err, NotNil)
+}
+
+func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
+	_, err := s.uploadIntent("policy2", "fs")
+	c.Assert(err, IsNil)
+
+	opts := map[string]string{
+		"size": "1GB",
+	}
+
+	c.Assert(s.createVolume("mon0", "policy2", "test", opts), IsNil)
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/test:/mnt alpine sleep 10m"), IsNil)
+
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
+	c.Assert(err, IsNil)
+
+	lines := strings.Split(out, "\n")
+	pass := false
+	for _, line := range lines {
+		// cheat.
+		if strings.Contains(line, "/dev/rbd") {
+			pass = true
+			break
+		}
+	}
+
+	c.Assert(pass, Equals, true)
+	c.Assert(s.createVolume("mon0", "policy2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
+
+	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/testext4:/mnt alpine sleep 10m"), IsNil)
+
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
+	c.Assert(err, IsNil)
+
+	lines = strings.Split(out, "\n")
+	pass = false
+	for _, line := range lines {
+		// cheat.
+		if strings.Contains(line, "/dev/rbd") {
+			pass = true
+			break
+		}
+	}
+
+	c.Assert(pass, Equals, true)
 }

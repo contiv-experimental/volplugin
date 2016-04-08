@@ -1,6 +1,7 @@
 package volsupervisor
 
 import (
+	"path"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -30,19 +31,27 @@ func (dc *DaemonConfig) updatePolicies() {
 	}
 
 	volumeChan := make(chan *watch.Watch)
-	dc.Config.WatchVolumes(volumeChan)
+	dc.Config.WatchVolumeRuntimes(volumeChan)
 
 	go func() {
 		for {
-			volume := <-volumeChan
+			runtimeConfig := <-volumeChan
 
 			volumeMutex.Lock()
-			if volume.Config == nil {
-				log.Debugf("Deleting volume %q from cache", volume.Key)
-				delete(volumes, volume.Key)
+			if runtimeConfig.Config == nil {
+				log.Debugf("Deleting volume %q from cache", runtimeConfig.Key)
+				delete(volumes, runtimeConfig.Key)
 			} else {
-				log.Debugf("Adding volume %q to cache", volume.Key)
-				volumes[volume.Key] = volume.Config.(*config.Volume)
+				log.Debugf("Adding volume %q to cache", runtimeConfig.Key)
+				policy, volname := path.Split(runtimeConfig.Key)
+				vol, err := dc.Config.GetVolume(policy, volname)
+				if err != nil {
+					log.Errorf("Could not get volume %q processing runtime update", runtimeConfig.Key)
+					continue
+				}
+
+				vol.RuntimeOptions = *(runtimeConfig.Config.(*config.RuntimeOptions))
+				volumes[runtimeConfig.Key] = vol
 			}
 			volumeMutex.Unlock()
 		}

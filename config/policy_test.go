@@ -2,80 +2,102 @@ package config
 
 import . "gopkg.in/check.v1"
 
-var testPolicys = map[string]*Policy{
+var testPolicies = map[string]*Policy{
 	"basic": {
-		DefaultVolumeOptions: VolumeOptions{
-			Pool:         "rbd",
-			Size:         "10MB",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+			actualSize: 10,
+		},
+		RuntimeOptions: RuntimeOptions{
+			UseSnapshots: true,
+			Snapshot: SnapshotConfig{
+				Keep:      10,
+				Frequency: "1m",
+			},
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"basic2": {
-		DefaultVolumeOptions: VolumeOptions{
-			Pool:         "rbd",
-			Size:         "20MB",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "20MB",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"untouchedwithzerosize": {
-		DefaultVolumeOptions: VolumeOptions{
-			Pool:         "rbd",
-			Size:         "0",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "0",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"nilfs": {
-		DefaultVolumeOptions: VolumeOptions{
-			Pool:         "rbd",
-			Size:         "20MB",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
-		},
-		FileSystems: defaultFilesystems,
-	},
-	"nopool": {
-		DefaultVolumeOptions: VolumeOptions{
-			Size:         "20MB",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "20MB",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"badsize": {
-		DefaultVolumeOptions: VolumeOptions{
-			Size:         "0",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "0",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"badsize2": {
-		DefaultVolumeOptions: VolumeOptions{
-			Size:         "10M",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "10M",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"badsize3": {
-		DefaultVolumeOptions: VolumeOptions{
-			Size:         "not a number",
-			UseSnapshots: false,
-			FileSystem:   defaultFilesystem,
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "not a number",
+			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,
 	},
 	"badsnaps": {
-		DefaultVolumeOptions: VolumeOptions{
-			Size:         "10M",
+		Backend:       "ceph",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+		},
+		RuntimeOptions: RuntimeOptions{
 			UseSnapshots: true,
-			FileSystem:   defaultFilesystem,
+			Snapshot: SnapshotConfig{
+				Keep:      0,
+				Frequency: "",
+			},
+		},
+		FileSystems: defaultFilesystems,
+	},
+	"nobackend": {
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+		},
+		RuntimeOptions: RuntimeOptions{
+			UseSnapshots: true,
 			Snapshot: SnapshotConfig{
 				Keep:      0,
 				Frequency: "",
@@ -86,17 +108,17 @@ var testPolicys = map[string]*Policy{
 }
 
 func (s *configSuite) TestBasicPolicy(c *C) {
-	c.Assert(s.tlc.PublishPolicy("quux", testPolicys["basic"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("quux", testPolicies["basic"]), IsNil)
 
 	cfg, err := s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicys["basic"])
+	c.Assert(cfg, DeepEquals, testPolicies["basic"])
 
-	c.Assert(s.tlc.PublishPolicy("bar", testPolicys["basic2"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("bar", testPolicies["basic2"]), IsNil)
 
 	cfg, err = s.tlc.GetPolicy("bar")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicys["basic2"])
+	c.Assert(cfg, DeepEquals, testPolicies["basic2"])
 
 	policies, err := s.tlc.ListPolicies()
 	c.Assert(err, IsNil)
@@ -118,37 +140,37 @@ func (s *configSuite) TestBasicPolicy(c *C) {
 
 	cfg, err = s.tlc.GetPolicy("quux")
 	c.Assert(err, IsNil)
-	c.Assert(cfg, DeepEquals, testPolicys["basic"])
+	c.Assert(cfg, DeepEquals, testPolicies["basic"])
 }
 
 func (s *configSuite) TestPolicyValidate(c *C) {
 	for _, key := range []string{"basic", "basic2", "nilfs"} {
-		c.Assert(testPolicys[key].Validate(), IsNil)
+		c.Assert(testPolicies[key].Validate(), IsNil)
 	}
 
 	// FIXME: ensure the default filesystem option is set when validate is called.
 	//        honestly, this both a pretty lousy way to do it and test it, we should do
 	//        something better.
-	c.Assert(testPolicys["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
+	c.Assert(testPolicies["nilfs"].FileSystems, DeepEquals, map[string]string{defaultFilesystem: "mkfs.ext4 -m0 %"})
 
-	c.Assert(testPolicys["untouchedwithzerosize"].Validate(), NotNil)
-	c.Assert(testPolicys["nopool"].Validate(), NotNil)
-	c.Assert(testPolicys["badsize"].Validate(), NotNil)
-	c.Assert(testPolicys["badsize2"].Validate(), NotNil)
-	_, err := testPolicys["badsize3"].DefaultVolumeOptions.ActualSize()
+	c.Assert(testPolicies["nobackend"].Validate(), NotNil)
+	c.Assert(testPolicies["untouchedwithzerosize"].Validate(), NotNil)
+	c.Assert(testPolicies["badsize"].Validate(), NotNil)
+	c.Assert(testPolicies["badsize2"].Validate(), NotNil)
+	_, err := testPolicies["badsize3"].CreateOptions.ActualSize()
 	c.Assert(err, NotNil)
 }
 
 func (s *configSuite) TestPolicyBadPublish(c *C) {
-	for _, key := range []string{"badsize", "badsize2", "badsize3", "nopool", "badsnaps"} {
-		c.Assert(s.tlc.PublishPolicy("test", testPolicys[key]), NotNil)
+	for _, key := range []string{"nobackend", "badsize", "badsize2", "badsize3", "badsnaps"} {
+		c.Assert(s.tlc.PublishPolicy("test", testPolicies[key]), NotNil)
 	}
 }
 
 func (s *configSuite) TestPolicyPublishEtcdDown(c *C) {
 	stopStartEtcd(c, func() {
 		for _, key := range []string{"basic", "basic2"} {
-			c.Assert(s.tlc.PublishPolicy("test", testPolicys[key]), NotNil)
+			c.Assert(s.tlc.PublishPolicy("test", testPolicies[key]), NotNil)
 		}
 	})
 }

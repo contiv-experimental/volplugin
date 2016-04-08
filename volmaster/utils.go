@@ -57,7 +57,7 @@ func unmarshalUseMount(r *http.Request) (*config.UseMount, error) {
 		return cfg, err
 	}
 
-	if cfg.Volume == nil {
+	if cfg.Volume == "" || cfg.Volume == "/" {
 		return cfg, errors.New("volume was blank")
 	}
 

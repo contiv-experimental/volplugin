@@ -13,12 +13,66 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend"
 )
 
 var (
 	errVolumeResponse = errors.New("Volmaster could not be contacted")
 	errVolumeNotFound = errors.New("Volume not found")
 )
+
+func (dc *DaemonConfig) mountExists(driver storage.Driver, driverOpts storage.DriverOptions) (bool, error) {
+	mounts, err := driver.Mounted(dc.Global.Timeout)
+	if err != nil {
+		return false, err
+	}
+
+	for _, mount := range mounts {
+		if mount.Path == driver.MountPath(driverOpts) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Driver, *config.Volume, storage.DriverOptions, error) {
+	driverOpts := storage.DriverOptions{}
+	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
+	if err != nil {
+		return nil, nil, driverOpts, errored.Errorf("Could not determine policy configuration").Combine(err)
+	}
+
+	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)
+	if err != nil {
+		return nil, nil, driverOpts, errored.Errorf("loading driver").Combine(err)
+	}
+
+	intName, err := driver.InternalName(uc.Request.Name)
+	if err != nil {
+		return driver, nil, driverOpts, errored.Errorf("Volume %q does not satisfy name requirements", uc.Request.Name).Combine(err)
+	}
+
+	actualSize, err := volConfig.CreateOptions.ActualSize()
+	if err != nil {
+		return driver, nil, driverOpts, errored.Errorf("Computing size of volume").Combine(err)
+	}
+
+	driverOpts = storage.DriverOptions{
+		Volume: storage.Volume{
+			Name:   intName,
+			Size:   actualSize,
+			Params: volConfig.DriverOptions,
+		},
+		FSOptions: storage.FSOptions{
+			Type: volConfig.CreateOptions.FileSystem,
+		},
+		Timeout: dc.Global.Timeout,
+	}
+
+	return driver, volConfig, driverOpts, nil
+}
 
 func httpError(w http.ResponseWriter, message string, err error) {
 	fullError := fmt.Sprintf("%s %v", message, err)

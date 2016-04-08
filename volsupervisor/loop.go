@@ -22,12 +22,12 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	log.Infof("starting snapshot prune for %q", val.VolumeName)
 
 	uc := &config.UseSnapshot{
-		Volume: val,
+		Volume: val.String(),
 		Reason: lock.ReasonSnapshotPrune,
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewDriver(val.Options.Backend, dc.Global.MountPath)
+		driver, err := backend.NewDriver(val.Backend, dc.Global.MountPath)
 		if err != nil {
 			log.Errorf("failed to get driver: %v", err)
 			return err
@@ -37,7 +37,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 			Volume: storage.Volume{
 				Name: strings.Join([]string{val.PolicyName, val.VolumeName}, "."),
 				Params: storage.Params{
-					"pool": val.Options.Pool,
+					"pool": val.DriverOptions["pool"],
 				},
 			},
 			Timeout: dc.Global.Timeout,
@@ -49,9 +49,9 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 			return err
 		}
 
-		log.Debugf("Volume %q: keeping %d snapshots", val, val.Options.Snapshot.Keep)
+		log.Debugf("Volume %q: keeping %d snapshots", val, val.RuntimeOptions.Snapshot.Keep)
 
-		toDeleteCount := len(list) - int(val.Options.Snapshot.Keep)
+		toDeleteCount := len(list) - int(val.RuntimeOptions.Snapshot.Keep)
 		if toDeleteCount < 0 {
 			return nil
 		}
@@ -75,14 +75,14 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 	log.Infof("Snapshotting %q.", volume)
 
 	uc := &config.UseSnapshot{
-		Volume: val,
+		Volume: val.String(),
 		Reason: lock.ReasonSnapshot,
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewDriver(val.Options.Backend, dc.Global.MountPath)
+		driver, err := backend.NewDriver(val.Backend, dc.Global.MountPath)
 		if err != nil {
-			log.Errorf("Error establishing driver backend %q; cannot snapshot", val.Options.Backend)
+			log.Errorf("Error establishing driver backend %q; cannot snapshot", val.Backend)
 			return err
 		}
 
@@ -90,7 +90,7 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 			Volume: storage.Volume{
 				Name: strings.Join([]string{val.PolicyName, val.VolumeName}, "."),
 				Params: storage.Params{
-					"pool": val.Options.Pool,
+					"pool": val.DriverOptions["pool"],
 				},
 			},
 			Timeout: dc.Global.Timeout,
@@ -123,8 +123,8 @@ func (dc *DaemonConfig) loop() {
 		volumeMutex.Unlock()
 
 		for volume, val := range volumeCopy {
-			if val.Options.UseSnapshots {
-				freq, err := time.ParseDuration(val.Options.Snapshot.Frequency)
+			if val.RuntimeOptions.UseSnapshots {
+				freq, err := time.ParseDuration(val.RuntimeOptions.Snapshot.Frequency)
 				if err != nil {
 					log.Errorf("Volume %q has an invalid frequency. Skipping snapshot.", volume)
 				}

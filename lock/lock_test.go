@@ -45,7 +45,7 @@ func (s *lockSuite) TestExecuteWithUseLock(c *C) {
 	vc, err := s.tlc.CreateVolume(config.RequestCreate{Policy: "policy", Volume: "foo"})
 	c.Assert(err, IsNil)
 	uc := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   ReasonCreate,
 		Hostname: "mon0",
 	}
@@ -80,7 +80,7 @@ func (s *lockSuite) TestExecuteWithUseLock(c *C) {
 
 	for i := 0; i < 50; i++ {
 		uc := &config.UseMount{
-			Volume:   vc,
+			Volume:   vc.String(),
 			Reason:   ReasonCreate,
 			Hostname: fmt.Sprintf("mon%d", i+1), // doubly ensure we try to write a use lock at this point
 		}
@@ -104,13 +104,13 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 	vc, err := s.tlc.CreateVolume(config.RequestCreate{Policy: "policy", Volume: "foo"})
 	c.Assert(err, IsNil)
 	um := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   ReasonCreate,
 		Hostname: "mon0",
 	}
 
 	us := &config.UseSnapshot{
-		Volume: vc,
+		Volume: vc.String(),
 		Reason: ReasonCreate,
 	}
 
@@ -144,7 +144,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 
 	for i := 0; i < 50; i++ {
 		uc := &config.UseMount{
-			Volume:   vc,
+			Volume:   vc.String(),
 			Reason:   ReasonCreate,
 			Hostname: fmt.Sprintf("mon%d", i), // doubly ensure we try to write a use lock at this point
 		}
@@ -157,7 +157,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 		}()
 
 		us := &config.UseSnapshot{
-			Volume: vc,
+			Volume: vc.String(),
 			Reason: ReasonCreate,
 		}
 

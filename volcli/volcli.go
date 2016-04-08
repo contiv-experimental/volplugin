@@ -32,7 +32,7 @@ func errorInvalidArgCount(rcvd, exptd int, args []string) error {
 func splitVolume(ctx *cli.Context) (string, string, error) {
 	volumeparts := strings.SplitN(ctx.Args()[0], "/", 2)
 
-	if len(volumeparts) < 2 {
+	if len(volumeparts) < 2 || volumeparts[0] == "" || volumeparts[1] == "" {
 		return "", "", errorInvalidVolumeSyntax(ctx.Args()[0], `<policyName>/<volumeName>`)
 	}
 
@@ -100,7 +100,7 @@ func globalGet(ctx *cli.Context) (bool, error) {
 
 	// rebuild and divide the contents so they are cast out of their internal
 	// representation.
-	content, err := json.Marshal(config.DivideGlobalParameters(global))
+	content, err := ppJSON(config.DivideGlobalParameters(global))
 	if err != nil {
 		return false, err
 	}
@@ -653,11 +653,11 @@ func useTheForce(ctx *cli.Context) (bool, error) {
 		VolumeName: volume,
 	}
 
-	if err := cfg.RemoveUse(&config.UseMount{Volume: vc}, true); err != nil {
+	if err := cfg.RemoveUse(&config.UseMount{Volume: vc.String()}, true); err != nil {
 		fmt.Fprintf(os.Stderr, "Trouble removing mount lock (may be harmless) for %q: %v", vc, err)
 	}
 
-	if err := cfg.RemoveUse(&config.UseSnapshot{Volume: vc}, true); err != nil {
+	if err := cfg.RemoveUse(&config.UseSnapshot{Volume: vc.String()}, true); err != nil {
 		fmt.Fprintf(os.Stderr, "Trouble removing snapshot lock (may be harmless) for %q: %v", vc, err)
 	}
 
@@ -695,13 +695,13 @@ func useExec(ctx *cli.Context) (bool, error) {
 	}
 
 	um := &config.UseMount{
-		Volume:   vc,
+		Volume:   vc.String(),
 		Reason:   lock.ReasonMaintenance,
 		Hostname: host,
 	}
 
 	us := &config.UseSnapshot{
-		Volume: vc,
+		Volume: vc.String(),
 		Reason: lock.ReasonMaintenance,
 	}
 
@@ -732,4 +732,92 @@ func useExec(ctx *cli.Context) (bool, error) {
 	})
 
 	return false, err
+}
+
+// VolumeRuntimeGet retrieves the runtime configuration for a volume.
+func VolumeRuntimeGet(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeGet)
+}
+
+func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.String("volmaster"), policy, volume))
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	runtime := config.RuntimeOptions{}
+
+	if err := json.Unmarshal(content, &runtime); err != nil {
+		return false, err
+	}
+
+	content, err = ppJSON(runtime)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(content))
+
+	return false, nil
+}
+
+// VolumeRuntimeUpload retrieves the runtime configuration for a volume.
+func VolumeRuntimeUpload(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeRuntimeUpload)
+}
+
+func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	content, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return false, err
+	}
+
+	runtime := config.RuntimeOptions{}
+
+	if err := json.Unmarshal(content, &runtime); err != nil {
+		return false, err
+	}
+
+	vol, err := cfg.GetVolume(policy, volume)
+	if err != nil {
+		return false, err
+	}
+
+	if err := cfg.PublishVolumeRuntime(vol, runtime); err != nil {
+		return false, err
+	}
+
+	return false, nil
 }
