@@ -1,8 +1,0 @@
-if [ -f /etc/bashrc ]; then
-  . /etc/bashrc
-fi
-
-export HTTP_PROXY={{ lookup('env', 'HTTP_PROXY') }}
-export http_proxy={{ lookup('env', 'http_proxy') }}
-export HTTPS_PROXY={{ lookup('env', 'HTTPS_PROXY') }}
-export https_proxy={{ lookup('env', 'https_proxy') }}

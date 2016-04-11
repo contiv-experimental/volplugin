@@ -1,7 +1,0 @@
----
-# This role contains tasks for configuring and starting the scheduler stacks
-# like native-swarm, ucp-swarm, k8s, mesos etc
-
-dependencies:
-- { role: swarm, when: scheduler_provider == "native-swarm" }
-- { role: ucp, when: scheduler_provider == "ucp-swarm" }

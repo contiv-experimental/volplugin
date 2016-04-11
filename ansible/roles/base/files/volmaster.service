@@ -1,7 +1,0 @@
-[Unit]
-Description=Volume Master
-After=auditd.service systemd-user-sessions.service time-sync.target
-
-[Service]
-ExecStart=/opt/golang/bin/volmaster /etc/volmaster.json
-KillMode=process
