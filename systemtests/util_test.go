@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -42,6 +43,10 @@ func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 }
 
 func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool) error {
+	if !cephDriver() {
+		return nil
+	}
+
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
@@ -101,7 +106,7 @@ func (s *systemtestSuite) createVolume(host, policy, name string, opts map[strin
 
 func (s *systemtestSuite) uploadGlobal(configFile string) error {
 	log.Infof("Uploading global configuration %s", configFile)
-	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/%s.json", configFile))
+	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/%s/%s.json", getDriver(), configFile))
 	if err != nil {
 		log.Println(out)
 	}
@@ -158,9 +163,21 @@ func (s *systemtestSuite) rebootstrap() error {
 	return nil
 }
 
+func getDriver() string {
+	driver := "ceph"
+	if strings.TrimSpace(os.Getenv("USE_DRIVER")) != "" {
+		driver = strings.TrimSpace(os.Getenv("USE_DRIVER"))
+	}
+	return driver
+}
+
+func cephDriver() bool {
+	return getDriver() == "ceph"
+}
+
 func (s *systemtestSuite) uploadIntent(policyName, fileName string) (string, error) {
 	log.Infof("Uploading intent %q as policy %q", fileName, policyName)
-	return s.volcli(fmt.Sprintf("policy upload %s < /testdata/%s.json", policyName, fileName))
+	return s.volcli(fmt.Sprintf("policy upload %s < /testdata/%s/%s.json", policyName, getDriver(), fileName))
 }
 
 func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int) error {
@@ -294,6 +311,10 @@ func (s *systemtestSuite) clearVolumes() error {
 }
 
 func (s *systemtestSuite) clearRBD() error {
+	if !cephDriver() {
+		return nil
+	}
+
 	log.Info("Clearing rbd images")
 
 	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {

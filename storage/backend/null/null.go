@@ -101,6 +101,10 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 func (d *Driver) Unmount(do storage.DriverOptions) error {
 	log.Infof("In %q", getFunctionName())
 	delete(d.mounted, filepath.Join(d.mountpath, do.Volume.Params["pool"], do.Volume.Name))
+	volumePath := filepath.Join(d.mountpath, do.Volume.Params["pool"], do.Volume.Name)
+	if err := os.RemoveAll(volumePath); err != nil {
+		return errored.Errorf("error deleting %q directory: %v", volumePath, err)
+	}
 	return nil
 }
 

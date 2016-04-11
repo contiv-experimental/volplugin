@@ -34,10 +34,22 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	s.vagrant = vagrantssh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
 
-	for _, service := range []string{"volplugin", "volmaster", "volsupervisor"} {
+	stopServices := []string{"volplugin", "volmaster", "volsupervisor"}
+	startServices := []string{""}
+	if cephDriver() {
+		startServices = append(startServices, "ceph.target")
+	} else {
+		stopServices = append(stopServices, "ceph.target")
+	}
+	for _, service := range stopServices {
 		for _, node := range s.vagrant.GetNodes() {
 			node.RunCommand(fmt.Sprintf("sudo systemctl stop %s", service))
 			node.RunCommand(fmt.Sprintf("sudo systemctl disable %s", service))
+		}
+	}
+	for _, service := range startServices {
+		for _, node := range s.vagrant.GetNodes() {
+			node.RunCommand(fmt.Sprintf("sudo systemctl start %s", service))
 		}
 	}
 
