@@ -35,7 +35,6 @@
     validate_certs: "{{ validate_certs }}"
     url: "{{ contiv_network_src_file }}"
     dest: "{{ contiv_network_dest_file }}" 
-  register: download_result
 
 - name: ensure netplugin directory exists
   file: path=/usr/bin/contiv/netplugin state=directory
@@ -44,7 +43,6 @@
   shell: tar vxjf {{ contiv_network_dest_file }}
   args:
     chdir: /usr/bin/contiv/netplugin
-  when: download_result | changed 
 
 - name: create links for netplugin binaries
   file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link force=yes
@@ -95,13 +93,11 @@
     url: "{{ contivctl_src_file }}"
     dest: "{{ contivctl_dest_file }}"
     force: no
-  register: download_result
 
 - name: install contivctl
   shell: tar vxjf {{ contivctl_dest_file }}
   args:
     chdir: /usr/bin/
-  when: download_result | changed
 
 - include: aci_tasks.yml
   when: (run_as == "master") and (contiv_network_mode == "aci")
