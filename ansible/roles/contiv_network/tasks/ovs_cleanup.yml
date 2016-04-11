@@ -1,0 +1,32 @@
+---
+# This play contains tasks for cleaning up contiv_network services
+
+# XXX: looks like for ansible 1.9 ignore_errors is not propogated to nested includes
+# so we need to be set it per task here eventhough it is specified at the top level
+# include task. Remove this once we have moved to ansible v2
+
+- name: cleanup ovs vlan state
+  shell: ovs-vsctl del-br contivVlanBridge
+  ignore_errors: yes
+
+- name: cleanup ovs vxlan state
+  shell: ovs-vsctl del-br contivVxlanBridge
+  ignore_errors: yes
+
+- name: cleanup ports
+  shell: >
+      set -x; for p in $(ifconfig  | grep vport | awk '{print $1}'); do
+        ip link delete $p type veth;
+      done
+  args:
+    executable: /bin/bash
+  ignore_errors: yes
+  register: ports
+
+- debug: var=ports
+
+- name: cleanup iptables for vxlan vtep port
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ vxlan_port }}"

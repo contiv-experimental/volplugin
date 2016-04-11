@@ -1,0 +1,22 @@
+# These tasks are run when contiv_network_mode is set to aci
+
+# This task could pull a specific label, but when using latest this is not needed
+- name: pull aci-gw container
+  shell: docker pull contiv/aci-gw
+  run_once: true
+
+- name: copy shell script for starting aci-gw
+  template: src=aci_gw.j2 dest=/usr/bin/aci_gw.sh mode=u=rwx,g=rx,o=rx
+  run_once: true
+
+- name: copy systemd units for aci-gw
+  copy: src=aci-gw.service dest=/etc/systemd/system/aci-gw.service
+  run_once: true
+
+- name: start aci-gw container
+  service: name=aci-gw state=started
+  run_once: true
+
+- name: set aci mode
+  shell: contivctl net global set --fabric-mode aci
+  run_once: true

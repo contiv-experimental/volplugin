@@ -1,0 +1,41 @@
+---
+# This role contains tasks for configuring and starting etcd service
+
+- name: download etcd {{ etcd_version }}
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz
+    dest: /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz
+  tags:
+    - prebake-for-dev
+
+- name: install etcd
+  shell: >
+      tar vxzf /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz && \
+      mv etcd-{{ etcd_version }}-linux-amd64/etcd* /usr/bin
+  tags:
+    - prebake-for-dev
+
+- name: setup iptables for etcd
+  shell: >
+      ( iptables -L INPUT | grep "{{ etcd_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ etcd_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ etcd_client_port1 }}"
+    - "{{ etcd_client_port2 }}"
+    - "{{ etcd_peer_port1 }}"
+    - "{{ etcd_peer_port2 }}"
+
+# The second part of the condition avoids reconfiguring master if it was already present in the host-group
+- name: copy the etcd start/stop script
+  template: src=etcd.j2 dest=/usr/bin/etcd.sh mode=u=rwx,g=rx,o=rx
+  when: (etcd_init_cluster == true) or (etcd_init_cluster == false and node_addr != etcd_master_addr)
+
+- name: copy systemd units for etcd
+  copy: src=etcd.service dest=/etc/systemd/system/etcd.service
+
+- name: start etcd
+  service: name=etcd state=started
+
+

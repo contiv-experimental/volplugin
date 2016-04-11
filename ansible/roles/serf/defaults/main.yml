@@ -1,0 +1,6 @@
+---
+# role variable for the serf service
+
+serf_discovery_interface: "{{ control_interface }}"
+serf_cluster_name: "mycluster"
+serf_node_label: "{{ ansible_hostname }}"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Serf
+After=auditd.service systemd-user-sessions.service time-sync.target
+
+[Service]
+ExecStart=/usr/bin/serf.sh start
+ExecStop=/usr/bin/serf.sh stop
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

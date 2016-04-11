@@ -1,0 +1,103 @@
+---
+# This role contains tasks for configuring and starting netmaster and netplugin service
+- name: check dns container image
+  shell: docker inspect skynetservices/skydns
+  register: docker_inspect_result
+  ignore_errors: yes
+  tags:
+    - prebake-for-dev
+
+- name: pull dns container image
+  shell: docker pull skynetservices/skydns
+  when: "'No such image' in docker_inspect_result.stderr"
+  tags:
+    - prebake-for-dev
+
+# install ovs, needed for our netplugin deployments. In future, if needed, this
+# install can be conditional based on deployment environment.
+- include: ovs.yml
+
+- name: setup iptables for contiv network control plane
+  shell: >
+      ( iptables -L INPUT | grep "{{ netplugin_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ ofnet_master_port }}"
+    - "{{ ofnet_agent_port1 }}"
+    - "{{ ofnet_agent_port2 }}"
+    - "{{ netmaster_port }}"
+    - "{{ gobgp_grpc_port }}"
+    - "{{ bgp_port }}"
+
+- name: download netmaster and netplugin
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: "{{ contiv_network_src_file }}"
+    dest: "{{ contiv_network_dest_file }}" 
+
+- name: ensure netplugin directory exists
+  file: path=/usr/bin/contiv/netplugin state=directory
+
+- name: install netmaster and netplugin
+  shell: tar vxjf {{ contiv_network_dest_file }}
+  args:
+    chdir: /usr/bin/contiv/netplugin
+
+- name: create links for netplugin binaries
+  file: src=/usr/bin/contiv/netplugin/{{ item }} dest=/usr/bin/{{ item }} state=link force=yes
+  with_items:
+    - netctl
+    - netmaster
+    - netplugin
+    - contivk8s
+
+- name: copy environment file for netplugin
+  template: src=netplugin.j2 dest=/etc/default/netplugin
+
+- name: copy systemd units for netplugin
+  copy: src=netplugin.service dest=/etc/systemd/system/netplugin.service
+
+- name: copy bash auto complete file for netctl
+  file: src=/usr/bin/contiv/netplugin/contrib/completion/bash/netctl dest=/etc/bash_completion.d/netctl state=link
+
+- name: start netplugin
+  shell: systemctl daemon-reload && systemctl start netplugin
+
+- name: setup netmaster host alias
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ service_vip }} netmaster"
+    regexp: " netmaster$"
+    state: present
+  become: true
+
+- name: copy environment file for netmaster
+  copy: src=netmaster dest=/etc/default/netmaster
+  when: run_as == "master"
+
+- name: copy systemd units for netmaster
+  copy: src=netmaster.service dest=/etc/systemd/system/netmaster.service
+  when: run_as == "master"
+
+# resolves an issue with netmaster: https://github.com/contiv/netplugin/issues/210
+- name: start netmaster
+  shell: systemctl daemon-reload && systemctl start netmaster
+  when: run_as == "master"
+  run_once: true
+
+# FIXME: need to move the following tasks to correct role
+- name: download contivctl
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: "{{ contivctl_src_file }}"
+    dest: "{{ contivctl_dest_file }}"
+    force: no
+
+- name: install contivctl
+  shell: tar vxjf {{ contivctl_dest_file }}
+  args:
+    chdir: /usr/bin/
+
+- include: aci_tasks.yml
+  when: (run_as == "master") and (contiv_network_mode == "aci")

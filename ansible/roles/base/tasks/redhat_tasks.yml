@@ -1,0 +1,23 @@
+# install epel-release first to ensure the extra packages can be installed later
+- name: install epel release package (redhat)
+  yum:
+    name: epel-release
+    state: latest
+
+- name: install/upgrade base packages (redhat)
+  yum:
+    name: "{{ item }}"
+    update_cache: true
+    state: latest
+  with_items:
+    - ntp
+    - unzip
+    - bzip2
+    - curl
+    - librbd1-devel
+    - python-requests # XXX required by ceph repo, but it has a bad package on it
+    - bash-completion
+    - kernel #keep kernel up to date
+
+- name: install and start ntp
+  service: name=ntpd state=started enabled=yes

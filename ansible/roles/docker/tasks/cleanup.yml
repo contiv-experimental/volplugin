@@ -1,0 +1,14 @@
+---
+# This play contains tasks for cleaning up docker
+
+- name: stop docker
+  service: name=docker state=stopped
+
+- name: stop docker tcp socket
+  service: name=docker-tcp.socket state=stopped
+
+- name: cleanup iptables for docker
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ docker_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ docker_api_port }}"
