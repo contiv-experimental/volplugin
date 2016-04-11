@@ -27,7 +27,7 @@ start)
     {% macro add_member(peer_addr) -%}
     # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
     # ETCD_LISTEN_PEER_URLS for now
-    out=`etcdctl --peers="{{ peer_addr }}:{{ etcd_client_port1 }},{{ peer_addr }}:{{ etcd_client_port2 }}" \
+    out=`etcdctl --endpoints="http://{{ peer_addr }}:{{ etcd_client_port1 }},http://{{ peer_addr }}:{{ etcd_client_port2 }}" \
         member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS"`
     if [ $? -ne 0 ]; then
         echo "failed to add member {{ node_name }}"
