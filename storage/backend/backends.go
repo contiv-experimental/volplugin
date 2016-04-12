@@ -4,6 +4,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend/nfs"
 	"github.com/contiv/volplugin/storage/backend/null"
 )
 
@@ -11,6 +12,7 @@ import (
 var Drivers = map[string]func(string) storage.Driver{
 	ceph.BackendName: ceph.NewDriver,
 	null.BackendName: null.NewDriver,
+	nfs.BackendName:  nfs.NewDriver,
 }
 
 // NewDriver instantiates and return a storage backend instance of the specified type
