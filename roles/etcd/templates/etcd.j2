@@ -1,85 +1,135 @@
 #!/bin/bash
 
-usage="$0 <start|stop|post-stop>"
-if [ $# -ne 1 ]; then
-    echo USAGE: $usage
-    exit 1
-fi
+{%- macro peer_url(addr) -%}
+http://{{ addr }}:{{ etcd_peer_port1 }},http://{{ addr }}:{{ etcd_peer_port2 }}
+{%- endmacro -%}
 
-set -x
-export ETCD_NAME={{ node_name }}
-export ETCD_DATA_DIR=/var/lib/etcd
-export ETCD_INITIAL_CLUSTER_TOKEN=contiv-cluster
-export ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_client_port1 }},http://0.0.0.0:{{ etcd_client_port2 }}
-export ETCD_ADVERTISE_CLIENT_URLS=http://{{ node_addr }}:{{ etcd_client_port1 }},http://{{ node_addr }}:{{ etcd_client_port2 }}
-export ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }},http://{{ node_addr }}:{{ etcd_peer_port2 }}
-export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
-export ETCD_HEARTBEAT_INTERVAL={{ etcd_heartbeat_interval }}
-export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
+{%- macro client_url(addr) -%}
+http://{{ addr }}:{{ etcd_client_port1 }},http://{{ addr }}:{{ etcd_client_port2 }}
+{%- endmacro -%}
 
-case $1 in
-start)
-    {% macro add_proxy() -%}
+{%- macro cluster_url(name,addr) -%}
+{{ name }}=http://{{ addr }}:{{ etcd_peer_port1 }},{{ name }}=http://{{ addr }}:{{ etcd_peer_port2 }}
+{%- endmacro -%}
+
+{%- macro get_peer_addr() -%}
+    {# we can't use a simple filter as shown, as it needs python 2.8.
+     # So resorting to loop below to get a peer.
+    {%- set peer_name=groups[etcd_peers_group]|reject("equalto", node_name)|first -%} #}
+    {%- set peers=[] -%}
+    {%- for host in groups[etcd_peers_group] -%}
+        {%- if host != node_name -%}
+            {%- if peers.append(host) -%}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- if peers -%}
+        {#- print the peer addr -#}
+        {{- hostvars[peers[0]]['ansible_' + hostvars[peers[0]]['control_interface']]['ipv4']['address'] -}}
+    {%- else -%}
+        {#- print nothing -#}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro etcdctl_flags(peer_addr) -%}
+--endpoints="{{ client_url(peer_addr) }},{{ client_url(node_addr) }}" --total-timeout=15s --timeout=5s
+{%- endmacro -%}
+
+{% macro add_proxy() -%}
+    # on worker nodes, run etcd in proxy mode
     export ETCD_PROXY=on
-    export ETCD_INITIAL_CLUSTER="{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port1 }},{{ etcd_master_name }}=http://{{ etcd_master_addr }}:{{ etcd_peer_port2 }}"
-    {% endmacro -%}
+    export ETCD_INITIAL_CLUSTER="{{ cluster_url(etcd_master_name, etcd_master_addr) }}"
+{% endmacro %}
 
-    {% macro add_member(peer_addr) -%}
-    # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
-    # ETCD_LISTEN_PEER_URLS for now
-    out=`etcdctl --endpoints="http://{{ peer_addr }}:{{ etcd_client_port1 }},http://{{ peer_addr }}:{{ etcd_client_port2 }}" \
-        member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS"`
-    if [ $? -ne 0 ]; then
-        echo "failed to add member {{ node_name }}"
-        exit 1
-    fi
-    # parse and export the environment returned by member add
-    export `echo $out | awk -F 'ETCD_' '{print "ETCD_"$2 "ETCD_"$3 "ETCD_"$4}' | sed s/\"//g`
-    {% endmacro -%}
+{% macro add_member(peer_addr) -%}
+{#- if you change the indentation below, make sure the generated file stays readable -#}
+        # member addition can occassionally fail, retry a few times on failure
+        res=1
+        for i in {1..10}; do
+            sleep $[ ( $RANDOM % 10 )  + 1 ]s
+            # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
+            # ETCD_LISTEN_PEER_URLS for now
+            out=`etcdctl {{ etcdctl_flags(peer_addr) }} \
+                    member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS" 2>&1`
+            res=$?
+            if [ "$res" == "0" ]; then
+                break
+            elif [ "$out" == "etcdserver: peerURL exists" ]; then
+                # delete member state before retrying
+                {{ remove_member(peer_addr) }}
+            fi
+        done
+        if [ "$res" -ne 0 ]; then
+            echo "failed to add member {{ node_name }}"
+            exit 1
+        fi
+        # parse and export the environment returned by member add
+        export `echo $out | awk -F 'ETCD_' '{print "ETCD_"$2 "ETCD_"$3 "ETCD_"$4}' | sed s/\"//g`
+{% endmacro %}
 
-    {% macro init_cluster() -%}
+{% macro remove_member(peer_addr) -%}
+{#- if you change the indentation below, make sure the generated file stays readable -#}
+                # we grep for node_addr in place of name as it the member wasn't started, then it's name is not printed
+                out=`etcdctl {{ etcdctl_flags(peer_addr) }} \
+                        member list | grep "{{ node_addr }}" | awk -F ':' '{print $1}' | awk -F '[' '{print $1}'`
+                if [ "$out" != "" ]; then
+                    echo "==> removing member: " $out
+                    etcdctl {{ etcdctl_flags(peer_addr) }} \
+                        member remove $out
+                fi
+{% endmacro %}
+
+{% macro init_cluster() -%}
+{#- if you change the indentation below, make sure the generated file stays readable -#}
+    # on master nodes, if the cluster is being initialized for first time then initialize it
     if [ ! -f {{ etcd_tmp_filename }} ]; then
         touch {{ etcd_tmp_filename }}
         export ETCD_INITIAL_CLUSTER_STATE=new
         export ETCD_INITIAL_CLUSTER="
         {%- for host in groups[etcd_peers_group] -%}
         {%- if loop.last -%}
-        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port2 }}
+        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }}
         {%- else -%}
-        {{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port1 }},{{ hostvars[host]['inventory_hostname'] }}=http://{{ hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address'] }}:{{ etcd_peer_port2 }},
+        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }},
         {%- endif -%}
-        {% endfor -%}
+        {%- endfor -%}
         "
     else
-        {# we can't use a simple filter as shown, as it needs pythoin 2.8.
-         # So resorting to loop below to get a peer.
-        {%- set peer_name=groups[etcd_peers_group]|reject("equalto", node_name)|first -%} #}
-        {%- set peers=[] -%}
-        {%- for host in groups[etcd_peers_group] -%}
-            {%- if host != node_name %}
-                {%- if peers.append(host) -%}
-                {%- endif -%}
-            {%- endif %}
-        {% endfor -%}
-        {% if peers %}
-            {% set peer_addr=hostvars[peers[0]]['ansible_' + hostvars[peers[0]]['control_interface']]['ipv4']['address'] -%}
-            {{ add_member(peer_addr=peer_addr) }}
-        {%- else -%}
-        {# This condition shall not arise, so fail early #}
-        echo "==> no peer found, failing now"
+        {% set peer_addr=get_peer_addr() -%}
+        {% if peer_addr == "" -%}
+        echo "==> no peer found or single member cluster at time of commission, failing now"
         exit 1
-        {% endif -%}
+        {% else -%}
+        {{ add_member(peer_addr=peer_addr) -}}
+        {% endif %}
     fi
-    {% endmacro -%}
+{% endmacro %}
 
+usage="$0 <start|stop|post-stop>"
+if [ $# -ne 1 ]; then
+    echo USAGE: $usage
+    exit 1
+fi
+
+export ETCD_NAME={{ node_name }}
+export ETCD_DATA_DIR=/var/lib/etcd
+export ETCD_INITIAL_CLUSTER_TOKEN=contiv-cluster
+export ETCD_LISTEN_CLIENT_URLS={{ client_url("0.0.0.0") }}
+export ETCD_ADVERTISE_CLIENT_URLS={{ client_url(node_addr) }}
+export ETCD_INITIAL_ADVERTISE_PEER_URLS={{ peer_url(node_addr) }}
+export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
+export ETCD_HEARTBEAT_INTERVAL={{ etcd_heartbeat_interval }}
+export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
+
+set -x
+case $1 in
+start)
     {% if run_as == "worker" -%}
-    # on worker nodes, run etcd in proxy mode
     {{ add_proxy() }}
     {% elif etcd_init_cluster -%}
-    # on master nodes, if the cluster is being initialized for first time then initialize it
     {{ init_cluster() }}
     {% else -%}
-    # if a new master node is being commissioned then add it to exisiting cluster
+    # if a new master node is being commissioned then add it to existing cluster
     {{ add_member(peer_addr=etcd_master_addr) }}
     {% endif -%}
 
@@ -91,13 +141,16 @@ start)
 stop)
     {% if run_as == "worker" -%}
     echo "==> no 'stop' action for proxy"
+    {% elif etcd_init_cluster -%}
+        {% set peer_addr=get_peer_addr() -%}
+        {% if peer_addr == "" -%}
+        echo "==> no peer found or single member cluster at time of commission"
+        exit 1
+        {% else -%}
+        {{ remove_member(peer_addr=peer_addr) }}
+        {% endif %}
     {% else -%}
-    #XXX: do better cleanup like remove the member from the cluster only if it was started
-    out=`etcdctl member list | grep {{ node_name }} | awk -F ':' '{print $1}'`
-    if [ "$out" != "" ]; then
-        echo "==> removing member: " $out
-        etcdctl member remove $out
-    fi
+    {{ remove_member(peer_addr=etcd_master_addr) }}
     {% endif -%}
     ;;
 
