@@ -16,7 +16,7 @@ bgp_port: 179
 vxlan_port: 4789
 netplugin_rule_comment: "contiv network traffic"
 
-contiv_network_version: "v0.1-03-24-2016.02-02-50.UTC"
+contiv_network_version: "v0.1-04-11-2016.17-31-22.UTC"
 contiv_network_tar_file: "netplugin-{{ contiv_network_version }}.tar.bz2"
 contiv_network_src_file: "https://github.com/contiv/netplugin/releases/download/{{ contiv_network_version }}/{{ contiv_network_tar_file }}"
 contiv_network_dest_file: "/tmp/{{ contiv_network_tar_file }}"
