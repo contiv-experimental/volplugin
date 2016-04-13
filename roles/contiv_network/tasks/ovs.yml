@@ -56,7 +56,7 @@
 - name: setup iptables for vxlan vtep port
   shell: >
       ( iptables -L INPUT | grep "{{ netplugin_rule_comment }} ({{ item }})" ) || \
-      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
+      iptables -I INPUT 1 -p udp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
   become: true
   with_items:
     - "{{ vxlan_port }}"
