@@ -15,3 +15,4 @@
     - python-software-properties
     - librbd-dev
     - bash-completion
+    - python-selinux
