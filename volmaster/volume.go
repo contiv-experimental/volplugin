@@ -33,19 +33,14 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 		return storage.DriverOptions{}, err
 	}
 
-	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
-	if err != nil {
-		return storage.DriverOptions{}, err
-	}
-
-	intName, err := driver.InternalName(config.String())
+	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   config.String(),
 			Size:   actualSize,
 			Params: config.DriverOptions,
 		},
@@ -66,32 +61,24 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 		return err
 	}
 
-	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
-	if err != nil {
-		return err
-	}
-	intName, err := driver.InternalName(config.String())
+	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Formatting volume %v (filesystem %q) with size %d", intName, config.CreateOptions.FileSystem, actualSize)
+	log.Infof("Formatting volume %v (filesystem %q) with size %d", config, config.CreateOptions.FileSystem, actualSize)
 	return driver.Format(do)
 }
 
 func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
-	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
-	if err != nil {
-		return false, err
-	}
-	intName, err := driver.InternalName(config.String())
+	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
 	if err != nil {
 		return false, err
 	}
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   config.String(),
 			Params: config.DriverOptions,
 		},
 		Timeout: dc.Global.Timeout,
@@ -101,18 +88,14 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 }
 
 func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duration) error {
-	driver, err := backend.NewDriver(config.Backend, dc.Global.MountPath)
-	if err != nil {
-		return err
-	}
-	intName, err := driver.InternalName(config.String())
+	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
 	if err != nil {
 		return err
 	}
 
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   config.String(),
 			Params: config.DriverOptions,
 		},
 		Timeout: timeout,

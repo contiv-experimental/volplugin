@@ -1,7 +1,6 @@
 package volsupervisor
 
 import (
-	"strings"
 	"sync"
 	"time"
 
@@ -27,7 +26,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewDriver(val.Backend, dc.Global.MountPath)
+		driver, err := backend.NewSnapshotDriver(val.Backend)
 		if err != nil {
 			log.Errorf("failed to get driver: %v", err)
 			return err
@@ -35,7 +34,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: strings.Join([]string{val.PolicyName, val.VolumeName}, "."),
+				Name: val.String(),
 				Params: storage.Params{
 					"pool": val.DriverOptions["pool"],
 				},
@@ -80,7 +79,7 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewDriver(val.Backend, dc.Global.MountPath)
+		driver, err := backend.NewSnapshotDriver(val.Backend)
 		if err != nil {
 			log.Errorf("Error establishing driver backend %q; cannot snapshot", val.Backend)
 			return err
@@ -88,7 +87,7 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 
 		driverOpts := storage.DriverOptions{
 			Volume: storage.Volume{
-				Name: strings.Join([]string{val.PolicyName, val.VolumeName}, "."),
+				Name: val.String(),
 				Params: storage.Params{
 					"pool": val.DriverOptions["pool"],
 				},

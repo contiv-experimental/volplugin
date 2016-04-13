@@ -14,9 +14,9 @@ type Driver struct {
 // BackendName is the name of the driver.
 const BackendName = "nfs"
 
-// NewDriver constructs a new NFS driver.
-func NewDriver(mountPath string) storage.Driver {
-	return &Driver{mountpath: mountPath}
+// NewMountDriver constructs a new NFS driver.
+func NewMountDriver(mountPath string) (storage.MountDriver, error) {
+	return &Driver{mountpath: mountPath}, nil
 }
 
 // Name returns the string associated with the storage backed of the driver
@@ -76,4 +76,4 @@ func (d *Driver) InternalName(volName string) (string, error) { return "", nil }
 func (d *Driver) InternalNameToVolpluginName(intName string) string { return "" }
 
 // MountPath describes the path at which the volume should be mounted.
-func (d *Driver) MountPath(do storage.DriverOptions) string { return d.mountpath }
+func (d *Driver) MountPath(do storage.DriverOptions) (string, error) { return d.mountpath, nil }

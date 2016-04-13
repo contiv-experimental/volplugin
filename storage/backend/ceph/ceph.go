@@ -2,7 +2,6 @@ package ceph
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,10 +45,22 @@ func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (*executor.ExecResult,
 	return executor.New(cmd).Run(ctx)
 }
 
-// NewDriver is a generator for Driver structs. It is used by the storage
+// NewMountDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
-func NewDriver(mountpath string) storage.Driver {
-	return &Driver{mountpath: mountpath}
+func NewMountDriver(mountpath string) (storage.MountDriver, error) {
+	return &Driver{mountpath: mountpath}, nil
+}
+
+// NewCRUDDriver is a generator for Driver structs. It is used by the storage
+// framework to yield new drivers on every creation.
+func NewCRUDDriver() (storage.CRUDDriver, error) {
+	return &Driver{}, nil
+}
+
+// NewSnapshotDriver is a generator for Driver structs. It is used by the storage
+// framework to yield new drivers on every creation.
+func NewSnapshotDriver() (storage.SnapshotDriver, error) {
+	return &Driver{}, nil
 }
 
 // Name returns the ceph backend string
@@ -57,41 +68,47 @@ func (c *Driver) Name() string {
 	return BackendName
 }
 
+func (c *Driver) externalName(s string) string {
+	return strings.Join(strings.SplitN(s, ".", 2), "/")
+}
+
 // InternalName translates a volplugin `tenant/volume` name to an internal
 // name suitable for the driver. Yields an error if impossible.
-func (c *Driver) InternalName(s string) (string, error) {
+func (c *Driver) internalName(s string) (string, error) {
 	strs := strings.SplitN(s, "/", 2)
+	if len(strs) != 2 {
+		return "", errored.Errorf("Invalid volume name %q, must be two parts", s)
+	}
+
 	if strings.Contains(strs[0], ".") {
-		return "", errored.Errorf("Invalid tenant name %q, cannot contain '.'", strs[0])
+		return "", errored.Errorf("Invalid policy name %q, cannot contain '.'", strs[0])
 	}
 
 	if strings.Contains(strs[1], "/") {
-		return "", errored.Errorf("Invalid volume name %q, cannot contain '/'", strs[0])
+		return "", errored.Errorf("Invalid volume name %q, cannot contain '/'", strs[1])
 	}
 
 	return strings.Join(strs, "."), nil
 }
 
-// InternalNameToVolpluginName translates an internal name to a volplugin
-// `tenant/volume` syntax name.
-func (c *Driver) InternalNameToVolpluginName(s string) string {
-	return strings.Join(strings.SplitN(s, ".", 2), "/")
-}
-
 // Create a volume.
 func (c *Driver) Create(do storage.DriverOptions) error {
-	cmd := exec.Command("rbd", "create", do.Volume.Name, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", do.Volume.Params["pool"])
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("rbd", "create", intName, "--size", strconv.FormatUint(do.Volume.Size, 10), "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 
 	if er != nil {
 		if er.ExitStatus == 17 {
 			return storage.ErrVolumeExist
 		} else if er.ExitStatus != 0 {
-			return errored.Errorf("Creating disk %q: %v", do.Volume.Name, er)
+			return errored.Errorf("Creating disk %q: %v", intName, er)
 		}
 	} else if err != nil {
-		fmt.Println(err.(*exec.ExitError).ProcessState.Sys().(syscall.WaitStatus))
-		return errored.Errorf("%#v", err)
+		return errored.Errorf("Creating Disk: %#v", err)
 	}
 
 	return nil
@@ -117,17 +134,21 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 // Destroy a volume.
 func (c *Driver) Destroy(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
-
-	cmd := exec.Command("rbd", "snap", "purge", do.Volume.Name, "--pool", poolName)
-	er, _ := runWithTimeout(cmd, do.Timeout)
-	if er.ExitStatus != 0 {
-		return errored.Errorf("Destroying snapshots for disk %q: %v", do.Volume.Name, er.Stderr)
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
 	}
 
-	cmd = exec.Command("rbd", "rm", do.Volume.Name, "--pool", poolName)
+	cmd := exec.Command("rbd", "snap", "purge", intName, "--pool", poolName)
+	er, _ := runWithTimeout(cmd, do.Timeout)
+	if er.ExitStatus != 0 {
+		return errored.Errorf("Destroying snapshots for disk %q: %v", intName, er.Stderr)
+	}
+
+	cmd = exec.Command("rbd", "rm", intName, "--pool", poolName)
 	er, _ = runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
-		return errored.Errorf("Destroying disk %q: %v (%v)", do.Volume.Name, er, er.Stdout)
+		return errored.Errorf("Destroying disk %q: %v (%v)", intName, er, er.Stdout)
 	}
 
 	return nil
@@ -158,7 +179,7 @@ retry:
 	list := []storage.Volume{}
 
 	for _, name := range textList {
-		list = append(list, storage.Volume{Name: strings.TrimSpace(name), Params: storage.Params{"pool": poolName}})
+		list = append(list, storage.Volume{Name: c.externalName(strings.TrimSpace(name)), Params: storage.Params{"pool": poolName}})
 	}
 
 	return list, nil
@@ -168,8 +189,13 @@ retry:
 // If you pass in the params what filesystem to use as `filesystem`, it will
 // prefer that to `ext4` which is the default.
 func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	// Directory to mount the volume
-	volumePath := filepath.Join(c.mountpath, do.Volume.Params["pool"], do.Volume.Name)
+	volumePath := filepath.Join(c.mountpath, do.Volume.Params["pool"], intName)
 
 	devName, err := c.mapImage(do)
 	if err != nil {
@@ -214,9 +240,13 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 // Unmount a volume.
 func (c *Driver) Unmount(do storage.DriverOptions) error {
 	poolName := do.Volume.Params["pool"]
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
+	}
 
 	// Directory to mount the volume
-	volumeDir := filepath.Join(c.mountpath, poolName, do.Volume.Name)
+	volumeDir := filepath.Join(c.mountpath, poolName, intName)
 
 	// Unmount the RBD
 	//
@@ -277,15 +307,20 @@ func (c *Driver) Exists(do storage.DriverOptions) (bool, error) {
 
 // CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error {
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
+	}
+
 	snapName = strings.Replace(snapName, " ", "-", -1)
-	cmd := exec.Command("rbd", "snap", "create", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	cmd := exec.Command("rbd", "snap", "create", intName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
 	}
 
 	if er.ExitStatus != 0 {
-		return errored.Errorf("Creating snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+		return errored.Errorf("Creating snapshot %q (volume %q): %v", snapName, intName, er)
 	}
 
 	return nil
@@ -293,14 +328,19 @@ func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error
 
 // RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
 func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error {
-	cmd := exec.Command("rbd", "snap", "rm", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("rbd", "snap", "rm", intName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
 	}
 
 	if er.ExitStatus != 0 {
-		return errored.Errorf("Removing snapshot %q (volume %q): %v", snapName, do.Volume.Name, er)
+		return errored.Errorf("Removing snapshot %q (volume %q): %v", snapName, intName, er)
 	}
 
 	return nil
@@ -309,7 +349,12 @@ func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error
 // ListSnapshots returns an array of snapshot names provided a maximum number
 // of snapshots to be returned. Any error will be returned.
 func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
-	cmd := exec.Command("rbd", "snap", "ls", do.Volume.Name, "--pool", do.Volume.Params["pool"])
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("rbd", "snap", "ls", intName, "--pool", do.Volume.Params["pool"])
 	ctx, _ := context.WithTimeout(context.Background(), do.Timeout)
 	er, err := executor.NewCapture(cmd).Run(ctx)
 	if err != nil {
@@ -317,7 +362,7 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	}
 
 	if er.ExitStatus != 0 {
-		return nil, errored.Errorf("Listing snapshots for (volume %q): %v", do.Volume.Name, er)
+		return nil, errored.Errorf("Listing snapshots for (volume %q): %v", intName, er)
 	}
 
 	names := []string{}
@@ -340,16 +385,26 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 // CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
 // snap and volume name (string). Returns error on failure.
 func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string) error {
+	intOrigName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return err
+	}
+
+	intNewName, err := c.internalName(newName)
+	if err != nil {
+		return err
+	}
+
 	list, err := c.List(storage.ListOptions{Params: storage.Params{"pool": do.Volume.Params["pool"]}})
 	for _, vol := range list {
-		if newName == vol.Name {
+		if intNewName == vol.Name {
 			return errored.Errorf("Volume %q already exists", vol.Name)
 		}
 	}
 
 	errChan := make(chan error, 1)
 
-	cmd := exec.Command("rbd", "snap", "protect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	cmd := exec.Command("rbd", "snap", "protect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 
 	if err != nil {
@@ -361,14 +416,14 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		select {
 		case err := <-errChan:
 			log.Warnf("Error received while copying snapshot: %v. Attempting to cleanup.", err)
-			cmd = exec.Command("rbd", "rm", newName, "--pool", do.Volume.Params["pool"])
+			cmd = exec.Command("rbd", "rm", intNewName, "--pool", do.Volume.Params["pool"])
 			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-				log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
+				log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
 				return
 			}
-			cmd := exec.Command("rbd", "snap", "unprotect", do.Volume.Name, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+			cmd := exec.Command("rbd", "snap", "unprotect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-				log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, do.Volume.Name, snapName, err, er.Stderr)
+				log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
 				return
 			}
 		default:
@@ -376,12 +431,12 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	}()
 
 	if er.ExitStatus != 0 {
-		newerr := errored.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		newerr := errored.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", intOrigName, snapName, err)
 		errChan <- newerr
 		return newerr
 	}
 
-	cmd = exec.Command("rbd", "clone", do.Volume.Name, newName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+	cmd = exec.Command("rbd", "clone", intOrigName, intNewName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err = runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		errChan <- err
@@ -389,7 +444,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	}
 
 	if er.ExitStatus != 0 {
-		newerr := errored.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", do.Volume.Name, snapName, err)
+		newerr := errored.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", intOrigName, snapName, err)
 		errChan <- newerr
 		return err
 	}
