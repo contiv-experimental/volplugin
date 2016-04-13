@@ -32,6 +32,10 @@
     - "{{ ucp_instance_id_file }}"
   when: node_name != ucp_bootstrap_node_name
 
+- name: copy the ucp license to the remote machine
+  copy: src={{ ucp_license_file }} dest={{ ucp_license_remote }}
+  when: (ucp_license_file is defined) and (node_name == ucp_bootstrap_node_name)
+
 - name: copy the ucp start/stop script
   template: src=ucp.j2 dest=/usr/bin/ucp.sh mode=u=rwx,g=rx,o=rx
 
