@@ -3,5 +3,5 @@ Description=Volume Plugin
 After=auditd.service systemd-user-sessions.service time-sync.target
 
 [Service]
-ExecStart=/opt/golang/bin/volplugin --debug tenant1
+ExecStart=/opt/golang/bin/volplugin tenant1
 KillMode=process
