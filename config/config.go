@@ -76,3 +76,14 @@ func (c *Client) prefixed(strs ...string) string {
 
 	return str
 }
+
+// NotFound is a predicate to determine whether or not the error returned by
+// etcd was a notfound error.
+func NotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	_, ok := err.(client.Error)
+	return ok && err.(client.Error).Code == client.ErrorCodeKeyNotFound
+}

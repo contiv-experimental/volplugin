@@ -90,7 +90,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	for path, f := range postRouter {
-		r.HandleFunc(path, logHandler(path, global.Debug, f)).Methods("POST")
+		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("POST")
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -102,7 +102,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	for path, f := range getRouter {
-		r.HandleFunc(path, logHandler(path, global.Debug, f)).Methods("GET")
+		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("GET")
 	}
 
 	if d.Global.Debug {
@@ -176,21 +176,15 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	driver, err := backend.NewDriver(d.Global.Backend, d.Global.MountPath)
+	driver, err := backend.NewSnapshotDriver(d.Global.Backend)
 	if err != nil {
 		httpError(w, "Constructing driver:", err)
 		return
 	}
 
-	intName, err := driver.InternalName(volConfig.String())
-	if err != nil {
-		httpError(w, "Calculating internal name", err)
-		return
-	}
-
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   volConfig.String(),
 			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
@@ -233,7 +227,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewDriver(d.Global.Backend, d.Global.MountPath)
+	driver, err := backend.NewSnapshotDriver(d.Global.Backend)
 	if err != nil {
 		httpError(w, "Constructing driver:", err)
 		return
@@ -253,24 +247,12 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 
 	newVolConfig.VolumeName = req.Options["target"]
 
-	intName, err := driver.InternalName(volConfig.String())
-	if err != nil {
-		httpError(w, fmt.Sprintf("Converting %q to internal name", volConfig), err)
-		return
-	}
-
 	do := storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   volConfig.String(),
 			Params: volConfig.DriverOptions,
 		},
 		Timeout: d.Global.Timeout,
-	}
-
-	newIntName, err := driver.InternalName(newVolConfig.String())
-	if err != nil {
-		httpError(w, fmt.Sprintf("Converting %q to internal name", newVolConfig), err)
-		return
 	}
 
 	host, err := os.Hostname()
@@ -311,7 +293,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		if err := driver.CopySnapshot(do, req.Options["snapshot"], newIntName); err != nil {
+		if err := driver.CopySnapshot(do, req.Options["snapshot"], newVolConfig.String()); err != nil {
 			return err
 		}
 		return nil
@@ -342,6 +324,10 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	response := volumeList{Volumes: []volume{}}
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
+		if len(parts) != 2 {
+			httpError(w, "Invalid volume name", nil)
+			return
+		}
 		// FIXME make this take a single string and not a split one
 		volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 		if err != nil {
@@ -349,27 +335,26 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
+		driver, err := backend.NewMountDriver(volConfig.Backend, d.Global.MountPath)
 		if err != nil {
 			httpError(w, "Initializing driver", err)
 			return
 		}
 
-		intName, err := driver.InternalName(volConfig.String())
+		do := storage.DriverOptions{
+			Volume: storage.Volume{
+				Name:   volConfig.String(),
+				Params: volConfig.DriverOptions,
+			},
+		}
+
+		path, err := driver.MountPath(do)
 		if err != nil {
-			httpError(w, "Calculating internal name", err)
+			httpError(w, "Calculating mount path", err)
 			return
 		}
 
-		do := storage.DriverOptions{
-			Volume: storage.Volume{
-				Name:   intName,
-				Params: volConfig.DriverOptions,
-			},
-			Timeout: d.Global.Timeout,
-		}
-
-		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: driver.MountPath(do)})
+		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: path})
 	}
 
 	content, err := json.Marshal(response)
@@ -391,37 +376,16 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
-	if err != nil {
-		log.Warn(err)
+	if config.NotFound(err) {
 		w.WriteHeader(404)
 		return
-	}
-
-	driver, err := backend.NewDriver(volConfig.Backend, d.Global.MountPath)
-	if err != nil {
-		httpError(w, "Initializing backend", err)
-		return
-	}
-
-	intName, err := driver.InternalName(volConfig.String())
-	if err != nil {
-		httpError(w, "Calculating internal name", err)
-		return
-	}
-
-	do := storage.DriverOptions{
-		Volume: storage.Volume{
-			Name:   intName,
-			Params: volConfig.DriverOptions,
-		},
-		Timeout: d.Global.Timeout,
-	}
-
-	vol := volume{Name: volName, Mountpoint: driver.MountPath(do)}
-
-	content, err := json.Marshal(volumeGet{Volume: vol})
-	if err != nil {
+	} else if err != nil {
 		httpError(w, "Retrieving volume", err)
+	}
+
+	content, err := json.Marshal(volumeGet{Volume: volume{Name: volConfig.String()}})
+	if err != nil {
+		httpError(w, "Marshalling response", err)
 		return
 	}
 
@@ -526,9 +490,14 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if _, err := d.Config.GetVolume(parts[0], parts[1]); err != nil {
+	_, err = d.Config.GetVolume(parts[0], parts[1])
+
+	if config.NotFound(err) {
 		httpError(w, "Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
+		return
+	} else if err != nil {
+		httpError(w, "Retrieving volume", err)
 		return
 	}
 
@@ -547,18 +516,21 @@ func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tenConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
-	if err == nil {
-		content, err := json.Marshal(tenConfig)
-		if err != nil {
-			httpError(w, "Marshalling response", err)
-			return
-		}
-
-		w.Write(content)
+	if config.NotFound(err) {
+		w.WriteHeader(404)
+		return
+	} else if err != nil {
+		httpError(w, "Retrieving Volume", err)
 		return
 	}
 
-	w.WriteHeader(404)
+	content, err := json.Marshal(tenConfig)
+	if err != nil {
+		httpError(w, "Marshalling response", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -596,6 +568,8 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Creating volume", err)
 		return
 	}
+
+	log.Debugf("Volume Create: %#v", *volConfig)
 
 	hostname, err := os.Hostname()
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 
+	"github.com/contiv/errored"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -110,6 +111,10 @@ func (cfg *Policy) Validate() error {
 
 	if err := cfg.CreateOptions.Validate(); err != nil {
 		return err
+	}
+
+	if cfg.Backend == "" {
+		return errored.Errorf("Backend was not specified in policy")
 	}
 
 	return cfg.RuntimeOptions.Validate()

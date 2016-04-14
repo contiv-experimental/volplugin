@@ -35,7 +35,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
 
 	stopServices := []string{"volplugin", "volmaster", "volsupervisor"}
-	startServices := []string{""}
+	startServices := []string{}
 	if cephDriver() {
 		startServices = append(startServices, "ceph.target")
 	} else {
@@ -44,7 +44,6 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	for _, service := range stopServices {
 		for _, node := range s.vagrant.GetNodes() {
 			node.RunCommand(fmt.Sprintf("sudo systemctl stop %s", service))
-			node.RunCommand(fmt.Sprintf("sudo systemctl disable %s", service))
 		}
 	}
 	for _, service := range startServices {
@@ -58,4 +57,11 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 
 	out, err := s.uploadIntent("policy1", "policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
+}
+
+func (s *systemtestSuite) TearDownSuite(c *C) {
+	// XXX ensure ceph is always running at the end of the run
+	for _, node := range s.vagrant.GetNodes() {
+		node.RunCommand("sudo systemctl start ceph.target")
+	}
 }

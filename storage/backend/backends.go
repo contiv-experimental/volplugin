@@ -4,20 +4,60 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
+	"github.com/contiv/volplugin/storage/backend/nfs"
 	"github.com/contiv/volplugin/storage/backend/null"
 )
 
-// Drivers is the map of string to storage.Driver.
-var Drivers = map[string]func(string) storage.Driver{
-	ceph.BackendName: ceph.NewDriver,
-	null.BackendName: null.NewDriver,
+// MountDrivers is the map of string to storage.MountDriver.
+var MountDrivers = map[string]func(string) (storage.MountDriver, error){
+	ceph.BackendName: ceph.NewMountDriver,
+	null.BackendName: null.NewMountDriver,
+	nfs.BackendName:  nfs.NewMountDriver,
 }
 
-// NewDriver instantiates and return a storage backend instance of the specified type
-func NewDriver(backend, mountpath string) (storage.Driver, error) {
-	f, ok := Drivers[backend]
+// CRUDDrivers is the map of string to storage.CRUDDriver.
+var CRUDDrivers = map[string]func() (storage.CRUDDriver, error){
+	ceph.BackendName: ceph.NewCRUDDriver,
+	null.BackendName: null.NewCRUDDriver,
+}
+
+// SnapshotDrivers is the map of string to storage.SnapshotDriver.
+var SnapshotDrivers = map[string]func() (storage.SnapshotDriver, error){
+	ceph.BackendName: ceph.NewSnapshotDriver,
+	null.BackendName: null.NewSnapshotDriver,
+}
+
+// NewMountDriver instantiates and return a mount driver instance of the
+// specified type
+func NewMountDriver(backend, mountpath string) (storage.MountDriver, error) {
+	f, ok := MountDrivers[backend]
 	if !ok {
-		return nil, errored.Errorf("invalid driver backend: %q", backend)
+		return nil, errored.Errorf("invalid mount driver backend: %q", backend)
 	}
-	return f(mountpath), nil
+
+	if mountpath == "" {
+		return nil, errored.Errorf("mount path not specified, cannot continue")
+	}
+
+	return f(mountpath)
+}
+
+// NewCRUDDriver instantiates a CRUD Driver.
+func NewCRUDDriver(backend string) (storage.CRUDDriver, error) {
+	f, ok := CRUDDrivers[backend]
+	if !ok {
+		return nil, errored.Errorf("invalid CRUD driver backend: %q", backend)
+	}
+
+	return f()
+}
+
+// NewSnapshotDriver creates a SnapshotDriver based on the backend name.
+func NewSnapshotDriver(backend string) (storage.SnapshotDriver, error) {
+	f, ok := SnapshotDrivers[backend]
+	if !ok {
+		return nil, errored.Errorf("invalid snapshot driver backend: %q", backend)
+	}
+
+	return f()
 }

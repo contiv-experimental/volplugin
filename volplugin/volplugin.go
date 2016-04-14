@@ -202,8 +202,8 @@ func (dc *DaemonConfig) watchGlobal() error {
 }
 
 func (dc *DaemonConfig) updateMounts() error {
-	for driverName := range backend.Drivers {
-		cd, err := backend.NewDriver(driverName, dc.Global.MountPath)
+	for driverName := range backend.MountDrivers {
+		cd, err := backend.NewMountDriver(driverName, dc.Global.MountPath)
 		if err != nil {
 			return err
 		}

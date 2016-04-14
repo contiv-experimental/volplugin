@@ -85,20 +85,20 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "Retrieving volume", err)
+		httpError(w, "Reading request", err)
 		return
 	}
 
 	vg := volumeGet{}
 
 	if err := json.Unmarshal(content, &vg); err != nil {
-		httpError(w, "Retrieving volume", err)
+		httpError(w, "Unmarshalling request", err)
 		return
 	}
 
 	resp, err := http.Get(fmt.Sprintf("http://%s/get/%s", dc.Master, vg.Name))
 	if err != nil {
-		httpError(w, "Retrieving volume", err)
+		httpError(w, "Making request to volmaster", err)
 		return
 	}
 
@@ -144,16 +144,17 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 	driver, _, do, err := dc.structsVolumeName(uc)
 	if err == errVolumeNotFound {
 		log.Debugf("Volume %q not found, was requested", uc.Request.Name)
-		w.Write([]byte(""))
+		w.Write([]byte("{}"))
 		return
 	}
 
+	path, err := driver.MountPath(do)
 	if err != nil {
-		httpError(w, "Configuring request", err)
+		httpError(w, "Calculating mount path", err)
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(do), Err: ""})
+	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +237,13 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, dc.Client.AddStopChan(uc.Request.Name))
 	go dc.startRuntimePoll(volConfig.String(), mc)
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
+	path, err := driver.MountPath(driverOpts)
+	if err != nil {
+		httpError(w, "Calculating mount path", err)
+		return
+	}
+
+	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +285,13 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: driver.MountPath(driverOpts)})
+	path, err := driver.MountPath(driverOpts)
+	if err != nil {
+		httpError(w, "Calculating mount path", err)
+		return
+	}
+
+	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
 }
 
 // Catchall for additional driver functions.

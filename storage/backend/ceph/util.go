@@ -8,8 +8,12 @@ import (
 )
 
 // MountPath returns the path of a mount for a pool/volume.
-func (c *Driver) MountPath(do storage.DriverOptions) string {
-	return filepath.Join(c.mountpath, do.Volume.Params["pool"], do.Volume.Name)
+func (c *Driver) MountPath(do storage.DriverOptions) (string, error) {
+	volName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(c.mountpath, do.Volume.Params["pool"], volName), nil
 }
 
 // FIXME maybe this belongs in storage/ as it's more general?

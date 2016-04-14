@@ -24,7 +24,7 @@ var filesystems = map[string]storage.FSOptions{
 }
 
 var volumeSpec = storage.Volume{
-	Name:   "pithos",
+	Name:   "test/pithos",
 	Size:   10,
 	Params: storage.Params{"pool": "rbd"},
 }
@@ -77,7 +77,10 @@ func (s *cephSuite) TestMkfsVolume(c *C) {
 
 func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
-	driver := NewDriver(myMountpath)
+	crudDriver, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+	mountDriver, err := NewMountDriver(myMountpath)
+	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
@@ -87,52 +90,62 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	driver.Unmount(driverOpts)
-	driver.Destroy(driverOpts)
+	mountDriver.Unmount(driverOpts)
+	crudDriver.Destroy(driverOpts)
 
-	c.Assert(driver.Create(driverOpts), IsNil)
-	defer driver.Destroy(driverOpts)
-	c.Assert(driver.Format(driverOpts), IsNil)
-	ms, err := driver.Mount(driverOpts)
+	c.Assert(crudDriver.Create(driverOpts), IsNil)
+	defer crudDriver.Destroy(driverOpts)
+	c.Assert(crudDriver.Format(driverOpts), IsNil)
+	ms, err := mountDriver.Mount(driverOpts)
 	c.Assert(err, IsNil)
 	c.Assert(ms.Volume, DeepEquals, volumeSpec)
 	c.Assert(ms.DevMajor, Equals, uint(252))
 	c.Assert(ms.DevMinor, Equals, uint(0))
 	c.Assert(strings.HasPrefix(ms.Device, "/dev/rbd"), Equals, true)
-	s.readWriteTest(c, driver.MountPath(driverOpts))
-	c.Assert(driver.Unmount(driverOpts), IsNil)
-	c.Assert(driver.Destroy(driverOpts), IsNil)
+	mp, err := mountDriver.MountPath(driverOpts)
+	c.Assert(err, IsNil)
+	s.readWriteTest(c, mp)
+	c.Assert(mountDriver.Unmount(driverOpts), IsNil)
+	c.Assert(crudDriver.Destroy(driverOpts), IsNil)
 }
 
 func (s *cephSuite) TestSnapshots(c *C) {
-	driver := NewDriver(myMountpath)
+	snapDrv, err := NewSnapshotDriver()
+	c.Assert(err, IsNil)
+	crudDrv, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
 		Timeout:   5 * time.Second,
 	}
 
-	c.Assert(driver.Create(driverOpts), IsNil)
-	defer driver.Destroy(driverOpts)
-	c.Assert(driver.CreateSnapshot("hello", driverOpts), IsNil)
-	c.Assert(driver.CreateSnapshot("hello", driverOpts), NotNil)
+	c.Assert(crudDrv.Create(driverOpts), IsNil)
+	defer crudDrv.Destroy(driverOpts)
+	c.Assert(snapDrv.CreateSnapshot("hello", driverOpts), IsNil)
+	c.Assert(snapDrv.CreateSnapshot("hello", driverOpts), NotNil)
 
-	list, err := driver.ListSnapshots(driverOpts)
+	list, err := snapDrv.ListSnapshots(driverOpts)
 	c.Assert(err, IsNil)
 	c.Assert(len(list), Equals, 1)
 	c.Assert(list, DeepEquals, []string{"hello"})
 
-	c.Assert(driver.RemoveSnapshot("hello", driverOpts), IsNil)
-	c.Assert(driver.RemoveSnapshot("hello", driverOpts), NotNil)
+	c.Assert(snapDrv.RemoveSnapshot("hello", driverOpts), IsNil)
+	c.Assert(snapDrv.RemoveSnapshot("hello", driverOpts), NotNil)
 
-	list, err = driver.ListSnapshots(driverOpts)
+	list, err = snapDrv.ListSnapshots(driverOpts)
 	c.Assert(err, IsNil)
 	c.Assert(len(list), Equals, 0)
-	c.Assert(driver.Destroy(driverOpts), IsNil)
+	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
 }
 
 func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
-	driver := NewDriver(myMountpath)
+	mountDrv, err := NewMountDriver(myMountpath)
+	c.Assert(err, IsNil)
+	crudDrv, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
@@ -141,21 +154,21 @@ func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	driver.Unmount(driverOpts)
-	driver.Destroy(driverOpts)
+	mountDrv.Unmount(driverOpts)
+	crudDrv.Destroy(driverOpts)
 
-	defer driver.Unmount(driverOpts)
-	defer driver.Destroy(driverOpts)
+	defer mountDrv.Unmount(driverOpts)
+	defer crudDrv.Destroy(driverOpts)
 
-	c.Assert(driver.Create(driverOpts), IsNil)
-	c.Assert(driver.Format(driverOpts), IsNil)
+	c.Assert(crudDrv.Create(driverOpts), IsNil)
+	c.Assert(crudDrv.Format(driverOpts), IsNil)
 	for i := 0; i < 10; i++ {
-		_, err := driver.Mount(driverOpts)
+		_, err := mountDrv.Mount(driverOpts)
 		c.Assert(err, IsNil)
-		s.readWriteTest(c, "/mnt/ceph/rbd/pithos")
-		c.Assert(driver.Unmount(driverOpts), IsNil)
+		s.readWriteTest(c, "/mnt/ceph/rbd/test.pithos")
+		c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	}
-	c.Assert(driver.Destroy(driverOpts), IsNil)
+	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
 }
 
 func (s *cephSuite) TestTemplateFSCmd(c *C) {
@@ -168,7 +181,11 @@ func (s *cephSuite) TestTemplateFSCmd(c *C) {
 }
 
 func (s *cephSuite) TestMounted(c *C) {
-	driver := NewDriver(myMountpath)
+	crudDrv, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+	mountDrv, err := NewMountDriver(myMountpath)
+	c.Assert(err, IsNil)
+
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
 		FSOptions: filesystems["ext4"],
@@ -177,59 +194,63 @@ func (s *cephSuite) TestMounted(c *C) {
 
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	driver.Unmount(driverOpts)
-	driver.Destroy(driverOpts)
+	mountDrv.Unmount(driverOpts)
+	crudDrv.Destroy(driverOpts)
 
-	c.Assert(driver.Create(driverOpts), IsNil)
-	c.Assert(driver.Format(driverOpts), IsNil)
-	_, err := driver.Mount(driverOpts)
+	c.Assert(crudDrv.Create(driverOpts), IsNil)
+	c.Assert(crudDrv.Format(driverOpts), IsNil)
+	_, err = mountDrv.Mount(driverOpts)
 	c.Assert(err, IsNil)
-	mounts, err := driver.Mounted(2 * time.Minute)
+	mounts, err := mountDrv.Mounted(2 * time.Minute)
 	c.Assert(err, IsNil)
 
-	c.Assert(mounts, DeepEquals, []*storage.Mount{
-		{
-			Device:   "/dev/rbd0",
-			DevMajor: 252,
-			DevMinor: 0,
-			Path:     strings.Join([]string{myMountpath, volumeSpec.Params["pool"], volumeSpec.Name}, "/"),
-			Volume: storage.Volume{
-				Name: "pithos",
-				Params: map[string]string{
-					"pool": "rbd",
-				},
+	intName, err := (&Driver{}).internalName(volumeSpec.Name) // totally cheating
+	c.Assert(err, IsNil)
+
+	c.Assert(*mounts[0], DeepEquals, storage.Mount{
+		Device:   "/dev/rbd0",
+		DevMajor: 252,
+		DevMinor: 0,
+		Path:     strings.Join([]string{myMountpath, volumeSpec.Params["pool"], intName}, "/"),
+		Volume: storage.Volume{
+			Name: "test/pithos",
+			Params: map[string]string{
+				"pool": "rbd",
 			},
 		},
 	})
 
-	c.Assert(driver.Unmount(driverOpts), IsNil)
-	c.Assert(driver.Destroy(driverOpts), IsNil)
+	c.Assert(mountDrv.Unmount(driverOpts), IsNil)
+	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
 }
 
-func (s *cephSuite) TestInternalNames(c *C) {
-	driver := NewDriver(myMountpath)
-	out, err := driver.InternalName("tenant1/test")
+func (s *cephSuite) TestExternalInternalNames(c *C) {
+	driver := &Driver{}
+	out, err := driver.internalName("tenant1/test")
 	c.Assert(err, IsNil)
 	c.Assert(out, Equals, "tenant1.test")
 
-	out, err = driver.InternalName("tenant1.test/test")
+	out, err = driver.internalName("tenant1.test/test")
 	c.Assert(err, NotNil)
 	c.Assert(out, Equals, "")
 
-	out, err = driver.InternalName("tenant1/test.two")
+	out, err = driver.internalName("tenant1/test.two")
 	c.Assert(err, IsNil)
 	c.Assert(out, Equals, "tenant1.test.two")
 
-	out, err = driver.InternalName("tenant1/test/two")
+	out, err = driver.internalName("tenant1/test/two")
 	c.Assert(err, NotNil)
 	c.Assert(out, Equals, "")
 
-	c.Assert(driver.InternalNameToVolpluginName("tenant1.test"), Equals, "tenant1/test")
-	c.Assert(driver.InternalNameToVolpluginName("tenant1.test.two"), Equals, "tenant1/test.two")
+	out, err = driver.internalName("tenant1/test")
+	c.Assert(driver.externalName(out), Equals, "tenant1/test")
 }
 
 func (s *cephSuite) TestSnapshotClone(c *C) {
-	driver := NewDriver(myMountpath)
+	snapDrv, err := NewSnapshotDriver()
+	c.Assert(err, IsNil)
+	crudDrv, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
 		Volume:    volumeSpec,
@@ -237,20 +258,20 @@ func (s *cephSuite) TestSnapshotClone(c *C) {
 		Timeout:   5 * time.Second,
 	}
 
-	c.Assert(driver.Create(driverOpts), IsNil)
-	c.Assert(driver.CreateSnapshot("test", driverOpts), IsNil)
-	c.Assert(driver.CopySnapshot(driverOpts, "test", "testImage"), IsNil)
+	c.Assert(crudDrv.Create(driverOpts), IsNil)
+	c.Assert(snapDrv.CreateSnapshot("test", driverOpts), IsNil)
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), IsNil)
 	defer func(driverOpts storage.DriverOptions) {
-		driverOpts.Volume.Name = "testImage"
-		c.Assert(driver.Destroy(driverOpts), IsNil)
-		c.Assert(exec.Command("rbd", "snap", "unprotect", volumeSpec.Name, "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run(), IsNil)
-		driverOpts.Volume.Name = "pithos"
-		c.Assert(driver.Destroy(driverOpts), IsNil)
+		driverOpts.Volume.Name = "test/image"
+		c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+		c.Assert(exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run(), IsNil)
+		driverOpts.Volume.Name = "test/pithos"
+		c.Assert(crudDrv.Destroy(driverOpts), IsNil)
 	}(driverOpts)
 
 	content, err := exec.Command("rbd", "ls").CombinedOutput()
 	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "testImage"), Equals, true)
-	c.Assert(driver.CopySnapshot(driverOpts, "foo", "testImage"), NotNil)
-	c.Assert(driver.CopySnapshot(driverOpts, "test", "testImage"), NotNil)
+	c.Assert(strings.TrimSpace(string(content)), Equals, "test.image\ntest.pithos")
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "foo", "test/image"), NotNil)
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
 }

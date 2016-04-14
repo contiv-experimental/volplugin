@@ -22,14 +22,19 @@ var (
 	errVolumeNotFound = errors.New("Volume not found")
 )
 
-func (dc *DaemonConfig) mountExists(driver storage.Driver, driverOpts storage.DriverOptions) (bool, error) {
+func (dc *DaemonConfig) mountExists(driver storage.MountDriver, driverOpts storage.DriverOptions) (bool, error) {
 	mounts, err := driver.Mounted(dc.Global.Timeout)
 	if err != nil {
 		return false, err
 	}
 
+	mountPath, err := driver.MountPath(driverOpts)
+	if err != nil {
+		return false, err
+	}
+
 	for _, mount := range mounts {
-		if mount.Path == driver.MountPath(driverOpts) {
+		if mount.Path == mountPath {
 			return true, nil
 		}
 	}
@@ -37,21 +42,16 @@ func (dc *DaemonConfig) mountExists(driver storage.Driver, driverOpts storage.Dr
 	return false, nil
 }
 
-func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Driver, *config.Volume, storage.DriverOptions, error) {
+func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.MountDriver, *config.Volume, storage.DriverOptions, error) {
 	driverOpts := storage.DriverOptions{}
 	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
 	if err != nil {
 		return nil, nil, driverOpts, err
 	}
 
-	driver, err := backend.NewDriver(volConfig.Backend, dc.Global.MountPath)
+	driver, err := backend.NewMountDriver(dc.Global.Backend, dc.Global.MountPath)
 	if err != nil {
 		return nil, nil, driverOpts, errored.Errorf("loading driver").Combine(err)
-	}
-
-	intName, err := driver.InternalName(uc.Request.Name)
-	if err != nil {
-		return driver, nil, driverOpts, errored.Errorf("Volume %q does not satisfy name requirements", uc.Request.Name).Combine(err)
 	}
 
 	actualSize, err := volConfig.CreateOptions.ActualSize()
@@ -61,7 +61,7 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Drive
 
 	driverOpts = storage.DriverOptions{
 		Volume: storage.Volume{
-			Name:   intName,
+			Name:   volConfig.String(),
 			Size:   actualSize,
 			Params: volConfig.DriverOptions,
 		},
@@ -118,13 +118,13 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 404 {
+		return nil, errVolumeNotFound
+	}
+
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode == 404 {
-		return nil, errVolumeNotFound
 	}
 
 	if resp.StatusCode != 200 {
