@@ -80,7 +80,7 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run:
-	vagrant ssh mon0 -c 'volcli global upload < /testdata/global1.json'
+	vagrant ssh mon0 -c 'volcli global upload < /testdata/ceph/global1.json'
 	@set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
@@ -103,7 +103,7 @@ run-build: godep
 	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 
 system-test: godep build
-	if [ "x${WORKSPACE}" != "x" ]; then GOPATH=/tmp/volplugin:${WORKSPACE} godep go test -v -timeout 240m ./systemtests -check.v; else godep go test -v -timeout 240m ./systemtests -check.v; fi
+	@./build/scripts/systemtests.sh
 
 system-test-big:
 	BIG=1 make system-test

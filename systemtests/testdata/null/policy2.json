@@ -1,0 +1,17 @@
+{ 
+  "driver": {
+    "pool": "rbd"
+  },
+  "create": {
+    "size": "100MB"
+  },
+  "runtime": {
+    "snapshots": true,
+    "snapshot": {
+      "frequency": "1m",
+      "keep": 10
+    }
+  },
+  "backend" : "null"
+
+}

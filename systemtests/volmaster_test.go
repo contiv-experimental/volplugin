@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -30,13 +31,13 @@ func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
 }
 
 func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
-	content, err := ioutil.ReadFile("testdata/global1.json")
+	content, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s/global1.json", getDriver()))
 	c.Assert(err, IsNil)
 
 	globalBase1 := config.NewGlobalConfig()
 	c.Assert(json.Unmarshal(content, globalBase1), IsNil)
 
-	content, err = ioutil.ReadFile("testdata/global2.json")
+	content, err = ioutil.ReadFile(fmt.Sprintf("testdata/%s/global2.json", getDriver()))
 	c.Assert(err, IsNil)
 
 	globalBase2 := config.NewGlobalConfig()
