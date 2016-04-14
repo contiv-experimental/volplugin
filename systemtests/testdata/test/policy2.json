@@ -3,14 +3,15 @@
     "pool": "rbd"
   },
   "create": {
-    "size": "10MB"
+    "size": "100MB"
   },
   "runtime": {
     "snapshots": true,
     "snapshot": {
-      "frequency": "30m",
-      "keep": 20
+      "frequency": "1m",
+      "keep": 10
     }
   },
-  "backend" : "null"
+  "backend" : "test"
+
 }
