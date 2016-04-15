@@ -42,6 +42,25 @@ func (dc *DaemonConfig) mountExists(driver storage.MountDriver, driverOpts stora
 	return false, nil
 }
 
+func (dc *DaemonConfig) volumeToDriverOptions(volConfig *config.Volume) (storage.DriverOptions, error) {
+	actualSize, err := volConfig.CreateOptions.ActualSize()
+	if err != nil {
+		return storage.DriverOptions{}, err
+	}
+
+	return storage.DriverOptions{
+		Volume: storage.Volume{
+			Name:   volConfig.String(),
+			Size:   actualSize,
+			Params: volConfig.DriverOptions,
+		},
+		FSOptions: storage.FSOptions{
+			Type: volConfig.CreateOptions.FileSystem,
+		},
+		Timeout: dc.Global.Timeout,
+	}, nil
+}
+
 func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.MountDriver, *config.Volume, storage.DriverOptions, error) {
 	driverOpts := storage.DriverOptions{}
 	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
@@ -54,21 +73,9 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 		return nil, nil, driverOpts, errored.Errorf("loading driver").Combine(err)
 	}
 
-	actualSize, err := volConfig.CreateOptions.ActualSize()
+	driverOpts, err = dc.volumeToDriverOptions(volConfig)
 	if err != nil {
-		return driver, nil, driverOpts, errored.Errorf("Computing size of volume").Combine(err)
-	}
-
-	driverOpts = storage.DriverOptions{
-		Volume: storage.Volume{
-			Name:   volConfig.String(),
-			Size:   actualSize,
-			Params: volConfig.DriverOptions,
-		},
-		FSOptions: storage.FSOptions{
-			Type: volConfig.CreateOptions.FileSystem,
-		},
-		Timeout: dc.Global.Timeout,
+		return nil, nil, driverOpts, errored.Errorf("converting volume to internal structure").Combine(err)
 	}
 
 	return driver, volConfig, driverOpts, nil

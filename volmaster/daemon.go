@@ -39,18 +39,6 @@ type volume struct {
 	Mountpoint string
 }
 
-type volumeList struct {
-	Volumes []volume
-	Err     string
-}
-
-// volumeGet is taken from this struct in docker:
-// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
-type volumeGet struct {
-	Volume volume
-	Err    string
-}
-
 // Daemon initializes the daemon for use.
 func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	global, err := d.Config.GetGlobal()
@@ -321,7 +309,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := volumeList{Volumes: []volume{}}
+	response := []*config.Volume{}
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
 		if len(parts) != 2 {
@@ -335,26 +323,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		driver, err := backend.NewMountDriver(volConfig.Backend, d.Global.MountPath)
-		if err != nil {
-			httpError(w, "Initializing driver", err)
-			return
-		}
-
-		do := storage.DriverOptions{
-			Volume: storage.Volume{
-				Name:   volConfig.String(),
-				Params: volConfig.DriverOptions,
-			},
-		}
-
-		path, err := driver.MountPath(do)
-		if err != nil {
-			httpError(w, "Calculating mount path", err)
-			return
-		}
-
-		response.Volumes = append(response.Volumes, volume{Name: vol, Mountpoint: path})
+		response = append(response, volConfig)
 	}
 
 	content, err := json.Marshal(response)
@@ -383,7 +352,7 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Retrieving volume", err)
 	}
 
-	content, err := json.Marshal(volumeGet{Volume: volume{Name: volConfig.String()}})
+	content, err := json.Marshal(volConfig)
 	if err != nil {
 		httpError(w, "Marshalling response", err)
 		return

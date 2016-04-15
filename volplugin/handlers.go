@@ -3,13 +3,13 @@ package volplugin
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -89,7 +89,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vg := volumeGet{}
+	vg := volumeGetRequest{}
 
 	if err := json.Unmarshal(content, &vg); err != nil {
 		httpError(w, "Unmarshalling request", err)
@@ -114,7 +114,51 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	io.Copy(w, resp.Body)
+	volConfig := &config.Volume{}
+
+	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		httpError(w, "Reading from volmaster", err)
+		return
+	}
+
+	if err := json.Unmarshal(content, volConfig); err != nil {
+		httpError(w, "Unmarshalling volume", err)
+		return
+	}
+
+	if err := volConfig.Validate(); err != nil {
+		httpError(w, "Validating volume parameters", err)
+		return
+	}
+
+	driver, err := backend.NewMountDriver(volConfig.Backend, dc.Global.MountPath)
+	if err != nil {
+		httpError(w, "Configuring driver", err)
+		return
+	}
+
+	do, err := dc.volumeToDriverOptions(volConfig)
+	if err != nil {
+		httpError(w, "Getting ready to run driver operations", err)
+		return
+	}
+
+	path, err := driver.MountPath(do)
+	if err != nil {
+		httpError(w, "Calculating mount path", err)
+		return
+	}
+
+	fmt.Println(path)
+
+	content, err = json.Marshal(volumeGet{Volume: volume{Name: volConfig.String(), Mountpoint: path}})
+	if err != nil {
+		httpError(w, "Marshalling response", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +175,50 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	io.Copy(w, resp.Body)
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		httpError(w, "Reading response from volmaster", err)
+		return
+	}
+
+	volumes := []*config.Volume{}
+
+	if err := json.Unmarshal(content, &volumes); err != nil {
+		httpError(w, "Unmarshalling response from volmaster", err)
+		return
+	}
+
+	response := volumeList{Volumes: []volume{}}
+
+	for _, volConfig := range volumes {
+		driver, err := backend.NewMountDriver(volConfig.Backend, dc.Global.MountPath)
+		if err != nil {
+			httpError(w, "Configuring driver", err)
+			return
+		}
+
+		do, err := dc.volumeToDriverOptions(volConfig)
+		if err != nil {
+			httpError(w, "Getting ready to run driver operations", err)
+			return
+		}
+
+		path, err := driver.MountPath(do)
+		if err != nil {
+			httpError(w, "Calculating mount path", err)
+			return
+		}
+
+		response.Volumes = append(response.Volumes, volume{Name: volConfig.String(), Mountpoint: path})
+	}
+
+	content, err = json.Marshal(response)
+	if err != nil {
+		httpError(w, "Marshalling response", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +227,8 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
+
+	fmt.Println(uc)
 
 	driver, _, do, err := dc.structsVolumeName(uc)
 	if err == errVolumeNotFound {
