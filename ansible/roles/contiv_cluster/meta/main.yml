@@ -1,5 +1,0 @@
----
-# The dependecies for cluster-mgr
-
-dependencies:
-- { role: ansible }

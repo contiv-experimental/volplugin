@@ -1,2 +1,0 @@
-dependencies:
-- { role: ceph-install, tags: prebake-for-dev }

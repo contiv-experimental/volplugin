@@ -1,8 +1,0 @@
----
-# This play contains tasks for cleaning up contiv_cluster services
-
-- name: stop clusterm
-  service: name=clusterm state=stopped
-
-- name: stop collins
-  service: name=collins state=stopped

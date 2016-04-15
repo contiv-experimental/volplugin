@@ -1,3 +1,0 @@
----
-- include: ./installs/install_on_redhat.yml
-  when: ansible_os_family == 'RedHat'
