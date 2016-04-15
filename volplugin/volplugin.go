@@ -243,7 +243,6 @@ func (dc *DaemonConfig) updateMounts() error {
 				}
 			}
 
-			dc.mountIncrement(mount.Volume.Name)
 			go dc.startRuntimePoll(mount.Volume.Name, mount)
 			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
 		}

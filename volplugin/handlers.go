@@ -181,17 +181,6 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Mounting volume %q", uc.Request.Name)
 
-	// if we're mounted already on this host, the mount publish will succeed and
-	// we will have two mounts, which will cause trouble at unmount time.
-	//
-	// additionally, docker will unmount a volume for a failed mount at container
-	// start time. This prevents us from being able to unmount safely trusting
-	// docker's input.
-	if dc.mountIncrement(uc.Request.Name) > 1 {
-		httpError(w, "Mountpoint has existing mounts on this host", nil)
-		return
-	}
-
 	driver, volConfig, driverOpts, err := dc.structsVolumeName(uc)
 	if err != nil {
 		httpError(w, "Configuring request", err)
@@ -215,7 +204,6 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := dc.Client.ReportMount(ut); err != nil {
-		dc.mountDecrement(uc.Request.Name)
 		httpError(w, "Reporting mount to master", err)
 		return
 	}
@@ -261,11 +249,6 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if dc.mountDecrement(volConfig.String()) > 0 {
-		httpError(w, "Refusing to unmount because there are other mounts on the host that are using it", nil)
-		return
-	}
-
 	ut := &config.UseMount{
 		Volume:   volConfig.String(),
 		Hostname: dc.Host,
@@ -273,7 +256,6 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	if err := driver.Unmount(driverOpts); err != nil {
 		httpError(w, "Could not unmount image", err)
-		dc.mountIncrement(volConfig.String())
 		return
 	}
 
