@@ -18,6 +18,7 @@
     - python-requests # XXX required by ceph repo, but it has a bad package on it
     - bash-completion
     - kernel #keep kernel up to date
+    - libselinux-python
 
 - name: install and start ntp
   service: name=ntpd state=started enabled=yes

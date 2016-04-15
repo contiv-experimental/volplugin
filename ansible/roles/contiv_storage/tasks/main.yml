@@ -6,13 +6,11 @@
     validate_certs: "{{ validate_certs }}"
     url: "{{ contiv_storage_src_file }}"
     dest: "{{ contiv_storage_dest_file }}"
-  register: download_result
 
 - name: install storage service
   shell: tar vxjf {{ contiv_storage_dest_file }}
   args:
     chdir: /usr/bin/
-  when: download_result | changed 
 
 - name: copy environment file for volmaster
   copy: src=volmaster dest=/etc/default/volmaster

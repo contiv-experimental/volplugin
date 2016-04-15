@@ -20,9 +20,9 @@
 
 - name: pull collins container image
   shell: "docker pull {{ collins_image }}:{{ collins_image_version }}"
+  when: not collins_exists|success
   tags:
     - prebake-for-dev
-  when: not collins_exists|success
 
 - name: start collins
   service: name=collins state=started
@@ -32,14 +32,11 @@
     validate_certs: "{{ validate_certs }}"
     url: "{{ contiv_cluster_src_file }}" 
     dest: "{{ contiv_cluster_dest_file }}"
-    force: no
-  register: download_result
 
 - name: install clusterm
   shell: tar vxjf {{ contiv_cluster_dest_file }} 
   args:
     chdir: /usr/bin/
-  when: download_result | changed 
 
 - name: create conf dir for clusterm
   file:

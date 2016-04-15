@@ -2,5 +2,6 @@
 # role variable for the swarm service
 #
 swarm_api_port: 2375
-swarm_version: "1.1.2"
+swarm_version: "1.2.0"
 swarm_rule_comment: "swarm traffic"
+swarm_strategy: spread

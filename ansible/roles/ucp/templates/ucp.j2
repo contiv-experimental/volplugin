@@ -15,10 +15,18 @@ start)
     {% if ucp_bootstrap_node_name == node_name -%}
     out=$(/usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
+    {% if ucp_license_file is defined -%}
+        -v {{ ucp_license_remote  }}:/docker_subscription.lic \
+    {% endif %}
         docker/ucp install --host-address={{ node_addr }} \
           --swarm-port={{ ucp_swarm_port }} --controller-port={{ ucp_controller_port }} \
-          --image-version={{ ucp_version }} | tee /dev/stdout)
+    {% if ucp_swarm_strategy != "spread" -%}
+          --{{ ucp_swarm_strategy }} \
+    {% endif -%}
+          --image-version={{ ucp_version }} | tee /tmp/ucp.log)
 
+    cat /tmp/ucp.log
+    rm /tmp/ucp.log
     # copy out the instance ID
     instanceId=$(echo ${out} | egrep -o 'UCP instance ID: [a-zA-Z0-9:_]*' | \
         awk --field-separator='UCP instance ID: ' '{print $2}')
