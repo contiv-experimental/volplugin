@@ -161,12 +161,7 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	global, err := queryGlobalConfig(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	policy := config.NewPolicy(global.Backend)
+	policy := config.NewPolicy()
 
 	if err := json.Unmarshal(content, policy); err != nil {
 		return false, err

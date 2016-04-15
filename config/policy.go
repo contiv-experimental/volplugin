@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -20,9 +21,9 @@ type Policy struct {
 }
 
 // NewPolicy return policy config with specified backend preset
-func NewPolicy(backend string) *Policy {
+func NewPolicy() *Policy {
 	return &Policy{
-		Backend: backend,
+		Backend: ceph.BackendName,
 	}
 }
 

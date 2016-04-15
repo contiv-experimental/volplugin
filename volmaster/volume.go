@@ -33,7 +33,7 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 		return storage.DriverOptions{}, err
 	}
 
-	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
+	driver, err := backend.NewCRUDDriver(config.Backend)
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
@@ -61,7 +61,7 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 		return err
 	}
 
-	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
+	driver, err := backend.NewCRUDDriver(config.Backend)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 }
 
 func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
-	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
+	driver, err := backend.NewCRUDDriver(config.Backend)
 	if err != nil {
 		return false, err
 	}
@@ -88,7 +88,7 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 }
 
 func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duration) error {
-	driver, err := backend.NewCRUDDriver(dc.Global.Backend)
+	driver, err := backend.NewCRUDDriver(config.Backend)
 	if err != nil {
 		return err
 	}

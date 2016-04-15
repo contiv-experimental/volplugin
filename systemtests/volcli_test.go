@@ -8,7 +8,6 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/contiv/volplugin/config"
-	"github.com/contiv/volplugin/storage/backend/ceph"
 )
 
 func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
@@ -43,7 +42,7 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	out, err := s.volcli("policy get test1")
 	c.Assert(err, IsNil)
 
-	intentTarget := config.NewPolicy(ceph.BackendName)
+	intentTarget := config.NewPolicy()
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	policy1.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 
@@ -53,7 +52,7 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	out, err = s.volcli("policy get test2")
 	c.Assert(err, IsNil)
 
-	intentTarget = config.NewPolicy(ceph.BackendName)
+	intentTarget = config.NewPolicy()
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	policy2.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(policy2, DeepEquals, intentTarget)
@@ -84,7 +83,7 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 
 	out, err = s.volcli("policy get test")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	intentTarget := config.NewPolicy("")
+	intentTarget := config.NewPolicy()
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
 	testDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(testDriverIntent, DeepEquals, intentTarget)

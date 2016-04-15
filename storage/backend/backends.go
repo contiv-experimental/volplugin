@@ -5,6 +5,7 @@ import (
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/contiv/volplugin/storage/backend/nfs"
+	"github.com/contiv/volplugin/storage/backend/null"
 	"github.com/contiv/volplugin/storage/backend/test"
 )
 
@@ -19,12 +20,14 @@ var MountDrivers = map[string]func(string) (storage.MountDriver, error){
 var CRUDDrivers = map[string]func() (storage.CRUDDriver, error){
 	ceph.BackendName: ceph.NewCRUDDriver,
 	test.BackendName: test.NewCRUDDriver,
+	null.BackendName: null.NewCRUDDriver,
 }
 
 // SnapshotDrivers is the map of string to storage.SnapshotDriver.
 var SnapshotDrivers = map[string]func() (storage.SnapshotDriver, error){
 	ceph.BackendName: ceph.NewSnapshotDriver,
 	test.BackendName: test.NewSnapshotDriver,
+	null.BackendName: null.NewSnapshotDriver,
 }
 
 // NewMountDriver instantiates and return a mount driver instance of the

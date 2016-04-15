@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -26,7 +25,6 @@ type Global struct {
 	Debug     bool
 	Timeout   time.Duration
 	TTL       time.Duration
-	Backend   string
 	MountPath string
 }
 
@@ -34,7 +32,6 @@ type Global struct {
 func NewGlobalConfig() *Global {
 	return &Global{
 		TTL:       DefaultGlobalTTL,
-		Backend:   ceph.BackendName,
 		MountPath: defaultMountPath,
 		Timeout:   10 * time.Minute,
 	}

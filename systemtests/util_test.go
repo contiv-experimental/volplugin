@@ -12,7 +12,6 @@ import (
 	utils "github.com/contiv/systemtests-utils"
 	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
-	"github.com/contiv/volplugin/storage/backend/ceph"
 )
 
 func (s *systemtestSuite) mon0cmd(command string) (string, error) {
@@ -33,7 +32,7 @@ func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 		return nil, err
 	}
 
-	cfg := config.NewPolicy(ceph.BackendName)
+	cfg := config.NewPolicy()
 
 	if err := json.Unmarshal(content, cfg); err != nil {
 		return nil, err
