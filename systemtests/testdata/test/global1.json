@@ -1,6 +1,5 @@
 {
   "TTL": 30,
   "Debug": true,
-  "Timeout": 10,
-  "Backend" : "test"
+  "Timeout": 10
 }

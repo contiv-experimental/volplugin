@@ -2,6 +2,5 @@
   "TTL": 5,
   "Debug": true,
   "Timeout": 10,
-  "MountPath": "/mnt/test",
-  "Backend": "ceph"
+  "MountPath": "/mnt/test"
 }

@@ -1,6 +1,5 @@
 {
   "TTL": 5,
   "Debug": true,
-  "Timeout": 1,
-  "Backend": "ceph"
+  "Timeout": 1
 }

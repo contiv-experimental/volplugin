@@ -176,7 +176,7 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	driver, err := backend.NewSnapshotDriver(d.Global.Backend)
+	driver, err := backend.NewSnapshotDriver(volConfig.Backend)
 	if err != nil {
 		httpError(w, "Constructing driver:", err)
 		return
@@ -227,15 +227,15 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewSnapshotDriver(d.Global.Backend)
-	if err != nil {
-		httpError(w, "Constructing driver:", err)
-		return
-	}
-
 	volConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err != nil {
 		httpError(w, "Retrieving original volume", err)
+		return
+	}
+
+	driver, err := backend.NewSnapshotDriver(volConfig.Backend)
+	if err != nil {
+		httpError(w, "Constructing driver:", err)
 		return
 	}
 

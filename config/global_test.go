@@ -13,7 +13,6 @@ func (s *configSuite) TestGlobal(c *C) {
 		Debug:     true,
 		TTL:       10,
 		Timeout:   1,
-		Backend:   "foo",
 		MountPath: defaultMountPath,
 	}
 
@@ -41,7 +40,6 @@ func (s *configSuite) TestGlobalWatch(c *C) {
 		Debug:     true,
 		TTL:       10,
 		Timeout:   1,
-		Backend:   "foo",
 		MountPath: defaultMountPath,
 	}
 
