@@ -1,0 +1,11 @@
+---
+# This play contains tasks for cleaning up swarm
+
+- name: stop swarm
+  service: name=swarm state=stopped
+
+- name: cleanup iptables for swarm
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ swarm_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ swarm_api_port }}"

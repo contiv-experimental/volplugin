@@ -1,0 +1,23 @@
+---
+# Role defaults for ucp
+
+ucp_version: "1.0.4"
+ucp_local_dir: "fetch/ucp"
+ucp_remote_dir: "/tmp"
+ucp_instance_id_file: "ucp-instance-id"
+ucp_fingerprint_file: "ucp-fingerprint"
+ucp_fifo_file: "ucp-fifo"
+ucp_bootstrap_node_name: ""
+ucp_admin_user: "admin"
+ucp_admin_password: "orca"
+ucp_controller_replica: "--replica"
+ucp_rule_comment: "ucp traffic"
+ucp_port1: "12376"
+ucp_port2: "12379"
+ucp_port3: "12380"
+ucp_port4: "12381"
+ucp_port5: "12382"
+ucp_swarm_port: "2376"
+ucp_controller_port: "443"
+ucp_swarm_strategy: "spread"
+ucp_license_remote: "/tmp/docker_subscription.lic"

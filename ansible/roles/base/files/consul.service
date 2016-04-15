@@ -1,0 +1,8 @@
+[Unit]
+Description=Consul
+After=auditd.service systemd-user-sessions.service time-sync.target
+
+[Service]
+EnvironmentFile=/etc/default/consul
+ExecStart=/usr/bin/consul agent -server -data-dir /var/lib/consul $CONSUL_OPTS
+KillMode=process

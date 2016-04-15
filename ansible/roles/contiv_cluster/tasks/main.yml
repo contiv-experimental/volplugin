@@ -1,0 +1,59 @@
+---
+# This role contains tasks for configuring and starting clusterm service
+
+- name: copy shell script for starting collins
+  template: src=collins.j2 dest=/usr/bin/collins.sh mode=u=rwx,g=rx,o=rx
+  tags:
+    - prebake-for-dev
+
+- name: copy systemd units for collins
+  copy: src=collins.service dest=/etc/systemd/system/collins.service
+  tags:
+    - prebake-for-dev
+
+- name: check for collins image
+  shell: "docker images | grep {{ collins_image }} | grep -q {{ collins_image_version }}"
+  ignore_errors: true
+  register: collins_exists
+  tags:
+    - prebake-for-dev
+
+- name: pull collins container image
+  shell: "docker pull {{ collins_image }}:{{ collins_image_version }}"
+  when: not collins_exists|success
+  tags:
+    - prebake-for-dev
+
+- name: start collins
+  service: name=collins state=started
+
+- name: download clusterm
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: "{{ contiv_cluster_src_file }}" 
+    dest: "{{ contiv_cluster_dest_file }}"
+
+- name: install clusterm
+  shell: tar vxjf {{ contiv_cluster_dest_file }} 
+  args:
+    chdir: /usr/bin/
+
+- name: create conf dir for clusterm
+  file:
+    name: /etc/default/clusterm/
+    state: directory
+
+- name: copy conf files for clusterm
+  copy:
+    src: "{{ item }}"
+    dest: /etc/default/clusterm/{{ item }}
+    force: yes
+  with_items:
+    - "{{ clusterm_args_file }}"
+    - "{{ clusterm_conf_file }}"
+
+- name: copy systemd units for clusterm
+  template: src=clusterm.j2 dest=/etc/systemd/system/clusterm.service
+
+- name: start clusterm
+  service: name=clusterm state=started

@@ -1,0 +1,71 @@
+---
+# This role contains tasks for configuring and starting the swarm stack using ucp
+
+- name: download and install ucp images
+  shell: >
+      docker run --rm -t \
+        --name ucp \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        docker/ucp \
+        images --image-version={{ ucp_version }}
+
+- name: setup iptables for ucp
+  shell: >
+      ( iptables -L INPUT | grep "{{ ucp_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ ucp_rule_comment }} ({{ item }})"
+  become: true
+  with_items:
+    - "{{ ucp_port1 }}"
+    - "{{ ucp_port2 }}"
+    - "{{ ucp_port3 }}"
+    - "{{ ucp_port4 }}"
+    - "{{ ucp_port5 }}"
+    - "{{ ucp_swarm_port }}"
+    - "{{ ucp_controller_port }}"
+
+- name: copy the ucp files to worker nodes
+  copy:
+    src: "{{ ucp_local_dir }}/{{ item }}"
+    dest: "{{ ucp_remote_dir }}/{{ item }}"
+  with_items:
+    - "{{ ucp_fingerprint_file }}"
+    - "{{ ucp_instance_id_file }}"
+  when: node_name != ucp_bootstrap_node_name
+
+- name: copy the ucp license to the remote machine
+  copy: src={{ ucp_license_file }} dest={{ ucp_license_remote }}
+  when: (ucp_license_file is defined) and (node_name == ucp_bootstrap_node_name)
+
+- name: copy the ucp start/stop script
+  template: src=ucp.j2 dest=/usr/bin/ucp.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for ucp
+  copy: src=ucp.service dest=/etc/systemd/system/ucp.service
+
+- name: start ucp
+  service: name=ucp state=started
+
+- name: create a local fetch directory if it doesn't exist
+  local_action: file path={{ ucp_local_dir }} state=directory
+  sudo: false
+  when: run_as == "master"
+
+- name: wait for ucp files to be created, which ensures the service has started
+  wait_for:
+    path: "{{ ucp_remote_dir }}/{{ item }}"
+    state: present
+  with_items:
+    - "{{ ucp_fingerprint_file }}"
+    - "{{ ucp_instance_id_file }}"
+  when: node_name == ucp_bootstrap_node_name
+
+- name: fetch the ucp files from master nodes
+  fetch:
+    src: "{{ ucp_remote_dir }}/{{ item }}"
+    dest: "{{ ucp_local_dir }}/{{ item }}"
+    flat: yes
+    fail_on_missing: yes
+  with_items:
+    - "{{ ucp_fingerprint_file }}"
+    - "{{ ucp_instance_id_file }}"
+  when: node_name == ucp_bootstrap_node_name

@@ -1,0 +1,15 @@
+- name: download Golang v1.6
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
+    dest: /tmp/go1.6.linux-amd64.tar.gz
+
+- name: install Golang
+  shell: rm -rf go/ && tar xfvz /tmp/go1.6.linux-amd64.tar.gz
+  args:
+    chdir: /usr/local/
+
+- name: setup golang environment
+  copy:
+    dest: /etc/profile.d/00golang.sh
+    content: "export PATH=/opt/golang/bin:/usr/local/go/bin:$PATH; export GOPATH=/opt/golang"
