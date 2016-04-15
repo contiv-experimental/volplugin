@@ -213,17 +213,16 @@ func policyGet(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policy/%s", ctx.String("volmaster"), policy))
 	if err != nil {
 		return false, err
 	}
 
-	value, err := cfg.GetPolicy(policy)
-	if err != nil {
-		return false, err
+	if resp.StatusCode != 200 {
+		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
 	}
 
-	content, err := ppJSON(value)
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}

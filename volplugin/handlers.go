@@ -150,8 +150,6 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(path)
-
 	content, err = json.Marshal(volumeGet{Volume: volume{Name: volConfig.String(), Mountpoint: path}})
 	if err != nil {
 		httpError(w, "Marshalling response", err)
@@ -227,8 +225,6 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Unmarshalling request", err)
 		return
 	}
-
-	fmt.Println(uc)
 
 	driver, _, do, err := dc.structsVolumeName(uc)
 	if err == errVolumeNotFound {

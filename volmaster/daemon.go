@@ -82,6 +82,7 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
+		"/policy/{policy}":             d.handlePolicy,
 		"/list":                        d.handleList,
 		"/get/{policy}/{volume}":       d.handleGet,
 		"/runtime/{policy}/{volume}":   d.handleRuntime,
@@ -123,6 +124,25 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stderr, r.Body)
 	w.WriteHeader(404)
+}
+
+func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+
+	policyObj, err := d.Config.GetPolicy(policy)
+	if err != nil {
+		httpError(w, "Retrieving policy", err)
+		return
+	}
+
+	content, err := json.Marshal(policyObj)
+	if err != nil {
+		httpError(w, "Marshalling policy response", err)
+		return
+	}
+
+	w.Write(content)
 }
 
 func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
