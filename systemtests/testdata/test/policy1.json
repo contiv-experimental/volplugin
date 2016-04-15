@@ -1,5 +1,4 @@
 {
-  "backend": "null",
   "driver": {
     "pool": "rbd"
   },
@@ -12,5 +11,6 @@
       "frequency": "30m",
       "keep": 20
     }
-  }
+  },
+  "backend" : "test"
 }

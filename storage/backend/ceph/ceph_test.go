@@ -39,6 +39,8 @@ func (s *cephSuite) SetUpTest(c *C) {
 	if os.Getenv("DEBUG") != "" {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	c.Assert(exec.Command("sh", "-c", "set -e; for i in $(rbd ls); do rbd rm $i; done").Run(), IsNil)
 }
 
 func (s *cephSuite) readWriteTest(c *C, mountDir string) {

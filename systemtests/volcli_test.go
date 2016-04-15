@@ -69,9 +69,9 @@ func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 }
 
 func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
-	nullDriverIntent, err := s.readIntent(fmt.Sprintf("testdata/%s/nulldriver.json", getDriver()))
+	testDriverIntent, err := s.readIntent(fmt.Sprintf("testdata/%s/testdriver.json", getDriver()))
 	c.Assert(err, IsNil)
-	out, err := s.uploadIntent("test", "nulldriver")
+	out, err := s.uploadIntent("test", "testdriver")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	defer func() {
@@ -86,8 +86,8 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	intentTarget := config.NewPolicy("")
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
-	nullDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
-	c.Assert(nullDriverIntent, DeepEquals, intentTarget)
+	testDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
+	c.Assert(testDriverIntent, DeepEquals, intentTarget)
 }
 
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {

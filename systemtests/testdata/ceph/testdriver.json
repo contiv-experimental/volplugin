@@ -1,17 +1,16 @@
-{ 
+{
+  "backend": "test",
   "driver": {
     "pool": "rbd"
   },
   "create": {
-    "size": "100MB"
+    "size": "10MB"
   },
   "runtime": {
     "snapshots": true,
     "snapshot": {
-      "frequency": "1m",
-      "keep": 10
+      "frequency": "30m",
+      "keep": 20
     }
-  },
-  "backend" : "null"
-
+  }
 }

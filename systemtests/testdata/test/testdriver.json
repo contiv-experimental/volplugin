@@ -1,5 +1,5 @@
-{ 
-  "backend": "null",
+{
+  "backend": "test",
   "driver": {
     "pool": "rbd"
   },

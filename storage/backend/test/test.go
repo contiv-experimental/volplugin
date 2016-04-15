@@ -1,4 +1,4 @@
-package null
+package test
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ import (
 )
 
 // BackendName is string for no-op storage backend
-const BackendName = "null"
+const BackendName = "test"
 
 // gNullDriver is the singleton driver instace to keep all state in memory
 var gNullDriver *Driver
@@ -80,7 +80,7 @@ func (d *Driver) logStat(funcName string) {
 	fmt.Println("\t" + string(content))
 }
 
-// Name returns the null backend string
+// Name returns the test backend string
 func (d *Driver) Name() string {
 	d.logStat(getFunctionName())
 	return BackendName
