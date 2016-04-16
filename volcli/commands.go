@@ -70,6 +70,7 @@ var Commands = []cli.Command{
 			},
 			{
 				Name:        "get",
+				Flags:       VolmasterFlags,
 				ArgsUsage:   "[policy name]",
 				Usage:       "Obtain the policy",
 				Description: "Gets the policy for a policy from etcd.",

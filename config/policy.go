@@ -73,6 +73,10 @@ func (c *Client) DeletePolicy(name string) error {
 
 // GetPolicy retrieves a policy from the configuration store.
 func (c *Client) GetPolicy(name string) (*Policy, error) {
+	if name == "" {
+		return nil, errored.Errorf("Policy invalid: empty string for name")
+	}
+
 	resp, err := c.etcdClient.Get(context.Background(), c.policy(name), nil)
 	if err != nil {
 		return nil, err
