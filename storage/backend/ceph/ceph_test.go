@@ -40,7 +40,7 @@ func (s *cephSuite) SetUpTest(c *C) {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	c.Assert(exec.Command("sh", "-c", "set -e; for i in $(rbd ls); do rbd rm $i; done").Run(), IsNil)
+	c.Assert(exec.Command("sh", "-c", "set -e; for i in $(rbd ls); do rbd snap purge $i; rbd rm $i; done").Run(), IsNil)
 }
 
 func (s *cephSuite) readWriteTest(c *C, mountDir string) {

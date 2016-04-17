@@ -62,7 +62,11 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		Backend:        "ceph",
+		Backends: BackendDrivers{
+			Mount:    "ceph",
+			Snapshot: "ceph",
+			CRUD:     "ceph",
+		},
 		DriverOptions:  map[string]string{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},

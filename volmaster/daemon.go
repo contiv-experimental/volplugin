@@ -184,7 +184,12 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	driver, err := backend.NewSnapshotDriver(volConfig.Backend)
+	if volConfig.Backends.Snapshot == "" {
+		httpError(w, fmt.Sprintf("Backend supporting missing: volume %q cannot support snapshots", volConfig), nil)
+		return
+	}
+
+	driver, err := backend.NewSnapshotDriver(volConfig.Backends.Snapshot)
 	if err != nil {
 		httpError(w, "Constructing driver:", err)
 		return
@@ -241,7 +246,12 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewSnapshotDriver(volConfig.Backend)
+	if volConfig.Backends.Snapshot == "" {
+		httpError(w, fmt.Sprintf("Backend supporting missing: volume %q cannot support snapshots", volConfig), nil)
+		return
+	}
+
+	driver, err := backend.NewSnapshotDriver(volConfig.Backends.Snapshot)
 	if err != nil {
 		httpError(w, "Constructing driver:", err)
 		return
@@ -421,7 +431,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 			return errored.Errorf("Volume %v no longer exists", vc)
 		}
 
-		if err := d.removeVolume(vc, d.Global.Timeout); err != nil {
+		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
 			return errored.Errorf("Removing image %q", vc).Combine(err)
 		}
 
@@ -579,6 +589,10 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
+		if err == errNoActionTaken {
+			goto publish
+		}
+
 		if err != nil {
 			return errored.Errorf("Creating volume").Combine(err)
 		}
@@ -590,6 +604,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return errored.Errorf("Formatting volume").Combine(err)
 		}
 
+	publish:
 		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
 			return errored.Errorf("Publishing volume").Combine(err.(*errored.Error))
 		}

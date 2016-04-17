@@ -1,5 +1,10 @@
 { 
-  "backend": "ceph",
+  "name": "fs",
+  "backends": {
+    "crud": "ceph",
+    "mount": "ceph",
+    "snapshot": "ceph"
+  },
   "driver": {
     "pool": "rbd"
   },

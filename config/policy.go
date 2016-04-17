@@ -13,17 +13,25 @@ import (
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
+	Name           string            `json:"name"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	DriverOptions  map[string]string `json:"driver"`
 	FileSystems    map[string]string `json:"filesystems"`
-	Backend        string            `json:"backend"`
+	Backends       BackendDrivers    `json:"backends"`
+}
+
+// BackendDrivers is a struct containing all the drivers used under this policy
+type BackendDrivers struct {
+	CRUD     string `json:"crud"`
+	Mount    string `json:"mount"`
+	Snapshot string `json:"snapshot"`
 }
 
 // NewPolicy return policy config with specified backend preset
 func NewPolicy() *Policy {
 	return &Policy{
-		Backend: ceph.BackendName,
+		Backends: BackendDrivers{ceph.BackendName, ceph.BackendName, ceph.BackendName},
 	}
 }
 
@@ -39,6 +47,8 @@ func (c *Client) policy(name string) string {
 
 // PublishPolicy publishes policy intent to the configuration store.
 func (c *Client) PublishPolicy(name string, cfg *Policy) error {
+	cfg.Name = name
+
 	if err := cfg.CreateOptions.computeSize(); err != nil {
 		return err
 	}
@@ -87,6 +97,8 @@ func (c *Client) GetPolicy(name string) (*Policy, error) {
 		return nil, err
 	}
 
+	tc.Name = name
+
 	err = tc.Validate()
 	return tc, err
 }
@@ -118,9 +130,17 @@ func (cfg *Policy) Validate() error {
 		return err
 	}
 
-	if cfg.Backend == "" {
-		return errored.Errorf("Backend was not specified in policy")
+	if cfg.Name == "" {
+		return errored.Errorf("Name is empty for policy")
+	}
+
+	if cfg.Backends.Mount == "" {
+		return errored.Errorf("Mount backend cannot be empty for policy %v", cfg)
 	}
 
 	return cfg.RuntimeOptions.Validate()
+}
+
+func (cfg *Policy) String() string {
+	return cfg.Name
 }

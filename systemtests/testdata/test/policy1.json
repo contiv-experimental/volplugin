@@ -1,4 +1,10 @@
 {
+  "name": "test1",
+  "backends": {
+    "crud": "test",
+    "mount": "test",
+    "snapshot": "test"
+  },
   "driver": {
     "pool": "rbd"
   },
@@ -11,6 +17,5 @@
       "frequency": "30m",
       "keep": 20
     }
-  },
-  "backend" : "test"
+  }
 }

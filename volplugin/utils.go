@@ -68,7 +68,7 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 		return nil, nil, driverOpts, err
 	}
 
-	driver, err := backend.NewMountDriver(volConfig.Backend, dc.Global.MountPath)
+	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 	if err != nil {
 		return nil, nil, driverOpts, errored.Errorf("loading driver").Combine(err)
 	}
