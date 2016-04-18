@@ -314,6 +314,32 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	watch.Create(w)
 }
 
+// TakeSnapshot immediately takes a snapshot by signalling the volsupervisor through etcd.
+func (c *Client) TakeSnapshot(name string) error {
+	_, err := c.etcdClient.Set(context.Background(), c.prefixed(rootSnapshots, name), "", nil)
+	return err
+}
+
+// RemoveTakeSnapshot removes a reference to a taken snapshot, intended to be used by volsupervisor
+func (c *Client) RemoveTakeSnapshot(name string) error {
+	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootSnapshots, name), nil)
+	return err
+}
+
+// WatchSnapshotSignal watches for a signal to be provided to
+// /volplugin/snapshots via writing an empty file to the policy/volume name.
+func (c *Client) WatchSnapshotSignal(activity chan *watch.Watch) {
+	w := watch.NewWatcher(activity, c.prefixed(rootSnapshots), func(resp *client.Response, w *watch.Watcher) {
+
+		if !resp.Node.Dir && resp.Action != "delete" {
+			vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootSnapshots)+"/", "", -1), Config: nil}
+			w.Channel <- vw
+		}
+	})
+
+	watch.Create(w)
+}
+
 // Validate options for a volume. Should be called anytime options are
 // considered.
 func (co *CreateOptions) Validate() error {

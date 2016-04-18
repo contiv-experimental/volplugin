@@ -42,6 +42,7 @@ retry:
 	go dc.watchAndSetGlobal(globalChan)
 	go info.HandleDebugSignal()
 
+	dc.signalSnapshot()
 	dc.updatePolicies()
 	dc.loop()
 }

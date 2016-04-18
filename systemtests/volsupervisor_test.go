@@ -83,3 +83,17 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 	count2 := len(strings.Split(out, "\n"))
 	c.Assert(count2 > count, Equals, true)
 }
+
+func (s *systemtestSuite) TestVolsupervisorSignal(c *C) {
+	_, err := s.uploadIntent("policy1", "nosnap")
+	c.Assert(err, IsNil)
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	_, err = s.volcli("volume snapshot take policy1/foo")
+	c.Assert(err, IsNil)
+
+	time.Sleep(100 * time.Millisecond)
+
+	out, err := s.volcli("volume snapshot list policy1/foo")
+	c.Assert(err, IsNil)
+	c.Assert(len(strings.TrimSpace(out)), Not(Equals), 0, Commentf(out))
+}
