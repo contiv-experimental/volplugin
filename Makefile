@@ -2,6 +2,8 @@ GUESTPREFIX=/opt/golang
 GUESTGOPATH=$(GUESTPREFIX)/src/github.com/contiv/volplugin
 GUESTBINPATH=$(GUESTPREFIX)/bin
 
+.PHONY: build
+
 start: install-ansible
 	if [ "x${PROVIDER}" = "x" ]; then vagrant up; else vagrant up --provider=${PROVIDER}; fi
 	make build
@@ -68,7 +70,6 @@ unit-test-nocoverage-host: golint-host govet-host
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
-	make run
 
 docker: run-build
 	docker build -t contiv/volplugin .
@@ -76,7 +77,7 @@ docker: run-build
 docker-push: docker
 	docker push contiv/volplugin
 
-run:
+run: build
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/ceph/global1.json'
 	@set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
