@@ -17,7 +17,7 @@ var (
 	volumeMutex = &sync.Mutex{}
 )
 
-func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
+func (dc *DaemonConfig) pruneSnapshots(val *config.Volume) {
 	log.Infof("starting snapshot prune for %q", val.VolumeName)
 
 	uc := &config.UseSnapshot{
@@ -70,8 +70,8 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	}
 }
 
-func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
-	log.Infof("Snapshotting %q.", volume)
+func (dc *DaemonConfig) createSnapshot(val *config.Volume) {
+	log.Infof("Snapshotting %q.", val)
 
 	uc := &config.UseSnapshot{
 		Volume: val.String(),
@@ -96,7 +96,7 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 		}
 
 		if err := driver.CreateSnapshot(time.Now().String(), driverOpts); err != nil {
-			log.Errorf("Error creating snapshot for volume %q: %v", volume, err)
+			log.Errorf("Error creating snapshot for volume %q: %v", val, err)
 			return err
 		}
 
@@ -129,10 +129,10 @@ func (dc *DaemonConfig) loop() {
 				}
 
 				if time.Now().Unix()%int64(freq.Seconds()) == 0 {
-					go func(volume string, val *config.Volume) {
-						dc.createSnapshot(volume, val)
-						dc.pruneSnapshots(volume, val)
-					}(volume, val)
+					go func(val *config.Volume) {
+						dc.createSnapshot(val)
+						dc.pruneSnapshots(val)
+					}(val)
 				}
 			}
 		}

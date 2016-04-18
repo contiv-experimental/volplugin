@@ -436,6 +436,28 @@ func volumeList(ctx *cli.Context) (bool, error) {
 	return false, nil
 }
 
+// VolumeSnapshotTake takes a snapshot for a volume immediately.
+func VolumeSnapshotTake(ctx *cli.Context) {
+	execCliAndExit(ctx, volumeSnapshotTake)
+}
+
+func volumeSnapshotTake(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 3, ctx.Args())
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	if err := cfg.TakeSnapshot(ctx.Args()[0]); err != nil {
+		return false, err
+	}
+
+	return false, nil
+}
+
 // VolumeSnapshotCopy lists all snapshots for a given volume.
 func VolumeSnapshotCopy(ctx *cli.Context) {
 	execCliAndExit(ctx, volumeSnapshotCopy)

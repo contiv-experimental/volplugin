@@ -142,6 +142,14 @@ var Commands = []cli.Command{
 				Usage:       "Snapshot management tools",
 				Subcommands: []cli.Command{
 					{
+						Name:        "take",
+						ArgsUsage:   "[policy name]/[volume name]",
+						Flags:       VolmasterFlags,
+						Description: "Take a snapshot for a volume now",
+						Usage:       "Take a snapshot for a volume now",
+						Action:      VolumeSnapshotTake,
+					},
+					{
 						Name:        "list",
 						ArgsUsage:   "[policy name]/[volume name]",
 						Description: "List snapshots",
