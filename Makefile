@@ -34,7 +34,7 @@ ssh:
 
 golint-host:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
-	set -e; for i in $$(godep go list ./... | grep -v vendor); do golint $$i; done
+	set -e; for i in $$(go list ./... | grep -v vendor); do golint $$i; done
 
 golint:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
@@ -52,22 +52,19 @@ install-ansible:
 ci:
 	GOPATH=/tmp/volplugin:${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
 
-godep:
-	go get -u github.com/kr/godep
-
-test: godep unit-test system-test
+test: unit-test system-test
 
 unit-test:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-host"'
 
-unit-test-host: godep golint-host govet-host
-	godep go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} godep go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
+unit-test-host: golint-host govet-host
+	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v
 
 unit-test-nocoverage:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make unit-test-nocoverage-host"'
 
 unit-test-nocoverage-host: golint-host govet-host
-	HOST_TEST=1 GOGC=1000 godep go test -v ./... -check.v
+	HOST_TEST=1 GOGC=1000 go test -v ./... -check.v
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
@@ -99,10 +96,10 @@ run-volmaster:
 	sudo pkill volmaster || exit 0
 	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster &>/tmp/volmaster.log &'
 
-run-build: godep
-	GOGC=1000 godep go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+run-build: 
+	GOGC=1000 go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 
-system-test: godep build
+system-test: build
 	@./build/scripts/systemtests.sh
 
 system-test-big:
