@@ -231,6 +231,9 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Volume %q not found, was requested", uc.Request.Name)
 		w.Write([]byte("{}"))
 		return
+	} else if err != nil {
+		httpError(w, "Setting up getPath: %v", err)
+		return
 	}
 
 	path, err := driver.MountPath(do)
