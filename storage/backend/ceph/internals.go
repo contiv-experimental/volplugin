@@ -137,7 +137,7 @@ retry:
 	cmd := exec.Command("rbd", "showmapped", "--format", "json")
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 	er, err = executor.NewCapture(cmd).Run(ctx)
-	if err != nil || er.ExitStatus == 12 || er.Stdout == "" {
+	if err != nil || er.ExitStatus != 0 || er.Stdout == "" {
 		log.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
 		time.Sleep(100 * time.Millisecond)
 		goto retry

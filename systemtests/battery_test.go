@@ -1,6 +1,7 @@
 package systemtests
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -122,6 +123,26 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 		for i := 0; i < len(nodes)*count; i++ {
 			<-syncChan
+		}
+
+		type rbdMap map[string]struct {
+			Pool   string `json:"pool"`
+			Name   string `json:"name"`
+			Device string `json:"device"`
+		}
+
+		uniq := map[string]struct{}{}
+
+		rbdmap := rbdMap{}
+
+		out, err := s.mon0cmd("sudo rbd showmapped --format json")
+		c.Assert(err, IsNil)
+		c.Assert(json.Unmarshal([]byte(out), &rbdmap), IsNil)
+
+		for _, rbd := range rbdmap {
+			_, ok := uniq[rbd.Name]
+			c.Assert(ok, Not(Equals), true)
+			uniq[rbd.Name] = struct{}{}
 		}
 
 		var errs int
