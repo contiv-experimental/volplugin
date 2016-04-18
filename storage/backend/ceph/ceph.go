@@ -249,19 +249,12 @@ func (c *Driver) Unmount(do storage.DriverOptions) error {
 	volumeDir := filepath.Join(c.mountpath, poolName, intName)
 
 	// Unmount the RBD
-	//
-	// MNT_DETACH will make this mountpoint unavailable to new open file requests (at
-	// least until it is remounted) but persist for existing open requests. This
-	// seems to work well with containers.
-	//
-	// The checks for ENOENT and EBUSY below are safeguards to prevent error
-	// modes where multiple containers will be affecting a single volume.
 	var retries int
 	var lastErr error
 
 retry:
 	if retries < 3 {
-		if err := unix.Unmount(volumeDir, unix.MNT_DETACH); err != nil && err != unix.ENOENT && err != unix.EINVAL {
+		if err := unix.Unmount(volumeDir, 0); err != nil && err != unix.ENOENT && err != unix.EINVAL {
 			lastErr = errored.Errorf("Failed to unmount %q (retrying): %v", volumeDir, err)
 			log.Error(lastErr)
 			retries++
@@ -275,11 +268,8 @@ retry:
 	// Remove the mounted directory
 	// FIXME remove all, but only after the FIXME above.
 	if err := os.Remove(volumeDir); err != nil && !os.IsNotExist(err) {
-		if err, ok := err.(*os.PathError); ok && err.Err == unix.EBUSY {
-			return nil
-		}
-
-		return errored.Errorf("error removing %q directory: %v", volumeDir, err)
+		log.Error(errored.Errorf("error removing %q directory: %v", volumeDir, err))
+		goto retry
 	}
 
 	if err := c.unmapImage(do); err != os.ErrNotExist {
