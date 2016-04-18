@@ -23,7 +23,7 @@ type Volume struct {
 	DriverOptions  map[string]string `json:"driver"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
-	Backend        string            `json:"backend"`
+	Backends       BackendDrivers    `json:"backends"`
 }
 
 // CreateOptions are the set of options used by volmaster during the volume
@@ -93,7 +93,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 	}
 
 	vc := &Volume{
-		Backend:        resp.Backend,
+		Backends:       resp.Backends,
 		DriverOptions:  resp.DriverOptions,
 		CreateOptions:  resp.CreateOptions,
 		RuntimeOptions: resp.RuntimeOptions,
@@ -343,8 +343,8 @@ func (ro *RuntimeOptions) Validate() error {
 
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *Volume) Validate() error {
-	if cfg.Backend == "" {
-		return errored.Errorf("No storage backend selected for volume %v", cfg)
+	if cfg.Backends.Mount == "" {
+		return errored.Errorf("Mount volume cannot be blank for volume %v", cfg)
 	}
 
 	if cfg.VolumeName == "" {

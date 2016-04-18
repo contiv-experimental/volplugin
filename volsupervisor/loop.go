@@ -19,6 +19,10 @@ var (
 
 func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	log.Infof("starting snapshot prune for %q", val.VolumeName)
+	if val.Backends.Snapshot == "" {
+		log.Debugf("Snapshot driver for volume %v was empty, not snapshotting.", val)
+		return
+	}
 
 	uc := &config.UseSnapshot{
 		Volume: val.String(),
@@ -26,7 +30,7 @@ func (dc *DaemonConfig) pruneSnapshots(volume string, val *config.Volume) {
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewSnapshotDriver(val.Backend)
+		driver, err := backend.NewSnapshotDriver(val.Backends.Snapshot)
 		if err != nil {
 			log.Errorf("failed to get driver: %v", err)
 			return err
@@ -79,9 +83,9 @@ func (dc *DaemonConfig) createSnapshot(volume string, val *config.Volume) {
 	}
 
 	err := lock.NewDriver(dc.Config).ExecuteWithUseLock(uc, func(ld *lock.Driver, uc config.UseLocker) error {
-		driver, err := backend.NewSnapshotDriver(val.Backend)
+		driver, err := backend.NewSnapshotDriver(val.Backends.Snapshot)
 		if err != nil {
-			log.Errorf("Error establishing driver backend %q; cannot snapshot", val.Backend)
+			log.Errorf("Error establishing driver backend %q; cannot snapshot", val.Backends.Snapshot)
 			return err
 		}
 

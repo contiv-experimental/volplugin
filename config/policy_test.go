@@ -4,7 +4,12 @@ import . "gopkg.in/check.v1"
 
 var testPolicies = map[string]*Policy{
 	"basic": {
-		Backend:       "ceph",
+		Name: "basic",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
@@ -21,7 +26,12 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"basic2": {
-		Backend:       "ceph",
+		Name: "basic2",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "20MB",
@@ -30,7 +40,11 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"untouchedwithzerosize": {
-		Backend:       "ceph",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "0",
@@ -39,7 +53,12 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"nilfs": {
-		Backend:       "ceph",
+		Name: "nilfs",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "20MB",
@@ -48,7 +67,11 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"badsize": {
-		Backend:       "ceph",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "0",
@@ -57,7 +80,11 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"badsize2": {
-		Backend:       "ceph",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10M",
@@ -66,7 +93,11 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"badsize3": {
-		Backend:       "ceph",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "not a number",
@@ -75,7 +106,11 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"badsnaps": {
-		Backend:       "ceph",
+		Backends: BackendDrivers{
+			CRUD:     "ceph",
+			Mount:    "ceph",
+			Snapshot: "ceph",
+		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",

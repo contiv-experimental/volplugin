@@ -1,5 +1,9 @@
 {
-  "backend": "test",
+  "backends": {
+    "crud": "test",
+    "mount": "test",
+    "snapshot": "test"
+  },
   "driver": {
     "pool": "rbd"
   },

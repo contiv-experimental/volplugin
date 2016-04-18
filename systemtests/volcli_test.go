@@ -85,6 +85,7 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	intentTarget := config.NewPolicy()
 	c.Assert(json.Unmarshal([]byte(out), intentTarget), IsNil)
+	testDriverIntent.Name = "test"
 	testDriverIntent.FileSystems = map[string]string{"ext4": "mkfs.ext4 -m0 %"}
 	c.Assert(testDriverIntent, DeepEquals, intentTarget)
 }

@@ -132,7 +132,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	driver, err := backend.NewMountDriver(volConfig.Backend, dc.Global.MountPath)
+	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 	if err != nil {
 		httpError(w, "Configuring driver", err)
 		return
@@ -189,7 +189,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	response := volumeList{Volumes: []volume{}}
 
 	for _, volConfig := range volumes {
-		driver, err := backend.NewMountDriver(volConfig.Backend, dc.Global.MountPath)
+		driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 		if err != nil {
 			httpError(w, "Configuring driver", err)
 			return
