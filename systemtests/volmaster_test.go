@@ -1,7 +1,6 @@
 package systemtests
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -34,20 +33,20 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 	content, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s/global1.json", getDriver()))
 	c.Assert(err, IsNil)
 
-	globalBase1 := config.NewGlobalConfig()
-	c.Assert(json.Unmarshal(content, globalBase1), IsNil)
+	globalBase1, err := config.NewGlobalConfigFromJSON(content)
+	c.Assert(err, IsNil)
 
 	content, err = ioutil.ReadFile(fmt.Sprintf("testdata/%s/global2.json", getDriver()))
 	c.Assert(err, IsNil)
 
-	globalBase2 := config.NewGlobalConfig()
-	c.Assert(json.Unmarshal(content, globalBase2), IsNil)
+	globalBase2, err := config.NewGlobalConfigFromJSON(content)
+	c.Assert(err, IsNil)
 
 	out, err := s.volcli("global get")
 	c.Assert(err, IsNil)
 
-	global := config.NewGlobalConfig()
-	c.Assert(json.Unmarshal([]byte(out), global), IsNil)
+	global, err := config.NewGlobalConfigFromJSON([]byte(out))
+	c.Assert(err, IsNil)
 
 	c.Assert(globalBase1, DeepEquals, global)
 	c.Assert(globalBase2, Not(DeepEquals), global)
@@ -57,8 +56,8 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 	out, err = s.volcli("global get")
 	c.Assert(err, IsNil)
 
-	global = config.NewGlobalConfig()
-	c.Assert(json.Unmarshal([]byte(out), global), IsNil)
+	global, err = config.NewGlobalConfigFromJSON([]byte(out))
+	c.Assert(err, IsNil)
 
 	c.Assert(globalBase1, Not(DeepEquals), global)
 	c.Assert(globalBase2, DeepEquals, global)

@@ -79,13 +79,7 @@ func queryGlobalConfig(ctx *cli.Context) (*config.Global, error) {
 
 	// rebuild and divide the contents so they are cast out of their internal
 	// representation.
-	global := config.NewGlobalConfig()
-
-	if err := json.Unmarshal(content, global); err != nil {
-		return nil, err
-	}
-
-	return global, nil
+	return config.NewGlobalConfigFromJSON(content)
 }
 
 func globalGet(ctx *cli.Context) (bool, error) {
@@ -98,9 +92,7 @@ func globalGet(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	// rebuild and divide the contents so they are cast out of their internal
-	// representation.
-	content, err := ppJSON(config.DivideGlobalParameters(global))
+	content, err := ppJSON(global)
 	if err != nil {
 		return false, err
 	}
