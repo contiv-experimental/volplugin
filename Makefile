@@ -6,11 +6,11 @@ GUESTBINPATH=$(GUESTPREFIX)/bin
 
 start: install-ansible
 	if [ "x${PROVIDER}" = "x" ]; then vagrant up; else vagrant up --provider=${PROVIDER}; fi
-	make build
+	make run
 
 big:
 	BIG=1 vagrant up
-	make build
+	make run
 
 demo:
 	DEMO=1 make restart
