@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/watch"
 
 	log "github.com/Sirupsen/logrus"
@@ -21,6 +23,7 @@ type Volume struct {
 	PolicyName     string            `json:"policy"`
 	VolumeName     string            `json:"name"`
 	DriverOptions  map[string]string `json:"driver"`
+	MountSource    string            `json:"mount"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	Backends       BackendDrivers    `json:"backends"`
@@ -386,6 +389,58 @@ func (cfg *Volume) Validate() error {
 	}
 
 	return cfg.RuntimeOptions.Validate()
+}
+
+// ToDriverOptions converts a volume to a storage.DriverOptions.
+func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions, error) {
+	actualSize, err := cfg.CreateOptions.ActualSize()
+	if err != nil {
+		return storage.DriverOptions{}, err
+	}
+
+	return storage.DriverOptions{
+		Volume: storage.Volume{
+			Name:   cfg.String(),
+			Size:   actualSize,
+			Params: cfg.DriverOptions,
+		},
+		FSOptions: storage.FSOptions{
+			Type: cfg.CreateOptions.FileSystem,
+		},
+		Timeout: timeout,
+	}, nil
+}
+
+func (cfg *Volume) validateBackends() error {
+	// We use a few dummy variables to ensure that time global configuration is
+	// needed in the storage drivers, that the validation does not fail because of it.
+	do, err := cfg.ToDriverOptions(time.Second)
+	if err != nil {
+		return err
+	}
+
+	crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
+	if err != nil {
+		return err
+	}
+
+	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, "/mnt")
+	if err != nil {
+		return err
+	}
+
+	snapshot, err := backend.NewSnapshotDriver(cfg.Backends.Snapshot)
+	if err != nil {
+		return err
+	}
+
+	for _, driver := range []storage.ValidatingDriver{crud, mnt, snapshot} {
+		if err := driver.Validate(do); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cfg *Volume) String() string {

@@ -67,3 +67,8 @@ func (d *Driver) ListSnapshots(storage.DriverOptions) ([]string, error) {
 func (d *Driver) CopySnapshot(storage.DriverOptions, string, string) error {
 	return nil
 }
+
+// Validate validates storaage.DriverOptions
+func (d *Driver) Validate(storage.DriverOptions) error {
+	return nil
+}

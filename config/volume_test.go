@@ -4,6 +4,7 @@ import (
 	"path"
 	"sort"
 
+	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/watch"
 
 	. "gopkg.in/check.v1"
@@ -223,4 +224,29 @@ func (s *configSuite) TestVolumeRuntime(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(vol.RuntimeOptions, DeepEquals, runtime2)
 	c.Assert(vol.RuntimeOptions.RateLimit.ReadIOPS, Equals, uint(1000))
+}
+
+func (s *configSuite) TestToDriverOptions(c *C) {
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
+	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
+	c.Assert(err, IsNil)
+
+	do, err := vol.ToDriverOptions(1)
+	c.Assert(err, IsNil)
+
+	expected := storage.DriverOptions{
+		Volume: storage.Volume{
+			Name:   "policy1/test",
+			Size:   0xa,
+			Params: storage.Params{"pool": "rbd"},
+		},
+		FSOptions: storage.FSOptions{
+			Type:          "ext4",
+			CreateCommand: "",
+		},
+		Timeout: 1,
+		Options: nil,
+	}
+
+	c.Assert(do, DeepEquals, expected)
 }

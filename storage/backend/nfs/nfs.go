@@ -77,3 +77,6 @@ func (d *Driver) InternalNameToVolpluginName(intName string) string { return "" 
 
 // MountPath describes the path at which the volume should be mounted.
 func (d *Driver) MountPath(do storage.DriverOptions) (string, error) { return d.mountpath, nil }
+
+// Validate validates the NFS drivers implementation of handling storage.DriverOptions.
+func (d *Driver) Validate(do storage.DriverOptions) error { return nil }

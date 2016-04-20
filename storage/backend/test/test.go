@@ -183,3 +183,8 @@ func (d *Driver) MountPath(do storage.DriverOptions) (string, error) {
 	d.logStat(getFunctionName())
 	return filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name), nil
 }
+
+// Validate returns nil.
+func (d *Driver) Validate(storage.DriverOptions) error {
+	return nil
+}
