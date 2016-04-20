@@ -11,10 +11,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// DefaultGlobalTTL is the TTL used when no TTL exists.
-const DefaultGlobalTTL = 30 * time.Second
+const (
+	// DefaultGlobalTTL is the TTL used when no TTL exists.
+	DefaultGlobalTTL = 30 * time.Second
+	// DefaultTimeout is the standard command timeout when none is provided.
+	DefaultTimeout = 10 * time.Minute
 
-var (
 	timeoutFixBase   = time.Minute
 	ttlFixBase       = time.Second
 	defaultMountPath = "/mnt/ceph"
@@ -28,12 +30,25 @@ type Global struct {
 	MountPath string
 }
 
+// NewGlobalConfigFromJSON transforms json into a global.
+func NewGlobalConfigFromJSON(content []byte) (*Global, error) {
+	global := NewGlobalConfig()
+
+	if err := json.Unmarshal(content, global); err != nil {
+		return nil, err
+	}
+
+	global.fixupParameters()
+
+	return global, nil
+}
+
 // NewGlobalConfig returns global config with preset defaults
 func NewGlobalConfig() *Global {
 	return &Global{
 		TTL:       DefaultGlobalTTL,
 		MountPath: defaultMountPath,
-		Timeout:   10 * time.Minute,
+		Timeout:   DefaultTimeout,
 	}
 }
 
@@ -41,7 +56,8 @@ func NewGlobalConfig() *Global {
 func (tlc *Client) PublishGlobal(g *Global) error {
 	gcPath := tlc.prefixed("global-config")
 
-	value, err := json.Marshal(MultiplyGlobalParameters(g))
+	g.fixupParameters()
+	value, err := json.Marshal(g)
 	if err != nil {
 		return err
 	}
@@ -71,6 +87,10 @@ func (tlc *Client) GetGlobal() (*Global, error) {
 }
 
 func (global *Global) fixupParameters() {
+	if global.Timeout == 0 {
+		global.Timeout = DefaultTimeout
+	}
+
 	if global.TTL == 0 {
 		global.TTL = DefaultGlobalTTL
 	}
@@ -78,26 +98,14 @@ func (global *Global) fixupParameters() {
 	if global.MountPath == "" {
 		global.MountPath = defaultMountPath
 	}
-}
 
-// MultiplyGlobalParameters multiplies the paramters by a fixed base to allow them to
-// be converted to proper time.Durations. This is to allow the global
-// configuration to have small numbers of second or minutes, instead of giant
-// numbers of nanoseconds in the JSON configuration.
-// See also: DivideGlobalParameters.
-func MultiplyGlobalParameters(global *Global) *Global {
-	global2 := *global
-	global2.TTL = ttlFixBase * global2.TTL
-	global2.Timeout = timeoutFixBase * global2.Timeout
-	return &global2
-}
+	if global.TTL < ttlFixBase {
+		global.TTL = ttlFixBase * global.TTL
+	}
 
-// DivideGlobalParameters does the inverse of MultiplyGlobalParameters.
-func DivideGlobalParameters(global *Global) *Global {
-	global2 := *global
-	global2.TTL = global2.TTL / ttlFixBase
-	global2.Timeout = global2.Timeout / timeoutFixBase
-	return &global2
+	if global.Timeout < timeoutFixBase {
+		global.Timeout = timeoutFixBase * global.Timeout
+	}
 }
 
 // WatchGlobal watches a global and updates it as soon as the config changes.

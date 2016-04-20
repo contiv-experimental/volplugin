@@ -10,6 +10,18 @@ import (
 	"github.com/contiv/volplugin/config"
 )
 
+func (s *systemtestSuite) TestVolCLIEmptyGlobal(c *C) {
+	c.Assert(s.uploadGlobal("global-empty"), IsNil)
+
+	out, err := s.volcli("global get")
+	c.Assert(err, IsNil)
+
+	target := &config.Global{}
+
+	c.Assert(json.Unmarshal([]byte(out), target), IsNil, Commentf(out))
+	c.Assert(config.NewGlobalConfig(), DeepEquals, target, Commentf("%q %#v", out, target))
+}
+
 func (s *systemtestSuite) TestVolCLIPolicy(c *C) {
 	policy1, err := s.readIntent(fmt.Sprintf("testdata/%s/policy1.json", getDriver()))
 	c.Assert(err, IsNil)
