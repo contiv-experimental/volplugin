@@ -473,3 +473,18 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 
 	return mounts, nil
 }
+
+// Validate validates the driver options to ensure they are compatible with the
+// Ceph storage driver.
+func (c *Driver) Validate(do storage.DriverOptions) error {
+	// XXX check this first to guard against nil pointers ahead of time.
+	if err := do.Validate(); err != nil {
+		return err
+	}
+
+	if do.Volume.Params["pool"] == "" {
+		return errored.Errorf("Pool is missing in ceph storage driver.")
+	}
+
+	return nil
+}

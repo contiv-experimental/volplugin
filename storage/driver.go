@@ -3,6 +3,8 @@ package storage
 import (
 	"errors"
 	"time"
+
+	"github.com/contiv/errored"
 )
 
 var (
@@ -55,9 +57,15 @@ type NamedDriver interface {
 	Name() string
 }
 
+// ValidatingDriver implements Validate() against storage.DriverOptions.
+type ValidatingDriver interface {
+	Validate(DriverOptions) error
+}
+
 // MountDriver mounts volumes.
 type MountDriver interface {
 	NamedDriver
+	ValidatingDriver
 
 	// Mount a Volume
 	Mount(DriverOptions) (*Mount, error)
@@ -76,6 +84,7 @@ type MountDriver interface {
 // CRUDDriver performs CRUD operations.
 type CRUDDriver interface {
 	NamedDriver
+	ValidatingDriver
 
 	// Create a volume.
 	Create(DriverOptions) error
@@ -96,6 +105,7 @@ type CRUDDriver interface {
 // SnapshotDriver manages snapshots.
 type SnapshotDriver interface {
 	NamedDriver
+	ValidatingDriver
 
 	// CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
 	CreateSnapshot(string, DriverOptions) error
@@ -110,4 +120,28 @@ type SnapshotDriver interface {
 	// CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
 	// snap and volume name (string). Returns error on failure.
 	CopySnapshot(DriverOptions, string, string) error
+}
+
+// Validate validates driver options to ensure they are compatible with all
+// storage drivers.
+func (do DriverOptions) Validate() error {
+	if do.Timeout == 0 {
+		return errored.Errorf("Missing timeout in ceph storage driver")
+	}
+
+	return do.Volume.Validate()
+}
+
+// Validate validates volume options to ensure they are compatible with all
+// storage drivers.
+func (v Volume) Validate() error {
+	if v.Name == "" {
+		return errored.Errorf("Name is missing in ceph storage driver")
+	}
+
+	if v.Params == nil {
+		return errored.Errorf("Params are nil in ceph storage driver")
+	}
+
+	return nil
 }
