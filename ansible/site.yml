@@ -20,6 +20,7 @@
   environment: '{{ env }}'
   roles: 
   - { role: base }
+  - { role: nfs }
   - { role: vagrant }
   - { role: ucarp }
   - { role: etcd, run_as: master }
