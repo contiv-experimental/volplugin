@@ -5,6 +5,9 @@ GUESTBINPATH=$(GUESTPREFIX)/bin
 .PHONY: build
 
 start: install-ansible
+	# vagrant hits the file descriptor limit on OSX when running this task
+	# 10240 is the max you can set on OSX and should be higher than the default on every other OS
+	ulimit -n 10240; \
 	if [ "x${PROVIDER}" = "x" ]; then vagrant up; else vagrant up --provider=${PROVIDER}; fi
 	make run
 
