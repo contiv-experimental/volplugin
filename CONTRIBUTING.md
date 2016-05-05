@@ -124,7 +124,7 @@ and this will be downloaded on `make start` to be injected into the VMs by ansib
 
 Unfortunately, as of this writing, due to security concerns we do not publish
 the source to tools to build the VM images. These are built by us and can be
-found on [Atlas](https://atlas.hashicorp.com/contiv/boxes/centos71-netplugin) for
+found on [Atlas](https://atlas.hashicorp.com/contiv/boxes/centos72) for
 auditing if you have a concern. 
 
 ## System Tests
