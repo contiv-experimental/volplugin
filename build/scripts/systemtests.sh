@@ -8,7 +8,7 @@ if [ "x${WORKSPACE}" != "x" ]; then
 fi
 
 echo running ceph-driver tests...
-godep go test -v -timeout 240m ./systemtests -check.v
+go test -v -timeout 240m ./systemtests -check.v
 
 echo running test-driver tests...
-USE_DRIVER="test" godep go test -v -timeout 240m ./systemtests -check.v -check.f systemtestSuite.TestVolCLI*
+USE_DRIVER="test" go test -v -timeout 240m ./systemtests -check.v -check.f systemtestSuite.TestVolCLI*
