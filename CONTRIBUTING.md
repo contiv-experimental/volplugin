@@ -120,12 +120,9 @@ git config user.email joe.smith@email.com
 We currently test against the docker [master branch](https://master.dockerproject.org)
 and this will be downloaded on `make start` to be injected into the VMs by ansible.
 
-## Note about VMs
+## Building VM Images
 
-Unfortunately, as of this writing, due to security concerns we do not publish
-the source to tools to build the VM images. These are built by us and can be
-found on [Atlas](https://atlas.hashicorp.com/contiv/boxes/centos72) for
-auditing if you have a concern. 
+Tools and configurations for building the VM images can be found in the [build repository](https://github.com/contiv/build).
 
 ## System Tests
 
