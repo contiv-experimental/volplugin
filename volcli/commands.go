@@ -25,7 +25,7 @@ var GlobalFlags = []cli.Flag{
 	},
 }
 
-// Commands is the data structure which describes the command heirarchy
+// Commands is the data structure which describes the command hierarchy
 // for volcli.
 var Commands = []cli.Command{
 	{

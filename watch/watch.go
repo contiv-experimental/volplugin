@@ -19,7 +19,7 @@ type Watch struct {
 	Config interface{}
 }
 
-// WatcherFunc is the function that's fired anytime the watch recieves an event
+// WatcherFunc is the function that's fired anytime the watch receives an event
 // that is not an error. It is expected that the WatcherFunc send to the
 // channel on success.
 type WatcherFunc func(*client.Response, *Watcher)

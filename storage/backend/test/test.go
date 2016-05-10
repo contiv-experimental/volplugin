@@ -172,7 +172,7 @@ func (d *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	return []string{}, nil
 }
 
-// Mounted retuns an empty list.
+// Mounted returns an empty list.
 func (d *Driver) Mounted(t time.Duration) ([]*storage.Mount, error) {
 	d.logStat(getFunctionName())
 	return []*storage.Mount{}, nil
