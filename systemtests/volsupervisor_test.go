@@ -47,7 +47,7 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 	_, err = s.uploadIntent("policy1", "nosnap")
 	c.Assert(err, IsNil)
 
-	// XXX we don't use createVolume here becuase of a bug in docker that doesn't
+	// XXX we don't use createVolume here because of a bug in docker that doesn't
 	// allow it to create the same volume twice
 	_, err = s.volcli("volume create policy1/foo")
 	c.Assert(err, IsNil)
