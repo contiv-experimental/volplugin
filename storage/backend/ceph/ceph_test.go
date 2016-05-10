@@ -246,6 +246,7 @@ func (s *cephSuite) TestExternalInternalNames(c *C) {
 
 	out, err = driver.internalName("tenant1/test")
 	c.Assert(driver.externalName(out), Equals, "tenant1/test")
+	c.Assert(err, IsNil)
 }
 
 func (s *cephSuite) TestSnapshotClone(c *C) {
