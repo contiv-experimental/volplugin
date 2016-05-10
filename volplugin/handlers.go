@@ -97,7 +97,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/get/%s", dc.Master, vg.Name))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s", dc.Master, vg.Name))
 	if err != nil {
 		httpError(w, "Making request to volmaster", err)
 		return
@@ -161,7 +161,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/list", dc.Master))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/list", dc.Master))
 	if err != nil {
 		httpError(w, "Retrieving list", err)
 		return

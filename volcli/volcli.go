@@ -204,7 +204,7 @@ func policyGet(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/policy/%s", ctx.String("volmaster"), policy))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policies/%s", ctx.String("volmaster"), policy))
 	if err != nil {
 		return false, err
 	}

@@ -85,9 +85,9 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/policy/{policy}":             d.handlePolicy,
-		"/list":                        d.handleList,
-		"/get/{policy}/{volume}":       d.handleGet,
+		"/policies/{policy}":             d.handlePolicy,
+		"/volumes/list":                 d.handleList,
+		"/volumes/{policy}/{volume}":    d.handleGet,
 		"/runtime/{policy}/{volume}":   d.handleRuntime,
 		"/global":                      d.handleGlobal,
 		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
@@ -369,7 +369,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
-	volName := strings.TrimPrefix(r.URL.Path, "/get/")
+	volName := strings.TrimPrefix(r.URL.Path, "/volumes/")
 	parts := strings.SplitN(volName, "/", 2)
 
 	if len(parts) != 2 {
