@@ -425,14 +425,19 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		exists, err := d.existsVolume(vc)
-		if err != nil {
+		if err != nil && err != errNoActionTaken {
 			return err
+		}
+
+		if err == errNoActionTaken {
+			goto publish
 		}
 
 		if !exists {
 			return config.ErrNotExist
 		}
 
+	publish:
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
 			return errored.Errorf("Removing image %q", vc).Combine(err)
 		}
@@ -499,7 +504,7 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 	_, err = d.Config.GetVolume(parts[0], parts[1])
 
 	if config.NotFound(err) {
-		httpError(w, "Cannot refresh mount information: volume no longer exists", err)
+		log.Error("Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
 		return
 	} else if err != nil {
@@ -508,7 +513,7 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 	}
 
 	req.Reason = lock.ReasonMount
-	if err := d.Config.PublishUseWithTTL(req, time.Duration(d.Global.TTL)*time.Second, client.PrevExist); err != nil {
+	if err := d.Config.PublishUseWithTTL(req, d.Global.TTL, client.PrevExist); err != nil {
 		httpError(w, "Could not refresh mount information", err)
 		return
 	}
@@ -554,13 +559,18 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Policy == "" {
-		httpError(w, "Reading policy", errors.New("policy was blank"))
+		httpError(w, "Reading policy", errored.Errorf("policy was blank"))
 		return
 	}
 
 	if req.Volume == "" {
-		httpError(w, "Reading policy", errors.New("volume was blank"))
+		httpError(w, "Reading volume", errored.Errorf("volume was blank"))
 		return
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		httpError(w, "Retrieving hostname", err)
 	}
 
 	policy, err := d.Config.GetPolicy(req.Policy)
@@ -569,32 +579,25 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volConfig, err := d.Config.CreateVolume(req)
-	if err != nil {
-		httpError(w, "Creating volume", err)
-		return
-	}
-
-	log.Debugf("Volume Create: %#v", *volConfig)
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		httpError(w, "Creating volume", err)
-		return
-	}
-
 	uc := &config.UseMount{
-		Volume:   volConfig.String(),
+		Volume:   strings.Join([]string{req.Policy, req.Volume}, "/"),
 		Reason:   lock.ReasonCreate,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: volConfig.String(),
+		Volume: strings.Join([]string{req.Policy, req.Volume}, "/"),
 		Reason: lock.ReasonCreate,
 	}
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+		volConfig, err := d.Config.CreateVolume(req)
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Volume Create: %#v", *volConfig)
+
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
 		if err == errNoActionTaken {
 			goto publish
@@ -613,8 +616,19 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	publish:
 		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
-			return errored.Errorf("Publishing volume").Combine(err.(*errored.Error))
+			// FIXME this shouldn't leak down to the client.
+			if _, ok := err.(*errored.Error); !ok {
+				return errored.Errorf("Error publishing volume").Combine(err)
+			}
+			return err
 		}
+
+		content, err = json.Marshal(volConfig)
+		if err != nil {
+			return errored.Errorf("Marshalling response").Combine(err)
+		}
+
+		w.Write(content)
 		return nil
 	})
 
@@ -622,12 +636,4 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "Creating volume", err)
 		return
 	}
-
-	content, err = json.Marshal(volConfig)
-	if err != nil {
-		httpError(w, "Marshalling response", err)
-		return
-	}
-
-	w.Write(content)
 }
