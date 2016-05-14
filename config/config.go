@@ -18,8 +18,12 @@ const (
 
 var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootSnapshots}
 
-// ErrExist indicates when a key in etcd exits already. Used for create logic.
-var ErrExist = errors.New("Already exists")
+var (
+	// ErrExist indicates when a key in etcd exits already. Used for create logic.
+	ErrExist = errors.New("Already exists")
+	// ErrNotExist is also used for create logic, and describes that the volume doesn't exist.
+	ErrNotExist = errors.New("Does not exist")
+)
 
 // Request provides a request structure for communicating with the
 // volmaster.

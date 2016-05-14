@@ -428,7 +428,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !exists {
-			return errored.Errorf("Volume %v no longer exists", vc)
+			return config.ErrNotExist
 		}
 
 		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
@@ -441,6 +441,11 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 		return nil
 	})
+
+	if err == config.ErrNotExist {
+		w.WriteHeader(404)
+		return
+	}
 
 	if err != nil {
 		httpError(w, fmt.Sprintf("Removing volume %v", vc), err)
@@ -611,7 +616,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	if err != nil && err != lock.ErrPublish {
+	if err != nil && err != config.ErrExist {
 		httpError(w, "Creating volume", err)
 		return
 	}
