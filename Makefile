@@ -60,16 +60,16 @@ ci:
 test: unit-test system-test
 
 unit-test:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="$$TESTRUN" make unit-test-host"'
 
 unit-test-host: golint-host govet-host
-	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -run "${TESTRUN}"
+	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -run "$$TESTRUN"
 
 unit-test-nocoverage:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-nocoverage-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="$$TESTRUN" make unit-test-nocoverage-host"'
 
 unit-test-nocoverage-host: golint-host govet-host
-	HOST_TEST=1 GOGC=1000 go test -v -run "${TESTRUN}" ./... -check.v
+	HOST_TEST=1 GOGC=1000 go test -v -run "$$TESTRUN" ./... -check.v
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
