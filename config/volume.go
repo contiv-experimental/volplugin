@@ -427,8 +427,9 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 }
 
 func (cfg *Volume) validateBackends() error {
-	// We use a few dummy variables to ensure that time global configuration is
-	// needed in the storage drivers, that the validation does not fail because of it.
+	// We use a few dummy variables to ensure that global configuration is
+	// not needed in the storage drivers, that the validation does not fail
+	// because of it.
 	do, err := cfg.ToDriverOptions(time.Second)
 	if err != nil {
 		return err

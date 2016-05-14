@@ -1,3 +1,5 @@
+// +build nope
+
 package null
 
 import "github.com/contiv/volplugin/storage"

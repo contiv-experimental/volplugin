@@ -1,3 +1,5 @@
+// +build nope
+
 package test
 
 import (
