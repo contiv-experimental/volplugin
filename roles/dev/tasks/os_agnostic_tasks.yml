@@ -1,11 +1,15 @@
+- name: Set Go version
+  set_fact:
+    go_version: "1.6.2"
+
 - name: download Golang v1.6
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
-    dest: /tmp/go1.6.linux-amd64.tar.gz
+    url: "https://storage.googleapis.com/golang/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
 
 - name: install Golang
-  shell: rm -rf go/ && tar xfvz /tmp/go1.6.linux-amd64.tar.gz
+  shell: "rm -rf go/ && tar xfvz /tmp/go{{ go_version }}.linux-amd64.tar.gz"
   args:
     chdir: /usr/local/
 
