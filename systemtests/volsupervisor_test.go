@@ -8,6 +8,11 @@ import (
 )
 
 func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
@@ -28,6 +33,11 @@ func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
 }
 
 func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
@@ -60,6 +70,11 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 }
 
 func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
@@ -85,13 +100,18 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 }
 
 func (s *systemtestSuite) TestVolsupervisorSignal(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "nosnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 	_, err = s.volcli("volume snapshot take policy1/foo")
 	c.Assert(err, IsNil)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second)
 
 	out, err := s.volcli("volume snapshot list policy1/foo")
 	c.Assert(err, IsNil)

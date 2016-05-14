@@ -19,24 +19,29 @@ func (s *systemtestSuite) TestVolumeCreateMultiHost(c *C) {
 }
 
 func (s *systemtestSuite) TestVolumeCreateMultiHostCrossHostMount(c *C) {
+	if nullDriver() {
+		c.Skip("This driver does not support multi-host operation")
+		return
+	}
+
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 
-	_, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(`docker run --rm -i -v policy1/test:/mnt alpine sh -c "echo bar >/mnt/foo"`)
+	_, err := s.dockerRun("mon0", false, false, "policy1/test", `sh -c "echo bar > /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 
-	out, err := s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v policy1/test:/mnt alpine sh -c "cat /mnt/foo"`)
+	out, err := s.dockerRun("mon1", false, false, "policy1/test", `sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "bar")
 
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
 
-	_, err = s.vagrant.GetNode("mon1").RunCommandWithOutput(`docker run --rm -i -v policy1/test:/mnt alpine sh -c "echo quux >/mnt/foo"`)
+	_, err = s.dockerRun("mon1", false, false, "policy1/test", `sh -c "echo quux > /mnt/foo"`)
 	c.Assert(err, IsNil)
 
 	c.Assert(s.createVolume("mon2", "policy1", "test", nil), IsNil)
 
-	out, err = s.vagrant.GetNode("mon2").RunCommandWithOutput(`docker run --rm -i -v policy1/test:/mnt alpine sh -c "cat /mnt/foo"`)
+	out, err = s.dockerRun("mon2", false, false, "policy1/test", `sh -c "cat /mnt/foo"`)
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "quux")
 }
@@ -48,26 +53,31 @@ func (s *systemtestSuite) TestVolumeMultiPolicyCreate(c *C) {
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 	c.Assert(s.createVolume("mon0", "policy2", "test", nil), IsNil)
 
-	_, err = s.docker("run -v policy1/test:/mnt alpine sh -c \"echo foo > /mnt/bar\"")
+	_, err = s.dockerRun("mon0", false, false, "policy1/test", `sh -c "echo foo > /mnt/bar"`)
 	c.Assert(err, IsNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v policy2/test:/mnt alpine sh -c \"cat /mnt/bar\"")
+	_, err = s.dockerRun("mon0", false, false, "policy2/test", `sh -c "cat /mnt/bar"`)
 	c.Assert(err, NotNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v policy2/test:/mnt alpine sh -c \"echo bar > /mnt/foo\"")
+	_, err = s.dockerRun("mon0", false, false, "policy2/test", `sh -c "echo bar > /mnt/foo"`)
 	c.Assert(err, IsNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	_, err = s.docker("run -v policy1/test:/mnt alpine sh -c \"cat /mnt/foo\"")
+	_, err = s.dockerRun("mon0", false, false, "policy1/test", `sh -c "cat /mnt/foo"`)
 	c.Assert(err, NotNil)
 }
 
 func (s *systemtestSuite) TestVolumeMultiCreateThroughDocker(c *C) {
+	if !cephDriver() {
+		c.Skip("This is only supported by the ceph driver")
+		return
+	}
+
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd ls")

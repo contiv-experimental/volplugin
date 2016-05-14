@@ -9,17 +9,39 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	utils "github.com/contiv/systemtests-utils"
 	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
 )
 
-func (s *systemtestSuite) mon0cmd(command string) (string, error) {
-	return s.vagrant.GetNode("mon0").RunCommandWithOutput(command)
+func (s *systemtestSuite) dockerRun(host string, tty, daemon bool, volume, command string) (string, error) {
+	ttystr := ""
+	daemonstr := ""
+
+	if tty {
+		ttystr = "-t"
+	}
+
+	if daemon {
+		daemonstr = "-d"
+	}
+
+	dockerCmd := fmt.Sprintf(
+		"docker run -i %s %s -v %v:/mnt:nocopy alpine %s",
+		ttystr,
+		daemonstr,
+		volume,
+		command,
+	)
+
+	log.Infof("Starting docker on %q with: %q", host, dockerCmd)
+
+	return s.vagrant.GetNode(host).RunCommandWithOutput(dockerCmd)
 }
 
-func (s *systemtestSuite) docker(command string) (string, error) {
-	return s.mon0cmd("docker " + command)
+func (s *systemtestSuite) mon0cmd(command string) (string, error) {
+	return s.vagrant.GetNode("mon0").RunCommandWithOutput(command)
 }
 
 func (s *systemtestSuite) volcli(command string) (string, error) {
@@ -42,10 +64,6 @@ func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 }
 
 func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool) error {
-	if !cephDriver() {
-		return nil
-	}
-
 	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
 
 	// ignore the error here so we get to the purge if we have to
@@ -54,7 +72,7 @@ func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool)
 	}
 
 	defer func() {
-		if purgeCeph {
+		if purgeCeph && cephDriver() {
 			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd snap purge rbd/%s.%s", policy, name))
 			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", policy, name))
 		}
@@ -81,11 +99,29 @@ func (s *systemtestSuite) createVolume(host, policy, name string, opts map[strin
 
 	optsStr := []string{}
 
+	if nfsDriver() {
+		log.Infof("Making NFS mount directory /volplugin/%s/%s", policy, name)
+		_, err := s.mon0cmd(fmt.Sprintf("sudo mkdir -p /volplugin/%s/%s && sudo chmod 4777 /volplugin/%s/%s", policy, name, policy, name))
+		if err != nil {
+			return err
+		}
+
+		if opts == nil {
+			opts = map[string]string{}
+		}
+
+		mountstr := fmt.Sprintf("%s:/volplugin/%s/%s", s.mon0ip, policy, name)
+		log.Infof("Mapping NFS mount %q", mountstr)
+		opts["mount"] = mountstr
+	}
+
 	if opts != nil {
 		for key, value := range opts {
 			optsStr = append(optsStr, "--opt")
 			optsStr = append(optsStr, key+"="+value)
 		}
+
+		log.Infof("Creating with options: %q", strings.Join(optsStr, " "))
 	}
 
 	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
@@ -105,25 +141,39 @@ func (s *systemtestSuite) createVolume(host, policy, name string, opts map[strin
 
 func (s *systemtestSuite) uploadGlobal(configFile string) error {
 	log.Infof("Uploading global configuration %s", configFile)
-	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/%s/%s.json", getDriver(), configFile))
+	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/globals/%s.json", configFile))
 	if err != nil {
-		log.Println(out)
+		log.Error(out)
 	}
 
 	return err
 }
 
+func (s *systemtestSuite) clearNFS() {
+	log.Info("Clearing NFS directories")
+	s.mon0cmd("sudo rm -rf /volplugin && sudo mkdir /volplugin")
+}
+
 func (s *systemtestSuite) rebootstrap() error {
-	s.clearContainers()
-	stopVolsupervisor(s.vagrant.GetNode("mon0"))
-	s.vagrant.IterateNodes(stopVolplugin)
-	s.vagrant.IterateNodes(stopVolmaster)
-	s.clearRBD()
+	if os.Getenv("NO_TEARDOWN") == "" {
+		s.clearContainers()
+		stopVolsupervisor(s.vagrant.GetNode("mon0"))
+		s.vagrant.IterateNodes(stopVolplugin)
+		s.vagrant.IterateNodes(stopVolmaster)
+		if cephDriver() {
+			s.clearRBD()
+		}
 
-	utils.ClearEtcd(s.vagrant.GetNode("mon0"))
+		if nfsDriver() {
+			s.clearNFS()
+		}
 
-	if err := s.restartDocker(); err != nil {
-		return err
+		log.Info("Clearing etcd")
+		utils.ClearEtcd(s.vagrant.GetNode("mon0"))
+
+		if err := s.restartDocker(); err != nil {
+			return err
+		}
 	}
 
 	if err := s.uploadGlobal("global1"); err != nil {
@@ -172,6 +222,36 @@ func getDriver() string {
 
 func cephDriver() bool {
 	return getDriver() == "ceph"
+}
+
+func nullDriver() bool {
+	return getDriver() == "null"
+}
+
+func nfsDriver() bool {
+	return getDriver() == "nfs"
+}
+
+func (s *systemtestSuite) createExports() error {
+	out, err := s.mon0cmd("sudo mkdir -p /volplugin")
+	if err != nil {
+		log.Error(out)
+		return errored.Errorf("Creating volplugin root").Combine(err)
+	}
+
+	out, err = s.mon0cmd("echo /volplugin \\*\\(rw,no_root_squash\\) | sudo tee /etc/exports.d/basic.exports")
+	if err != nil {
+		log.Error(out)
+		return errored.Errorf("Creating export").Combine(err)
+	}
+
+	out, err = s.mon0cmd("sudo exportfs -a")
+	if err != nil {
+		log.Error(out)
+		return errored.Errorf("exportfs").Combine(err)
+	}
+
+	return nil
 }
 
 func (s *systemtestSuite) uploadIntent(policyName, fileName string) (string, error) {
@@ -296,6 +376,7 @@ func (s *systemtestSuite) clearContainerHost(node vagrantssh.TestbedNode) error 
 }
 
 func (s *systemtestSuite) clearContainers() error {
+	log.Infof("Clearing containers")
 	return s.vagrant.IterateNodes(s.clearContainerHost)
 }
 

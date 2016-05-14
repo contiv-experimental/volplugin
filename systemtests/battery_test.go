@@ -1,8 +1,8 @@
 package systemtests
 
 import (
-	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 
@@ -17,23 +17,28 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 	count := 15
 
 	for i := 0; i < outerCount; i++ {
-		syncChan := make(chan struct{})
+		syncChan := make(chan struct{}, count)
 
 		for x := 0; x < count; x++ {
 			go func(x int) {
 				defer func() { syncChan <- struct{}{} }()
-				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
-				dockerCmd := fmt.Sprintf("run -d -v policy1/test%d:/mnt alpine sleep 10m", x)
-				out, err := s.docker(dockerCmd)
+				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), nil), IsNil)
+				dockerCmd := fmt.Sprintf("docker run -d -v policy1/test%02d:/mnt alpine sleep 10m", x)
+				out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(dockerCmd)
 				c.Assert(err, IsNil)
-				_, err = s.docker(dockerCmd)
+				failout, err := s.mon0cmd(dockerCmd)
+				log.Info(failout, err)
 				c.Assert(err, NotNil)
-				_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%d", x))
-				c.Assert(err, IsNil)
-				out2, err := s.docker(fmt.Sprintf("exec %s ls /mnt", strings.TrimSpace(out)))
-				c.Assert(err, IsNil)
-				c.Assert(strings.TrimSpace(out2), Equals, "lost+found")
-				out3, err := s.docker(fmt.Sprintf("rm -f %s", strings.TrimSpace(out)))
+
+				if cephDriver() {
+					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%02d", x))
+					c.Assert(err, IsNil)
+					out2, err := s.mon0cmd(fmt.Sprintf("docker exec %s ls /mnt", strings.TrimSpace(out)))
+					c.Assert(err, IsNil)
+					c.Assert(strings.TrimSpace(out2), Equals, "lost+found")
+				}
+
+				out3, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(out)))
 				if err != nil {
 					log.Info(strings.TrimSpace(out3))
 				}
@@ -52,7 +57,7 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 
 		purgeChan := make(chan error, count)
 		for x := 0; x < count; x++ {
-			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
+			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
 		}
 
 		var errs int
@@ -70,106 +75,51 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 }
 
 func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
+	type output struct {
+		out    string
+		err    error
+		volume string
+	}
+
 	nodes := s.vagrant.GetNodes()
 	outerCount := 5
 	count := 15
 
 	for outer := 0; outer < outerCount; outer++ {
-		syncChan := make(chan struct{}, len(nodes)*count)
-		errChan := make(chan error, len(nodes)*count)
-		outChan := make(chan string, len(nodes)*count) // diagnostics
+		outputChan := make(chan output, len(nodes)*count)
 
 		for x := 0; x < count; x++ {
 			go func(nodes []vagrantssh.TestbedNode, x int) {
 				for _, node := range nodes {
-					c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%d", x), nil), IsNil)
+					c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%02d", x), nil), IsNil)
 				}
-
-				contID := ""
-				var contNode *vagrantssh.TestbedNode
-				containerSync := make(chan struct{}, len(nodes))
 
 				for _, node := range nodes {
 					go func(node vagrantssh.TestbedNode, x int) {
-						defer func() { syncChan <- struct{}{} }()
-						defer func() { containerSync <- struct{}{} }()
-						log.Infof("Running alpine container for %d on %q", x, node.GetName())
-
-						if out, err := node.RunCommandWithOutput(fmt.Sprintf("docker run -itd -v policy1/test%d:/mnt alpine sleep 10m", x)); err != nil {
-							outChan <- out
-							errChan <- err
-						} else {
-							contID = strings.TrimSpace(out)
-							contNode = &node
-							errChan <- nil
-						}
+						out, err := s.dockerRun(node.GetName(), false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
+						outputChan <- output{out, err, fmt.Sprintf("policy1/test%02d", x)}
 					}(node, x)
 				}
-
-				for i := 0; i < len(nodes); i++ {
-					<-containerSync
-				}
-
-				c.Assert(contNode, NotNil)
-
-				log.Infof("Removing containers for %d (host %q): %s", x, (*contNode).GetName(), contID)
-				out, err := (*contNode).RunCommandWithOutput(fmt.Sprintf("docker rm -f %s", contID))
-				if err != nil {
-					log.Error(out)
-				}
-				c.Assert(err, IsNil)
 			}(nodes, x)
-		}
-
-		for i := 0; i < len(nodes)*count; i++ {
-			<-syncChan
-		}
-
-		type rbdMap map[string]struct {
-			Pool   string `json:"pool"`
-			Name   string `json:"name"`
-			Device string `json:"device"`
-		}
-
-		uniq := map[string]struct{}{}
-
-		rbdmap := rbdMap{}
-
-		out, err := s.mon0cmd("sudo rbd showmapped --format json")
-		c.Assert(err, IsNil)
-		c.Assert(json.Unmarshal([]byte(out), &rbdmap), IsNil)
-
-		for _, rbd := range rbdmap {
-			_, ok := uniq[rbd.Name]
-			c.Assert(ok, Not(Equals), true)
-			uniq[rbd.Name] = struct{}{}
 		}
 
 		var errs int
 
 		for i := 0; i < len(nodes)*count; i++ {
-			err := <-errChan
-			if err != nil {
+			output := <-outputChan
+			if output.err != nil {
 				errs++
 			}
+
+			//log.Infof("%q: %s", output.volume, output.out)
 		}
 
-		if errs != count*(len(nodes)-1) {
-			for i := 0; i < len(nodes)*count; i++ {
-				select {
-				case out := <-outChan:
-					log.Error(out)
-				default:
-				}
-			}
-			c.Fail()
-		}
-
+		c.Assert(errs, Equals, count*(len(nodes)-1))
 		c.Assert(s.clearContainers(), IsNil)
 
 		purgeChan := make(chan error, count)
 		for x := 0; x < count; x++ {
-			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
+			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
 		}
 
 		errs = 0
@@ -189,10 +139,11 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 	nodes := s.vagrant.GetNodes()
-	outwg := sync.WaitGroup{}
 	count := 15
+	outcount := 5
+	outwg := sync.WaitGroup{}
 
-	for outer := 0; outer < 5; outer++ {
+	for outer := 0; outer < outcount; outer++ {
 		for x := 0; x < count; x++ {
 			outwg.Add(1)
 			go func(nodes []vagrantssh.TestbedNode, x int) {
@@ -200,31 +151,40 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 				wg := sync.WaitGroup{}
 				errChan := make(chan error, len(nodes))
 
-				for _, node := range nodes {
+				for i := range rand.Perm(len(nodes)) {
 					wg.Add(1)
-					go func(node vagrantssh.TestbedNode, x int) {
+					go func(i, x int) {
 						defer wg.Done()
-						log.Infof("Creating image policy1/test%d on %q", x, node.GetName())
+						node := nodes[i]
+						log.Infof("Creating image policy1/test%02d on %q", x, node.GetName())
 
-						if _, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%d", x)); err != nil {
-							errChan <- err
+						var opt string
+
+						if nfsDriver() {
+							opt = fmt.Sprintf("--opt mount=%s:policy1/test%02d", s.mon0ip, x)
 						}
-					}(node, x)
-				}
 
-				wg.Wait()
+						_, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%02d %s", x, opt))
+						errChan <- err
+					}(i, x)
+				}
 
 				var errs int
 
+				wg.Wait()
+
 				for i := 0; i < len(nodes); i++ {
-					select {
-					case <-errChan:
+					err := <-errChan
+					if err != nil {
 						errs++
-					default:
 					}
 				}
 
-				c.Assert(errs, Equals, 2)
+				if nfsDriver() {
+					c.Assert(errs, Equals, 0)
+				} else {
+					c.Assert(errs, Equals, 2)
+				}
 			}(nodes, x)
 		}
 
@@ -232,7 +192,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 		errChan := make(chan error, count)
 		for x := 0; x < count; x++ {
-			go func(x int) { errChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%d", x), true) }(x)
+			go func(x int) { errChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
 		}
 
 		var realErr error
@@ -246,8 +206,10 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 
 		c.Assert(realErr, IsNil)
 
-		out, err := s.mon0cmd("sudo rbd ls")
-		c.Assert(err, IsNil)
-		c.Assert(out, Equals, "")
+		if cephDriver() {
+			out, err := s.mon0cmd("sudo rbd ls")
+			c.Assert(err, IsNil)
+			c.Assert(out, Equals, "")
+		}
 	}
 }
