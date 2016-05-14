@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/coreos/etcd/client"
 
 	"golang.org/x/net/context"
@@ -121,7 +122,13 @@ func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client
 		return err
 	}
 
-	log.Debugf("Publishing use with TTL %d: %#v", ttl, ut)
+	if ttl < 0 {
+		err := errored.Errorf("TTL was less than 0 for locker %#v!!!! This should not happen!", ut)
+		log.Error(err)
+		return err
+	}
+
+	log.Debugf("Publishing use with TTL %v: %#v", ttl, ut)
 
 	value := string(content)
 	if exist != client.PrevNoExist {
