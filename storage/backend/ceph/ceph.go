@@ -224,7 +224,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	minor := rdev & 0xFF
 
 	// Mount the RBD
-	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil && err != unix.EBUSY {
+	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil {
 		return nil, errored.Errorf("Failed to mount RBD dev %q: %v", devName, err)
 	}
 
