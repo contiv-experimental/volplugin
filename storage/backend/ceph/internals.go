@@ -156,7 +156,7 @@ retry:
 
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
 		log.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
-		time.Sleep(100 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}
 
