@@ -50,6 +50,7 @@ func (dc *DaemonConfig) volumeToDriverOptions(volConfig *config.Volume) (storage
 
 	return storage.DriverOptions{
 		Volume: storage.Volume{
+			Source: volConfig.MountSource,
 			Name:   volConfig.String(),
 			Size:   actualSize,
 			Params: volConfig.DriverOptions,

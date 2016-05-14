@@ -18,6 +18,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
+	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/lock/client"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/gorilla/mux"
@@ -102,7 +103,7 @@ func (dc *DaemonConfig) Daemon() error {
 		}
 
 		log.Errorf("Global configuration is missing; waiting for volmaster at %q.", dc.Master)
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 	}
 
 	log.Infof("Reached volmaster at %q. Continuing startup.", dc.Master)
@@ -207,7 +208,7 @@ func (dc *DaemonConfig) getGlobal() {
 
 func (dc *DaemonConfig) watchGlobal() error {
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 		dc.getGlobal()
 
 		if dc.Global.Debug {
