@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/docker/pkg/plugins"
 )
@@ -289,6 +290,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	ut := &config.UseMount{
 		Volume:   volConfig.String(),
 		Hostname: dc.Host,
+		Reason:   lock.ReasonMount,
 	}
 
 	if err := dc.Client.ReportMount(ut); err != nil {
@@ -340,6 +342,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	ut := &config.UseMount{
 		Volume:   volConfig.String(),
 		Hostname: dc.Host,
+		Reason:   lock.ReasonMount,
 	}
 
 	if err := driver.Unmount(driverOpts); err != nil {

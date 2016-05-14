@@ -251,6 +251,7 @@ func (dc *DaemonConfig) updateMounts() error {
 			payload := &config.UseMount{
 				Hostname: dc.Host,
 				Volume:   mount.Volume.Name,
+				Reason:   lock.ReasonMount,
 			}
 
 			if err := dc.Client.ReportMount(payload); err != nil {
