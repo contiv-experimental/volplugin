@@ -46,8 +46,9 @@ type ListOptions struct {
 
 // Volume is the basic representation of a volume name and its parameters.
 type Volume struct {
-	Name string
-	Size uint64
+	Name   string
+	Size   uint64
+	Source string
 	Params
 }
 
