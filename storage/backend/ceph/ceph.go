@@ -449,9 +449,17 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 		return nil, err
 	}
 
+	for _, mount := range hostMounts {
+		log.Debugf("Host mounts: %#v", mount)
+	}
+
 	mapped, err := c.getMapped(timeout)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, mapd := range mapped {
+		log.Debugf("Mapped: %#v", mapd)
 	}
 
 	mounts := []*storage.Mount{}
