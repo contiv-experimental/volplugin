@@ -302,13 +302,13 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 				if resp.Node.Value != "" {
 					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
 						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
+						time.Sleep(time.Second)
 						return
 					}
 
 					if err := volume.Validate(); err != nil {
 						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
+						time.Sleep(time.Second)
 						return
 					}
 					policy, vol := path.Split(path.Dir(resp.Node.Key))

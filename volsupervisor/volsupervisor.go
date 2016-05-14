@@ -30,7 +30,7 @@ retry:
 	global, err := cfg.GetGlobal()
 	if err != nil {
 		log.Errorf("Could not retrieve global configuration: %v. Retrying in 1 second", err)
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 		goto retry
 	}
 
