@@ -14,6 +14,7 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/lock"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -69,6 +70,7 @@ func (d *Driver) RemoveStopChan(name string) {
 // AddStopChan and RemoveStopChan are used to manage these entities.
 func (d *Driver) HeartbeatMount(ttl time.Duration, payload *config.UseMount, stop chan struct{}) {
 	sleepTime := ttl / 4
+	payload.Reason = lock.ReasonMount
 
 	for {
 		select {
@@ -90,6 +92,8 @@ func (d *Driver) HeartbeatMount(ttl time.Duration, payload *config.UseMount, sto
 }
 
 func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error {
+	ut.Reason = lock.ReasonMount
+
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -120,16 +124,21 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 
 // ReportMount reports a new mount to the volmaster.
 func (d *Driver) ReportMount(ut *config.UseMount) error {
-	return d.reportMountEndpoint("mount", ut)
+	err := d.reportMountEndpoint("mount", ut)
+	log.Debugf("Reporting mount %#v: %v", ut, err)
+	return err
 }
 
 // ReportMountStatus refreshes the mount status (and lock, by axiom).
 func (d *Driver) ReportMountStatus(ut *config.UseMount) error {
-	return d.reportMountEndpoint("mount-report", ut)
+	err := d.reportMountEndpoint("mount-report", ut)
+	log.Debugf("Reporting mount status %#v: %v", ut, err)
+	return err
 }
 
 // ReportUnmount reports an unmount event to the volmaster, which frees locks.
 func (d *Driver) ReportUnmount(ut *config.UseMount) error {
+	ut.Reason = lock.ReasonMount
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
