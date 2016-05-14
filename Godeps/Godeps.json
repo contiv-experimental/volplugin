@@ -30,7 +30,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/executor",
-			"Rev": "38f7b30f73e7d6fc53ed60238f3406d28ad02270"
+			"Rev": "9a6e949287fd462992a565086efe12c195f837b7"
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
