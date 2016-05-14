@@ -118,7 +118,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 
 	driver := NewDriver(s.tlc)
 
-	c.Assert(driver.ExecuteWithMultiUseLock([]config.UseLocker{um, us}, true, 1*time.Minute, func(ld *Driver, ul []config.UseLocker) error {
+	c.Assert(driver.ExecuteWithMultiUseLock([]config.UseLocker{um, us}, 1*time.Minute, func(ld *Driver, ul []config.UseLocker) error {
 		ch1 <- true
 		return nil
 	}), IsNil)
@@ -132,7 +132,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 	// should.
 	sync := make(chan struct{})
 
-	go driver.ExecuteWithMultiUseLock([]config.UseLocker{um, us}, true, 1*time.Minute, func(ld *Driver, ul []config.UseLocker) error {
+	go driver.ExecuteWithMultiUseLock([]config.UseLocker{um, us}, 1*time.Minute, func(ld *Driver, ul []config.UseLocker) error {
 		sync <- struct{}{}
 		ch2 <- 1
 		return nil

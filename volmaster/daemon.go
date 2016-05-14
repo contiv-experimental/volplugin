@@ -306,7 +306,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonCopy,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		if err := d.Config.PublishVolume(newVolConfig); err != nil {
 			return err
 		}
@@ -421,7 +421,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonRemove,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		exists, err := d.existsVolume(vc)
 		if err != nil {
 			return err
@@ -587,7 +587,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonCreate,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, true, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
 		if err == errNoActionTaken {
 			goto publish

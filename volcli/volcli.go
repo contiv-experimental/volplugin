@@ -721,7 +721,7 @@ func useExec(ctx *cli.Context) (bool, error) {
 		args = args[1:]
 	}
 
-	err = lock.NewDriver(cfg).ExecuteWithMultiUseLock([]config.UseLocker{um, us}, true, 0, func(ld *lock.Driver, uls []config.UseLocker) error {
+	err = lock.NewDriver(cfg).ExecuteWithMultiUseLock([]config.UseLocker{um, us}, -1, func(ld *lock.Driver, uls []config.UseLocker) error {
 		cmd := exec.Command("/bin/sh", "-c", strings.Join(args, " "))
 
 		signals := make(chan os.Signal)

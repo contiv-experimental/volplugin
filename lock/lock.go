@@ -72,35 +72,37 @@ func (d *Driver) ExecuteWithUseLock(uc config.UseLocker, runFunc func(d *Driver,
 }
 
 // ExecuteWithMultiUseLock takes several UseLockers and tries to lock them all
-// at the same time. If it fails, it returns an error. If wait is true, it will
-// attempt to wait for the provided timeout and only return an error if it
-// fails to acquire them in time.
-func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, wait bool, timeout time.Duration, runFunc func(d *Driver, ucs []config.UseLocker) error) error {
-	defer func() {
-		for _, uc := range ucs {
-			if err := d.Config.RemoveUse(uc, false); err != nil {
-				log.Errorf("Could not remove use lock %#v: %v", uc, err)
-			}
-		}
-	}()
-
+// at the same time. If it fails, it returns an error. If timeout is zero, it
+// will not attempt to retry acquiring the lock. Otherwise, it will attempt to
+// wait for the provided timeout and only return an error if it fails to
+// acquire them in time.
+func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, timeout time.Duration, runFunc func(d *Driver, ucs []config.UseLocker) error) error {
 	now := time.Now()
+
+	acquired := []config.UseLocker{}
 
 	for _, uc := range ucs {
 	retry:
 		if err := d.Config.PublishUse(uc); err != nil {
 			log.Warnf("Could not acquire %q lock for %q", uc.GetReason(), uc.GetVolume())
-			if wait {
-				if timeout == 0 || time.Now().Sub(now) < timeout {
-					log.Warnf("Waiting 100ms for lock on %q to free", uc.GetVolume())
-					time.Sleep(100 * time.Millisecond)
-					goto retry
-				}
-			} else {
-				return ErrPublish
+			if timeout != 0 && (timeout == -1 || time.Now().Sub(now) < timeout) {
+				log.Warnf("Waiting 100ms for lock on %q to free", uc.GetVolume())
+				time.Sleep(100 * time.Millisecond)
+				goto retry
 			}
+
+			return err
+		}
+
+		acquired = append(acquired, uc)
+	}
+
+	err := runFunc(d, ucs)
+	for _, uc := range acquired {
+		if err := d.Config.RemoveUse(uc, false); err != nil {
+			log.Errorf("Could not remove use lock %#v: %v", uc, err)
 		}
 	}
 
-	return runFunc(d, ucs)
+	return err
 }
