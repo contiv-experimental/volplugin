@@ -3,7 +3,6 @@ package volmaster
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -40,7 +39,7 @@ type volume struct {
 }
 
 // Daemon initializes the daemon for use.
-func (d *DaemonConfig) Daemon(debug bool, listen string) {
+func (d *DaemonConfig) Daemon(listen string) {
 	global, err := d.Config.GetGlobal()
 	if err != nil {
 		log.Errorf("Error fetching global configuration: %v", err)
@@ -49,6 +48,11 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 	}
 
 	d.Global = global
+	if d.Global.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
+	errored.AlwaysDebug = d.Global.Debug
+	errored.AlwaysTrace = d.Global.Debug
 
 	go info.HandleDebugSignal()
 
@@ -58,10 +62,8 @@ func (d *DaemonConfig) Daemon(debug bool, listen string) {
 		for {
 			d.Global = (<-activity).Config.(*config.Global)
 
-			if d.Global.Debug {
-				errored.AlwaysDebug = true
-				errored.AlwaysTrace = true
-			}
+			errored.AlwaysDebug = d.Global.Debug
+			errored.AlwaysTrace = d.Global.Debug
 		}
 	}()
 

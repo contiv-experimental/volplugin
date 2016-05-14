@@ -13,11 +13,6 @@ import (
 )
 
 func start(ctx *cli.Context) {
-	if ctx.Bool("debug") {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug logging enabled")
-	}
-
 	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +24,7 @@ func start(ctx *cli.Context) {
 		Timeout:  time.Duration(ctx.Int("timeout")) * time.Minute,
 	}
 
-	d.Daemon(ctx.Bool("debug"), ctx.String("listen"))
+	d.Daemon(ctx.String("listen"))
 }
 
 func main() {
