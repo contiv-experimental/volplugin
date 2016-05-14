@@ -10,7 +10,6 @@
       with_items:
         - "contiv_network"
         - "contiv_storage"
-        - "contiv_cluster"
         - "swarm"
         - "ucp"
         - "docker"
@@ -19,7 +18,6 @@
       with_items:
         - contiv_network
         - contiv_storage
-        - contiv_cluster
         - swarm
         - ucp
         - docker

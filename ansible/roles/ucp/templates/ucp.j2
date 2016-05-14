@@ -12,6 +12,19 @@ start)
 
     echo starting ucp on {{ node_name }}[{{ node_addr }}]
 
+    {% if ucp_bootstrap_node_name != node_name -%}
+    # if node is running as a replica or worker make sure fingerprint file
+    # exists before procceeding
+    for true; do
+        if [ ! -f  "{{ ucp_remote_dir }}/{{ ucp_fingerprint_file }}" ]; then
+            echo `date` ": waiting for fingerprint file..."
+            sleep 2s
+        else
+            break
+        fi
+    done
+    {% endif %}
+
     {% if ucp_bootstrap_node_name == node_name -%}
     out=$(/usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
@@ -23,15 +36,15 @@ start)
     {% if ucp_swarm_strategy != "spread" -%}
           --{{ ucp_swarm_strategy }} \
     {% endif -%}
-          --image-version={{ ucp_version }} | tee /tmp/ucp.log)
+          --image-version={{ ucp_version }} --fresh-install | tee /tmp/ucp.log)
 
     cat /tmp/ucp.log
     rm /tmp/ucp.log
     # copy out the instance ID
     instanceId=$(echo ${out} | egrep -o 'UCP instance ID: [a-zA-Z0-9:_]*' | \
         awk --field-separator='UCP instance ID: ' '{print $2}')
-    echo instance-id: $instanceId
-    echo ${instanceId} > "{{ ucp_remote_dir }}"/"{{ ucp_instance_id_file }}"
+    echo instance-id: ${instanceId}
+    echo ${instanceId} > "{{ ucp_remote_dir }}/{{ ucp_instance_id_file }}"
 
     # copy out the fingerprint.
     # XXX: we store the output in variable first than redirecting
@@ -41,29 +54,31 @@ start)
     # XXX: we need a way for this fingerprint to stick around wherever
     # contiv/cluster service is running. May be we can save this file on a
     # distributed filesystem
-    out=$(/usr/bin/docker run --rm -t --name ucp \
+    out=$(/usr/bin/docker run --rm --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
         docker/ucp fingerprint)
-    echo ${out} > "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"
+    fingerprint=$(echo ${out} | egrep -o 'Fingerprint=[a-zA-Z0-9:]*' | \
+        awk --field-separator='=' '{print $2}')
+    echo fingerprint: ${fingerprint}
+    echo ${fingerprint} > "{{ ucp_remote_dir }}/{{ ucp_fingerprint_file }}"
     {% else -%}
     /usr/bin/docker run --rm -t --name ucp \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -e UCP_ADMIN_USER={{ ucp_admin_user }} -e UCP_ADMIN_PASSWORD={{ ucp_admin_password }} \
+    {% if run_as == "master" -%}
+        docker/ucp join {{ ucp_controller_replica }} --host-address={{ node_addr }} \
+    {% else -%}
         docker/ucp join --host-address={{ node_addr }} \
+    {% endif %}
           --swarm-port={{ ucp_swarm_port }} --controller-port={{ ucp_controller_port }} \
           --image-version={{ ucp_version }} \
           --url="https://{{ service_vip }}:443" \
-    {% if run_as == "master" -%}
-          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"` \
-          {{ ucp_controller_replica }}
-    {% else -%}
-          --fingerprint=`cat "{{ ucp_remote_dir }}"/"{{ ucp_fingerprint_file }}"`
-    {% endif %}
+          --fingerprint=`cat "{{ ucp_remote_dir }}/{{ ucp_fingerprint_file }}"`
     {% endif %}
 
     # now just sleep to keep the service up
-    mkfifo "{{ ucp_remote_dir }}"/"{{ ucp_fifo_file }}"
-    < "{{ ucp_remote_dir }}"/"{{ ucp_fifo_file }}"
+    mkfifo "{{ ucp_remote_dir }}/{{ ucp_fifo_file }}"
+    < "{{ ucp_remote_dir }}/{{ ucp_fifo_file }}"
     ;;
 
 stop)
@@ -74,6 +89,9 @@ stop)
 
     #remove the ucp containers and associated volumes
     docker ps -a | grep 'ucp-' | awk '{print $1}' | xargs docker rm -v
+
+    #explicitly try and remove ucp volumes (in case they were left over)
+    docker volume ls | grep ucp-* | awk '{print $2}' | xargs docker volume rm
 
     # XXX: do we need to uninstall ucp too?
     #/usr/bin/docker run --rm -t --name ucp \

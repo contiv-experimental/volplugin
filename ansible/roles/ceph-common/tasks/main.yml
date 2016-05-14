@@ -97,3 +97,15 @@
     owner: root
     group: root
     mode: 0644
+
+- name: setup iptables for ceph_mon
+  shell: >
+      ( iptables -L INPUT | grep "{{ ceph_rule_comment }} ({{ port_ceph_mon }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ port_ceph_mon }} -j ACCEPT -m comment --comment "{{ ceph_rule_comment }} ({{ port_ceph_mon }})"
+  become: true
+
+- name: setup iptables for ceph_osd
+  shell: >
+      ( iptables -L INPUT | grep "{{ ceph_rule_comment }} ({{ port_range_ceph_osd }})" ) || \
+      iptables -I INPUT 1 -p tcp -m multiport --dports {{ port_range_ceph_osd }} -j ACCEPT -m comment --comment "{{ ceph_rule_comment }} ({{ port_range_ceph_osd }})"
+  become: true

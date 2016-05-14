@@ -10,7 +10,7 @@ case $1 in
 start)
     set -e
 
-    /usr/bin/docker run --net=host \
+    /usr/bin/docker run -t --net=host \
     -e "APIC_URL={{ apic_url }}" \
     -e "APIC_USERNAME={{ apic_username }}" \
     -e "APIC_PASSWORD={{ apic_password }}" \

@@ -11,6 +11,12 @@
     - "{{ ucp_instance_id_file }}"
     - "{{ ucp_fifo_file }}"
 
+# XXX: temporary fix for issue with ucp 1.1.0 where it doesn't cleanup this file
+# remove this once it is fixed. Target fix version is 1.1.2
+- name: cleanup ucp generated docker config file
+  file: name=/etc/docker/daemon.json state=absent
+  become: true
+
 - name: cleanup iptables for ucp
   shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ ucp_rule_comment }} ({{ item }})"
   become: true
@@ -20,5 +26,10 @@
     - "{{ ucp_port3 }}"
     - "{{ ucp_port4 }}"
     - "{{ ucp_port5 }}"
+    - "{{ ucp_port6 }}"
+    - "{{ ucp_port7 }}"
+    - "{{ ucp_port8 }}"
+    - "{{ ucp_port9 }}"
+    - "{{ ucp_hb_port }}"
     - "{{ ucp_swarm_port }}"
     - "{{ ucp_controller_port }}"

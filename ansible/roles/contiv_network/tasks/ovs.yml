@@ -1,14 +1,22 @@
 ---
 # This role contains tasks for installing ovs
 
-- name: install openstack kilo repo (redhat)
-  yum: "name=https://repos.fedorapeople.org/repos/openstack/openstack-kilo/rdo-release-kilo-1.noarch.rpm"
+- name: download ovs binaries (redhat)
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    dest: "{{ item.dest }}"
+    url: "{{ item.url }}"
+  with_items:
+    - {
+        url: "https://cisco.box.com/shared/static/51eo9dcw04qx2y1f14n99y4yt5kug3q4.rpm",
+        dest: /tmp/openvswitch-2.3.1-1.x86_64.rpm
+      }
   when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev
 
 - name: install ovs (redhat)
-  yum: name=openvswitch state=present
+  yum: name=/tmp/openvswitch-2.3.1-1.x86_64.rpm state=present
   when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev
@@ -52,6 +60,17 @@
   with_items:
     - "tcp:127.0.0.1:6640"
     - "ptcp:6640"
+
+- name: check selinux status
+  shell: sestatus
+  register: selinux_set
+  when: (ansible_os_family == "RedHat")
+
+- name: permit openvswitch_t type in selinux
+  shell: >
+      semanage permissive -a openvswitch_t
+  when: (ansible_os_family == "RedHat") and (selinux_set.stdout | search(".*SELinux status:.*enabled.*"))
+  become: true
 
 - name: setup iptables for vxlan vtep port
   shell: >
