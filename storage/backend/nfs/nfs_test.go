@@ -176,9 +176,10 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 	d := &Driver{mountpath: mountPath}
 
 	invalidSources := []string{
-		"nowhere:/mnt",
+		"abcdefg:/mnt",
 		"/mnt",
-		"nowhere:",
+		"abcdefg",
+		"abcdefg",
 	}
 
 	invalidOptions := []string{
@@ -206,7 +207,7 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 		}
 
 		str, err := d.mkOpts(do)
-		c.Assert(err, NotNil)
+		c.Assert(err, NotNil, Commentf("%#v %v", do, str))
 		c.Assert(str, Equals, "")
 	}
 
