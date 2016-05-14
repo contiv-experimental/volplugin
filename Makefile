@@ -73,6 +73,8 @@ unit-test-nocoverage-host: golint-host govet-host
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
+	if [ -n $$DEMO ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
+
 
 docker: run-build
 	docker build -t contiv/volplugin .
@@ -102,6 +104,7 @@ run-volmaster:
 
 run-build: 
 	GOGC=1000 go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+	cp /opt/golang/bin/* /tmp/bin
 
 system-test: build
 	@./build/scripts/systemtests.sh
