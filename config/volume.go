@@ -23,7 +23,7 @@ type Volume struct {
 	PolicyName     string            `json:"policy"`
 	VolumeName     string            `json:"name"`
 	DriverOptions  map[string]string `json:"driver"`
-	MountSource    string            `json:"mount"`
+	MountSource    string            `json:"mount" merge:"mount"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	Backends       BackendDrivers    `json:"backends"`
@@ -87,8 +87,19 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		return nil, err
 	}
 
+	var mount string
+
+	if rc.Opts != nil {
+		mount = rc.Opts["mount"]
+		delete(rc.Opts, "mount")
+	}
+
 	if err := mergeOpts(resp, rc.Opts); err != nil {
 		return nil, err
+	}
+
+	if resp.DriverOptions == nil {
+		resp.DriverOptions = map[string]string{}
 	}
 
 	if err := resp.Validate(); err != nil {
@@ -102,6 +113,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		RuntimeOptions: resp.RuntimeOptions,
 		PolicyName:     rc.Policy,
 		VolumeName:     rc.Volume,
+		MountSource:    mount,
 	}
 
 	if err := vc.Validate(); err != nil {
