@@ -144,11 +144,18 @@ func (co *CreateOptions) ActualSize() (uint64, error) {
 }
 
 func (co *CreateOptions) computeSize() error {
+	if co.Size == "" {
+		// do not generate a parser error. in some instances, we do not need to
+		// create volumes so a size may not be specified.  set 0 and return nil
+		co.actualSize = 0
+		return nil
+	}
+
 	var err error
 
 	co.actualSize, err = units.ParseBase2Bytes(co.Size)
 	if err != nil {
-		return err
+		return errored.Errorf("Calculating volume size").Combine(err)
 	}
 
 	if co.actualSize != 0 {
@@ -347,13 +354,9 @@ func (c *Client) WatchSnapshotSignal(activity chan *watch.Watch) {
 // considered.
 func (co *CreateOptions) Validate() error {
 	if co.actualSize == 0 {
-		actualSize, err := co.ActualSize()
+		_, err := co.ActualSize()
 		if err != nil {
 			return err
-		}
-
-		if actualSize == 0 {
-			return errored.Errorf("Config for policy has a zero size")
 		}
 	}
 

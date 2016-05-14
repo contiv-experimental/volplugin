@@ -80,11 +80,11 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 
 func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 	opts := CreateOptions{}
-	c.Assert(opts.Validate(), NotNil)
+	c.Assert(opts.Validate(), IsNil)
 	opts2 := RuntimeOptions{}
 	c.Assert(opts2.Validate(), IsNil)
 
-	opts = CreateOptions{Size: "0"}
+	opts = CreateOptions{Size: "0M"}
 	c.Assert(opts.Validate(), NotNil)
 	opts = CreateOptions{Size: "10MB", actualSize: 10}
 	c.Assert(opts.Validate(), IsNil)
