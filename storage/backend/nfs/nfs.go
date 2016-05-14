@@ -1,9 +1,20 @@
 package nfs
 
 import (
+	"fmt"
+	"net"
+	"os"
+	"path"
+	"strings"
 	"time"
 
+	"golang.org/x/sys/unix"
+
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
+	"github.com/vishvananda/netlink"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Driver is a basic struct for controlling the NFS driver.
@@ -22,42 +33,185 @@ func NewMountDriver(mountPath string) (storage.MountDriver, error) {
 // Name returns the string associated with the storage backed of the driver
 func (d *Driver) Name() string { return BackendName }
 
-// Create a volume.
-func (d *Driver) Create(do storage.DriverOptions) error { return nil }
+func (d *Driver) validateConvertOptions(options string) (map[string]string, error) {
+	if options == "" {
+		return map[string]string{}, nil
+	}
 
-// Format a volume.
-func (d *Driver) Format(do storage.DriverOptions) error { return nil }
+	parts := strings.Split(options, ",")
+	mapOptions := map[string]string{}
 
-// Destroy a volume.
-func (d *Driver) Destroy(do storage.DriverOptions) error { return nil }
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			return nil, errored.Errorf("Invalid options, syntax must have data between two commas")
+		}
 
-// List Volumes. May be scoped by storage parameters or other data.
-func (d *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
-	return []storage.Volume{}, nil
+		if strings.HasPrefix(part, "=") || strings.HasSuffix(part, "=") {
+			return nil, errored.Errorf("key=value options must contain both a key and a value")
+		}
+
+		keyval := strings.Split(part, "=")
+		if len(keyval) > 2 || len(keyval) < 1 {
+			return nil, errored.Errorf("Option syntax is `key`, or `key=value`. Invalid parameters detected.")
+		}
+
+		if len(keyval) == 2 {
+			mapOptions[keyval[0]] = keyval[1]
+		} else {
+			mapOptions[keyval[0]] = ""
+		}
+	}
+
+	return mapOptions, nil
+}
+
+// this converts a hash of options into a string we pass to the mount syscall.
+func (d *Driver) mapOptionsToString(mapOpts map[string]string) string {
+	ret := ""
+	for key, val := range mapOpts {
+		ret += key
+		if val != "" {
+			ret += fmt.Sprintf("=%s", val)
+		}
+		ret += ","
+	}
+
+	return ret[:len(ret)-1] // XXX strip the trailing comma
+}
+
+func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
+	mapOpts, err := d.validateConvertOptions(do.Volume.Params["options"])
+	if err != nil {
+		return "", err
+	}
+
+	host := ""
+
+	if !strings.Contains(do.Source, ":") {
+		res, ok := mapOpts["addr"]
+		if !ok || strings.TrimSpace(res) == "" {
+			return "", errored.Errorf("No server address was provided. Either provide `host:mount` syntax for the source, or set `addr` in the driver options.")
+		}
+
+		host = res
+	} else {
+		parts := strings.SplitN(do.Source, ":", 2)
+		if len(parts) < 2 {
+			return "", errored.Errorf("Internal error handling server address: %q is invalid, but got through other validation", do.Source)
+		}
+
+		host = parts[0]
+	}
+
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	if ip := net.ParseIP(host); ip == nil {
+		hosts, err := net.LookupHost(host)
+		if err != nil {
+			return "", errored.Errorf("Host lookup failed for NFS server %q", host).Combine(err)
+		}
+
+		if len(hosts) < 1 {
+			return "", errored.Errorf("Host lookup for NFS server %q succeeded but returned no address to use", host)
+		}
+		host = hosts[0]
+	}
+
+	mapOpts["addr"] = host
+
+	if _, ok := mapOpts["clientaddr"]; !ok {
+		ip := net.ParseIP(host)
+		if ip == nil {
+			return "", errored.Errorf("Could not parse IP %q in NFS mount", host)
+		}
+
+		list, err := netlink.LinkList()
+		if err != nil {
+			return "", errored.Errorf("Error listing netlink interfaces during NFS mount").Combine(err)
+		}
+
+		for _, link := range list {
+			// XXX for now, at least, we want physical devices only. This keeps us
+			//     from accidentally returning virtual interface addresses as the
+			//     clientaddr.
+			if link.Type() != "device" {
+				continue
+			}
+
+			addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
+			if err != nil {
+				return "", errored.Errorf("Error listing addrs for link %q", link.Attrs().Name)
+			}
+
+			for _, addr := range addrs {
+				if addr.IPNet.Contains(ip) {
+					mapOpts["clientaddr"] = ip.String()
+					goto done
+				}
+			}
+		}
+	}
+
+done:
+	str := d.mapOptionsToString(mapOpts)
+
+	return fmt.Sprintf("nfsvers=4,%s", str), nil
 }
 
 // Mount a Volume
-func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) { return nil, nil }
+func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
+	mp, err := d.MountPath(do)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(mp, 0755); err != nil && !os.IsExist(err) {
+		return nil, errored.Errorf("Error creating directory %q while preparing NFS mount for %q", mp, do.Source).Combine(err)
+	}
+
+	opts, err := d.mkOpts(do)
+	if err != nil {
+		return nil, err
+	}
+
+	times := 0
+
+retry:
+	if err := unix.Mount(do.Source, mp, "nfs", 0, opts); err != nil {
+		if err == unix.EIO {
+			log.Errorf("I/O error mounting %q Retrying after timeout...", do.Volume.Name)
+			time.Sleep(do.Timeout)
+			times++
+			if times == 3 {
+				return nil, errored.Errorf("I/O error mounting %q", do.Volume.Name).Combine(err)
+			}
+
+			goto retry
+		}
+		return nil, errored.Errorf("Error mounting nfs volume %q at %q", do.Source, mp).Combine(err)
+	}
+
+	return &storage.Mount{
+		Device: do.Source,
+		Path:   mp,
+		Volume: do.Volume,
+	}, nil
+}
 
 // Unmount a volume
-func (d *Driver) Unmount(do storage.DriverOptions) error { return nil }
+func (d *Driver) Unmount(do storage.DriverOptions) error {
+	mp, err := d.MountPath(do)
+	if err != nil {
+		return err
+	}
 
-// Exists returns true if a volume exists. Otherwise, it returns false.
-func (d *Driver) Exists(do storage.DriverOptions) (bool, error) { return false, nil }
+	if err := unix.Unmount(mp, 0); err != nil {
+		return err
+	}
 
-// CreateSnapshot creates a named snapshot for the volume. Any error will be returned.
-func (d *Driver) CreateSnapshot(name string, do storage.DriverOptions) error { return nil }
-
-// RemoveSnapshot removes a named snapshot for the volume. Any error will be returned.
-func (d *Driver) RemoveSnapshot(name string, do storage.DriverOptions) error { return nil }
-
-// ListSnapshots returns an array of snapshot names provided a maximum number
-// of snapshots to be returned. Any error will be returned.
-func (d *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) { return []string{}, nil }
-
-// CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
-// snap and volume name (string). Returns error on failure.
-func (d *Driver) CopySnapshot(do storage.DriverOptions, snapName string, volName string) error {
 	return nil
 }
 
@@ -67,16 +221,27 @@ func (d *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	return []*storage.Mount{}, nil
 }
 
-// InternalName translates a volplugin `tenant/volume` name to an internal
+// internalName translates a volplugin `tenant/volume` name to an internal
 // name suitable for the driver. Yields an error if impossible.
-func (d *Driver) InternalName(volName string) (string, error) { return "", nil }
-
-// InternalNameToVolpluginName translates an internal name to a volplugin
-// `tenant/volume` syntax name.
-func (d *Driver) InternalNameToVolpluginName(intName string) string { return "" }
+func (d *Driver) internalName(volName string) (string, error) {
+	// this ensures that the volume contains characters, and that they aren't all
+	// just slashes.
+	if strings.Replace(volName, "/", "", -1) == "" {
+		return "", errored.Errorf("Invalid volume name %q in NFS driver", volName)
+	}
+	return volName, nil
+}
 
 // MountPath describes the path at which the volume should be mounted.
-func (d *Driver) MountPath(do storage.DriverOptions) (string, error) { return d.mountpath, nil }
+func (d *Driver) MountPath(do storage.DriverOptions) (string, error) {
+	return path.Join(d.mountpath, "nfs", do.Volume.Name), nil
+}
 
 // Validate validates the NFS drivers implementation of handling storage.DriverOptions.
-func (d *Driver) Validate(do storage.DriverOptions) error { return nil }
+func (d *Driver) Validate(do storage.DriverOptions) error {
+	if do.Volume.Name == "" || do.Source == "" {
+		return errored.Errorf("No source or volume supplied, cannot mount this volume")
+	}
+
+	return nil
+}
