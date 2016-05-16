@@ -9,7 +9,7 @@ import (
 
 func stopStartEtcd(c *C, f func()) {
 	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl stop etcd").Run(), IsNil)
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second)
 	f()
 	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
 	time.Sleep(15 * time.Second)

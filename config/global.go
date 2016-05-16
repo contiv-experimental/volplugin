@@ -112,14 +112,26 @@ func (global *Global) fixupParameters() {
 func (tlc *Client) WatchGlobal(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, tlc.prefixed("global-config"), func(resp *client.Response, w *watch.Watcher) {
 		if resp.Action != "delete" {
-			global := NewGlobalConfig()
-			if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
-				log.Error("Error decoding global config, not updating")
-				time.Sleep(1 * time.Second)
+			globaltest := map[string]interface{}{}
+
+			if err := json.Unmarshal([]byte(resp.Node.Value), &globaltest); err != nil {
+				log.Errorf("Error decoding JSON for empty global test: %v", err)
 				return
 			}
 
-			global.fixupParameters()
+			global := &Global{}
+
+			if len(globaltest) == 0 {
+				global = NewGlobalConfig()
+			} else {
+				if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
+					log.Error("Error decoding global config, not updating")
+					time.Sleep(time.Second)
+					return
+				}
+
+				global.fixupParameters()
+			}
 
 			w.Channel <- &watch.Watch{Key: resp.Node.Key, Config: global}
 		}

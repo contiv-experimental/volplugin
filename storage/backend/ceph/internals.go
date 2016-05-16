@@ -29,8 +29,17 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 		return "", err
 	}
 
+	retries := 0
+
+retry:
 	cmd := exec.Command("rbd", "map", intName, "--pool", poolName)
 	er, err := runWithTimeout(cmd, do.Timeout)
+	if retries < 10 && err != nil {
+		log.Errorf("Error mapping image: %v (%v) (%v). Retrying.", intName, er, err)
+		retries++
+		goto retry
+	}
+
 	if err != nil || er.ExitStatus != 0 {
 		return "", errored.Errorf("Could not map %q: %v (%v) (%v)", intName, er, err, er.Stderr)
 	}
@@ -81,7 +90,7 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 		return err
 	}
 
-	var retried bool
+	var retries uint
 retry:
 	for _, rbd := range rbdmap {
 		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
@@ -94,18 +103,16 @@ retry:
 
 			cmd := exec.Command("rbd", "unmap", rbd.Device)
 			er, err := runWithTimeout(cmd, do.Timeout)
-			if !retried && (err != nil || er.ExitStatus != 0) {
+			if retries < 10 && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", intName, rbd.Device, er, err, er.Stderr)
 				if er.ExitStatus == 16 {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", intName, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
-					retried = true
+					retries++
 					goto retry
 				}
 				return err
-			}
-
-			if !retried {
+			} else if retries < 10 {
 				rbdmap2, err := c.showMapped(do.Timeout)
 				if err != nil {
 					return err
@@ -113,15 +120,19 @@ retry:
 
 				for _, rbd2 := range rbdmap2 {
 					if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
-						retried = true
+						retries++
 						goto retry
 					}
 				}
 			}
+
+			if retries > 10 {
+				return errored.Errorf("Could not unmap volume %q after 10 retries", rbd.Device)
+			}
+
 			break
 		}
 	}
-
 	return nil
 }
 
@@ -145,7 +156,7 @@ retry:
 
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
 		log.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
-		time.Sleep(100 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}
 

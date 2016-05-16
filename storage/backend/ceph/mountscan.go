@@ -68,6 +68,7 @@ func getMounts() ([]*storage.Mount, error) {
 		if len(line) == 0 {
 			continue
 		}
+
 		parts := strings.Split(line, " ")
 		devParts := strings.Split(parts[2], ":")
 		if len(devParts) != 2 {

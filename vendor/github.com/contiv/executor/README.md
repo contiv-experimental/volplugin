@@ -10,6 +10,7 @@ Executor can:
 
   * Terminate on signal or after a timeout via /x/net/context
   * Output a message on an interval if the program is still running.
+    The periodic message can be turned off by setting `LogInterval` of executor to a value <= 0
   * Capture split-stream stdio, and make it easier to get at io pipes.
 
 Example:

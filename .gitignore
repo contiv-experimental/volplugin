@@ -1,6 +1,7 @@
 cover.out
 nohup.out
 bin/*
+ansible/site.retry
 ansible/docker
 *.vdi
 .bundle

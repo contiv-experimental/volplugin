@@ -114,7 +114,7 @@ func (dc *DaemonConfig) createSnapshot(val *config.Volume) {
 
 func (dc *DaemonConfig) loop() {
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 
 		// XXX this copy is so we can free the mutex quickly for more additions
 		volumeCopy := map[string]*config.Volume{}

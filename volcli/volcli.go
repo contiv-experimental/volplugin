@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -291,11 +290,11 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return false, errored.Errorf("Error in request: %v", err)
+		return false, errored.Errorf("Error in request: %v - %v", err, resp.Status)
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+		return false, errored.Errorf("Response Status Code was %d, not 200: %v", resp.StatusCode, resp.Status)
 	}
 
 	return false, nil
@@ -393,9 +392,14 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
+	qualifiedVolume := strings.Join([]string{policy, volume}, "/")
+
+	if resp.StatusCode == 404 {
+		return false, errored.Errorf("Volume %v no longer exists.", qualifiedVolume)
+	}
+
 	if resp.StatusCode != 200 {
-		io.Copy(os.Stderr, resp.Body)
-		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200: %v", qualifiedVolume, resp.StatusCode, resp.Status)
 	}
 
 	return false, nil
@@ -721,7 +725,7 @@ func useExec(ctx *cli.Context) (bool, error) {
 		args = args[1:]
 	}
 
-	err = lock.NewDriver(cfg).ExecuteWithMultiUseLock([]config.UseLocker{um, us}, true, 0, func(ld *lock.Driver, uls []config.UseLocker) error {
+	err = lock.NewDriver(cfg).ExecuteWithMultiUseLock([]config.UseLocker{um, us}, -1, func(ld *lock.Driver, uls []config.UseLocker) error {
 		cmd := exec.Command("/bin/sh", "-c", strings.Join(args, " "))
 
 		signals := make(chan os.Signal)

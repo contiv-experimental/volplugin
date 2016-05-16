@@ -74,7 +74,7 @@ var testPolicies = map[string]*Policy{
 		},
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
-			Size:       "0",
+			Size:       "0mb",
 			FileSystem: defaultFilesystem,
 		},
 		FileSystems: defaultFilesystems,

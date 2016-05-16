@@ -1,0 +1,11 @@
+{
+  "name": "testdriver",
+  "backends": {
+    "crud": "null",
+    "mount": "nfs",
+    "snapshot": "null"
+  },
+  "driver": { },
+  "create": { },
+  "runtime": { }
+}

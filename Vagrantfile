@@ -57,6 +57,7 @@ ansible_provision = proc do |ansible|
   # In a production deployment, these should be secret
   ansible.extra_vars = {
     docker_version: "1.11.1",
+    use_nfs: true,
     swarm_bootstrap_node_name: "mon0",
     docker_device: "/dev/sdb",
     etcd_peers_group: 'volplugin-test',
@@ -96,7 +97,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
-  config.vm.synced_folder "bin", "/opt/golang/bin"
+  config.vm.synced_folder "bin", "/tmp/bin"
 
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
@@ -107,11 +108,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.2#{i}", auto_config: false
           v.vmx["scsi0:1.present"] = 'TRUE'
-          v.vmx["scsi0:1.fileName"] = create_vmdk("docker-#{i}", '11000MB')
+          v.vmx["scsi0:1.fileName"] = create_vmdk("docker-#{i}", '15000MB')
 
           (1..2).each do |d|
             v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
-            v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
+            v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '15000MB')
           end
 
           v.vmx['memsize'] = "#{MEMORY}"
@@ -150,7 +151,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         vb.customize ['createhd',
                       '--filename', "docker-#{i}",
-                      '--size', '11000']
+                      '--size', '15000']
         # Controller names are dependent on the VM being built.
         # Be careful while changing the box.
         vb.customize ['storageattach', :id,
@@ -166,7 +167,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           unless File.exist?(vdi_disk_path)
             vb.customize ['createhd',
                           '--filename', disk_path,
-                          '--size', '11000']
+                          '--size', '15000']
             # Controller names are dependent on the VM being built.
             # Be careful while changing the box.
             vb.customize ['storageattach', :id,

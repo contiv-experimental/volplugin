@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/contiv/errored"
 	"github.com/coreos/etcd/client"
 
 	"golang.org/x/net/context"
@@ -106,6 +107,7 @@ func (c *Client) PublishUse(ut UseLocker) error {
 			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevExist: client.PrevExist, PrevValue: string(content)})
 			return err
 		}
+		return ErrExist
 	}
 
 	log.Debugf("Publishing use: (error: %v) %#v", err, ut)
@@ -120,7 +122,13 @@ func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client
 		return err
 	}
 
-	log.Debugf("Publishing use with TTL %d: %#v", ttl, ut)
+	if ttl < 0 {
+		err := errored.Errorf("TTL was less than 0 for locker %#v!!!! This should not happen!", ut)
+		log.Error(err)
+		return err
+	}
+
+	log.Debugf("Publishing use with TTL %v: %#v", ttl, ut)
 
 	value := string(content)
 	if exist != client.PrevNoExist {

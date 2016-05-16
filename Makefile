@@ -60,19 +60,21 @@ ci:
 test: unit-test system-test
 
 unit-test:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="$$TESTRUN" make unit-test-host"'
 
 unit-test-host: golint-host govet-host
-	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -run "${TESTRUN}"
+	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -run "$$TESTRUN"
 
 unit-test-nocoverage:
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-nocoverage-host"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="$$TESTRUN" make unit-test-nocoverage-host"'
 
 unit-test-nocoverage-host: golint-host govet-host
-	HOST_TEST=1 GOGC=1000 go test -v -run "${TESTRUN}" ./... -check.v
+	HOST_TEST=1 GOGC=1000 go test -v -run "$$TESTRUN" ./... -check.v
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
+	if [ -n $$DEMO ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
+
 
 docker: run-build
 	docker build -t contiv/volplugin .
@@ -81,7 +83,7 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run: build
-	vagrant ssh mon0 -c 'volcli global upload < /testdata/ceph/global1.json'
+	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 	@set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
@@ -102,6 +104,7 @@ run-volmaster:
 
 run-build: 
 	GOGC=1000 go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+	cp /opt/golang/bin/* /tmp/bin
 
 system-test: build
 	@./build/scripts/systemtests.sh

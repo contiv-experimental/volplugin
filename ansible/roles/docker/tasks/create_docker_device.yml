@@ -24,6 +24,6 @@
   ignore_errors: true
 
 - name: lvcreate contiv-dockerthin
-  shell: lvcreate -n dockerthin -T contiv --size {{ docker_device_size }}
+  shell: lvcreate -n dockerthin -T contiv --size {{ docker_device_size }} --poolmetadatasize {{ docker_device_metadata_size  }}
   when: lvcreated|failed
   register: thin_provisioned

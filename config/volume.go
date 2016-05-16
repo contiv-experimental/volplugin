@@ -23,7 +23,7 @@ type Volume struct {
 	PolicyName     string            `json:"policy"`
 	VolumeName     string            `json:"name"`
 	DriverOptions  map[string]string `json:"driver"`
-	MountSource    string            `json:"mount"`
+	MountSource    string            `json:"mount" merge:"mount"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	Backends       BackendDrivers    `json:"backends"`
@@ -87,8 +87,19 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		return nil, err
 	}
 
+	var mount string
+
+	if rc.Opts != nil {
+		mount = rc.Opts["mount"]
+		delete(rc.Opts, "mount")
+	}
+
 	if err := mergeOpts(resp, rc.Opts); err != nil {
 		return nil, err
+	}
+
+	if resp.DriverOptions == nil {
+		resp.DriverOptions = map[string]string{}
 	}
 
 	if err := resp.Validate(); err != nil {
@@ -102,6 +113,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		RuntimeOptions: resp.RuntimeOptions,
 		PolicyName:     rc.Policy,
 		VolumeName:     rc.Volume,
+		MountSource:    mount,
 	}
 
 	if err := vc.Validate(); err != nil {
@@ -144,11 +156,18 @@ func (co *CreateOptions) ActualSize() (uint64, error) {
 }
 
 func (co *CreateOptions) computeSize() error {
+	if co.Size == "" {
+		// do not generate a parser error. in some instances, we do not need to
+		// create volumes so a size may not be specified.  set 0 and return nil
+		co.actualSize = 0
+		return nil
+	}
+
 	var err error
 
 	co.actualSize, err = units.ParseBase2Bytes(co.Size)
 	if err != nil {
-		return err
+		return errored.Errorf("Calculating volume size").Combine(err)
 	}
 
 	if co.actualSize != 0 {
@@ -295,13 +314,13 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 				if resp.Node.Value != "" {
 					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
 						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
+						time.Sleep(time.Second)
 						return
 					}
 
 					if err := volume.Validate(); err != nil {
 						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
-						time.Sleep(1 * time.Second)
+						time.Sleep(time.Second)
 						return
 					}
 					policy, vol := path.Split(path.Dir(resp.Node.Key))
@@ -347,13 +366,9 @@ func (c *Client) WatchSnapshotSignal(activity chan *watch.Watch) {
 // considered.
 func (co *CreateOptions) Validate() error {
 	if co.actualSize == 0 {
-		actualSize, err := co.ActualSize()
+		_, err := co.ActualSize()
 		if err != nil {
 			return err
-		}
-
-		if actualSize == 0 {
-			return errored.Errorf("Config for policy has a zero size")
 		}
 	}
 
@@ -412,8 +427,9 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 }
 
 func (cfg *Volume) validateBackends() error {
-	// We use a few dummy variables to ensure that time global configuration is
-	// needed in the storage drivers, that the validation does not fail because of it.
+	// We use a few dummy variables to ensure that global configuration is
+	// not needed in the storage drivers, that the validation does not fail
+	// because of it.
 	do, err := cfg.ToDriverOptions(time.Second)
 	if err != nil {
 		return err

@@ -102,7 +102,7 @@ func Create(w *Watcher) {
 					return
 				}
 
-				time.Sleep(1 * time.Second)
+				time.Sleep(time.Second)
 				continue
 			}
 

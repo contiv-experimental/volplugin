@@ -25,6 +25,11 @@
 
 - debug: var=ports
 
+- name: deny openvswitch_t type in selinux
+  shell: >
+      semanage permissive -d openvswitch_t
+  become: true
+
 - name: cleanup iptables for vxlan vtep port
   shell: iptables -D INPUT -p udp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
   become: true

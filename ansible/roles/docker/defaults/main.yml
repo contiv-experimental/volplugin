@@ -6,3 +6,4 @@ docker_version: 1.9.1
 docker_rule_comment: "docker api"
 docker_device: ""
 docker_device_size: "10000MB"
+docker_device_metadata_size: "1000MB"

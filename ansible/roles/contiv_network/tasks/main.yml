@@ -80,11 +80,9 @@
   copy: src=netmaster.service dest=/etc/systemd/system/netmaster.service
   when: run_as == "master"
 
-# resolves an issue with netmaster: https://github.com/contiv/netplugin/issues/210
 - name: start netmaster
   shell: systemctl daemon-reload && systemctl start netmaster
   when: run_as == "master"
-  run_once: true
 
 # FIXME: need to move the following tasks to correct role
 - name: download contivctl

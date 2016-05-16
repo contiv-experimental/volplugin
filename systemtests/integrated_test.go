@@ -10,6 +10,8 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/contiv/volplugin/config"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
@@ -19,30 +21,43 @@ func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
+	if nullDriver() {
+		c.Skip("Null driver does not support cross-host tests at the moment.")
+		return
+	}
+
 	for _, name := range []string{"mon0", "mon1", "mon2"} {
 		c.Assert(s.createVolume(name, "policy1", "test", nil), IsNil)
 	}
 
-	dockerCmd := "docker run -d -v policy1/test:/mnt alpine sleep 10m"
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand(dockerCmd), IsNil)
+	out, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	if err != nil {
+		log.Info(out)
+	}
+	c.Assert(err, IsNil)
 
 	for _, nodeName := range []string{"mon1", "mon2"} {
-		_, err := s.vagrant.GetNode(nodeName).RunCommandWithOutput(dockerCmd)
+		_, err := s.dockerRun(nodeName, false, false, "policy1/test", "sleep 10m")
 		c.Assert(err, NotNil)
 	}
 
 	c.Assert(s.clearContainers(), IsNil)
-	c.Assert(s.purgeVolume("mon1", "policy1", "test", false), IsNil)
-	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
-	c.Assert(s.vagrant.GetNode("mon1").RunCommand(dockerCmd), IsNil)
+
+	out, err = s.dockerRun("mon1", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
-		_, err := s.vagrant.GetNode(nodeName).RunCommandWithOutput(dockerCmd)
-		c.Assert(err, NotNil)
+		out, err := s.dockerRun(nodeName, false, false, "policy1/test", "sleep 10m")
+		c.Assert(err, NotNil, Commentf(out))
 	}
 }
 
 func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports pools")
+		return
+	}
+
 	defer s.mon0cmd("sudo ceph osd pool delete test test --yes-i-really-really-mean-it")
 	_, err := s.mon0cmd("sudo ceph osd pool create test 1 1")
 	c.Assert(err, IsNil)
@@ -63,6 +78,11 @@ func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
+	if nullDriver() {
+		c.Skip("Null driver does not support driver options")
+		return
+	}
+
 	opts := map[string]string{
 		"size":                "200MB",
 		"snapshots":           "true",
@@ -88,6 +108,11 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports rate limiting")
+		return
+	}
+
 	// FIXME find a better place for these
 	var (
 		writeIOPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_iops_device"
@@ -111,7 +136,7 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "policy1", "test", opts), IsNil)
-	_, err := s.docker("run -itd -v policy1/test:/mnt alpine sleep 10m")
+	_, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
 	c.Assert(err, IsNil)
 
 	for key, fn := range optMap {
@@ -167,22 +192,32 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
+	if nullDriver() {
+		c.Skip("This driver does not support CRUD operations")
+		return
+	}
+
 	c.Assert(s.uploadGlobal("global-fasttimeout"), IsNil)
 
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	_, err := s.docker("run -itd -v policy1/test:/mnt alpine sleep 10m")
-	c.Assert(err, IsNil)
+	out, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
 
-	_, err = s.volcli("volume remove policy1/test")
-	c.Assert(err, NotNil)
+	out, err = s.volcli("volume remove policy1/test")
+	c.Assert(err, NotNil, Commentf(out))
 
 	s.clearContainers()
 
-	_, err = s.volcli("volume remove policy1/test")
-	c.Assert(err, IsNil)
+	out, err = s.volcli("volume remove policy1/test")
+	c.Assert(err, IsNil, Commentf(out))
 }
 
 func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
@@ -217,6 +252,11 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports snapshots")
+		return
+	}
+
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
@@ -238,6 +278,11 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
 }
 
 func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph driver supports creating filesystems")
+		return
+	}
+
 	_, err := s.uploadIntent("policy2", "fs")
 	c.Assert(err, IsNil)
 
@@ -246,7 +291,8 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(s.createVolume("mon0", "policy2", "test", opts), IsNil)
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/test:/mnt alpine sleep 10m"), IsNil)
+	_, err = s.dockerRun("mon0", false, true, "policy2/test", "sleep 10m")
+	c.Assert(err, IsNil)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
 	c.Assert(err, IsNil)
@@ -264,7 +310,8 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	c.Assert(pass, Equals, true)
 	c.Assert(s.createVolume("mon0", "policy2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
 
-	c.Assert(s.vagrant.GetNode("mon0").RunCommand("docker run -d -v policy2/testext4:/mnt alpine sleep 10m"), IsNil)
+	out, err = s.dockerRun("mon0", false, true, "policy2/testext4", "sleep 10m")
+	c.Assert(err, IsNil)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
 	c.Assert(err, IsNil)

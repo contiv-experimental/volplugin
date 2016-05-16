@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
+	"GodepVersion": "v62",
 	"Packages": [
 		"./..."
 	],
@@ -30,7 +30,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/executor",
-			"Rev": "38f7b30f73e7d6fc53ed60238f3406d28ad02270"
+			"Rev": "9a6e949287fd462992a565086efe12c195f837b7"
 		},
 		{
 			"ImportPath": "github.com/contiv/systemtests-utils",
@@ -112,6 +112,14 @@
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.0-71-g0d5a14c",
 			"Rev": "0d5a14c5a477957864f3b747d95255ad4e34bcc0"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netlink",
+			"Rev": "a632d6dc2806fa19d2f7693017d3fb79d3d8fa03"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netlink/nl",
+			"Rev": "a632d6dc2806fa19d2f7693017d3fb79d3d8fa03"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",

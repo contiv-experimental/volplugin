@@ -224,7 +224,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	minor := rdev & 0xFF
 
 	// Mount the RBD
-	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil && err != unix.EBUSY {
+	if err := unix.Mount(devName, volumePath, do.FSOptions.Type, 0, ""); err != nil {
 		return nil, errored.Errorf("Failed to mount RBD dev %q: %v", devName, err)
 	}
 
@@ -449,9 +449,17 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 		return nil, err
 	}
 
+	for _, mount := range hostMounts {
+		log.Debugf("Host mounts: %#v", mount)
+	}
+
 	mapped, err := c.getMapped(timeout)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, mapd := range mapped {
+		log.Debugf("Mapped: %#v", mapd)
 	}
 
 	mounts := []*storage.Mount{}

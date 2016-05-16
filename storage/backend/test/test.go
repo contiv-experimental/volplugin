@@ -1,21 +1,34 @@
+// +build nope
+
 package test
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
+	"golang.org/x/net/context"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
+	"github.com/coreos/etcd/client"
 )
 
 // BackendName is string for no-op storage backend
 const BackendName = "test"
+
+const prefix = "/testdriver"
+
+var (
+	volumesPrefix = path.Join(prefix, "volume")
+	mountedPrefix = path.Join(prefix, "mounted")
+)
 
 // gNullDriver is the singleton driver instace to keep all state in memory
 var gNullDriver *Driver
@@ -35,15 +48,27 @@ type Driver struct {
 	BaseMountPath string
 	CreatedMap    map[string]bool
 	MountedMap    map[string]bool
+
+	client client.KeysAPI
 }
 
 // New constructs an empty *Driver
 func New() *Driver {
+	etcdClient, err := client.New(client.Config{Endpoints: []string{"http://localhost:2379"}})
+	if err != nil {
+		panic(err)
+	}
+
 	if gNullDriver == nil {
 		gNullDriver = &Driver{
 			CreatedMap: make(map[string]bool),
 			MountedMap: make(map[string]bool),
+			client:     client.NewKeysAPI(etcdClient),
 		}
+	}
+
+	for _, p := range []string{prefix, volumesPrefix, mountedPrefix} {
+		gNullDriver.client.Set(context.Background(), p, "", &client.SetOptions{Dir: true})
 	}
 
 	return gNullDriver
@@ -89,8 +114,14 @@ func (d *Driver) Name() string {
 // Create records created volume.
 func (d *Driver) Create(do storage.DriverOptions) error {
 	d.logStat(getFunctionName())
-	d.CreatedMap[filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name)] = true
-	return nil
+
+	content, err := json.Marshal(do)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.client.Set(context.Background(), path.Join(volumesPrefix, do.Volume.Name), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
+	return err
 }
 
 // Format is a noop.
@@ -102,15 +133,30 @@ func (d *Driver) Format(do storage.DriverOptions) error {
 // Destroy deletes volume entry
 func (d *Driver) Destroy(do storage.DriverOptions) error {
 	d.logStat(getFunctionName())
-	delete(d.CreatedMap, filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name))
-	return nil
+	log.Info(path.Join(volumesPrefix, do.Volume.Name))
+	_, err := d.client.Delete(context.Background(), path.Join(volumesPrefix, do.Volume.Name), nil)
+	return err
 }
 
-// List Volumes returns empty list.
+// List Volumes list of volumes in etcd.
 func (d *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 	d.logStat(getFunctionName())
 	log.Infof("In %q", getFunctionName())
-	return []storage.Volume{}, nil
+	nodes, err := d.client.Get(context.Background(), volumesPrefix, &client.GetOptions{Recursive: true})
+	if err != nil {
+		return nil, err
+	}
+
+	volumes := []storage.Volume{}
+
+	for _, n := range nodes.Node.Nodes { // inner nodes
+		for _, node := range n.Nodes {
+			key := strings.TrimPrefix(node.Key, volumesPrefix)
+			volumes = append(volumes, storage.Volume{Name: key})
+		}
+	}
+
+	return volumes, nil
 }
 
 // Mount records mounted volume
@@ -124,27 +170,47 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	if err := os.MkdirAll(volumePath, 0700); err != nil && !os.IsExist(err) {
 		return nil, errored.Errorf("error creating %q directory: %v", volumePath, err)
 	}
-	d.MountedMap[filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name)] = true
-	return nil, nil
+
+	mount := &storage.Mount{
+		Path:   volumePath,
+		Volume: do.Volume,
+	}
+
+	content, err := json.Marshal(mount)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = d.client.Set(context.Background(), path.Join(mountedPrefix, do.Volume.Name), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
+	log.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
+	if err != nil {
+		return nil, err
+	}
+
+	return mount, nil
 }
 
 // Unmount deletes mounted entry.
 func (d *Driver) Unmount(do storage.DriverOptions) error {
 	d.logStat(getFunctionName())
-	delete(d.MountedMap, filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name))
-	volumePath := filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name)
-	if err := os.RemoveAll(volumePath); err != nil {
-		return errored.Errorf("error deleting %q directory: %v", volumePath, err)
-	}
-	return nil
+	_, err := d.client.Delete(context.Background(), path.Join(mountedPrefix, do.Volume.Name), nil)
+	log.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
+	return err
 }
 
 // Exists returns false always.
 func (d *Driver) Exists(do storage.DriverOptions) (bool, error) {
 	d.logStat(getFunctionName())
-	if _, ok := d.CreatedMap[filepath.Join(d.BaseMountPath, do.Volume.Params["pool"], do.Volume.Name)]; !ok {
-		return false, errored.Errorf("volume not CreatedMap: %#v", d.CreatedMap)
+
+	_, err := d.client.Get(context.Background(), path.Join(volumesPrefix, do.Volume.Name), nil)
+	if err != nil {
+		if _, ok := err.(client.Error); ok && err.(client.Error).Code == client.ErrorCodeKeyNotFound {
+			return false, nil
+		}
+
+		return false, errored.Errorf("Error retriving key %q", path.Join(mountedPrefix, do.Volume.Name)).Combine(err)
 	}
+
 	return true, nil
 }
 
@@ -175,7 +241,26 @@ func (d *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 // Mounted returns an empty list.
 func (d *Driver) Mounted(t time.Duration) ([]*storage.Mount, error) {
 	d.logStat(getFunctionName())
-	return []*storage.Mount{}, nil
+	nodes, err := d.client.Get(context.Background(), mountedPrefix, &client.GetOptions{Recursive: true})
+	if err != nil {
+		return nil, err
+	}
+
+	mounts := []*storage.Mount{}
+	for _, n := range nodes.Node.Nodes {
+		for _, node := range n.Nodes {
+			key := strings.TrimPrefix(node.Key, mountedPrefix)
+			do := storage.DriverOptions{Volume: storage.Volume{Name: key}}
+			mp, err := d.MountPath(do)
+			if err != nil {
+				return nil, err
+			}
+
+			mounts = append(mounts, &storage.Mount{Volume: do.Volume, Path: mp})
+		}
+	}
+
+	return mounts, nil
 }
 
 // MountPath describes the path at which the volume should be mounted.

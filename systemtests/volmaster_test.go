@@ -1,7 +1,6 @@
 package systemtests
 
 import (
-	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -17,11 +16,16 @@ func (s *systemtestSuite) TestVolmasterNoGlobalConfiguration(c *C) {
 	c.Assert(s.vagrant.IterateNodes(waitForVolmaster), IsNil)
 
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	_, err = s.docker("run -v policy1/test:/mnt alpine echo")
-	c.Assert(err, IsNil)
+	out, err := s.dockerRun("mon0", false, false, "policy1/test", "echo")
+	c.Assert(err, IsNil, Commentf(out))
 }
 
 func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph supports filesystem formatting")
+		return
+	}
+
 	_, err := s.uploadIntent("policy2", "fs")
 	c.Assert(err, IsNil)
 	c.Assert(s.createVolume("mon0", "policy2", "testfalse", map[string]string{"filesystem": "falsefs"}), NotNil)
@@ -30,17 +34,19 @@ func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
 }
 
 func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
-	content, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s/global1.json", getDriver()))
+	content, err := ioutil.ReadFile("testdata/globals/global1.json")
 	c.Assert(err, IsNil)
 
 	globalBase1, err := config.NewGlobalConfigFromJSON(content)
 	c.Assert(err, IsNil)
 
-	content, err = ioutil.ReadFile(fmt.Sprintf("testdata/%s/global2.json", getDriver()))
+	content, err = ioutil.ReadFile("testdata/globals/global2.json")
 	c.Assert(err, IsNil)
 
 	globalBase2, err := config.NewGlobalConfigFromJSON(content)
 	c.Assert(err, IsNil)
+
+	c.Assert(s.uploadGlobal("global1"), IsNil)
 
 	out, err := s.volcli("global get")
 	c.Assert(err, IsNil)
@@ -64,31 +70,39 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 }
 
 func (s *systemtestSuite) TestVolmasterMultiRemove(c *C) {
+	if !cephDriver() {
+		c.Skip("Only ceph driver supports CRUD operations")
+		return
+	}
+
 	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
 
-	errChan := make(chan error, 5)
-	outChan := make(chan string, 5)
+	type out struct {
+		out string
+		err error
+	}
+
+	outChan := make(chan out, 5)
 
 	for i := 0; i < 5; i++ {
 		go func() {
-			out, err := s.volcli("volume remove policy1/test")
-			outChan <- out
-			errChan <- err
+			myout, err := s.volcli("volume remove policy1/test")
+			outChan <- out{myout, err}
 		}()
 	}
 
 	errs := 0
 
 	for i := 0; i < 5; i++ {
-		err := <-errChan
-		out := <-outChan
-		if err != nil {
+		myout := <-outChan
+		if myout.err != nil {
+			if myout.out != "" {
+				c.Assert(strings.Contains(myout.out, `Error: Volume policy1/test no longer exists`), Equals, true, Commentf("%v %v", myout.out, myout.err))
+			}
 			errs++
-		}
-		if out != "" {
-			c.Assert(strings.Contains(out, `Removing volume policy1/test Volume policy1/test no longer exists`), Equals, true)
 		}
 	}
 
 	c.Assert(errs, Equals, 4)
+	c.Assert(s.purgeVolume("mon0", "policy1", "test", true), NotNil)
 }
