@@ -7,7 +7,7 @@ vms: 3
 subnet: 192.168.24
 
 # MEMORY
-memory: 8192
+memory: 4096
 
 # VAGRANT BOX
 # Fedora: https://download.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-Vagrant-22-20150521.x86_64.vagrant-virtualbox.box
