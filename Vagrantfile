@@ -11,7 +11,7 @@ settings=YAML.load_file(config_file)
 
 if ENV["DEMO"]
   settings["vms"] = 1
-  settings["memory"] = 2048
+  settings["memory"] = 4096
 end
 
 NMONS        = ENV["VMS"] || settings['vms']
