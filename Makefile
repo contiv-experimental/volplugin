@@ -73,7 +73,7 @@ unit-test-nocoverage-host: golint-host govet-host
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
-	if [ -n $$DEMO ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
+	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 
 docker: run-build
@@ -84,7 +84,7 @@ docker-push: docker
 
 run: build
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
-	@set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
+	set -xe; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 2))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 
 run-etcd:
@@ -137,7 +137,7 @@ TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
 tar: clean-tar build
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-	@tar -jcf $(TAR_FILE) -C $(GOPATH)/bin volcli volmaster volplugin volsupervisor -C $(GOPATH)/src/github.com/contiv/volplugin contrib/completion/bash/volcli
+	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib/completion/bash/volcli
 
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
