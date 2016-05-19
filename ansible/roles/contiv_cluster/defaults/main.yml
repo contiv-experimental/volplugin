@@ -9,7 +9,7 @@ collins_guest_port: 9000
 clusterm_args_file: "clusterm.args"
 clusterm_conf_file: "clusterm.conf"
 
-contiv_cluster_version: "v0.1-05-12-2016.08-27-16.UTC"
+contiv_cluster_version: "v0.1-05-14-2016.00-33-02.UTC"
 contiv_cluster_tar_file: "cluster-{{ contiv_cluster_version }}.tar.bz2"
 contiv_cluster_src_file: "https://github.com/contiv/cluster/releases/download/{{ contiv_cluster_version }}/{{ contiv_cluster_tar_file }}"
 contiv_cluster_dest_file: "/tmp/{{ contiv_cluster_tar_file }}"
