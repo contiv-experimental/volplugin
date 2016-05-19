@@ -1,0 +1,22 @@
+---
+# This role contains tasks for installing docker service
+#
+
+- name: add docker's public key for CS-engine (redhat)
+  rpm_key:
+    key: "https://sks-keyservers.net/pks/lookup?op=get&search=0xee6d536cf7dc86e2d7d56f59a178ac6c6238f52e"
+    state: present
+    validate_certs: "{{ validate_certs }}"
+
+- name: add docker CS-engine repos (redhat)
+  shell: yum-config-manager --add-repo https://packages.docker.com/{{ item }}/yum/repo/main/centos/7
+  become: true
+  with_items:
+    - "1.10"
+    - "1.11"
+
+- name: remove docker (redhat)
+  yum: name=docker-engine state=absent
+
+- name: install docker (redhat)
+  shell: curl https://get.docker.com | sed 's/docker-engine/docker-engine-{{ docker_version }}/' | bash
