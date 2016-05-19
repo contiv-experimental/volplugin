@@ -28,7 +28,7 @@ release.
 The master/slave model allows us to support a number of features, such as:
 
 * On-the-fly image creation and (re)mount from any Ceph source, by referencing
-  a tenant and volume name.
+  a policy and volume name.
 * Manage many kinds of filesystems, including providing mkfs commands.
 * Snapshot frequency and pruning. Also copy snapshots to new volumes!
 * Ephemeral (removed on container teardown) volumes
@@ -90,11 +90,11 @@ cross-host functionality, ssh into `mon1` or `mon2` with `vagrant ssh`.
 
 1. Run the suite: `make run`.
 1. SSH into the host: `make ssh`.
-1. Upload tenant information: `volcli tenant upload tenant1 < /testdata/intent1.json`
-1. Add a docker volume with `pool/name` syntax:
-  * `docker volume create -d volplugin --name tenant1/foo`
+1. Upload policy information: `volcli policy upload policy1 < /testdata/ceph/policy1.json`
+1. Add a docker volume with `policy/name` syntax:
+  * `docker volume create -d volplugin --name policy1/foo`
 1. Run a container with the volume attached:
-  * `docker run -it -v tenant1/foo:/mnt ubuntu bash`
+  * `docker run -it -v policy1/foo:/mnt ubuntu bash`
 1. You should have a volume mounted at `/mnt`, pointing at a `/dev/rbd#`
    device. Exit the shell to unmount the device.
 
