@@ -83,9 +83,9 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run: build
-	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 2))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
+	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 
 run-etcd:
 	sudo systemctl start etcd

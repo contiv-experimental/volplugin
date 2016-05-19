@@ -176,15 +176,16 @@ func (s *systemtestSuite) rebootstrap() error {
 		}
 	}
 
-	if err := s.uploadGlobal("global1"); err != nil {
-		return err
-	}
 
 	if err := s.vagrant.IterateNodes(startVolmaster); err != nil {
 		return err
 	}
 
 	if err := s.vagrant.IterateNodes(waitForVolmaster); err != nil {
+		return err
+	}
+
+	if err := s.uploadGlobal("global1"); err != nil {
 		return err
 	}
 

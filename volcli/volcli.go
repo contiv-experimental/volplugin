@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"strings"
 	"syscall"
 
@@ -62,7 +62,7 @@ func GlobalGet(ctx *cli.Context) {
 }
 
 func queryGlobalConfig(ctx *cli.Context) (*config.Global, error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.String("volmaster")))
+	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.GlobalString("volmaster")))
 	if err != nil {
 		return nil, err
 	}
@@ -120,13 +120,16 @@ func globalUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Post(fmt.Sprintf("http://%s/global", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.PublishGlobal(global); err != nil {
-		return false, err
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	return false, nil
@@ -142,24 +145,28 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
-	if err != nil {
-		return false, err
-	}
-
 	content, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		return false, err
 	}
 
 	policy := config.NewPolicy()
+	policyName := ctx.Args()[0]
 
 	if err := json.Unmarshal(content, policy); err != nil {
 		return false, err
 	}
 
-	if err := cfg.PublishPolicy(ctx.Args()[0], policy); err != nil {
+	resp, err := http.Post(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policyName), "application/json", bytes.NewBuffer(content))
+	if err != nil {
 		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	return false, nil
@@ -177,13 +184,16 @@ func policyDelete(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Post(fmt.Sprintf("http://%s/policies/delete/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.DeletePolicy(policy); err != nil {
-		return false, err
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	fmt.Printf("%q removed!\n", policy)
@@ -204,13 +214,16 @@ func policyGet(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/policies/%s", ctx.String("volmaster"), policy))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policy))
 	if err != nil {
 		return false, err
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
@@ -229,22 +242,34 @@ func PolicyList(ctx *cli.Context) {
 }
 
 func policyList(ctx *cli.Context) (bool, error) {
+	var policies []string
 	if len(ctx.Args()) != 0 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policies", ctx.GlobalString("volmaster")))
 	if err != nil {
 		return false, err
 	}
 
-	policies, err := cfg.ListPolicies()
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(content, &policies); err != nil {
 		return false, err
 	}
 
 	for _, policy := range policies {
-		fmt.Println(path.Base(policy))
+		fmt.Println(policy)
 	}
 
 	return false, nil
@@ -288,13 +313,17 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/create", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, errored.Errorf("Error in request: %v - %v", err, resp.Status)
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Response Status Code was %d, not 200: %v", resp.StatusCode, resp.Status)
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil
@@ -315,17 +344,35 @@ func volumeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
 	if err != nil {
 		return false, err
 	}
 
-	vol, err := cfg.GetVolume(policy, volume)
+	if resp.StatusCode == 404 {
+		return false, errored.Errorf("Volume %v/%v no longer exists.", policy, volume)
+	}
+
+	if resp.StatusCode != 200 {
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
 
-	content, err := ppJSON(vol)
+	var vol config.Volume
+
+	if err := json.Unmarshal(content, &vol); err != nil {
+		return false, err
+	}
+
+	content, err = ppJSON(vol)
 	if err != nil {
 		return false, err
 	}
@@ -350,13 +397,32 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	request := config.Request{
+		Policy: policy,
+		Volume: volume,
+	}
+
+	content, err := json.Marshal(request)
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.RemoveVolume(policy, volume); err != nil {
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/removeforce", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	if err != nil {
 		return false, err
+	}
+
+	qualifiedVolume := strings.Join([]string{policy, volume}, "/")
+
+	if resp.StatusCode == 404 {
+		return false, errored.Errorf("Volume %v no longer exists.", qualifiedVolume)
+	}
+
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil
@@ -387,7 +453,7 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/remove", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/remove", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -399,7 +465,10 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200: %v", qualifiedVolume, resp.StatusCode, resp.Status)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil
@@ -411,22 +480,36 @@ func VolumeList(ctx *cli.Context) {
 }
 
 func volumeList(ctx *cli.Context) (bool, error) {
+	var volumes []config.Volume
 	if len(ctx.Args()) != 1 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	policy := ctx.Args()[0]
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s", ctx.GlobalString("volmaster"), policy))
 	if err != nil {
 		return false, err
 	}
 
-	vols, err := cfg.ListVolumes(ctx.Args()[0])
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
 
-	for name := range vols {
-		fmt.Println(name)
+	if err := json.Unmarshal(content, &volumes); err != nil {
+		return false, err
+	}
+
+	for _, volume := range volumes {
+		fmt.Println(volume.VolumeName)
 	}
 
 	return false, nil
@@ -442,13 +525,22 @@ func volumeSnapshotTake(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 3, ctx.Args())
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	policy, volume, err := splitVolume(ctx)
+	if err != nil {
+		return true, err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/snapshots/take/%s/%s", ctx.GlobalString("volmaster"), policy, volume), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.TakeSnapshot(ctx.Args()[0]); err != nil {
-		return false, err
+	if resp.StatusCode != 200 {
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil
@@ -486,17 +578,17 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/copy", ctx.String("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/copy", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
 
 	if resp.StatusCode != 200 {
-		content, _ := ioutil.ReadAll(resp.Body)
-		if content != nil {
-			fmt.Println(string(content))
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume1)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
 		}
-		return false, errored.Errorf("Status was not 200: was %d: %v", resp.StatusCode, resp.Status)
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil
@@ -517,13 +609,17 @@ func volumeSnapshotList(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/snapshots/%s/%s", ctx.String("volmaster"), policy, volume))
+	resp, err := http.Get(fmt.Sprintf("http://%s/snapshots/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
 	if err != nil {
 		return false, err
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
@@ -550,22 +646,34 @@ func VolumeListAll(ctx *cli.Context) {
 }
 
 func volumeListAll(ctx *cli.Context) (bool, error) {
+	var volumes []config.Volume
 	if len(ctx.Args()) != 0 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/", ctx.GlobalString("volmaster")))
 	if err != nil {
 		return false, err
 	}
 
-	pools, err := cfg.ListAllVolumes()
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
 
-	for _, name := range pools {
-		fmt.Println(name)
+	if err := json.Unmarshal(content, &volumes); err != nil {
+		return false, err
+	}
+
+	for _, volume := range volumes {
+		fmt.Printf("%v/%v\n", volume.PolicyName, volume.VolumeName)
 	}
 
 	return false, nil
@@ -761,13 +869,17 @@ func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.String("volmaster"), policy, volume))
+	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
 	if err != nil {
 		return false, err
 	}
 
 	if resp.StatusCode != 200 {
-		return false, errored.Errorf("Response was not status 200: was %d: %v", resp.StatusCode, resp.Status)
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
@@ -806,11 +918,6 @@ func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
-	if err != nil {
-		return false, err
-	}
-
 	content, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		return false, err
@@ -822,13 +929,17 @@ func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	vol, err := cfg.GetVolume(policy, volume)
+	resp, err := http.Post(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("volmaster"), policy, volume), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
 
-	if err := cfg.PublishVolumeRuntime(vol, runtime); err != nil {
-		return false, err
+	if resp.StatusCode != 200 {
+		qualifiedVolume := fmt.Sprintf("%v/%v", policy, volume)
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\n Volume %v Response Status Code was %d, not 200", err, qualifiedVolume, resp.StatusCode)
+		}
+		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
 
 	return false, nil

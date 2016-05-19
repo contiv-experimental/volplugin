@@ -119,7 +119,7 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 		return nil, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/request", dc.Master), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/request", dc.Master), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return nil, errVolumeResponse
 	}
@@ -156,7 +156,7 @@ func (dc *DaemonConfig) requestRemove(policy, name string) error {
 		return err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/remove", dc.Master), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/remove", dc.Master), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]s
 		return err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/create", dc.Master), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", dc.Master), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return err
 	}
