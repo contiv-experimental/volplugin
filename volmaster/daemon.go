@@ -423,6 +423,22 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonRemove,
 	}
 
+	etcdRemove := func() error {
+		if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
+			return errored.Errorf("Clearing volume records for %q", vc).Combine(err)
+		}
+
+		return nil
+	}
+
+	complete := func() error {
+		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
+			log.Warn(errored.Errorf("Removing image %q", vc).Combine(err))
+		}
+
+		return etcdRemove()
+	}
+
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		exists, err := d.existsVolume(vc)
 		if err != nil && err != errNoActionTaken {
@@ -430,23 +446,15 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err == errNoActionTaken {
-			goto publish
+			return complete()
 		}
 
 		if !exists {
+			etcdRemove()
 			return config.ErrNotExist
 		}
 
-	publish:
-		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
-			return errored.Errorf("Removing image %q", vc).Combine(err)
-		}
-
-		if err := ld.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return errored.Errorf("Clearing volume records for %q", vc).Combine(err)
-		}
-
-		return nil
+		return complete()
 	})
 
 	if err == config.ErrNotExist {
