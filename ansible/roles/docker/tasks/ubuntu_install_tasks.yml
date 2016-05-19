@@ -1,0 +1,20 @@
+---
+# This role contains tasks for installing docker service
+#
+
+- name: add docker's public key for CS-engine (debian)
+  apt_key:
+    url: "https://sks-keyservers.net/pks/lookup?op=get&search=0xee6d536cf7dc86e2d7d56f59a178ac6c6238f52e"
+    state: present
+    validate_certs: "{{ validate_certs }}"
+
+- name: add docker CS-engine repos (debian)
+  apt_repository:
+    repo: "deb https://packages.docker.com/{{ item }}/apt/repo ubuntu-{{ ansible_distribution_release }} main"
+    state: present
+  with_items:
+    - "1.10"
+    - "1.11"
+
+- name: install docker (debian)
+  shell: curl https://get.docker.com | sed 's/docker-engine/--force-yes docker-engine={{ docker_version }}-0~{{ ansible_distribution_release }}/' | bash

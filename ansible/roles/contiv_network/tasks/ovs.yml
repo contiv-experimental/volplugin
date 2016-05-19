@@ -8,15 +8,15 @@
     url: "{{ item.url }}"
   with_items:
     - {
-        url: "https://cisco.box.com/shared/static/51eo9dcw04qx2y1f14n99y4yt5kug3q4.rpm",
-        dest: /tmp/openvswitch-2.3.1-1.x86_64.rpm
+        url: "https://cisco.box.com/shared/static/zzmpe1zesdpf270k9pml40rlm4o8fs56.rpm",
+        dest: /tmp/openvswitch-2.3.1-2.el7.x86_64.rpm
       }
   when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev
 
 - name: install ovs (redhat)
-  yum: name=/tmp/openvswitch-2.3.1-1.x86_64.rpm state=present
+  yum: name=/tmp/openvswitch-2.3.1-2.el7.x86_64.rpm state=present
   when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev

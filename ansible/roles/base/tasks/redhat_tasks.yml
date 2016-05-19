@@ -10,6 +10,7 @@
     update_cache: true
     state: latest
   with_items:
+    - yum-utils
     - ntp
     - unzip
     - bzip2
