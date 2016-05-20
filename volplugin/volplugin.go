@@ -240,7 +240,7 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-			_, err := dc.requestVolume(parts[0], parts[1])
+			vol, err := dc.requestVolume(parts[0], parts[1])
 			switch err {
 			case errVolumeNotFound:
 				log.Warnf("Volume %q not found in database, skipping")
@@ -250,9 +250,13 @@ func (dc *DaemonConfig) updateMounts() error {
 			}
 
 			payload := &config.UseMount{
-				Hostname: dc.Host,
 				Volume:   mount.Volume.Name,
 				Reason:   lock.ReasonMount,
+				Hostname: dc.Host,
+			}
+
+			if vol.Unlocked {
+				payload.Hostname = lock.Unlocked
 			}
 
 			if err := dc.Client.ReportMount(payload); err != nil {

@@ -1,0 +1,11 @@
+{ 
+  "backends": {
+    "crud": "",
+    "mount": "nfs",
+    "snapshot": ""
+  },
+  "unlocked": true,
+  "driver": { },
+  "create": { },
+  "runtime": { }
+}

@@ -11,6 +11,7 @@ func (s *configSuite) TestMerge(c *C) {
 		"snapshots":           "false",
 		"snapshots.frequency": "10m",
 		"snapshots.keep":      "20",
+		"unlocked":            "true",
 	}
 
 	c.Assert(mergeOpts(p, opts), IsNil)
@@ -20,4 +21,5 @@ func (s *configSuite) TestMerge(c *C) {
 	c.Assert(p.RuntimeOptions.UseSnapshots, Equals, false)
 	c.Assert(p.RuntimeOptions.Snapshot.Keep, Equals, uint(20))
 	c.Assert(p.RuntimeOptions.Snapshot.Frequency, Equals, "10m")
+	c.Assert(p.Unlocked, Equals, true)
 }

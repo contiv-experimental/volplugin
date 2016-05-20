@@ -75,6 +75,17 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 }
 
 func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
+	// unlocked will be set at the end of the routine. We repeat this test for
+	// the NFS driver in unlocked mode to ensure it is not taking locks.
+	var unlocked bool
+
+repeat:
+	if unlocked {
+		log.Info("NFS unlocked test proceeding")
+		out, err := s.uploadIntent("policy1", "unlocked")
+		c.Assert(err, IsNil, Commentf(out))
+	}
+
 	type output struct {
 		out    string
 		err    error
@@ -108,13 +119,20 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 		for i := 0; i < len(nodes)*count; i++ {
 			output := <-outputChan
 			if output.err != nil {
+				log.Debug(output.out)
 				errs++
 			}
 
 			//log.Infof("%q: %s", output.volume, output.out)
 		}
 
-		c.Assert(errs, Equals, count*(len(nodes)-1))
+		errCount := count * (len(nodes) - 1)
+		if unlocked {
+			// if we have no locking to stop us, we will have no errors.
+			errCount = 0
+		}
+
+		c.Assert(errs, Equals, errCount)
 		c.Assert(s.clearContainers(), IsNil)
 
 		purgeChan := make(chan error, count)
@@ -134,6 +152,11 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 		c.Assert(errs, Equals, 0)
 		c.Assert(s.restartDocker(), IsNil)
+	}
+
+	if nfsDriver() && !unlocked {
+		unlocked = true
+		goto repeat
 	}
 }
 
