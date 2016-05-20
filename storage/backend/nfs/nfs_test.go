@@ -176,10 +176,10 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 	d := &Driver{mountpath: mountPath}
 
 	invalidSources := []string{
-		"abcdefg:/mnt",
+		"300.300.300.300:/mnt",
 		"/mnt",
-		"abcdefg",
-		"abcdefg",
+		"300.300.300.300",
+		"300.300.300.300",
 	}
 
 	invalidOptions := []string{
