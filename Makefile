@@ -103,7 +103,9 @@ run-volmaster:
 	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster &>/tmp/volmaster.log &'
 
 run-build: 
-	GOGC=1000 go install -v ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+	GOGC=1000 go install -v \
+		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
+		 ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 	cp /opt/golang/bin/* /tmp/bin
 
 system-test: build
@@ -135,8 +137,9 @@ TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
 TAR_LOC := .
 TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
-tar: clean-tar build
+tar: clean-tar
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
+	@BUILD_VERSION=$(VERSION) make build
 	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib/completion/bash/volcli
 
 clean-tar:
