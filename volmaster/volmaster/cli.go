@@ -12,6 +12,9 @@ import (
 	"github.com/codegangsta/cli"
 )
 
+// version is provided by build
+var version = ""
+
 func start(ctx *cli.Context) {
 	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
@@ -29,7 +32,7 @@ func start(ctx *cli.Context) {
 
 func main() {
 	app := cli.NewApp()
-	app.Version = ""
+	app.Version = version
 	app.Usage = "Control many volplugins"
 	app.Action = start
 	app.Flags = []cli.Flag{

@@ -8,10 +8,13 @@ import (
 	"github.com/contiv/volplugin/volcli"
 )
 
+// version is provided by build
+var version = ""
+
 func main() {
 	app := cli.NewApp()
 
-	app.Version = ""
+	app.Version = version
 	app.Flags = volcli.GlobalFlags
 	app.Usage = "Command volplugin and ceph infrastructure"
 	app.ArgsUsage = "[subcommand] [arguments]"
