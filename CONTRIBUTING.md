@@ -24,16 +24,11 @@ commit should have a single meaningful message.
 
 ## Commit message guidelines
 
-The commit should have a short summary on the first line. The description
-should use verbs in the imperative (e.g.`librbd: change a widget`, not
-`librbd: changed a widget`). The second line should be left empty.
-
-The short summary should include the name of the directory affected by
+The short summary should include the name of the directory or file affected by
 the commit (e.g.: `librbd: change a widget`).
 
 A longer description of what the commit does should start on the third
-line when such a description is deemed necessary. Paragraphs following
-this line should be left empty.
+line when such a description is deemed necessary.
 
 If you have trouble with the appropriate git commands to handle these
 requirements, please let us know! We're happy to help.
@@ -117,8 +112,8 @@ git config user.email joe.smith@email.com
 
 ## Environment
 
-We currently test against the docker [master branch](https://master.dockerproject.org)
-and this will be downloaded on `make start` to be injected into the VMs by ansible.
+We currently test against the docker 1.11. This will be downloaded on `make
+start` to be injected into the VMs by ansible.
 
 ## Building VM Images
 

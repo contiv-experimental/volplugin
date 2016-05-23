@@ -47,7 +47,7 @@ to be mounted.
 
 **Note:** this takes a little more dedication than we'd like. We're working on it!
 
-For a small VM (1 VM, 2048MB ram) for running just the tools and trying it out,
+For a small VM (1 VM, 4096MB ram) for running just the tools and trying it out,
 you can run:
 
 ```
@@ -55,6 +55,8 @@ $ make demo
 ```
 
 Note that you will still need ansible, virtualbox, and vagrant.
+
+#### Development/Mock Production env
 
 For a more comprehensive version of the system including swarm support across
 several hosts, see below:
@@ -106,6 +108,9 @@ host. Your data will be there!
 out!
 
 ## Development Instructions 
+
+See our [CONTRIBUTING](https://github.com/contiv/volplugin/blob/master/CONTRIBUTING.md)
+document as well.
 
 Please read the `Makefile` for most targets. If you `make build` you will get
 volmaster/volplugin/volcli installed on the guests, so `make run-build` if you
