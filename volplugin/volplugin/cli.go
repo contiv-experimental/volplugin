@@ -10,6 +10,9 @@ import (
 
 var host string
 
+// version is provided by build
+var version = ""
+
 func init() {
 	var err error
 	host, err = os.Hostname()
@@ -20,7 +23,7 @@ func init() {
 
 func main() {
 	app := cli.NewApp()
-	app.Version = ""
+	app.Version = version
 	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
