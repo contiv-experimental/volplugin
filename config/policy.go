@@ -14,6 +14,7 @@ import (
 // information for items such as pool and volume configuration.
 type Policy struct {
 	Name           string            `json:"name"`
+	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	DriverOptions  map[string]string `json:"driver"`
@@ -92,7 +93,7 @@ func (c *Client) GetPolicy(name string) (*Policy, error) {
 		return nil, err
 	}
 
-	tc := &Policy{}
+	tc := NewPolicy()
 	if err := json.Unmarshal([]byte(resp.Node.Value), tc); err != nil {
 		return nil, err
 	}

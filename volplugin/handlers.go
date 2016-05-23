@@ -289,8 +289,12 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	ut := &config.UseMount{
 		Volume:   volConfig.String(),
-		Hostname: dc.Host,
 		Reason:   lock.ReasonMount,
+		Hostname: dc.Host,
+	}
+
+	if volConfig.Unlocked {
+		ut.Hostname = lock.Unlocked
 	}
 
 	if err := dc.Client.ReportMount(ut); err != nil {
@@ -339,12 +343,6 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ut := &config.UseMount{
-		Volume:   volConfig.String(),
-		Hostname: dc.Host,
-		Reason:   lock.ReasonMount,
-	}
-
 	if err := driver.Unmount(driverOpts); err != nil {
 		httpError(w, "Could not unmount image", err)
 		return
@@ -352,6 +350,16 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	dc.Client.RemoveStopChan(uc.Request.Name)
 	dc.stopRuntimePoll(uc.Request.Name)
+
+	ut := &config.UseMount{
+		Volume:   volConfig.String(),
+		Reason:   lock.ReasonMount,
+		Hostname: dc.Host,
+	}
+
+	if volConfig.Unlocked {
+		ut.Hostname = lock.Unlocked
+	}
 
 	if err := dc.Client.ReportUnmount(ut); err != nil {
 		httpError(w, fmt.Sprintf("Reporting unmount for volume %v, to master", volConfig), err)

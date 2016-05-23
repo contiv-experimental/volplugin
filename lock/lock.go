@@ -23,6 +23,10 @@ var (
 
 	// ErrRemove is an error for when use locks cannot be removed
 	ErrRemove = errors.New("Could not remove use lock")
+
+	// Unlocked is a string indicating unlocked operation, this is typically used
+	// as a hostname for our locking system.
+	Unlocked = "-unlocked-"
 )
 
 const (

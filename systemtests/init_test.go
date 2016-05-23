@@ -24,6 +24,11 @@ func TestSystem(t *T) {
 		os.Exit(0)
 	}
 
+	if os.Getenv("DEBUG_TEST") != "" {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug logging enabled")
+	}
+
 	TestingT(t)
 }
 

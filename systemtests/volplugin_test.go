@@ -12,6 +12,26 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func (s *systemtestSuite) TestVolpluginLockFreeOperation(c *C) {
+	if !nfsDriver() {
+		c.Skip("Cannot run this test on any driver but NFS")
+		return
+	}
+
+	out, err := s.uploadIntent("policy1", "unlocked")
+	c.Assert(err, IsNil, Commentf(out))
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	out, err = s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
+
+	out, err = s.dockerRun("mon1", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
+
+	out, err = s.dockerRun("mon2", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
+}
+
 func (s *systemtestSuite) TestVolpluginVolmasterDown(c *C) {
 	c.Assert(stopVolmaster(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)

@@ -22,6 +22,7 @@ import (
 type Volume struct {
 	PolicyName     string            `json:"policy"`
 	VolumeName     string            `json:"name"`
+	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
 	DriverOptions  map[string]string `json:"driver"`
 	MountSource    string            `json:"mount" merge:"mount"`
 	CreateOptions  CreateOptions     `json:"create"`
@@ -111,6 +112,7 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 		DriverOptions:  resp.DriverOptions,
 		CreateOptions:  resp.CreateOptions,
 		RuntimeOptions: resp.RuntimeOptions,
+		Unlocked:       resp.Unlocked,
 		PolicyName:     rc.Policy,
 		VolumeName:     rc.Volume,
 		MountSource:    mount,
