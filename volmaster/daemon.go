@@ -55,6 +55,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	errored.AlwaysTrace = d.Global.Debug
 
 	go info.HandleDebugSignal()
+	go info.HandleDumpTarballSignal(d.Config)
 
 	activity := make(chan *watch.Watch)
 	d.Config.WatchGlobal(activity)

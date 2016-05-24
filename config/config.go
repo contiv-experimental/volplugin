@@ -1,9 +1,17 @@
 package config
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
+	"time"
 
+	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -80,6 +88,93 @@ func (c *Client) prefixed(strs ...string) string {
 	}
 
 	return str
+}
+
+func addNodeToTarball(node *client.Node, writer *tar.Writer, baseDirectory string) error {
+	now := time.Now()
+
+	header := &tar.Header{
+		AccessTime: now,
+		ChangeTime: now,
+		ModTime:    now,
+		Name:       baseDirectory + node.Key,
+	}
+
+	if node.Dir {
+		header.Mode = 0700
+		header.Typeflag = tar.TypeDir
+	} else {
+		header.Mode = 0600
+		header.Size = int64(len(node.Value))
+		header.Typeflag = tar.TypeReg
+	}
+
+	err := writer.WriteHeader(header)
+	if err != nil {
+		return errored.Errorf("Failed to write tar entry header: %v", err)
+	}
+
+	// we don't have to write anything for directories except the header
+	if !node.Dir {
+		_, err = writer.Write([]byte(node.Value))
+		if err != nil {
+			return errored.Errorf("Failed to write tar entry: %v", err)
+		}
+	}
+
+	for _, n := range node.Nodes {
+		addNodeToTarball(n, writer, baseDirectory)
+	}
+
+	return nil
+}
+
+// DumpTarball dumps all the keys under the current etcd prefix into a
+// gzip'd tarball'd directory-based representation of the namespace.
+func (c *Client) DumpTarball() (string, error) {
+	resp, err := c.etcdClient.Get(context.Background(), c.prefix, &client.GetOptions{Sort: true, Recursive: true, Quorum: true})
+	if err != nil {
+		return "", errored.Errorf(`Failed to recursively GET "%s" namespace from etcd: %v`, c.prefix, err)
+	}
+
+	now := time.Now()
+
+	// tar hangs during unpacking if the base directory has colons in it
+	// unless --force-local is specified, so use the simpler "%Y%m%d-%H%M%S".
+	niceTimeFormat := fmt.Sprintf("%d%02d%02d-%02d%02d%02d",
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second())
+
+	file, err := ioutil.TempFile("", "etcd_dump_"+niceTimeFormat+"_")
+	if err != nil {
+		return "", errored.Errorf("Failed to create tempfile: %v", err)
+	}
+	defer file.Close()
+
+	// create a gzipped, tarball writer which cleans up after itself
+	gzipWriter := gzip.NewWriter(file)
+	defer gzipWriter.Close()
+
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+
+	// ensure that the tarball extracts to a folder with the same name as the tarball
+	baseDirectory := filepath.Base(file.Name())
+
+	err = addNodeToTarball(resp.Node, tarWriter, baseDirectory)
+	if err != nil {
+		return "", err
+	}
+
+	// give the file a more fitting name
+	newFilename := file.Name() + ".tar.gz"
+
+	err = os.Rename(file.Name(), newFilename)
+	if err != nil {
+		return "", err
+	}
+
+	return newFilename, nil
 }
 
 // NotFound is a predicate to determine whether or not the error returned by
