@@ -74,13 +74,10 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/global":                           d.handleGlobalUpload,
 		"/volumes/create":                   d.handleCreate,
 		"/volumes/copy":                     d.handleCopy,
-		"/volumes/remove":                   d.handleRemove,
-		"/volumes/removeforce":              d.handleRemoveForce,
 		"/volumes/request":                  d.handleRequest,
 		"/mount":                            d.handleMount,
 		"/mount-report":                     d.handleMountReport,
 		"/policies/{policy}":                d.handlePolicyUpload,
-		"/policies/delete/{policy}":         d.handlePolicyDelete,
 		"/runtime/{policy}/{volume}":        d.handleRuntimeUpload,
 		"/unmount":                          d.handleUnmount,
 		"/snapshots/take/{policy}/{volume}": d.handleSnapshotTake,
@@ -88,6 +85,16 @@ func (d *DaemonConfig) Daemon(listen string) {
 
 	for path, f := range postRouter {
 		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("POST")
+	}
+
+	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
+		"/volumes/remove":           d.handleRemove,
+		"/volumes/removeforce":      d.handleRemoveForce,
+		"/policies/delete/{policy}": d.handlePolicyDelete,
+	}
+
+	for path, f := range deleteRouter {
+		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("DELETE")
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
