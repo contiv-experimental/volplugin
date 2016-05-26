@@ -192,6 +192,17 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 	c.Assert(out, Matches, ".*test1/bar.*", Commentf("output: %s", out))
 }
 
+func (s *systemtestSuite) TestVolCLIVolumeTakeSnapshot(c *C) {
+	out, err := s.uploadIntent("test1", "policy1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume create test1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume snapshot take test1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+}
+
 func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 

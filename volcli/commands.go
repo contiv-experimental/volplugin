@@ -2,15 +2,6 @@ package volcli
 
 import "github.com/codegangsta/cli"
 
-// VolmasterFlags contains the flags specific to volmasters
-var VolmasterFlags = []cli.Flag{
-	cli.StringFlag{
-		Name:  "volmaster",
-		Usage: "address of volmaster process",
-		Value: "127.0.0.1:9005",
-	},
-}
-
 // GlobalFlags are required global flags for the operation of volcli.
 var GlobalFlags = []cli.Flag{
 	cli.StringFlag{
@@ -22,6 +13,11 @@ var GlobalFlags = []cli.Flag{
 		Name:  "etcd",
 		Usage: "URL for etcd",
 		Value: &cli.StringSlice{"http://localhost:2379"},
+	},
+	cli.StringFlag{
+		Name:  "volmaster",
+		Usage: "address of volmaster process",
+		Value: "127.0.0.1:9005",
 	},
 }
 
@@ -41,7 +37,6 @@ var Commands = []cli.Command{
 			},
 			{
 				Name:        "get",
-				Flags:       VolmasterFlags,
 				ArgsUsage:   "[policy name]",
 				Usage:       "Obtain the global configuration",
 				Description: "Gets the global configuration from etcd",
@@ -55,7 +50,6 @@ var Commands = []cli.Command{
 		Subcommands: []cli.Command{
 			{
 				Name:        "upload",
-				Flags:       VolmasterFlags,
 				ArgsUsage:   "[policy name]. accepts from stdin",
 				Description: "Uploads a policy to etcd. Accepts JSON. Requires direct, unauthenticated access to etcd.",
 				Usage:       "Upload a policy to etcd",
@@ -70,7 +64,6 @@ var Commands = []cli.Command{
 			},
 			{
 				Name:        "get",
-				Flags:       VolmasterFlags,
 				ArgsUsage:   "[policy name]",
 				Usage:       "Obtain the policy",
 				Description: "Gets the policy for a policy from etcd.",
@@ -91,10 +84,10 @@ var Commands = []cli.Command{
 		Subcommands: []cli.Command{
 			{
 				Name: "create",
-				Flags: append(VolmasterFlags, cli.StringSliceFlag{
+				Flags: []cli.Flag{cli.StringSliceFlag{
 					Name:  "opt",
 					Usage: "Provide key=value options to create the volume",
-				}),
+				}},
 				ArgsUsage:   "[policy name]/[volume name]",
 				Description: "This creates a logical volume. Calls out to the volmaster and sets the policy based on the policy name provided.",
 				Usage:       "Create a volume for a given policy",
@@ -133,7 +126,6 @@ var Commands = []cli.Command{
 				ArgsUsage:   "[policy name]/[volume name]",
 				Description: "Remove the volume for a policy, deleting its contents.",
 				Usage:       "Remove a volume and its contents",
-				Flags:       VolmasterFlags,
 				Action:      VolumeRemove,
 			},
 			{
@@ -144,7 +136,6 @@ var Commands = []cli.Command{
 					{
 						Name:        "take",
 						ArgsUsage:   "[policy name]/[volume name]",
-						Flags:       VolmasterFlags,
 						Description: "Take a snapshot for a volume now",
 						Usage:       "Take a snapshot for a volume now",
 						Action:      VolumeSnapshotTake,
@@ -154,7 +145,6 @@ var Commands = []cli.Command{
 						ArgsUsage:   "[policy name]/[volume name]",
 						Description: "List snapshots",
 						Usage:       "List snapshots",
-						Flags:       VolmasterFlags,
 						Action:      VolumeSnapshotList,
 					},
 					{
@@ -162,7 +152,6 @@ var Commands = []cli.Command{
 						ArgsUsage:   "[policy name]/[volume name] [snapshot name] [new volume name]",
 						Description: "Copies a volume with a given snapshot name to the new volume name. The policy will remain the same, as well as the volume parameters.",
 						Usage:       "Copy a volume snapshot to a new volume",
-						Flags:       VolmasterFlags,
 						Action:      VolumeSnapshotCopy,
 					},
 				},
@@ -177,7 +166,6 @@ var Commands = []cli.Command{
 						ArgsUsage:   "[policy name]/[volume name]",
 						Description: "Get runtime configuration",
 						Usage:       "Get runtime configuration",
-						Flags:       VolmasterFlags,
 						Action:      VolumeRuntimeGet,
 					},
 					{

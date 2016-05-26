@@ -71,13 +71,19 @@ func (d *DaemonConfig) Daemon(listen string) {
 	r := mux.NewRouter()
 
 	postRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/request":      d.handleRequest,
-		"/create":       d.handleCreate,
-		"/copy":         d.handleCopy,
-		"/mount":        d.handleMount,
-		"/mount-report": d.handleMountReport,
-		"/unmount":      d.handleUnmount,
-		"/remove":       d.handleRemove,
+		"/global":                           d.handleGlobalUpload,
+		"/volumes/create":                   d.handleCreate,
+		"/volumes/copy":                     d.handleCopy,
+		"/volumes/remove":                   d.handleRemove,
+		"/volumes/removeforce":              d.handleRemoveForce,
+		"/volumes/request":                  d.handleRequest,
+		"/mount":                            d.handleMount,
+		"/mount-report":                     d.handleMountReport,
+		"/policies/{policy}":                d.handlePolicyUpload,
+		"/policies/delete/{policy}":         d.handlePolicyDelete,
+		"/runtime/{policy}/{volume}":        d.handleRuntimeUpload,
+		"/unmount":                          d.handleUnmount,
+		"/snapshots/take/{policy}/{volume}": d.handleSnapshotTake,
 	}
 
 	for path, f := range postRouter {
@@ -85,11 +91,13 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/policy/{policy}":             d.handlePolicy,
-		"/list":                        d.handleList,
-		"/get/{policy}/{volume}":       d.handleGet,
-		"/runtime/{policy}/{volume}":   d.handleRuntime,
 		"/global":                      d.handleGlobal,
+		"/policies":                    d.handlePolicyList,
+		"/policies/{policy}":           d.handlePolicy,
+		"/volumes/":                    d.handleListAll,
+		"/volumes/{policy}":            d.handleList,
+		"/volumes/{policy}/{volume}":   d.handleGet,
+		"/runtime/{policy}/{volume}":   d.handleRuntime,
 		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
 	}
 
@@ -129,6 +137,70 @@ func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(404)
 }
 
+func (d *DaemonConfig) handleGlobalUpload(w http.ResponseWriter, r *http.Request) {
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, "reading request body", err)
+	}
+
+	global := config.NewGlobalConfig()
+	if err := json.Unmarshal(data, global); err != nil {
+		httpError(w, "Unmarshalling global config upload request", err)
+		return
+	}
+
+	if err := d.Config.PublishGlobal(global); err != nil {
+		httpError(w, "Failed to publish global configuration", err)
+		return
+	}
+}
+
+func (d *DaemonConfig) handlePolicyUpload(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policyName := vars["policy"]
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, "reading request body", err)
+	}
+
+	policy := config.NewPolicy()
+	if err := json.Unmarshal(data, policy); err != nil {
+		httpError(w, "Unmarshalling policy upload request", err)
+		return
+	}
+
+	if err := d.Config.PublishPolicy(policyName, policy); err != nil {
+		httpError(w, "Failed to upload policy", err)
+		return
+	}
+}
+
+func (d *DaemonConfig) handlePolicyDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+
+	if err := d.Config.DeletePolicy(policy); err != nil {
+		httpError(w, "Failed to publish global configuration", err)
+		return
+	}
+}
+
+func (d *DaemonConfig) handlePolicyList(w http.ResponseWriter, r *http.Request) {
+	policies, err := d.Config.ListPolicies()
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	content, err := json.Marshal(policies)
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	w.Write(content)
+}
 func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	policy := vars["policy"]
@@ -149,15 +221,11 @@ func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
-	volName := strings.TrimPrefix(r.URL.Path, "/runtime/")
-	parts := strings.SplitN(volName, "/", 2)
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volumeName := vars["volume"]
 
-	if len(parts) != 2 {
-		httpError(w, fmt.Sprintf("Invalid request for path in snapshot list: %q", r.URL.Path), nil)
-		return
-	}
-
-	runtime, err := d.Config.GetVolumeRuntime(parts[0], parts[1])
+	runtime, err := d.Config.GetVolumeRuntime(policy, volumeName)
 	if err != nil {
 		httpError(w, "Retrieving original volume", err)
 		return
@@ -172,16 +240,40 @@ func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request) {
-	volName := strings.TrimPrefix(r.URL.Path, "/snapshots/")
-	parts := strings.SplitN(volName, "/", 2)
+func (d *DaemonConfig) handleRuntimeUpload(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volumeName := vars["volume"]
 
-	if len(parts) != 2 {
-		httpError(w, fmt.Sprintf("Invalid request for path in snapshot list: %q", r.URL.Path), nil)
+	volume, err := d.Config.GetVolume(policy, volumeName)
+	if err != nil {
+		httpError(w, "Retrieving original volume", err)
 		return
 	}
 
-	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, "reading request body", err)
+	}
+
+	runtime := config.RuntimeOptions{}
+	if err := json.Unmarshal(data, &runtime); err != nil {
+		httpError(w, "Unmarshalling runtime upload request", err)
+		return
+	}
+
+	if err := d.Config.PublishVolumeRuntime(volume, runtime); err != nil {
+		httpError(w, "Failed publish volume runtime", err)
+		return
+	}
+}
+
+func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volumeName := vars["volume"]
+
+	volConfig, err := d.Config.GetVolume(policy, volumeName)
 	if err != nil {
 		httpError(w, "Retrieving original volume", err)
 		return
@@ -219,6 +311,17 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Write(content)
+}
+
+func (d *DaemonConfig) handleSnapshotTake(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volume := vars["volume"]
+
+	if err := d.Config.TakeSnapshot(fmt.Sprintf("%v/%v", policy, volume)); err != nil {
+		httpError(w, "Failed to take snapshot", err)
+		return
+	}
 }
 
 func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
@@ -368,16 +471,45 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
-	volName := strings.TrimPrefix(r.URL.Path, "/get/")
-	parts := strings.SplitN(volName, "/", 2)
-
-	if len(parts) != 2 {
-		httpError(w, fmt.Sprintf("Invalid request for path in get: %q", r.URL.Path), nil)
+func (d *DaemonConfig) handleListAll(w http.ResponseWriter, r *http.Request) {
+	vols, err := d.Config.ListAllVolumes()
+	if err != nil {
+		httpError(w, "Retrieving list", err)
 		return
 	}
 
-	volConfig, err := d.Config.GetVolume(parts[0], parts[1])
+	response := []*config.Volume{}
+	for _, vol := range vols {
+		parts := strings.SplitN(vol, "/", 2)
+		if len(parts) != 2 {
+			httpError(w, "Invalid volume name", nil)
+			return
+		}
+		// FIXME make this take a single string and not a split one
+		volConfig, err := d.Config.GetVolume(parts[0], parts[1])
+		if err != nil {
+			httpError(w, "Retrieving list", err)
+			return
+		}
+
+		response = append(response, volConfig)
+	}
+
+	content, err := json.Marshal(response)
+	if err != nil {
+		httpError(w, "Retrieving list", err)
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volumeName := vars["volume"]
+
+	volConfig, err := d.Config.GetVolume(policy, volumeName)
 	if config.NotFound(err) {
 		w.WriteHeader(404)
 		return
@@ -465,6 +597,25 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		httpError(w, fmt.Sprintf("Removing volume %v", vc), err)
+		return
+	}
+}
+
+func (d *DaemonConfig) handleRemoveForce(w http.ResponseWriter, r *http.Request) {
+	req, err := unmarshalRequest(r)
+	if err != nil {
+		httpError(w, "unmarshalling request", err)
+		return
+	}
+
+	err = d.Config.RemoveVolume(req.Policy, req.Volume)
+	if err == config.ErrNotExist {
+		w.WriteHeader(404)
+		return
+	}
+
+	if err != nil {
+		httpError(w, fmt.Sprintf("Removing volume %v/%v", req.Policy, req.Volume), err)
 		return
 	}
 }
