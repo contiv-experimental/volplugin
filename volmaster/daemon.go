@@ -74,13 +74,10 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/global":                           d.handleGlobalUpload,
 		"/volumes/create":                   d.handleCreate,
 		"/volumes/copy":                     d.handleCopy,
-		"/volumes/remove":                   d.handleRemove,
-		"/volumes/removeforce":              d.handleRemoveForce,
 		"/volumes/request":                  d.handleRequest,
 		"/mount":                            d.handleMount,
 		"/mount-report":                     d.handleMountReport,
 		"/policies/{policy}":                d.handlePolicyUpload,
-		"/policies/delete/{policy}":         d.handlePolicyDelete,
 		"/runtime/{policy}/{volume}":        d.handleRuntimeUpload,
 		"/unmount":                          d.handleUnmount,
 		"/snapshots/take/{policy}/{volume}": d.handleSnapshotTake,
@@ -90,15 +87,26 @@ func (d *DaemonConfig) Daemon(listen string) {
 		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("POST")
 	}
 
+	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
+		"/volumes/remove":           d.handleRemove,
+		"/volumes/removeforce":      d.handleRemoveForce,
+		"/policies/delete/{policy}": d.handlePolicyDelete,
+	}
+
+	for path, f := range deleteRouter {
+		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("DELETE")
+	}
+
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/global":                      d.handleGlobal,
-		"/policies":                    d.handlePolicyList,
-		"/policies/{policy}":           d.handlePolicy,
-		"/volumes/":                    d.handleListAll,
-		"/volumes/{policy}":            d.handleList,
-		"/volumes/{policy}/{volume}":   d.handleGet,
-		"/runtime/{policy}/{volume}":   d.handleRuntime,
-		"/snapshots/{policy}/{volume}": d.handleSnapshotList,
+		"/global":                        d.handleGlobal,
+		"/policies":                      d.handlePolicyList,
+		"/policies/{policy}":             d.handlePolicy,
+		"/uses/mounts/{policy}/{volume}": d.handleUsesMountsVolume,
+		"/volumes/":                      d.handleListAll,
+		"/volumes/{policy}":              d.handleList,
+		"/volumes/{policy}/{volume}":     d.handleGet,
+		"/runtime/{policy}/{volume}":     d.handleRuntime,
+		"/snapshots/{policy}/{volume}":   d.handleSnapshotList,
 	}
 
 	for path, f := range getRouter {
@@ -214,6 +222,32 @@ func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(policyObj)
 	if err != nil {
 		httpError(w, "Marshalling policy response", err)
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d *DaemonConfig) handleUsesMountsVolume(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	volumeName := vars["volume"]
+
+	vc := &config.Volume{
+		PolicyName: policy,
+		VolumeName: volumeName,
+	}
+
+	mount := &config.UseMount{}
+
+	if err := d.Config.GetUse(mount, vc); err != nil {
+		httpError(w, "Getting mount", err)
+		return
+	}
+
+	content, err := json.Marshal(mount)
+	if err != nil {
+		httpError(w, "Marshalling response", err)
 		return
 	}
 

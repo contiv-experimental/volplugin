@@ -56,6 +56,16 @@ func ppJSON(v interface{}) ([]byte, error) {
 	return json.MarshalIndent(v, "", "  ")
 }
 
+func deleteRequest(url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
+	req, err := http.NewRequest("DELETE", url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare request: %v", err)
+	}
+	req.Header.Set("Content-Type", bodyType)
+
+	return http.DefaultClient.Do(req)
+}
+
 // GlobalGet retrives the global configuration and displays it on standard output.
 func GlobalGet(ctx *cli.Context) {
 	execCliAndExit(ctx, globalGet)
@@ -184,7 +194,7 @@ func policyDelete(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/policies/delete/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/policies/delete/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
@@ -407,7 +417,7 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/removeforce", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/removeforce", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -453,7 +463,7 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/remove", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/remove", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
