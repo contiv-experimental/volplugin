@@ -276,17 +276,6 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := dc.mountExists(driver, driverOpts)
-	if err != nil {
-		httpError(w, "Mountpoint existence check", err)
-		return
-	}
-
-	if exists {
-		httpError(w, "Mountpoint already in use", err)
-		return
-	}
-
 	ut := &config.UseMount{
 		Volume:   volConfig.String(),
 		Reason:   lock.ReasonMount,
@@ -299,6 +288,17 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	if err := dc.Client.ReportMount(ut); err != nil {
 		httpError(w, "Reporting mount to master", err)
+		return
+	}
+
+	exists, err := dc.mountExists(driver, driverOpts)
+	if err != nil {
+		httpError(w, "Mountpoint existence check", err)
+		return
+	}
+
+	if exists {
+		httpError(w, "Mountpoint already in use", err)
 		return
 	}
 
