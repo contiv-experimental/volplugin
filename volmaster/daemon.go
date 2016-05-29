@@ -149,6 +149,7 @@ func (d *DaemonConfig) handleGlobalUpload(w http.ResponseWriter, r *http.Request
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "reading request body", err)
+		return
 	}
 
 	global := config.NewGlobalConfig()
@@ -170,6 +171,7 @@ func (d *DaemonConfig) handlePolicyUpload(w http.ResponseWriter, r *http.Request
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "reading request body", err)
+		return
 	}
 
 	policy := config.NewPolicy()
@@ -288,6 +290,7 @@ func (d *DaemonConfig) handleRuntimeUpload(w http.ResponseWriter, r *http.Reques
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, "reading request body", err)
+		return
 	}
 
 	runtime := config.RuntimeOptions{}
@@ -467,6 +470,7 @@ func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(d.Global)
 	if err != nil {
 		httpError(w, "Marshalling global configuration", err)
+		return
 	}
 
 	w.Write(content)
@@ -549,6 +553,7 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		httpError(w, "Retrieving volume", err)
+		return
 	}
 
 	content, err := json.Marshal(volConfig)
@@ -765,6 +770,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		httpError(w, "Retrieving hostname", err)
+		return
 	}
 
 	policy, err := d.Config.GetPolicy(req.Policy)
