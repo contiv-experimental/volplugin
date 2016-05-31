@@ -88,9 +88,9 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/volumes/remove":           d.handleRemove,
-		"/volumes/removeforce":      d.handleRemoveForce,
-		"/policies/delete/{policy}": d.handlePolicyDelete,
+		"/volumes/remove":      d.handleRemove,
+		"/volumes/removeforce": d.handleRemoveForce,
+		"/policies/{policy}":   d.handlePolicyDelete,
 	}
 
 	for path, f := range deleteRouter {

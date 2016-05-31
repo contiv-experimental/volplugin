@@ -194,7 +194,7 @@ func policyDelete(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := deleteRequest(fmt.Sprintf("http://%s/policies/delete/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
