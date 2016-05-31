@@ -180,7 +180,7 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	times := 0
 
 retry:
-	if err := unix.Mount(do.Source, mp, "nfs", 0, opts); err != nil {
+	if err := unix.Mount(do.Source, mp, "nfs", 0, opts); err != nil && err != unix.EBUSY {
 		if err == unix.EIO {
 			log.Errorf("I/O error mounting %q Retrying after timeout...", do.Volume.Name)
 			time.Sleep(do.Timeout)
@@ -191,6 +191,7 @@ retry:
 
 			goto retry
 		}
+
 		return nil, errored.Errorf("Error mounting nfs volume %q at %q", do.Source, mp).Combine(err)
 	}
 
