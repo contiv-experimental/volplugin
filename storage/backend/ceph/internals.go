@@ -71,7 +71,7 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) err
 	cmd := exec.Command("/bin/sh", "-c", templateFSCmd(fscmd, devicePath))
 	er, err := runWithTimeout(cmd, timeout)
 	if err != nil || er.ExitStatus != 0 {
-		return errored.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v)", devicePath, fscmd, er, err)
+		return errored.Errorf("Error creating filesystem on %s with cmd: %q. Error: %v (%v) (%v) (%v)", devicePath, fscmd, er, err, strings.TrimSpace(er.Stdout), strings.TrimSpace(er.Stderr))
 	}
 
 	return nil

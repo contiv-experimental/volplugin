@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -70,7 +71,7 @@ func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, name), "", &client.SetOptions{Dir: true})
 
 	if _, err := c.etcdClient.Set(context.Background(), c.policy(name), string(value), &client.SetOptions{PrevExist: client.PrevIgnore}); err != nil {
-		return err
+		return errors.EtcdToErrored(err)
 	}
 
 	return nil
@@ -79,7 +80,7 @@ func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 // DeletePolicy removes a policy from the configuration store.
 func (c *Client) DeletePolicy(name string) error {
 	_, err := c.etcdClient.Delete(context.Background(), c.policy(name), nil)
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // GetPolicy retrieves a policy from the configuration store.
@@ -90,7 +91,7 @@ func (c *Client) GetPolicy(name string) (*Policy, error) {
 
 	resp, err := c.etcdClient.Get(context.Background(), c.policy(name), nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	tc := NewPolicy()
@@ -109,7 +110,7 @@ func (c *Client) GetPolicy(name string) (*Policy, error) {
 func (c *Client) ListPolicies() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootPolicy), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	policies := []string{}

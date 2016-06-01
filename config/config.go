@@ -3,7 +3,6 @@ package config
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -25,13 +25,6 @@ const (
 )
 
 var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootSnapshots}
-
-var (
-	// ErrExist indicates when a key in etcd exits already. Used for create logic.
-	ErrExist = errors.New("Already exists")
-	// ErrNotExist is also used for create logic, and describes that the volume doesn't exist.
-	ErrNotExist = errors.New("Does not exist")
-)
 
 // Request provides a request structure for communicating with the
 // volmaster.
@@ -111,14 +104,14 @@ func addNodeToTarball(node *client.Node, writer *tar.Writer, baseDirectory strin
 
 	err := writer.WriteHeader(header)
 	if err != nil {
-		return errored.Errorf("Failed to write tar entry header: %v", err)
+		return errored.Errorf("Failed to write tar entry header").Combine(err)
 	}
 
 	// we don't have to write anything for directories except the header
 	if !node.Dir {
 		_, err = writer.Write([]byte(node.Value))
 		if err != nil {
-			return errored.Errorf("Failed to write tar entry: %v", err)
+			return errored.Errorf("Failed to write tar entry").Combine(err)
 		}
 	}
 
@@ -134,7 +127,7 @@ func addNodeToTarball(node *client.Node, writer *tar.Writer, baseDirectory strin
 func (c *Client) DumpTarball() (string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefix, &client.GetOptions{Sort: true, Recursive: true, Quorum: true})
 	if err != nil {
-		return "", errored.Errorf(`Failed to recursively GET "%s" namespace from etcd: %v`, c.prefix, err)
+		return "", errored.Errorf(`Failed to recursively GET "%s" namespace from etcd`, c.prefix).Combine(errors.EtcdToErrored(err))
 	}
 
 	now := time.Now()
@@ -147,7 +140,7 @@ func (c *Client) DumpTarball() (string, error) {
 
 	file, err := ioutil.TempFile("", "etcd_dump_"+niceTimeFormat+"_")
 	if err != nil {
-		return "", errored.Errorf("Failed to create tempfile: %v", err)
+		return "", errored.Errorf("Failed to create tempfile").Combine(err)
 	}
 	defer file.Close()
 
@@ -175,15 +168,4 @@ func (c *Client) DumpTarball() (string, error) {
 	}
 
 	return newFilename, nil
-}
-
-// NotFound is a predicate to determine whether or not the error returned by
-// etcd was a notfound error.
-func NotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	_, ok := err.(client.Error)
-	return ok && err.(client.Error).Code == client.ErrorCodeKeyNotFound
 }

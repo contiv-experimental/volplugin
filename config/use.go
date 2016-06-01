@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/errors"
 	"github.com/coreos/etcd/client"
 
 	"golang.org/x/net/context"
@@ -105,13 +106,13 @@ func (c *Client) PublishUse(ut UseLocker) error {
 	if _, ok := err.(client.Error); ok && err.(client.Error).Code == client.ErrorCodeNodeExist {
 		if ut.MayExist() {
 			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{PrevExist: client.PrevExist, PrevValue: string(content)})
-			return err
+			return errors.EtcdToErrored(err)
 		}
-		return ErrExist
+		return errors.Exists.Combine(err)
 	}
 
 	log.Debugf("Publishing use: (error: %v) %#v", err, ut)
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // PublishUseWithTTL pushes the use to etcd, with a TTL that expires the record
@@ -136,7 +137,7 @@ func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client
 	}
 
 	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{TTL: ttl, PrevExist: exist, PrevValue: value})
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // RemoveUse will remove a user from etcd. Does not fail if the user does
@@ -155,14 +156,14 @@ func (c *Client) RemoveUse(ut UseLocker, force bool) error {
 	}
 
 	_, err = c.etcdClient.Delete(context.Background(), c.use(ut.Type(), ut.GetVolume()), opts)
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // GetUse retrieves the UseMount for the given volume name.
 func (c *Client) GetUse(ut UseLocker, vc *Volume) error {
 	resp, err := c.etcdClient.Get(context.Background(), c.use(ut.Type(), vc.String()), nil)
 	if err != nil {
-		return err
+		return errors.EtcdToErrored(err)
 	}
 
 	if err := json.Unmarshal([]byte(resp.Node.Value), ut); err != nil {
@@ -176,7 +177,7 @@ func (c *Client) GetUse(ut UseLocker, vc *Volume) error {
 func (c *Client) ListUses(typ string) ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootUse, typ), &client.GetOptions{Sort: true, Recursive: true})
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	ret := []string{}

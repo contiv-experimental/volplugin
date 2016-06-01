@@ -1,11 +1,11 @@
 package volmaster
 
 import (
-	"errors"
 	"time"
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
 
@@ -13,8 +13,6 @@ import (
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
-
-var errNoActionTaken = errors.New("No action taken")
 
 func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volume, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
@@ -24,7 +22,7 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 
 	if config.Backends.CRUD == "" {
 		log.Debugf("Not creating volume %q, backend is unspecified", config)
-		return storage.DriverOptions{}, errNoActionTaken
+		return storage.DriverOptions{}, errors.NoActionTaken
 	}
 
 	if policy.FileSystems == nil {
@@ -71,7 +69,7 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 
 	if config.Backends.CRUD == "" {
 		log.Debugf("Not formatting volume %q, backend is unspecified", config)
-		return errNoActionTaken
+		return errors.NoActionTaken
 	}
 
 	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
@@ -86,7 +84,7 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 	if config.Backends.CRUD == "" {
 		log.Debugf("volume %q, backend is unspecified", config)
-		return true, errNoActionTaken
+		return true, errors.NoActionTaken
 	}
 
 	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
@@ -108,7 +106,7 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duration) error {
 	if config.Backends.CRUD == "" {
 		log.Debugf("Not removing volume %q, backend is unspecified", config)
-		return errNoActionTaken
+		return errors.NoActionTaken
 	}
 
 	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)

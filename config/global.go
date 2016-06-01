@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -63,7 +64,7 @@ func (tlc *Client) PublishGlobal(g *Global) error {
 	}
 
 	if _, err := tlc.etcdClient.Set(context.Background(), gcPath, string(value), &client.SetOptions{PrevExist: client.PrevIgnore}); err != nil {
-		return err
+		return errors.EtcdToErrored(err)
 	}
 
 	return nil

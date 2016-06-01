@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/watch"
@@ -74,7 +75,7 @@ func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
 
 	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vo.PolicyName, vo.VolumeName), "", &client.SetOptions{Dir: true})
 	if _, err := c.etcdClient.Set(context.Background(), c.volume(vo.PolicyName, vo.VolumeName, "runtime"), string(content), nil); err != nil {
-		return err
+		return errors.EtcdToErrored(err)
 	}
 
 	return nil
@@ -143,7 +144,7 @@ func (c *Client) PublishVolume(vc *Volume) error {
 	c.etcdClient.Set(context.Background(), c.prefixed(rootVolume, vc.PolicyName, vc.VolumeName), "", &client.SetOptions{Dir: true})
 
 	if _, err := c.etcdClient.Set(context.Background(), c.volume(vc.PolicyName, vc.VolumeName, "create"), string(remarshal), &client.SetOptions{PrevExist: client.PrevNoExist}); err != nil {
-		return ErrExist
+		return errors.Exists
 	}
 
 	return c.PublishVolumeRuntime(vc, vc.RuntimeOptions)
@@ -184,7 +185,7 @@ func (c *Client) GetVolume(policy, name string) (*Volume, error) {
 	// FIXME make this take a single string and not a split one
 	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "create"), nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	ret := &Volume{}
@@ -213,7 +214,7 @@ func (c *Client) GetVolumeRuntime(policy, name string) (RuntimeOptions, error) {
 
 	resp, err := c.etcdClient.Get(context.Background(), c.volume(policy, name, "runtime"), nil)
 	if err != nil {
-		return runtime, err
+		return runtime, errors.EtcdToErrored(err)
 	}
 
 	return runtime, json.Unmarshal([]byte(resp.Node.Value), &runtime)
@@ -223,7 +224,7 @@ func (c *Client) GetVolumeRuntime(policy, name string) (RuntimeOptions, error) {
 func (c *Client) RemoveVolume(policy, name string) error {
 	// FIXME might be a consistency issue here; pass around volume structs instead.
 	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{Recursive: true})
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // ListVolumes returns a map of volume name -> Volume.
@@ -232,7 +233,7 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 
 	resp, err := c.etcdClient.Get(context.Background(), policyPath, &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	configs := map[string]*Volume{}
@@ -288,7 +289,7 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 func (c *Client) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
-		return nil, err
+		return nil, errors.EtcdToErrored(err)
 	}
 
 	ret := []string{}
@@ -341,13 +342,13 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 // TakeSnapshot immediately takes a snapshot by signalling the volsupervisor through etcd.
 func (c *Client) TakeSnapshot(name string) error {
 	_, err := c.etcdClient.Set(context.Background(), c.prefixed(rootSnapshots, name), "", nil)
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // RemoveTakeSnapshot removes a reference to a taken snapshot, intended to be used by volsupervisor
 func (c *Client) RemoveTakeSnapshot(name string) error {
 	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootSnapshots, name), nil)
-	return err
+	return errors.EtcdToErrored(err)
 }
 
 // WatchSnapshotSignal watches for a signal to be provided to

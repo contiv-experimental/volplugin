@@ -7,6 +7,7 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/engine-api/client"
@@ -58,12 +59,16 @@ func (dc *DaemonConfig) updateMounts() error {
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
 			vol, err := dc.requestVolume(parts[0], parts[1])
-			switch err {
-			case errVolumeNotFound:
-				log.Warnf("Volume %q not found in database, skipping")
-				continue
-			case errVolumeResponse:
-				log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
+			if erd, ok := err.(*errored.Error); ok {
+				switch {
+				case erd.Contains(errors.NotExists):
+					log.Warnf("Volume %q not found in database, skipping")
+					continue
+				case erd.Contains(errors.GetVolume):
+					log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
+				}
+			} else if err != nil {
+				log.Fatalf("Unknown error reading from volmaster: %v", err)
 			}
 
 			payload := &config.UseMount{

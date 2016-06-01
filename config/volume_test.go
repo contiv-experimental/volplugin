@@ -4,6 +4,7 @@ import (
 	"path"
 	"sort"
 
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/watch"
 
@@ -149,7 +150,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume, Opts: map[string]string{"filesystem": ""}})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
-			c.Assert(s.tlc.PublishVolume(vcfg), Equals, ErrExist)
+			c.Assert(s.tlc.PublishVolume(vcfg), Equals, errors.Exists)
 
 			c.Assert(vcfg.CreateOptions.FileSystem, Equals, "ext4")
 
