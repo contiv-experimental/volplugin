@@ -11,9 +11,9 @@ import (
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/watch"
+	"github.com/docker/go-units"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/alecthomas/units"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -36,8 +36,6 @@ type Volume struct {
 type CreateOptions struct {
 	Size       string `json:"size" merge:"size"`
 	FileSystem string `json:"filesystem" merge:"filesystem"`
-
-	actualSize units.Base2Bytes
 }
 
 // RuntimeOptions are the set of options used by volplugin when mounting the
@@ -152,32 +150,15 @@ func (c *Client) PublishVolume(vc *Volume) error {
 
 // ActualSize returns the size of the volume as an integer of megabytes.
 func (co *CreateOptions) ActualSize() (uint64, error) {
-	if err := co.computeSize(); err != nil {
-		return 0, err
-	}
-	return uint64(co.actualSize), nil
-}
+	sizeStr := co.Size
 
-func (co *CreateOptions) computeSize() error {
-	if co.Size == "" {
-		// do not generate a parser error. in some instances, we do not need to
-		// create volumes so a size may not be specified.  set 0 and return nil
-		co.actualSize = 0
-		return nil
+	if strings.TrimSpace(sizeStr) == "" {
+		sizeStr = "0"
 	}
 
-	var err error
-
-	co.actualSize, err = units.ParseBase2Bytes(co.Size)
-	if err != nil {
-		return errored.Errorf("Calculating volume size").Combine(err)
-	}
-
-	if co.actualSize != 0 {
-		co.actualSize = co.actualSize / units.Mebibyte
-	}
-
-	return nil
+	size, err := units.FromHumanSize(sizeStr)
+	// MB is the base unit for RBD
+	return uint64(size) / units.MB, err
 }
 
 // GetVolume returns the Volume for a given volume.
@@ -367,19 +348,6 @@ func (c *Client) WatchSnapshotSignal(activity chan *watch.Watch) {
 
 // Validate options for a volume. Should be called anytime options are
 // considered.
-func (co *CreateOptions) Validate() error {
-	if co.actualSize == 0 {
-		_, err := co.ActualSize()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Validate options for a volume. Should be called anytime options are
-// considered.
 func (ro *RuntimeOptions) Validate() error {
 	if ro.UseSnapshots && (ro.Snapshot.Frequency == "" || ro.Snapshot.Keep == 0) {
 		return errored.Errorf("Snapshots are configured but cannot be used due to blank settings")
@@ -400,10 +368,6 @@ func (cfg *Volume) Validate() error {
 
 	if cfg.PolicyName == "" {
 		return errored.Errorf("Policy name was omitted for volume %v", cfg)
-	}
-
-	if err := cfg.CreateOptions.Validate(); err != nil {
-		return err
 	}
 
 	return cfg.RuntimeOptions.Validate()

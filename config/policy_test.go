@@ -14,7 +14,6 @@ var testPolicies = map[string]*Policy{
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
-			actualSize: 10,
 		},
 		RuntimeOptions: RuntimeOptions{
 			UseSnapshots: true,
@@ -40,6 +39,7 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"untouchedwithzerosize": {
+		Name: "untouchedwithzerosize",
 		Backends: BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
@@ -66,33 +66,8 @@ var testPolicies = map[string]*Policy{
 		},
 		FileSystems: defaultFilesystems,
 	},
-	"badsize": {
-		Backends: BackendDrivers{
-			CRUD:     "ceph",
-			Mount:    "ceph",
-			Snapshot: "ceph",
-		},
-		DriverOptions: map[string]string{"pool": "rbd"},
-		CreateOptions: CreateOptions{
-			Size:       "0mb",
-			FileSystem: defaultFilesystem,
-		},
-		FileSystems: defaultFilesystems,
-	},
-	"badsize2": {
-		Backends: BackendDrivers{
-			CRUD:     "ceph",
-			Mount:    "ceph",
-			Snapshot: "ceph",
-		},
-		DriverOptions: map[string]string{"pool": "rbd"},
-		CreateOptions: CreateOptions{
-			Size:       "10M",
-			FileSystem: defaultFilesystem,
-		},
-		FileSystems: defaultFilesystems,
-	},
 	"badsize3": {
+		Name: "badsize3",
 		Backends: BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
@@ -106,6 +81,7 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"badsnaps": {
+		Name: "badsnaps",
 		Backends: BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
@@ -125,20 +101,40 @@ var testPolicies = map[string]*Policy{
 		},
 		FileSystems: defaultFilesystems,
 	},
+	"blanksize": {
+		Backends: BackendDrivers{
+			Mount: "ceph",
+		},
+		Name:          "blanksize",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			FileSystem: defaultFilesystem,
+		},
+		RuntimeOptions: RuntimeOptions{},
+		FileSystems:    defaultFilesystems,
+	},
+	"blanksizewithcrud": {
+		Backends: BackendDrivers{
+			CRUD:  "ceph",
+			Mount: "ceph",
+		},
+		Name:          "blanksize",
+		DriverOptions: map[string]string{"pool": "rbd"},
+		CreateOptions: CreateOptions{
+			FileSystem: defaultFilesystem,
+		},
+		RuntimeOptions: RuntimeOptions{},
+		FileSystems:    defaultFilesystems,
+	},
 	"nobackend": {
+		Name:          "nobackend",
 		DriverOptions: map[string]string{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
 		},
-		RuntimeOptions: RuntimeOptions{
-			UseSnapshots: true,
-			Snapshot: SnapshotConfig{
-				Keep:      0,
-				Frequency: "",
-			},
-		},
-		FileSystems: defaultFilesystems,
+		RuntimeOptions: RuntimeOptions{},
+		FileSystems:    defaultFilesystems,
 	},
 }
 
@@ -179,7 +175,7 @@ func (s *configSuite) TestBasicPolicy(c *C) {
 }
 
 func (s *configSuite) TestPolicyValidate(c *C) {
-	for _, key := range []string{"basic", "basic2", "nilfs"} {
+	for _, key := range []string{"basic", "basic2", "nilfs", "blanksize"} {
 		c.Assert(testPolicies[key].Validate(), IsNil)
 	}
 
@@ -190,15 +186,13 @@ func (s *configSuite) TestPolicyValidate(c *C) {
 
 	c.Assert(testPolicies["nobackend"].Validate(), NotNil)
 	c.Assert(testPolicies["untouchedwithzerosize"].Validate(), NotNil)
-	c.Assert(testPolicies["badsize"].Validate(), NotNil)
-	c.Assert(testPolicies["badsize2"].Validate(), NotNil)
 	_, err := testPolicies["badsize3"].CreateOptions.ActualSize()
 	c.Assert(err, NotNil)
 }
 
 func (s *configSuite) TestPolicyBadPublish(c *C) {
-	for _, key := range []string{"nobackend", "badsize", "badsize2", "badsize3", "badsnaps"} {
-		c.Assert(s.tlc.PublishPolicy("test", testPolicies[key]), NotNil)
+	for _, key := range []string{"nobackend", "badsize3", "badsnaps", "blanksizewithcrud"} {
+		c.Assert(s.tlc.PublishPolicy("test", testPolicies[key]), NotNil, Commentf(key))
 	}
 }
 

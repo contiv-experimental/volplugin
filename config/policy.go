@@ -50,10 +50,6 @@ func (c *Client) policy(name string) string {
 func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 	cfg.Name = name
 
-	if err := cfg.CreateOptions.computeSize(); err != nil {
-		return err
-	}
-
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -130,16 +126,19 @@ func (cfg *Policy) Validate() error {
 		cfg.FileSystems = defaultFilesystems
 	}
 
-	if err := cfg.CreateOptions.Validate(); err != nil {
-		return err
-	}
-
 	if cfg.Name == "" {
 		return errored.Errorf("Name is empty for policy")
 	}
 
 	if cfg.Backends.Mount == "" {
 		return errored.Errorf("Mount backend cannot be empty for policy %v", cfg)
+	}
+
+	size, err := cfg.CreateOptions.ActualSize()
+	if err != nil {
+		return err
+	} else if cfg.Backends.CRUD != "" && size == 0 {
+		return errored.Errorf("Size set to zero for non-empty CRUD backend %v", cfg.Backends.CRUD).Combine(err)
 	}
 
 	return cfg.RuntimeOptions.Validate()
