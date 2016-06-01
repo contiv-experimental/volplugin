@@ -24,6 +24,7 @@ func main() {
 	combined := err.Combine(err2)
 	combined.SetTrace(true)
 	combined.Error() // => "a message: another message" + two stack traces
+  combined.Contains(err2) // true
 }
 ```
 
