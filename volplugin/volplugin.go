@@ -18,9 +18,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
-	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/lock/client"
-	"github.com/contiv/volplugin/storage/backend"
 	"github.com/gorilla/mux"
 )
 
@@ -81,8 +79,9 @@ type volumeGet struct {
 // arguments.
 func NewDaemonConfig(master, host string) *DaemonConfig {
 	return &DaemonConfig{
-		Master:           master,
-		Host:             host,
+		Master: master,
+		Host:   host,
+
 		runtimeMutex:     new(sync.RWMutex),
 		runtimeVolumeMap: map[string]config.RuntimeOptions{},
 		runtimeStopChans: map[string]chan struct{}{},
@@ -106,14 +105,14 @@ func (dc *DaemonConfig) Daemon() error {
 		time.Sleep(time.Second)
 	}
 
+	go info.HandleDebugSignal()
+	go dc.watchGlobal()
+
 	log.Infof("Reached volmaster at %q. Continuing startup.", dc.Master)
 
 	if err := dc.updateMounts(); err != nil {
 		return err
 	}
-
-	go info.HandleDebugSignal()
-	go dc.watchGlobal()
 
 	driverPath := path.Join(basePath, "volplugin.sock")
 	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
@@ -217,59 +216,4 @@ func (dc *DaemonConfig) watchGlobal() error {
 			errored.AlwaysDebug = true
 		}
 	}
-}
-
-func (dc *DaemonConfig) updateMounts() error {
-	for driverName := range backend.MountDrivers {
-		cd, err := backend.NewMountDriver(driverName, dc.Global.MountPath)
-		if err != nil {
-			return err
-		}
-
-		mounts, err := cd.Mounted(dc.Global.Timeout)
-		if err != nil {
-			return err
-		}
-
-		for _, mount := range mounts {
-			parts := strings.Split(mount.Volume.Name, "/")
-			if len(parts) != 2 {
-				log.Warnf("Invalid volume named %q in mount scan: skipping refresh", mount.Volume.Name)
-				continue
-			}
-
-			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
-
-			vol, err := dc.requestVolume(parts[0], parts[1])
-			switch err {
-			case errVolumeNotFound:
-				log.Warnf("Volume %q not found in database, skipping")
-				continue
-			case errVolumeResponse:
-				log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
-			}
-
-			payload := &config.UseMount{
-				Volume:   mount.Volume.Name,
-				Reason:   lock.ReasonMount,
-				Hostname: dc.Host,
-			}
-
-			if vol.Unlocked {
-				payload.Hostname = lock.Unlocked
-			}
-
-			if err := dc.Client.ReportMount(payload); err != nil {
-				if err := dc.Client.ReportMountStatus(payload); err != nil {
-					// FIXME everything is effed up. what should we really be doing here?
-					return err
-				}
-			}
-
-			go dc.startRuntimePoll(mount.Volume.Name, mount)
-			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
-		}
-	}
-
-	return nil
 }

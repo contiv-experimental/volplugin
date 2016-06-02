@@ -10,6 +10,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/lock"
+	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/docker/pkg/plugins"
 )
@@ -71,7 +72,7 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 	return &uc, nil
 }
 
-func writeResponse(w http.ResponseWriter, r *http.Request, vr *VolumeResponse) {
+func writeResponse(w http.ResponseWriter, vr *VolumeResponse) {
 	content, err := marshalResponse(*vr)
 	if err != nil {
 		httpError(w, "Could not marshal response", err)
@@ -243,7 +244,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
+	writeResponse(w, &VolumeResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
@@ -258,7 +259,17 @@ func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: "", Err: ""})
+	writeResponse(w, &VolumeResponse{Mountpoint: "", Err: ""})
+}
+
+func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.MountDriver, driverOpts storage.DriverOptions) {
+	path, err := driver.MountPath(driverOpts)
+	if err != nil {
+		httpError(w, "Calculating mount path", err)
+		return
+	}
+
+	writeResponse(w, &VolumeResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
@@ -276,19 +287,10 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := dc.mountExists(driver, driverOpts)
-	if err != nil {
-		httpError(w, "Mountpoint existence check", err)
-		return
-	}
-
-	if exists {
-		httpError(w, "Mountpoint already in use", err)
-		return
-	}
+	volName := volConfig.String()
 
 	ut := &config.UseMount{
-		Volume:   volConfig.String(),
+		Volume:   volName,
 		Reason:   lock.ReasonMount,
 		Hostname: dc.Host,
 	}
@@ -302,8 +304,15 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if dc.increaseMount(volName) > 1 {
+		log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
+		dc.returnMountPath(w, driver, driverOpts)
+		return
+	}
+
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
+		dc.decreaseMount(volName)
 		httpError(w, "Volume could not be mounted", err)
 		if err := dc.Client.ReportUnmount(ut); err != nil {
 			log.Errorf("Could not report unmount: %v", err)
@@ -317,7 +326,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go dc.Client.HeartbeatMount(dc.Global.TTL, ut, dc.Client.AddStopChan(uc.Request.Name))
-	go dc.startRuntimePoll(volConfig.String(), mc)
+	go dc.startRuntimePoll(volName, mc)
 
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
@@ -325,7 +334,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
+	writeResponse(w, &VolumeResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
@@ -343,6 +352,14 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	volName := volConfig.String()
+
+	if dc.decreaseMount(volName) > 0 {
+		log.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
+		dc.returnMountPath(w, driver, driverOpts)
+		return
+	}
+
 	if err := driver.Unmount(driverOpts); err != nil {
 		httpError(w, "Could not unmount image", err)
 		return
@@ -352,7 +369,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	dc.stopRuntimePoll(uc.Request.Name)
 
 	ut := &config.UseMount{
-		Volume:   volConfig.String(),
+		Volume:   volName,
 		Reason:   lock.ReasonMount,
 		Hostname: dc.Host,
 	}
@@ -366,13 +383,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := driver.MountPath(driverOpts)
-	if err != nil {
-		httpError(w, "Calculating mount path", err)
-		return
-	}
-
-	writeResponse(w, r, &VolumeResponse{Mountpoint: path})
+	dc.returnMountPath(w, driver, driverOpts)
 }
 
 // Catchall for additional driver functions.

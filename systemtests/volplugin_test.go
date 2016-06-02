@@ -2,6 +2,7 @@ package systemtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -154,4 +155,30 @@ func (s *systemtestSuite) TestVolpluginMountPath(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(s.vagrant.GetNode("mon0").RunCommand("sudo test -d /mnt/test/rbd/policy1.test"), IsNil)
+}
+
+func (s *systemtestSuite) TestVolpluginRestartMultiMount(c *C) {
+	_, err := s.mon0cmd("sudo truncate -s0 /tmp/volplugin.log")
+	c.Assert(err, IsNil)
+
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	out, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10")
+	c.Assert(err, IsNil)
+	out2, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10")
+	c.Assert(err, IsNil)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(100 * time.Millisecond)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(100 * time.Millisecond)
+
+	out = strings.TrimSpace(out)
+	out2 = strings.TrimSpace(out2)
+
+	errout, err := s.mon0cmd(fmt.Sprintf("docker kill -s KILL '%s' && sleep 1 && docker rm '%s'", out, out))
+	c.Assert(err, IsNil, Commentf(errout))
+	errout, err = s.mon0cmd(fmt.Sprintf("docker kill -s KILL '%s' && sleep 1 && docker rm '%s'", out2, out2))
+	c.Assert(err, IsNil, Commentf(errout))
+
+	errout, err = s.mon0cmd("grep 500 /tmp/volplugin.log")
+	c.Assert(err, NotNil, Commentf(errout))
 }

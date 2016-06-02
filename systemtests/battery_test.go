@@ -26,9 +26,9 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 				dockerCmd := fmt.Sprintf("docker run -d -v policy1/test%02d:/mnt alpine sleep 10m", x)
 				out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(dockerCmd)
 				c.Assert(err, IsNil)
-				failout, err := s.mon0cmd(dockerCmd)
-				log.Info(failout, err)
-				c.Assert(err, NotNil)
+				second, err := s.mon0cmd(dockerCmd)
+				log.Debug(second, err)
+				c.Assert(err, IsNil)
 
 				if cephDriver() {
 					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%02d", x))
@@ -40,7 +40,7 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 
 				out3, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(out)))
 				if err != nil {
-					log.Info(strings.TrimSpace(out3))
+					log.Error(strings.TrimSpace(out3))
 				}
 				c.Assert(err, IsNil)
 			}(x)
@@ -48,6 +48,11 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 
 		for x := 0; x < count; x++ {
 			<-syncChan
+		}
+
+		if cephDriver() {
+			_, err := s.mon0cmd("mount | grep -q rbd")
+			c.Assert(err, IsNil)
 		}
 
 		// FIXME netplugin is broken

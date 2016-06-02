@@ -71,6 +71,16 @@
 			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
 		{
+			"ImportPath": "github.com/docker/distribution/digest",
+			"Comment": "v2.4.0-rc.1-118-gd9c4f03",
+			"Rev": "d9c4f03bcce7a4967b5ec07d7028786c4081b890"
+		},
+		{
+			"ImportPath": "github.com/docker/distribution/reference",
+			"Comment": "v2.4.0-rc.1-118-gd9c4f03",
+			"Rev": "d9c4f03bcce7a4967b5ec07d7028786c4081b890"
+		},
+		{
 			"ImportPath": "github.com/docker/docker/pkg/plugins",
 			"Comment": "v1.4.1-10794-gb9361f0",
 			"Rev": "b9361f02da25108af75238093959634e433d72a0"
@@ -81,6 +91,76 @@
 			"Rev": "b9361f02da25108af75238093959634e433d72a0"
 		},
 		{
+			"ImportPath": "github.com/docker/engine-api/client",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/client/transport",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/client/transport/cancellable",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/blkiodev",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/container",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/filters",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/network",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/reference",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/registry",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/strslice",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/time",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/versions",
+			"Comment": "v0.3.1-115-gf14eb27",
+			"Rev": "f14eb279d813b39e37ae8a43d1308bbbcdef380f"
+		},
+		{
+			"ImportPath": "github.com/docker/go-connections/nat",
+			"Comment": "v0.2.0",
+			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
+		},
+		{
 			"ImportPath": "github.com/docker/go-connections/sockets",
 			"Comment": "v0.2.0",
 			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
@@ -89,6 +169,11 @@
 			"ImportPath": "github.com/docker/go-connections/tlsconfig",
 			"Comment": "v0.2.0",
 			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
+		},
+		{
+			"ImportPath": "github.com/docker/go-units",
+			"Comment": "v0.3.0-2-g09dda9d",
+			"Rev": "09dda9d4b0d748c57c14048906d3d094a58ec0c9"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
