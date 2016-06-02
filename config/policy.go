@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"path"
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage/backend/ceph"
@@ -106,16 +105,19 @@ func (c *Client) GetPolicy(name string) (*Policy, error) {
 
 // ListPolicies provides an array of strings corresponding to the name of each
 // policy.
-func (c *Client) ListPolicies() ([]string, error) {
+func (c *Client) ListPolicies() ([]Policy, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootPolicy), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
 		return nil, err
 	}
 
-	policies := []string{}
-
+	policies := []Policy{}
 	for _, node := range resp.Node.Nodes {
-		policies = append(policies, path.Base(node.Key))
+		policy := Policy{}
+		if err := json.Unmarshal([]byte(node.Value), &policy); err != nil {
+			return nil, err
+		}
+		policies = append(policies, policy)
 	}
 
 	return policies, nil

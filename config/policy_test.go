@@ -161,7 +161,7 @@ func (s *configSuite) TestBasicPolicy(c *C) {
 	for _, policy := range policies {
 		found := false
 		for _, name := range []string{"bar", "quux"} {
-			if policy == name {
+			if policy.Name == name {
 				found = true
 			}
 		}

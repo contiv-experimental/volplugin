@@ -252,7 +252,7 @@ func PolicyList(ctx *cli.Context) {
 }
 
 func policyList(ctx *cli.Context) (bool, error) {
-	var policies []string
+	var policies []config.Policy
 	if len(ctx.Args()) != 0 {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
@@ -279,7 +279,7 @@ func policyList(ctx *cli.Context) (bool, error) {
 	}
 
 	for _, policy := range policies {
-		fmt.Println(policy)
+		fmt.Println(policy.Name)
 	}
 
 	return false, nil
