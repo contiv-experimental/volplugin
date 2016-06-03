@@ -3,7 +3,6 @@ package volplugin
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,13 +12,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-)
-
-var (
-	errVolumeResponse = errors.New("Volmaster could not be contacted")
-	errVolumeNotFound = errors.New("Volume not found")
 )
 
 func (dc *DaemonConfig) mountExists(driver storage.MountDriver, driverOpts storage.DriverOptions) (bool, error) {
@@ -71,28 +66,27 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 
 	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 	if err != nil {
-		return nil, nil, driverOpts, errored.Errorf("loading driver").Combine(err)
+		return nil, nil, driverOpts, errors.GetDriver.Combine(err)
 	}
 
 	driverOpts, err = dc.volumeToDriverOptions(volConfig)
 	if err != nil {
-		return nil, nil, driverOpts, errored.Errorf("converting volume to internal structure").Combine(err)
+		return nil, nil, driverOpts, errors.UnmarshalRequest.Combine(err)
 	}
 
 	return driver, volConfig, driverOpts, nil
 }
 
-func httpError(w http.ResponseWriter, message string, err error) {
-	fullError := fmt.Sprintf("%s %v", message, err)
-
-	content, errc := marshalResponse(VolumeResponse{"", fullError})
+func httpError(w http.ResponseWriter, err error) {
+	content, errc := marshalResponse(VolumeResponse{"", err.Error()})
 	if errc != nil {
-		log.Warnf("Error received marshalling error response: %v, original error: %s", errc, fullError)
+		log.Warnf("Error received marshalling error response: %v, original error: %s", errc, err.Error())
+		http.Error(w, errc.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", fullError)
-	http.Error(w, string(content), http.StatusInternalServerError)
+	log.Warnf("Returning HTTP error handling plugin negotiation: %s", err.Error())
+	http.Error(w, string(content), http.StatusOK)
 }
 
 func unmarshalRequest(body io.Reader) (VolumeRequest, error) {
@@ -121,13 +115,13 @@ func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, erro
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/request", dc.Master), "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return nil, errVolumeResponse
+		return nil, errors.GetVolume.Combine(err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 404 {
-		return nil, errVolumeNotFound
+		return nil, errors.NotExists
 	}
 
 	content, err = ioutil.ReadAll(resp.Body)

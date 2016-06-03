@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
@@ -24,7 +25,7 @@ type unmarshalledConfig struct {
 func (dc *DaemonConfig) nilAction(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(VolumeResponse{})
 	if err != nil {
-		httpError(w, "Could not marshal request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 	w.Write(content)
@@ -33,7 +34,7 @@ func (dc *DaemonConfig) nilAction(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) activate(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(plugins.Manifest{Implements: []string{"VolumeDriver"}})
 	if err != nil {
-		httpError(w, "Could not generate bootstrap response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -48,18 +49,18 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 	defer r.Body.Close()
 	vr, err := unmarshalRequest(r.Body)
 	if err != nil {
-		httpError(w, "Could not unmarshal request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return nil, err
 	}
 
 	if vr.Name == "" {
-		httpError(w, "Name is empty", nil)
+		httpError(w, errors.InvalidVolume.Combine(errored.New("Name is empty")))
 		return nil, err
 	}
 
 	policy, name, err := splitPath(vr.Name)
 	if err != nil {
-		httpError(w, "Configuring volume", err)
+		httpError(w, errors.ConfiguringVolume.Combine(err))
 		return nil, err
 	}
 
@@ -75,7 +76,7 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 func writeResponse(w http.ResponseWriter, vr *VolumeResponse) {
 	content, err := marshalResponse(*vr)
 	if err != nil {
-		httpError(w, "Could not marshal response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -87,20 +88,20 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "Reading request", err)
+		httpError(w, errors.ReadBody.Combine(err))
 		return
 	}
 
 	vg := volumeGetRequest{}
 
 	if err := json.Unmarshal(content, &vg); err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s", dc.Master, vg.Name))
 	if err != nil {
-		httpError(w, "Making request to volmaster", err)
+		httpError(w, errors.VolmasterRequest.Combine(err))
 		return
 	}
 
@@ -112,7 +113,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.StatusCode != 200 {
-		httpError(w, "Retrieving volume", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
+		httpError(w, errors.GetVolume.Combine(errored.New(resp.Status)))
 		return
 	}
 
@@ -120,41 +121,41 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 
 	content, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		httpError(w, "Reading from volmaster", err)
+		httpError(w, errors.VolmasterRequest.Combine(err))
 		return
 	}
 
 	if err := json.Unmarshal(content, volConfig); err != nil {
-		httpError(w, "Unmarshalling volume", err)
+		httpError(w, errors.UnmarshalVolume.Combine(err))
 		return
 	}
 
 	if err := volConfig.Validate(); err != nil {
-		httpError(w, "Validating volume parameters", err)
+		httpError(w, errors.ConfiguringVolume.Combine(err))
 		return
 	}
 
 	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 	if err != nil {
-		httpError(w, "Configuring driver", err)
+		httpError(w, errors.GetDriver.Combine(err))
 		return
 	}
 
 	do, err := dc.volumeToDriverOptions(volConfig)
 	if err != nil {
-		httpError(w, "Getting ready to run driver operations", err)
+		httpError(w, errors.MarshalVolume.Combine(err))
 		return
 	}
 
 	path, err := driver.MountPath(do)
 	if err != nil {
-		httpError(w, "Calculating mount path", err)
+		httpError(w, errors.MountPath.Combine(err))
 		return
 	}
 
 	content, err = json.Marshal(volumeGet{Volume: volume{Name: volConfig.String(), Mountpoint: path}})
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -164,27 +165,27 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/", dc.Master))
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListVolume.Combine(err))
 		return
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		httpError(w, "Retrieving list", errored.Errorf("Status was not 200: was %d", resp.StatusCode))
+		httpError(w, errors.ListVolume.Combine(errored.New(resp.Status)))
 		return
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		httpError(w, "Reading response from volmaster", err)
+		httpError(w, errors.VolmasterRequest.Combine(err))
 		return
 	}
 
 	volumes := []*config.Volume{}
 
 	if err := json.Unmarshal(content, &volumes); err != nil {
-		httpError(w, "Unmarshalling response from volmaster", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
@@ -193,19 +194,19 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	for _, volConfig := range volumes {
 		driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
 		if err != nil {
-			httpError(w, "Configuring driver", err)
+			httpError(w, errors.GetDriver.Combine(err))
 			return
 		}
 
 		do, err := dc.volumeToDriverOptions(volConfig)
 		if err != nil {
-			httpError(w, "Getting ready to run driver operations", err)
+			httpError(w, errors.MarshalVolume.Combine(err))
 			return
 		}
 
 		path, err := driver.MountPath(do)
 		if err != nil {
-			httpError(w, "Calculating mount path", err)
+			httpError(w, errors.MountPath.Combine(err))
 			return
 		}
 
@@ -214,7 +215,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 
 	content, err = json.Marshal(response)
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -224,23 +225,23 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	driver, _, do, err := dc.structsVolumeName(uc)
-	if err == errVolumeNotFound {
+	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		log.Debugf("Volume %q not found, was requested", uc.Request.Name)
 		w.Write([]byte("{}"))
 		return
 	} else if err != nil {
-		httpError(w, "Setting up getPath: %v", err)
+		httpError(w, errors.GetDriver.Combine(err))
 		return
 	}
 
 	path, err := driver.MountPath(do)
 	if err != nil {
-		httpError(w, "Calculating mount path", err)
+		httpError(w, errors.MountPath.Combine(err))
 		return
 	}
 
@@ -250,12 +251,12 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	if err := dc.requestCreate(uc.Policy, uc.Name, uc.Request.Opts); err != nil {
-		httpError(w, "Could not determine policy configuration", err)
+		httpError(w, errors.GetPolicy.Combine(err))
 		return
 	}
 
@@ -265,7 +266,7 @@ func (dc *DaemonConfig) create(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.MountDriver, driverOpts storage.DriverOptions) {
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
-		httpError(w, "Calculating mount path", err)
+		httpError(w, errors.MountPath.Combine(err))
 		return
 	}
 
@@ -275,7 +276,7 @@ func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.Mo
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
-		httpError(w, "Processing request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
@@ -283,7 +284,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	driver, volConfig, driverOpts, err := dc.structsVolumeName(uc)
 	if err != nil {
-		httpError(w, "Configuring request", err)
+		httpError(w, errors.ConfiguringVolume.Combine(err))
 		return
 	}
 
@@ -300,7 +301,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := dc.Client.ReportMount(ut); err != nil {
-		httpError(w, "Reporting mount to master", err)
+		httpError(w, errors.RefreshMount.Combine(err))
 		return
 	}
 
@@ -313,7 +314,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
 		dc.decreaseMount(volName)
-		httpError(w, "Volume could not be mounted", err)
+		httpError(w, errors.MountFailed.Combine(err))
 		if err := dc.Client.ReportUnmount(ut); err != nil {
 			log.Errorf("Could not report unmount: %v", err)
 		}
@@ -321,7 +322,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
-		httpError(w, "Applying cgroups", err)
+		httpError(w, errors.RateLimit.Combine(err))
 		return
 	}
 
@@ -330,7 +331,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
-		httpError(w, "Calculating mount path", err)
+		httpError(w, errors.MountPath.Combine(err))
 		return
 	}
 
@@ -340,7 +341,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	uc, err := unmarshalAndCheck(w, r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
@@ -348,7 +349,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	driver, volConfig, driverOpts, err := dc.structsVolumeName(uc)
 	if err != nil {
-		httpError(w, "Configuring request", err)
+		httpError(w, errors.GetDriver.Combine(err))
 		return
 	}
 
@@ -361,7 +362,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := driver.Unmount(driverOpts); err != nil {
-		httpError(w, "Could not unmount image", err)
+		httpError(w, errors.UnmountFailed.Combine(err))
 		return
 	}
 
@@ -379,7 +380,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := dc.Client.ReportUnmount(ut); err != nil {
-		httpError(w, fmt.Sprintf("Reporting unmount for volume %v, to master", volConfig), err)
+		httpError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
 		return
 	}
 

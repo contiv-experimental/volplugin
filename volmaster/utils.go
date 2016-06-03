@@ -19,11 +19,9 @@ func errExit(ctx *cli.Context, err error) {
 	os.Exit(1)
 }
 
-func httpError(w http.ResponseWriter, message string, err error) {
-	fullError := fmt.Sprintf("%s %v", message, err)
-
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", fullError)
-	http.Error(w, fullError, http.StatusInternalServerError)
+func httpError(w http.ResponseWriter, err error) {
+	log.Warnf("Returning HTTP error handling plugin negotiation: %v", err)
+	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 func unmarshalRequest(r *http.Request) (config.Request, error) {

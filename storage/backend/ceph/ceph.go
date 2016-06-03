@@ -42,7 +42,7 @@ type Driver struct {
 
 func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (*executor.ExecResult, error) {
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	return executor.New(cmd).Run(ctx)
+	return executor.NewCapture(cmd).Run(ctx)
 }
 
 // NewMountDriver is a generator for Driver structs. It is used by the storage

@@ -14,6 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
@@ -148,18 +149,18 @@ func (d *DaemonConfig) handleDebug(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleGlobalUpload(w http.ResponseWriter, r *http.Request) {
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "reading request body", err)
+		httpError(w, errors.ReadBody.Combine(err))
 		return
 	}
 
 	global := config.NewGlobalConfig()
 	if err := json.Unmarshal(data, global); err != nil {
-		httpError(w, "Unmarshalling global config upload request", err)
+		httpError(w, errors.UnmarshalGlobal.Combine(err))
 		return
 	}
 
 	if err := d.Config.PublishGlobal(global); err != nil {
-		httpError(w, "Failed to publish global configuration", err)
+		httpError(w, errors.PublishGlobal.Combine(err))
 		return
 	}
 }
@@ -170,18 +171,18 @@ func (d *DaemonConfig) handlePolicyUpload(w http.ResponseWriter, r *http.Request
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "reading request body", err)
+		httpError(w, errors.ReadBody.Combine(err))
 		return
 	}
 
 	policy := config.NewPolicy()
 	if err := json.Unmarshal(data, policy); err != nil {
-		httpError(w, "Unmarshalling policy upload request", err)
+		httpError(w, errors.UnmarshalPolicy.Combine(err))
 		return
 	}
 
 	if err := d.Config.PublishPolicy(policyName, policy); err != nil {
-		httpError(w, "Failed to upload policy", err)
+		httpError(w, errors.PublishPolicy.Combine(err))
 		return
 	}
 }
@@ -191,7 +192,7 @@ func (d *DaemonConfig) handlePolicyDelete(w http.ResponseWriter, r *http.Request
 	policy := vars["policy"]
 
 	if err := d.Config.DeletePolicy(policy); err != nil {
-		httpError(w, "Failed to publish global configuration", err)
+		httpError(w, errors.PublishGlobal.Combine(err))
 		return
 	}
 }
@@ -199,13 +200,13 @@ func (d *DaemonConfig) handlePolicyDelete(w http.ResponseWriter, r *http.Request
 func (d *DaemonConfig) handlePolicyList(w http.ResponseWriter, r *http.Request) {
 	policies, err := d.Config.ListPolicies()
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListPolicy.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(policies)
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListPolicy.Combine(err))
 		return
 	}
 
@@ -217,13 +218,13 @@ func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 
 	policyObj, err := d.Config.GetPolicy(policy)
 	if err != nil {
-		httpError(w, "Retrieving policy", err)
+		httpError(w, errors.GetPolicy.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(policyObj)
 	if err != nil {
-		httpError(w, "Marshalling policy response", err)
+		httpError(w, errors.MarshalPolicy.Combine(err))
 		return
 	}
 
@@ -243,13 +244,13 @@ func (d *DaemonConfig) handleUsesMountsVolume(w http.ResponseWriter, r *http.Req
 	mount := &config.UseMount{}
 
 	if err := d.Config.GetUse(mount, vc); err != nil {
-		httpError(w, "Getting mount", err)
+		httpError(w, errors.GetMount.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(mount)
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -263,13 +264,13 @@ func (d *DaemonConfig) handleRuntime(w http.ResponseWriter, r *http.Request) {
 
 	runtime, err := d.Config.GetVolumeRuntime(policy, volumeName)
 	if err != nil {
-		httpError(w, "Retrieving original volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(runtime)
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -283,24 +284,24 @@ func (d *DaemonConfig) handleRuntimeUpload(w http.ResponseWriter, r *http.Reques
 
 	volume, err := d.Config.GetVolume(policy, volumeName)
 	if err != nil {
-		httpError(w, "Retrieving original volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "reading request body", err)
+		httpError(w, errors.ReadBody.Combine(err))
 		return
 	}
 
 	runtime := config.RuntimeOptions{}
 	if err := json.Unmarshal(data, &runtime); err != nil {
-		httpError(w, "Unmarshalling runtime upload request", err)
+		httpError(w, errors.UnmarshalRuntime.Combine(err))
 		return
 	}
 
 	if err := d.Config.PublishVolumeRuntime(volume, runtime); err != nil {
-		httpError(w, "Failed publish volume runtime", err)
+		httpError(w, errors.PublishRuntime.Combine(err))
 		return
 	}
 }
@@ -312,18 +313,18 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 
 	volConfig, err := d.Config.GetVolume(policy, volumeName)
 	if err != nil {
-		httpError(w, "Retrieving original volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	if volConfig.Backends.Snapshot == "" {
-		httpError(w, fmt.Sprintf("Backend supporting missing: volume %q cannot support snapshots", volConfig), nil)
+		httpError(w, errors.SnapshotsUnsupported.Combine(errored.Errorf("%q", volConfig)))
 		return
 	}
 
 	driver, err := backend.NewSnapshotDriver(volConfig.Backends.Snapshot)
 	if err != nil {
-		httpError(w, "Constructing driver:", err)
+		httpError(w, errors.GetDriver.Combine(err))
 		return
 	}
 
@@ -337,13 +338,13 @@ func (d *DaemonConfig) handleSnapshotList(w http.ResponseWriter, r *http.Request
 
 	results, err := driver.ListSnapshots(do)
 	if err != nil {
-		httpError(w, "Listing snapshots", err)
+		httpError(w, errors.ListSnapshots.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(results)
 	if err != nil {
-		httpError(w, "Marshalling results", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -356,7 +357,7 @@ func (d *DaemonConfig) handleSnapshotTake(w http.ResponseWriter, r *http.Request
 	volume := vars["volume"]
 
 	if err := d.Config.TakeSnapshot(fmt.Sprintf("%v/%v", policy, volume)); err != nil {
-		httpError(w, "Failed to take snapshot", err)
+		httpError(w, errors.SnapshotFailed.Combine(err))
 		return
 	}
 }
@@ -364,45 +365,45 @@ func (d *DaemonConfig) handleSnapshotTake(w http.ResponseWriter, r *http.Request
 func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	if _, ok := req.Options["snapshot"]; !ok {
-		httpError(w, "Could not find snapshot option in request: cannot copy.", nil)
+		httpError(w, errors.MissingSnapshotOption)
 		return
 	}
 
 	if _, ok := req.Options["target"]; !ok {
-		httpError(w, "Could not find target option in request: cannot copy.", nil)
+		httpError(w, errors.MissingTargetOption)
 		return
 	}
 
 	if strings.Contains(req.Options["target"], "/") {
-		httpError(w, "Volume target contains invalid characters: /", nil)
+		httpError(w, errors.InvalidVolume.Combine(errored.New("/")))
 		return
 	}
 
 	volConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err != nil {
-		httpError(w, "Retrieving original volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	if volConfig.Backends.Snapshot == "" {
-		httpError(w, fmt.Sprintf("Backend supporting missing: volume %q cannot support snapshots", volConfig), nil)
+		httpError(w, errors.SnapshotsUnsupported.Combine(errored.New(volConfig.Backends.Snapshot)))
 		return
 	}
 
 	driver, err := backend.NewSnapshotDriver(volConfig.Backends.Snapshot)
 	if err != nil {
-		httpError(w, "Constructing driver:", err)
+		httpError(w, errors.GetDriver.Combine(err))
 		return
 	}
 
 	newVolConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err != nil {
-		httpError(w, "Retrieving original volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
@@ -418,12 +419,12 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 
 	host, err := os.Hostname()
 	if err != nil {
-		httpError(w, "Retrieving hostname", err)
+		httpError(w, errors.GetHostname.Combine(err))
 		return
 	}
 
 	if volConfig.VolumeName == newVolConfig.VolumeName {
-		httpError(w, fmt.Sprintf("You cannot copy volume %q onto itself.", volConfig.VolumeName), nil)
+		httpError(w, errors.CannotCopyVolume.Combine(errored.Errorf("You cannot copy volume %q onto itself.", volConfig.VolumeName)))
 		return
 	}
 
@@ -461,7 +462,12 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		httpError(w, fmt.Sprintf("Creating new volume %q from volume %q, snapshot %q", req.Options["target"], volConfig.String(), req.Options["snapshot"]), err)
+		httpError(w, errors.PublishVolume.Combine(errored.Errorf(
+			"Creating new volume %q from volume %q, snapshot %q",
+			req.Options["target"],
+			volConfig.String(),
+			req.Options["snapshot"],
+		)).Combine(err))
 		return
 	}
 }
@@ -469,7 +475,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(d.Global)
 	if err != nil {
-		httpError(w, "Marshalling global configuration", err)
+		httpError(w, errors.MarshalGlobal.Combine(err))
 		return
 	}
 
@@ -479,7 +485,7 @@ func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	vols, err := d.Config.ListAllVolumes()
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListVolume.Combine(err))
 		return
 	}
 
@@ -487,13 +493,13 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
 		if len(parts) != 2 {
-			httpError(w, "Invalid volume name", nil)
+			httpError(w, errors.InvalidVolume.Combine(errored.New(vol)))
 			return
 		}
 		// FIXME make this take a single string and not a split one
 		volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 		if err != nil {
-			httpError(w, "Retrieving list", err)
+			httpError(w, errors.ListVolume.Combine(err))
 			return
 		}
 
@@ -502,7 +508,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 
 	content, err := json.Marshal(response)
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -512,7 +518,7 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleListAll(w http.ResponseWriter, r *http.Request) {
 	vols, err := d.Config.ListAllVolumes()
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListVolume.Combine(err))
 		return
 	}
 
@@ -520,13 +526,13 @@ func (d *DaemonConfig) handleListAll(w http.ResponseWriter, r *http.Request) {
 	for _, vol := range vols {
 		parts := strings.SplitN(vol, "/", 2)
 		if len(parts) != 2 {
-			httpError(w, "Invalid volume name", nil)
+			httpError(w, errors.InvalidVolume.Combine(errored.New(vol)))
 			return
 		}
 		// FIXME make this take a single string and not a split one
 		volConfig, err := d.Config.GetVolume(parts[0], parts[1])
 		if err != nil {
-			httpError(w, "Retrieving list", err)
+			httpError(w, errors.ListVolume.Combine(err))
 			return
 		}
 
@@ -535,7 +541,7 @@ func (d *DaemonConfig) handleListAll(w http.ResponseWriter, r *http.Request) {
 
 	content, err := json.Marshal(response)
 	if err != nil {
-		httpError(w, "Retrieving list", err)
+		httpError(w, errors.ListVolume.Combine(err))
 		return
 	}
 
@@ -548,17 +554,17 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	volumeName := vars["volume"]
 
 	volConfig, err := d.Config.GetVolume(policy, volumeName)
-	if config.NotFound(err) {
+	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		w.WriteHeader(404)
 		return
 	} else if err != nil {
-		httpError(w, "Retrieving volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(volConfig)
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -568,19 +574,19 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	vc, err := d.Config.GetVolume(req.Policy, req.Volume)
 	if err != nil {
-		httpError(w, "obtaining volume configuration", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		httpError(w, "Retrieving hostname", err)
+		httpError(w, errors.GetHostname.Combine(err))
 		return
 	}
 
@@ -597,15 +603,15 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	etcdRemove := func() error {
 		if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
-			return errored.Errorf("Clearing volume records for %q", vc).Combine(err)
+			return errors.ClearVolume.Combine(errored.New(vc.String())).Combine(err)
 		}
 
 		return nil
 	}
 
 	complete := func() error {
-		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errNoActionTaken {
-			log.Warn(errored.Errorf("Removing image %q", vc).Combine(err))
+		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errors.NoActionTaken {
+			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
 		}
 
 		return etcdRemove()
@@ -613,29 +619,29 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		exists, err := d.existsVolume(vc)
-		if err != nil && err != errNoActionTaken {
+		if err != nil && err != errors.NoActionTaken {
 			return err
 		}
 
-		if err == errNoActionTaken {
+		if err == errors.NoActionTaken {
 			return complete()
 		}
 
 		if !exists {
 			etcdRemove()
-			return config.ErrNotExist
+			return errors.NotExists
 		}
 
 		return complete()
 	})
 
-	if err == config.ErrNotExist {
+	if err == errors.NotExists {
 		w.WriteHeader(404)
 		return
 	}
 
 	if err != nil {
-		httpError(w, fmt.Sprintf("Removing volume %v", vc), err)
+		httpError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err))
 		return
 	}
 }
@@ -643,18 +649,18 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleRemoveForce(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	err = d.Config.RemoveVolume(req.Policy, req.Volume)
-	if err == config.ErrNotExist {
+	if err == errors.NotExists {
 		w.WriteHeader(404)
 		return
 	}
 
 	if err != nil {
-		httpError(w, fmt.Sprintf("Removing volume %v/%v", req.Policy, req.Volume), err)
+		httpError(w, errors.RemoveVolume.Combine(errored.Errorf("%v/%v", req.Policy, req.Volume)).Combine(err))
 		return
 	}
 }
@@ -662,13 +668,13 @@ func (d *DaemonConfig) handleRemoveForce(w http.ResponseWriter, r *http.Request)
 func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalUseMount(r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	req.Reason = lock.ReasonMount
 	if err := d.Config.RemoveUse(req, false); err != nil {
-		httpError(w, "Could not remove mount information", err)
+		httpError(w, errors.RemoveMount.Combine(err))
 		return
 	}
 }
@@ -676,13 +682,13 @@ func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalUseMount(r)
 	if err != nil {
-		httpError(w, "Could not publish mount information", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	req.Reason = lock.ReasonMount
 	if err := d.Config.PublishUse(req); err != nil {
-		httpError(w, "Could not publish mount information", err)
+		httpError(w, errors.PublishMount.Combine(err))
 		return
 	}
 }
@@ -690,30 +696,30 @@ func (d *DaemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalUseMount(r)
 	if err != nil {
-		httpError(w, "Could not refresh mount information", err)
+		httpError(w, errors.RefreshMount.Combine(err))
 		return
 	}
 
 	parts := strings.SplitN(req.Volume, "/", 2)
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
-		httpError(w, "Invalid volume name", err)
+		httpError(w, errors.InvalidVolume.Combine(errored.New(req.Volume)))
 		return
 	}
 
 	_, err = d.Config.GetVolume(parts[0], parts[1])
 
-	if config.NotFound(err) {
+	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		log.Error("Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
 		return
 	} else if err != nil {
-		httpError(w, "Retrieving volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	req.Reason = lock.ReasonMount
 	if err := d.Config.PublishUseWithTTL(req, d.Global.TTL, client.PrevExist); err != nil {
-		httpError(w, "Could not refresh mount information", err)
+		httpError(w, errors.RefreshMount.Combine(err))
 		return
 	}
 }
@@ -721,22 +727,22 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 	req, err := unmarshalRequest(r)
 	if err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	tenConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
-	if config.NotFound(err) {
+	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		w.WriteHeader(404)
 		return
 	} else if err != nil {
-		httpError(w, "Retrieving Volume", err)
+		httpError(w, errors.GetVolume.Combine(err))
 		return
 	}
 
 	content, err := json.Marshal(tenConfig)
 	if err != nil {
-		httpError(w, "Marshalling response", err)
+		httpError(w, errors.MarshalResponse.Combine(err))
 		return
 	}
 
@@ -746,36 +752,36 @@ func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		httpError(w, "Reading request", err)
+		httpError(w, errors.ReadBody.Combine(err))
 		return
 	}
 
 	var req config.RequestCreate
 
 	if err := json.Unmarshal(content, &req); err != nil {
-		httpError(w, "Unmarshalling request", err)
+		httpError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
 
 	if req.Policy == "" {
-		httpError(w, "Reading policy", errored.Errorf("policy was blank"))
+		httpError(w, errors.GetPolicy.Combine(errored.Errorf("policy was blank")))
 		return
 	}
 
 	if req.Volume == "" {
-		httpError(w, "Reading volume", errored.Errorf("volume was blank"))
+		httpError(w, errors.GetVolume.Combine(errored.Errorf("volume was blank")))
 		return
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		httpError(w, "Retrieving hostname", err)
+		httpError(w, errors.GetHostname.Combine(err))
 		return
 	}
 
 	policy, err := d.Config.GetPolicy(req.Policy)
 	if err != nil {
-		httpError(w, "Retrieving policy", err)
+		httpError(w, errors.GetPolicy.Combine(errored.New(req.Policy).Combine(err)))
 		return
 	}
 
@@ -799,41 +805,41 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Volume Create: %#v", *volConfig)
 
 		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
-		if err == errNoActionTaken {
+		if err == errors.NoActionTaken {
 			goto publish
 		}
 
 		if err != nil {
-			return errored.Errorf("Creating volume").Combine(err)
+			return errors.CreateVolume.Combine(err)
 		}
 
 		if err := d.formatVolume(volConfig, do); err != nil {
 			if err := d.removeVolume(volConfig, d.Global.Timeout); err != nil {
 				log.Errorf("Error during cleanup of failed format: %v", err)
 			}
-			return errored.Errorf("Formatting volume").Combine(err)
+			return errors.FormatVolume.Combine(err)
 		}
 
 	publish:
-		if err := ld.Config.PublishVolume(volConfig); err != nil && err != config.ErrExist {
+		if err := ld.Config.PublishVolume(volConfig); err != nil && err != errors.Exists {
 			// FIXME this shouldn't leak down to the client.
 			if _, ok := err.(*errored.Error); !ok {
-				return errored.Errorf("Error publishing volume").Combine(err)
+				return errors.PublishVolume.Combine(err)
 			}
 			return err
 		}
 
 		content, err = json.Marshal(volConfig)
 		if err != nil {
-			return errored.Errorf("Marshalling response").Combine(err)
+			return errors.MarshalPolicy.Combine(err)
 		}
 
 		w.Write(content)
 		return nil
 	})
 
-	if err != nil && err != config.ErrExist {
-		httpError(w, "Creating volume", err)
+	if err != nil && err != errors.Exists {
+		httpError(w, errors.CreateVolume.Combine(err))
 		return
 	}
 }

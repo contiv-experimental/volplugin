@@ -26,7 +26,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/errored",
-			"Rev": "b0e254c415ecd809cd8fa0af8d3a4349e7044f18"
+			"Rev": "56606af463198f4e26d9ad431b0838808146db9b"
 		},
 		{
 			"ImportPath": "github.com/contiv/executor",
