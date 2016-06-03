@@ -39,6 +39,8 @@ type volume struct {
 	Mountpoint string
 }
 
+type routeHandlers map[string]func(http.ResponseWriter, *http.Request)
+
 // Daemon initializes the daemon for use.
 func (d *DaemonConfig) Daemon(listen string) {
 	global, err := d.Config.GetGlobal()
@@ -84,8 +86,8 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/snapshots/take/{policy}/{volume}": d.handleSnapshotTake,
 	}
 
-	for path, f := range postRouter {
-		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("POST")
+	if err := addRoute(r, postRouter, "POST", d.Global.Debug); err != nil {
+		log.Fatalf("Error starting volmaster: %v", err)
 	}
 
 	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -94,8 +96,8 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/policies/{policy}":   d.handlePolicyDelete,
 	}
 
-	for path, f := range deleteRouter {
-		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("DELETE")
+	if err := addRoute(r, deleteRouter, "DELETE", d.Global.Debug); err != nil {
+		log.Fatalf("Error starting volmaster: %v", err)
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -103,15 +105,15 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/policies":                      d.handlePolicyList,
 		"/policies/{policy}":             d.handlePolicy,
 		"/uses/mounts/{policy}/{volume}": d.handleUsesMountsVolume,
-		"/volumes/":                      d.handleListAll,
+		"/volumes":                       d.handleListAll,
 		"/volumes/{policy}":              d.handleList,
 		"/volumes/{policy}/{volume}":     d.handleGet,
 		"/runtime/{policy}/{volume}":     d.handleRuntime,
 		"/snapshots/{policy}/{volume}":   d.handleSnapshotList,
 	}
 
-	for path, f := range getRouter {
-		r.HandleFunc(path, logHandler(path, d.Global.Debug, f)).Methods("GET")
+	if err := addRoute(r, getRouter, "GET", d.Global.Debug); err != nil {
+		log.Fatalf("Error starting volmaster: %v", err)
 	}
 
 	if d.Global.Debug {
@@ -121,6 +123,18 @@ func (d *DaemonConfig) Daemon(listen string) {
 	if err := http.ListenAndServe(listen, r); err != nil {
 		log.Fatalf("Error starting volmaster: %v", err)
 	}
+}
+
+func addRoute(r *mux.Router, handlers routeHandlers, method string, debug bool) error {
+	for path, f := range handlers {
+		if strings.HasSuffix(path, "/") {
+			return fmt.Errorf("route path %v has trailing slash", path)
+		}
+		r.HandleFunc(path, logHandler(path, debug, f)).Methods(method)
+		pathSlash := fmt.Sprintf("%v/", path)
+		r.HandleFunc(pathSlash, logHandler(pathSlash, debug, f)).Methods(method)
+	}
+	return nil
 }
 
 func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
