@@ -10,5 +10,5 @@ fi
 for i in ceph nfs
 do
   echo running ${i}-driver tests...
-  USE_DRIVER="${i}" go test -v -timeout 240m ./systemtests -check.v
+  USE_DRIVER="${i}" go test -v -timeout 240m ./systemtests -check.v -check.f "${TESTRUN}"
 done
