@@ -449,12 +449,6 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uc := &config.UseMount{
-		Volume:   volConfig.String(),
-		Reason:   lock.ReasonCopy,
-		Hostname: host,
-	}
-
 	snapUC := &config.UseSnapshot{
 		Volume: volConfig.String(),
 		Reason: lock.ReasonCopy,
@@ -471,7 +465,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonCopy,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{newUC, newSnapUC, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		if err := d.Config.PublishVolume(newVolConfig); err != nil {
 			return err
 		}

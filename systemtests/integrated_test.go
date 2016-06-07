@@ -234,9 +234,11 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 	c.Assert(err, IsNil)
 
 	defer func() {
-		c.Assert(s.purgeVolume("mon0", "policy1", "test2", true), IsNil)
+		s.purgeVolume("mon0", "policy1", "test3", true)
+		s.purgeVolume("mon0", "policy1", "test2", true)
 		_, err := s.mon0cmd(fmt.Sprintf("sudo rbd snap unprotect policy1.test --snap %s --pool rbd", lines[0]))
 		c.Assert(err, IsNil)
+		s.clearContainers()
 		c.Assert(s.purgeVolume("mon0", "policy1", "test", true), IsNil)
 	}()
 
@@ -249,6 +251,21 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 
 	// off-by-one because of the initial newline in the volcli output
 	c.Assert([]string{"policy1/test", "policy1/test2"}, DeepEquals, lines2[1:])
+
+	// mount the volume and try a new copy: should succeed
+	out, err = s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
+	out, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test3", lines[0]))
+	c.Assert(err, IsNil, Commentf(out))
+
+	out, err = s.volcli("volume list-all")
+	lines2 = strings.Split(out, "\n")
+
+	sort.Strings(lines2)
+
+	// off-by-one because of the initial newline in the volcli output
+	// re-test after the second volume was copied.
+	c.Assert([]string{"policy1/test", "policy1/test2", "policy1/test3"}, DeepEquals, lines2[1:])
 }
 
 func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
@@ -275,6 +292,16 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
 	c.Assert(err, NotNil)
 	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/nonexistent %s test2", lines[0]))
 	c.Assert(err, NotNil)
+
+	// cleanup paranoia so other tests still pass
+	defer func() {
+		s.purgeVolume("mon0", "policy1", "test2", true)
+		s.purgeVolume("mon0", "policy1", "test", true)
+	}()
+
+	// test that the remove is safe after all the snapshot ops
+	_, err = s.volcli("volume remove policy1/test")
+	c.Assert(err, IsNil)
 }
 
 func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {

@@ -397,7 +397,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	cmd := exec.Command("rbd", "snap", "protect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 
-	if err != nil {
+	if err != nil && er.ExitStatus != 0 && er.ExitStatus != int(unix.EBUSY) {
 		errChan <- err
 		return err
 	}
@@ -419,12 +419,6 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		default:
 		}
 	}()
-
-	if er.ExitStatus != 0 {
-		newerr := errored.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", intOrigName, snapName, err)
-		errChan <- newerr
-		return newerr
-	}
 
 	cmd = exec.Command("rbd", "clone", intOrigName, intNewName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err = runWithTimeout(cmd, do.Timeout)
