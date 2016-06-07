@@ -263,18 +263,21 @@ func (s *cephSuite) TestSnapshotClone(c *C) {
 
 	c.Assert(crudDrv.Create(driverOpts), IsNil)
 	c.Assert(snapDrv.CreateSnapshot("test", driverOpts), IsNil)
-	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), IsNil)
+	c.Assert(snapDrv.CreateSnapshot("testsnap", driverOpts), IsNil)
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), IsNil)
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
 	defer func(driverOpts storage.DriverOptions) {
 		driverOpts.Volume.Name = "test/image"
-		c.Assert(crudDrv.Destroy(driverOpts), IsNil)
-		c.Assert(exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run(), IsNil)
+		crudDrv.Destroy(driverOpts)
+		exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run()
+		exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "testsnap", "--pool", volumeSpec.Params["pool"]).Run()
 		driverOpts.Volume.Name = "test/pithos"
-		c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+		crudDrv.Destroy(driverOpts)
 	}(driverOpts)
 
 	content, err := exec.Command("rbd", "ls").CombinedOutput()
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(string(content)), Equals, "test.image\ntest.pithos")
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "foo", "test/image"), NotNil)
-	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
+	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), NotNil)
 }
