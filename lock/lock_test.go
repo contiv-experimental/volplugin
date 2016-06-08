@@ -42,7 +42,7 @@ func (s *lockSuite) SetUpTest(c *C) {
 }
 
 func (s *lockSuite) TestExecuteWithUseLock(c *C) {
-	vc, err := s.tlc.CreateVolume(config.RequestCreate{Policy: "policy", Volume: "foo"})
+	vc, err := s.tlc.CreateVolume(config.Request{Policy: "policy", Volume: "foo"})
 	c.Assert(err, IsNil)
 	uc := &config.UseMount{
 		Volume:   vc.String(),
@@ -101,7 +101,7 @@ func (s *lockSuite) TestExecuteWithUseLock(c *C) {
 }
 
 func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
-	vc, err := s.tlc.CreateVolume(config.RequestCreate{Policy: "policy", Volume: "foo"})
+	vc, err := s.tlc.CreateVolume(config.Request{Policy: "policy", Volume: "foo"})
 	c.Assert(err, IsNil)
 	um := &config.UseMount{
 		Volume:   vc.String(),

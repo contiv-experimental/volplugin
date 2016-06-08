@@ -770,7 +770,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req config.RequestCreate
+	var req config.Request
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		httpError(w, errors.UnmarshalRequest.Combine(err))

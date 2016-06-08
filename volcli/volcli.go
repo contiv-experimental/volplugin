@@ -312,10 +312,10 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 		opts[pair[0]] = pair[1]
 	}
 
-	tc := &config.RequestCreate{
-		Policy: policy,
-		Volume: volume,
-		Opts:   opts,
+	tc := &config.Request{
+		Policy:  policy,
+		Volume:  volume,
+		Options: opts,
 	}
 
 	content, err := json.Marshal(tc)

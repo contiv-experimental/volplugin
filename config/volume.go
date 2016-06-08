@@ -83,7 +83,7 @@ func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the Volume that was copied in.
-func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
+func (c *Client) CreateVolume(rc Request) (*Volume, error) {
 	resp, err := c.GetPolicy(rc.Policy)
 	if err != nil {
 		return nil, err
@@ -91,12 +91,12 @@ func (c *Client) CreateVolume(rc RequestCreate) (*Volume, error) {
 
 	var mount string
 
-	if rc.Opts != nil {
-		mount = rc.Opts["mount"]
-		delete(rc.Opts, "mount")
+	if rc.Options != nil {
+		mount = rc.Options["mount"]
+		delete(rc.Options, "mount")
 	}
 
-	if err := mergeOpts(resp, rc.Opts); err != nil {
+	if err := mergeOpts(resp, rc.Options); err != nil {
 		return nil, err
 	}
 
