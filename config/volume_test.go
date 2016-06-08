@@ -20,7 +20,7 @@ func (s *configSuite) TestActualSize(c *C) {
 	vo = &CreateOptions{Size: "1GB"}
 	actualSize, err = vo.ActualSize()
 	c.Assert(err, IsNil)
-	c.Assert(int(actualSize), Equals, 1024)
+	c.Assert(int(actualSize), Equals, 1000)
 
 	vo = &CreateOptions{Size: "0"}
 	actualSize, err = vo.ActualSize()
@@ -28,8 +28,9 @@ func (s *configSuite) TestActualSize(c *C) {
 	c.Assert(int(actualSize), Equals, 0)
 
 	vo = &CreateOptions{Size: "10M"}
-	_, err = vo.ActualSize()
-	c.Assert(err, NotNil)
+	size, err := vo.ActualSize()
+	c.Assert(size, Equals, uint64(10))
+	c.Assert(err, IsNil)
 
 	vo = &CreateOptions{Size: "garbage"}
 	_, err = vo.ActualSize()
@@ -45,7 +46,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 
 	vc = &Volume{
 		DriverOptions:  map[string]string{"pool": "rbd"},
-		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "",
 		PolicyName:     "policy1",
@@ -55,7 +56,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 
 	vc = &Volume{
 		DriverOptions:  map[string]string{"pool": "rbd"},
-		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",
 		PolicyName:     "",
@@ -70,7 +71,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 			CRUD:     "ceph",
 		},
 		DriverOptions:  map[string]string{"pool": "rbd"},
-		CreateOptions:  CreateOptions{Size: "10MB", actualSize: 10},
+		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",
 		PolicyName:     "policy1",
@@ -80,26 +81,16 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 }
 
 func (s *configSuite) TestVolumeOptionsValidate(c *C) {
-	opts := CreateOptions{}
-	c.Assert(opts.Validate(), IsNil)
-	opts2 := RuntimeOptions{}
-	c.Assert(opts2.Validate(), IsNil)
-
-	opts = CreateOptions{Size: "0M"}
+	opts := RuntimeOptions{UseSnapshots: true}
 	c.Assert(opts.Validate(), NotNil)
-	opts = CreateOptions{Size: "10MB", actualSize: 10}
+	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{}}
+	c.Assert(opts.Validate(), NotNil)
+	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}}
+	c.Assert(opts.Validate(), NotNil)
+	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}}
+	c.Assert(opts.Validate(), NotNil)
+	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}}
 	c.Assert(opts.Validate(), IsNil)
-
-	opts2 = RuntimeOptions{UseSnapshots: true}
-	c.Assert(opts2.Validate(), NotNil)
-	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{}}
-	c.Assert(opts2.Validate(), NotNil)
-	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}}
-	c.Assert(opts2.Validate(), NotNil)
-	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}}
-	c.Assert(opts2.Validate(), NotNil)
-	opts2 = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}}
-	c.Assert(opts2.Validate(), IsNil)
 }
 
 func (s *configSuite) TestWatchVolumes(c *C) {
@@ -167,7 +158,6 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 			c.Assert(runtime, DeepEquals, vcfg.RuntimeOptions)
 
 			vcfg.CreateOptions.Size = "0"
-			vcfg.CreateOptions.actualSize = 0
 			c.Assert(s.tlc.PublishVolume(vcfg), NotNil)
 		}
 

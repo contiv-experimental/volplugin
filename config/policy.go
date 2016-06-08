@@ -5,7 +5,6 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
-	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -31,9 +30,7 @@ type BackendDrivers struct {
 
 // NewPolicy return policy config with specified backend preset
 func NewPolicy() *Policy {
-	return &Policy{
-		Backends: BackendDrivers{ceph.BackendName, ceph.BackendName, ceph.BackendName},
-	}
+	return &Policy{}
 }
 
 var defaultFilesystems = map[string]string{
@@ -49,10 +46,6 @@ func (c *Client) policy(name string) string {
 // PublishPolicy publishes policy intent to the configuration store.
 func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 	cfg.Name = name
-
-	if err := cfg.CreateOptions.computeSize(); err != nil {
-		return err
-	}
 
 	if err := cfg.Validate(); err != nil {
 		return err
@@ -130,16 +123,17 @@ func (cfg *Policy) Validate() error {
 		cfg.FileSystems = defaultFilesystems
 	}
 
-	if err := cfg.CreateOptions.Validate(); err != nil {
-		return err
-	}
-
 	if cfg.Name == "" {
 		return errored.Errorf("Name is empty for policy")
 	}
 
 	if cfg.Backends.Mount == "" {
 		return errored.Errorf("Mount backend cannot be empty for policy %v", cfg)
+	}
+
+	size, err := cfg.CreateOptions.ActualSize()
+	if cfg.Backends.CRUD != "" && (size == 0 || err != nil) {
+		return errored.Errorf("Size set to zero for non-empty CRUD backend %v", cfg.Backends.CRUD).Combine(err)
 	}
 
 	return cfg.RuntimeOptions.Validate()

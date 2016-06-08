@@ -117,6 +117,9 @@ system-test-big:
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
 
+reflex-run: reflex
+	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make run
+
 reflex-build: reflex
 	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make build
 

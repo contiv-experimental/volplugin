@@ -16,12 +16,8 @@
 			"Rev": "f7f79f729e0fbe2fcc061db48a9ba0263f588252"
 		},
 		{
-			"ImportPath": "github.com/alecthomas/units",
-			"Rev": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
-		},
-		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-155-g96f1fed",
+			"Comment": "v1.10.0",
 			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
 		},
 		{
@@ -57,11 +53,6 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v2.2.5",
-			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
-		},
-		{
-			"ImportPath": "github.com/coreos/etcd/pkg/testutil",
 			"Comment": "v2.2.5",
 			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
@@ -194,11 +185,6 @@
 			"Rev": "9be9157fc5cd9cf59c155fe194a0acc5f1e6f926"
 		},
 		{
-			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.0-71-g0d5a14c",
-			"Rev": "0d5a14c5a477957864f3b747d95255ad4e34bcc0"
-		},
-		{
 			"ImportPath": "github.com/vishvananda/netlink",
 			"Rev": "a632d6dc2806fa19d2f7693017d3fb79d3d8fa03"
 		},
@@ -208,10 +194,6 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/ssh/terminal",
 			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
 		},
 		{
