@@ -29,16 +29,9 @@ var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootSnapshots}
 // Request provides a request structure for communicating with the
 // volmaster.
 type Request struct {
-	Volume  string `json:"volume"`
-	Policy  string `json:"policy"`
-	Options map[string]string
-}
-
-// RequestCreate provides a request structure for creating new volumes.
-type RequestCreate struct {
-	Policy string            `json:"policy"`
-	Volume string            `json:"volume"`
-	Opts   map[string]string `json:"opts"`
+	Volume  string            `json:"volume"`
+	Policy  string            `json:"policy"`
+	Options map[string]string `json:"options"`
 }
 
 // Client is the top-level struct for communicating with the intent store.

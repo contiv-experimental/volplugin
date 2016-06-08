@@ -107,7 +107,7 @@ func (s *configSuite) TestWatchVolumes(c *C) {
 	volumeChan := make(chan *watch.Watch)
 	s.tlc.WatchVolumeRuntimes(volumeChan)
 
-	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
+	vol, err := s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)
 	c.Assert(s.tlc.PublishVolume(vol), IsNil)
 	vol2 := <-volumeChan
@@ -122,10 +122,10 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 	volumeNames := []string{"baz", "quux"}
 	sort.Strings(volumeNames) // lazy
 
-	_, err := s.tlc.CreateVolume(RequestCreate{})
+	_, err := s.tlc.CreateVolume(Request{})
 	c.Assert(err, NotNil)
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "Doesn'tExist"})
+	_, err = s.tlc.CreateVolume(Request{Policy: "Doesn'tExist"})
 	c.Assert(err, NotNil)
 
 	// populate the policies so the next few tests don't give false positives
@@ -133,10 +133,10 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 		c.Assert(s.tlc.PublishPolicy(policy, testPolicies["basic"]), IsNil)
 	}
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: "bar", Opts: map[string]string{"quux": "derp"}})
+	_, err = s.tlc.CreateVolume(Request{Policy: "foo", Volume: "bar", Options: map[string]string{"quux": "derp"}})
 	c.Assert(err, NotNil)
 
-	_, err = s.tlc.CreateVolume(RequestCreate{Policy: "foo", Volume: ""})
+	_, err = s.tlc.CreateVolume(Request{Policy: "foo", Volume: ""})
 	c.Assert(err, NotNil)
 
 	_, err = s.tlc.GetVolume("foo", "bar")
@@ -147,7 +147,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 	for _, policy := range policyNames {
 		for _, volume := range volumeNames {
-			vcfg, err := s.tlc.CreateVolume(RequestCreate{Policy: policy, Volume: volume, Opts: map[string]string{"filesystem": ""}})
+			vcfg, err := s.tlc.CreateVolume(Request{Policy: policy, Volume: volume, Options: map[string]string{"filesystem": ""}})
 			c.Assert(err, IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), IsNil)
 			c.Assert(s.tlc.PublishVolume(vcfg), Equals, errors.Exists)
@@ -209,7 +209,7 @@ func (s *configSuite) TestVolumeCRUD(c *C) {
 
 func (s *configSuite) TestVolumeRuntime(c *C) {
 	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
-	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
+	vol, err := s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)
 	c.Assert(s.tlc.PublishVolume(vol), IsNil)
 	runtime := vol.RuntimeOptions
@@ -229,7 +229,7 @@ func (s *configSuite) TestVolumeRuntime(c *C) {
 
 func (s *configSuite) TestToDriverOptions(c *C) {
 	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
-	vol, err := s.tlc.CreateVolume(RequestCreate{Policy: "policy1", Volume: "test"})
+	vol, err := s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test"})
 	c.Assert(err, IsNil)
 
 	do, err := vol.ToDriverOptions(1)

@@ -170,7 +170,7 @@ func (dc *DaemonConfig) requestRemove(policy, name string) error {
 }
 
 func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]string) error {
-	content, err := json.Marshal(config.RequestCreate{Policy: policyName, Volume: name, Opts: opts})
+	content, err := json.Marshal(config.Request{Policy: policyName, Volume: name, Options: opts})
 	if err != nil {
 		return err
 	}
