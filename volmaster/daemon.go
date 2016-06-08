@@ -101,15 +101,16 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/global":                        d.handleGlobal,
-		"/policies":                      d.handlePolicyList,
-		"/policies/{policy}":             d.handlePolicy,
-		"/uses/mounts/{policy}/{volume}": d.handleUsesMountsVolume,
-		"/volumes":                       d.handleListAll,
-		"/volumes/{policy}":              d.handleList,
-		"/volumes/{policy}/{volume}":     d.handleGet,
-		"/runtime/{policy}/{volume}":     d.handleRuntime,
-		"/snapshots/{policy}/{volume}":   d.handleSnapshotList,
+		"/global":                           d.handleGlobal,
+		"/policies":                         d.handlePolicyList,
+		"/policies/{policy}":                d.handlePolicy,
+		"/uses/mounts/{policy}/{volume}":    d.handleUsesMountsVolume,
+		"/uses/snapshots/{policy}/{volume}": d.handleUsesMountsSnapshots,
+		"/volumes":                          d.handleListAll,
+		"/volumes/{policy}":                 d.handleList,
+		"/volumes/{policy}/{volume}":        d.handleGet,
+		"/runtime/{policy}/{volume}":        d.handleRuntime,
+		"/snapshots/{policy}/{volume}":      d.handleSnapshotList,
 	}
 
 	if err := addRoute(r, getRouter, "GET", d.Global.Debug); err != nil {
@@ -246,6 +247,14 @@ func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleUsesMountsVolume(w http.ResponseWriter, r *http.Request) {
+	d.handleUserEndpoints(&config.UseMount{}, w, r)
+}
+
+func (d *DaemonConfig) handleUsesMountsSnapshots(w http.ResponseWriter, r *http.Request) {
+	d.handleUserEndpoints(&config.UseSnapshot{}, w, r)
+}
+
+func (d *DaemonConfig) handleUserEndpoints(ul config.UseLocker, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	policy := vars["policy"]
 	volumeName := vars["volume"]
@@ -255,14 +264,12 @@ func (d *DaemonConfig) handleUsesMountsVolume(w http.ResponseWriter, r *http.Req
 		VolumeName: volumeName,
 	}
 
-	mount := &config.UseMount{}
-
-	if err := d.Config.GetUse(mount, vc); err != nil {
+	if err := d.Config.GetUse(ul, vc); err != nil {
 		httpError(w, errors.GetMount.Combine(err))
 		return
 	}
 
-	content, err := json.Marshal(mount)
+	content, err := json.Marshal(ul)
 	if err != nil {
 		httpError(w, errors.MarshalResponse.Combine(err))
 		return

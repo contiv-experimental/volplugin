@@ -188,14 +188,26 @@ var Commands = []cli.Command{
 				Usage:       "List uses",
 				Description: "List the uses the volmaster knows about, in newline-delimited form.",
 				ArgsUsage:   "",
-				Action:      UseList,
+				Flags: []cli.Flag{
+					cli.BoolFlag{
+						Name:  "snapshots",
+						Usage: "List snapshots instead of mounts",
+					},
+				},
+				Action: UseList,
 			},
 			{
 				Name:        "get",
 				Usage:       "Get use info",
 				Description: "Obtains the information on a specified use. Requires that you know the policy and image name.",
 				ArgsUsage:   "[policy name]/[volume name]",
-				Action:      UseGet,
+				Flags: []cli.Flag{
+					cli.BoolFlag{
+						Name:  "snapshot",
+						Usage: "Get the snapshot use instead of a mount",
+					},
+				},
+				Action: UseGet,
 			},
 			{
 				Name:        "force-remove",

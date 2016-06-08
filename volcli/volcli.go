@@ -704,7 +704,13 @@ func useList(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	uses, err := cfg.ListUses("mount")
+	var uses []string
+	if ctx.Bool("snapshots") {
+		uses, err = cfg.ListUses("snapshot")
+	} else {
+		uses, err = cfg.ListUses("mount")
+	}
+
 	if err != nil {
 		return false, err
 	}
@@ -741,13 +747,19 @@ func useGet(ctx *cli.Context) (bool, error) {
 		VolumeName: volume,
 	}
 
-	mount := &config.UseMount{}
+	var ul config.UseLocker
 
-	if err := cfg.GetUse(mount, vc); err != nil {
+	if ctx.Bool("snapshot") {
+		ul = &config.UseSnapshot{}
+	} else {
+		ul = &config.UseMount{}
+	}
+
+	if err := cfg.GetUse(ul, vc); err != nil {
 		return false, err
 	}
 
-	content, err := ppJSON(mount)
+	content, err := ppJSON(ul)
 	if err != nil {
 		return false, err
 	}
