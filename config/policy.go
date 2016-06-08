@@ -5,7 +5,6 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
-	"github.com/contiv/volplugin/storage/backend/ceph"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -31,9 +30,7 @@ type BackendDrivers struct {
 
 // NewPolicy return policy config with specified backend preset
 func NewPolicy() *Policy {
-	return &Policy{
-		Backends: BackendDrivers{ceph.BackendName, ceph.BackendName, ceph.BackendName},
-	}
+	return &Policy{}
 }
 
 var defaultFilesystems = map[string]string{
@@ -135,9 +132,7 @@ func (cfg *Policy) Validate() error {
 	}
 
 	size, err := cfg.CreateOptions.ActualSize()
-	if err != nil {
-		return err
-	} else if cfg.Backends.CRUD != "" && size == 0 {
+	if cfg.Backends.CRUD != "" && (size == 0 || err != nil) {
 		return errored.Errorf("Size set to zero for non-empty CRUD backend %v", cfg.Backends.CRUD).Combine(err)
 	}
 
