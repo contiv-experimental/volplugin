@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"golang.org/x/sys/unix"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
@@ -290,6 +292,12 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	volName := volConfig.String()
 
+	if dc.increaseMount(volName) > 1 {
+		log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
+		dc.returnMountPath(w, driver, driverOpts)
+		return
+	}
+
 	ut := &config.UseMount{
 		Volume:   volName,
 		Reason:   lock.ReasonMount,
@@ -302,12 +310,6 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	if err := dc.Client.ReportMount(ut); err != nil {
 		httpError(w, errors.RefreshMount.Combine(err))
-		return
-	}
-
-	if dc.increaseMount(volName) > 1 {
-		log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
-		dc.returnMountPath(w, driver, driverOpts)
 		return
 	}
 
@@ -361,7 +363,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := driver.Unmount(driverOpts); err != nil {
+	if err := driver.Unmount(driverOpts); err != nil && err != unix.EINVAL {
 		httpError(w, errors.UnmountFailed.Combine(err))
 		return
 	}
