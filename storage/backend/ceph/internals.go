@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
@@ -105,7 +106,7 @@ retry:
 			er, err := runWithTimeout(cmd, do.Timeout)
 			if retries < 10 && (err != nil || er.ExitStatus != 0) {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", intName, rbd.Device, er, err, er.Stderr)
-				if er.ExitStatus == 16 {
+				if er.ExitStatus == int(unix.EBUSY) {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", intName, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
 					retries++

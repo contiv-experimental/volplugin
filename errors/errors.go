@@ -2,6 +2,7 @@ package errors
 
 import "github.com/contiv/errored"
 
+// service-level errors
 var (
 	// Exists is used to exit in situations where duplicated data would be written.
 	Exists = errored.New("Already exists")
@@ -20,6 +21,22 @@ var (
 	VolmasterRequest = errored.New("Making request to volmaster")
 )
 
+// storage-level errors
+var (
+	// RateLimit is used when applying rate limiting.
+	RateLimit = errored.New("Applying rate limiting configuration")
+
+	// MountPath is used when configuring the mount path.
+	MountPath = errored.New("Calculating mount path")
+
+	// SnapshotProtect is used when protecting snapshots for a copy fail.
+	SnapshotProtect = errored.New("Protecting snapshot")
+
+	// SnapshotCopy is used when copying snapshots to volumes fail.
+	SnapshotCopy = errored.New("Copying snapshot to volume")
+)
+
+// protocol-level errors
 var (
 	// UnmarshalRequest is used when a request failed to decode.
 	UnmarshalRequest = errored.New("Unmarshaling Request")
@@ -96,8 +113,6 @@ var (
 	PublishMount = errored.New("Could not publish mount information")
 	// GetMount is used when retrieving mounts.
 	GetMount = errored.New("Retrieving mount")
-	// MountPath is used when configuring the mount path.
-	MountPath = errored.New("Calculating mount path")
 	// MountFailed is used when mounts fail.
 	MountFailed = errored.New("Mount failed")
 	// UnmountFailed is used when unmounts fail.
@@ -110,7 +125,4 @@ var (
 
 	// ReadBody is used when reading the request body.
 	ReadBody = errored.New("Reading request body")
-
-	// RateLimit is used when applying rate limiting.
-	RateLimit = errored.New("Applying rate limiting configuration")
 )

@@ -16,6 +16,7 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 
 	log "github.com/Sirupsen/logrus"
@@ -397,7 +398,11 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	cmd := exec.Command("rbd", "snap", "protect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err := runWithTimeout(cmd, do.Timeout)
 
-	if err != nil {
+	// EBUSY indicates that the snapshot is already protected.
+	if err != nil && er.ExitStatus != 0 && er.ExitStatus != int(unix.EBUSY) {
+		if er.ExitStatus == int(unix.EEXIST) {
+			err = errored.Errorf("Volume %q or snapshot name %q already exists. Snapshots cannot share the same name as the target volume.", do.Volume.Name, snapName).Combine(errors.Exists).Combine(errors.SnapshotProtect)
+		}
 		errChan <- err
 		return err
 	}
@@ -405,37 +410,47 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 	defer func() {
 		select {
 		case err := <-errChan:
-			log.Warnf("Error received while copying snapshot: %v. Attempting to cleanup.", err)
-			cmd = exec.Command("rbd", "rm", intNewName, "--pool", do.Volume.Params["pool"])
-			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-				log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
-				return
+			newerr, ok := err.(*errored.Error)
+			if ok && newerr.Contains(errors.SnapshotCopy) {
+				log.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
+				cmd = exec.Command("rbd", "rm", intNewName, "--pool", do.Volume.Params["pool"])
+				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
+					log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
+					return
+				}
 			}
-			cmd := exec.Command("rbd", "snap", "unprotect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
-			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-				log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
-				return
+
+			if ok && newerr.Contains(errors.SnapshotProtect) {
+				log.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
+				cmd := exec.Command("rbd", "snap", "unprotect", intOrigName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
+				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
+					log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
+					return
+				}
 			}
 		default:
 		}
 	}()
 
-	if er.ExitStatus != 0 {
-		newerr := errored.Errorf("Protecting snapshot for clone (volume %q, snapshot %q): %v", intOrigName, snapName, err)
-		errChan <- newerr
-		return newerr
-	}
-
 	cmd = exec.Command("rbd", "clone", intOrigName, intNewName, "--snap", snapName, "--pool", do.Volume.Params["pool"])
 	er, err = runWithTimeout(cmd, do.Timeout)
-	if err != nil {
-		errChan <- err
-		return err
+	if err != nil && er.ExitStatus == 0 {
+		var err2 *errored.Error
+		var ok bool
+
+		err2, ok = err.(*errored.Error)
+		if !ok {
+			err2 = errored.New(err.Error())
+		}
+		errChan <- err2.Combine(errors.SnapshotCopy)
+		return err2
 	}
 
 	if er.ExitStatus != 0 {
-		newerr := errored.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", intOrigName, snapName, err)
-		errChan <- newerr
+		newerr := errored.Errorf("Cloning snapshot to volume (volume %q, snapshot %q): %v", intOrigName, snapName, err).Combine(errors.SnapshotCopy).Combine(errors.SnapshotProtect)
+		if er.ExitStatus != int(unix.EEXIST) {
+			errChan <- newerr
+		}
 		return err
 	}
 
