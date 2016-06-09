@@ -99,6 +99,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	c.Assert(s.clearContainers(), IsNil)
 	c.Assert(s.restartDocker(), IsNil)
 	c.Assert(s.pullDebian(), IsNil)
+	c.Assert(s.rebootstrap(), IsNil)
 
 	out, err := s.uploadIntent("policy1", "policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
