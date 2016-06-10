@@ -23,12 +23,11 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 			go func(x int) {
 				defer func() { syncChan <- struct{}{} }()
 				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), nil), IsNil)
-				dockerCmd := fmt.Sprintf("docker run -d -v policy1/test%02d:/mnt alpine sleep 10m", x)
-				out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput(dockerCmd)
-				c.Assert(err, IsNil)
-				second, err := s.mon0cmd(dockerCmd)
+				out, err := s.dockerRun("mon0", false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
+				c.Assert(err, IsNil, Commentf("Output: %s", out))
+				second, err := s.dockerRun("mon0", false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
 				log.Debug(second, err)
-				c.Assert(err, IsNil)
+				c.Assert(err, IsNil, Commentf("Output: %s", second))
 
 				if cephDriver() {
 					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%02d", x))
@@ -102,6 +101,15 @@ repeat:
 	count := 15
 
 	for outer := 0; outer < outerCount; outer++ {
+		c.Assert(s.uploadGlobal("global1"), IsNil)
+		if unlocked {
+			out, err := s.uploadIntent("policy1", "unlocked")
+			c.Assert(err, IsNil, Commentf(out))
+		} else {
+			out, err := s.uploadIntent("policy1", "policy1")
+			c.Assert(err, IsNil, Commentf(out))
+		}
+
 		outputChan := make(chan output, len(nodes)*count)
 
 		for x := 0; x < count; x++ {
@@ -157,6 +165,7 @@ repeat:
 
 		c.Assert(errs, Equals, 0)
 		c.Assert(s.restartDocker(), IsNil)
+		c.Assert(s.waitDockerizedServices(), IsNil)
 	}
 
 	if nfsDriver() && !unlocked {

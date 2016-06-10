@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -14,6 +16,24 @@ import (
 	"github.com/contiv/vagrantssh"
 	"github.com/contiv/volplugin/config"
 )
+
+var startedContainers struct {
+	sync.Mutex
+	names map[string]struct{}
+}
+
+// genRandomString returns a pseudo random string.
+// It doesn't worry about name collisions much at the moment.
+func genRandomString(prefix, suffix string, strlen int) string {
+	charSet := []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	randStr := make([]byte, 0, strlen)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < strlen; i++ {
+		randStr = append(randStr, charSet[rand.Int()%len(charSet)])
+	}
+	return prefix + string(randStr) + suffix
+}
 
 func (s *systemtestSuite) dockerRun(host string, tty, daemon bool, volume, command string) (string, error) {
 	ttystr := ""
@@ -27,8 +47,23 @@ func (s *systemtestSuite) dockerRun(host string, tty, daemon bool, volume, comma
 		daemonstr = "-d"
 	}
 
+	// generate a container name.
+	// The probability of name collisions in a test should be low as there are
+	// about 62^10 possible strings. But we simply search for a container name
+	// in `startedContainers` with some additional locking overhead to keep tests reliable.
+	// Note: we don't remove the container name from the list on a run failure, this
+	// allows full cleanup later.
+	startedContainers.Lock()
+	cName := genRandomString("", "", 10)
+	for _, ok := startedContainers.names[cName]; ok; {
+		cName = genRandomString("", "", 10)
+	}
+	startedContainers.names[cName] = struct{}{}
+	startedContainers.Unlock()
+
 	dockerCmd := fmt.Sprintf(
-		"docker run -i %s %s -v %v:/mnt:nocopy alpine %s",
+		"docker run --name %s -i %s %s -v %v:/mnt:nocopy alpine %s",
+		cName,
 		ttystr,
 		daemonstr,
 		volume,
@@ -37,7 +72,12 @@ func (s *systemtestSuite) dockerRun(host string, tty, daemon bool, volume, comma
 
 	log.Infof("Starting docker on %q with: %q", host, dockerCmd)
 
-	return s.vagrant.GetNode(host).RunCommandWithOutput(dockerCmd)
+	str, err := s.vagrant.GetNode(host).RunCommandWithOutput(dockerCmd)
+	if err != nil {
+		return str, err
+	}
+
+	return str, nil
 }
 
 func (s *systemtestSuite) mon0cmd(command string) (string, error) {
@@ -174,8 +214,10 @@ func (s *systemtestSuite) rebootstrap() error {
 		if err := s.restartDocker(); err != nil {
 			return err
 		}
+		if err := s.waitDockerizedServices(); err != nil {
+			return err
+		}
 	}
-
 
 	if err := s.vagrant.IterateNodes(startVolmaster); err != nil {
 		return err
@@ -354,6 +396,33 @@ func stopVolplugin(node vagrantssh.TestbedNode) error {
 	return node.RunCommand("sudo pkill volplugin")
 }
 
+func waitDockerizedServicesHost(node vagrantssh.TestbedNode) error {
+	services := map[string]string{
+		"etcd": "etcdctl cluster-health",
+	}
+
+	for s, cmd := range services {
+		log.Infof("Waiting for %s on %q", s, node.GetName())
+		out, err := utils.WaitForDone(
+			func() (string, bool) {
+				out, err := node.RunCommandWithOutput(cmd)
+				if err != nil {
+					return out, false
+				}
+				return out, true
+			}, 2*time.Second, time.Minute, fmt.Sprintf("service %s is not healthy", s))
+		if err != nil {
+			log.Infof("a dockerized service failed. Output: %s, Error: %v", out, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *systemtestSuite) waitDockerizedServices() error {
+	return s.vagrant.IterateNodes(waitDockerizedServicesHost)
+}
+
 func restartDockerHost(node vagrantssh.TestbedNode) error {
 	log.Infof("Restarting docker on %q", node.GetName())
 	// note that for all these restart tasks we error out quietly to avoid other
@@ -371,13 +440,24 @@ func (s *systemtestSuite) restartNetplugin() error {
 }
 
 func (s *systemtestSuite) clearContainerHost(node vagrantssh.TestbedNode) error {
-	log.Infof("Clearing containers on %q", node.GetName())
-	node.RunCommand("docker ps -aq | xargs docker rm -f")
+	startedContainers.Lock()
+	names := []string{}
+	for name := range startedContainers.names {
+		names = append(names, name)
+	}
+	startedContainers.Unlock()
+	log.Infof("Clearing containers %v on %q", names, node.GetName())
+	node.RunCommand(fmt.Sprintf("docker rm -f %s", strings.Join(names, " ")))
 	return nil
 }
 
 func (s *systemtestSuite) clearContainers() error {
 	log.Infof("Clearing containers")
+	defer func() {
+		startedContainers.Lock()
+		startedContainers.names = map[string]struct{}{}
+		startedContainers.Unlock()
+	}()
 	return s.vagrant.IterateNodes(s.clearContainerHost)
 }
 
