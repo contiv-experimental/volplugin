@@ -108,7 +108,7 @@ run-build:
 		 ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 	cp /opt/golang/bin/* /tmp/bin
 
-system-test: build
+system-test: run 
 	@TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
 
 system-test-big:
