@@ -4,7 +4,7 @@ GUESTBINPATH=$(GUESTPREFIX)/bin
 
 .PHONY: build
 
-start: install-ansible
+start: check-ansible
 	# vagrant hits the file descriptor limit on OSX when running this task
 	# 10240 is the max you can set on OSX and should be higher than the default on every other OS
 	ulimit -n 10240; \
@@ -51,8 +51,8 @@ govet-host:
 govet:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
 
-install-ansible:
-	[ -n "`which ansible`" ] || sudo pip install ansible
+check-ansible:
+	@build/scripts/check-ansible.sh
 
 ci:
 	GOPATH=/tmp/volplugin:${WORKSPACE} PATH="/tmp/volplugin/bin:/usr/local/go/bin:${PATH}" make test
