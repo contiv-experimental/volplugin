@@ -1,14 +1,14 @@
 [![Build-Status][Build-Status-Image]][Build-Status-URL] [![ReportCard][ReportCard-Image]][ReportCard-URL]
 
-# volplugin: cluster-wide ceph volume management for container ecosystems
+# volplugin: cluster-wide volume management for container ecosystems
 
 **Note:** we have extended documentation for users @ http://docs.contiv.io
 
-volplugin controls [Ceph](http://ceph.com/) RBD devices in a way that makes
-them easy to use for devs with docker, and flexible to configure for ops.
-Reference your volumes with docker from anywhere Ceph is available, and they are located
-and mounted. It's great with [Compose](https://github.com/docker/compose) and
-[Swarm](https://github.com/docker/swarm)!
+volplugin controls [Ceph](http://ceph.com/) RBD -- or NFS -- devices, in a way that
+makes them easy to use for devs with docker, and flexible to configure for ops.
+Reference your volumes with docker from anywhere your storage is available, and
+they are located and mounted. Works great with [Compose](https://github.com/docker/compose) and
+[Swarm](https://github.com/docker/swarm), now [Mesos](https://www.mesosphere.com) too!
 
 Our profiles system makes instantiating lots of similar class volumes a snap,
 allowing for a variety of use cases:
@@ -16,7 +16,7 @@ allowing for a variety of use cases:
 * Give your dev teams full-stack dev environments (complete with state) that
   arrive on demand. They can configure them.
 * Scale your stateful containers in a snap with our snapshot facilities, just
-  `volcli volume snapshot copy` and refer to the volume immediately. Anywhere.
+  `volcli volume snapshot copy` and refer to the volume immediately. Anywhere. (Ceph only)
 * Container crashed? Host died? volplugin's got you. Just re-init your
   container on another host with the same volume name.
 
@@ -24,8 +24,6 @@ volplugin currently only supports Docker volume plugins. First class scheduler s
 [Kubernetes](https://github.com/kubernetes/kubernetes) and
 [Mesos](http://mesos.apache.org/) will be available before the first stable
 release.
-
-The master/slave model allows us to support a number of features, such as:
 
 * On-the-fly image creation and (re)mount from any Ceph source, by referencing
   a policy and volume name.
@@ -39,9 +37,9 @@ be extremely volatile and it is not suggested that you use this in production.
 
 ## Try it out
 
-volplugin currently *does not run in a container*. The other components do, but
-`volplugin` does not. volplugin must be run on the host where the volumes are
-to be mounted.
+volplugin currently *does not run in a container*. The other volplugin-related
+components do, but `volplugin` does not. volplugin must be run on the host
+where the volumes are to be mounted.
 
 ### Prerequisites:
 
@@ -67,13 +65,9 @@ On the host, equivalent or greater:
 * [VirtualBox](https://virtualbox.org) 5.0.2 or greater
 * [Vagrant](https://vagrantup.com) 1.8.x
 * [Ansible](https://ansible.com) 2.0+
-  * install with pip; you'll want to install `python-pip` and `python-dev` on
-    ubuntu machines, then `sudo pip install ansible`. `brew install ansible`
-    should do the right thing on OS X.
-  * The make tooling in this repository will install it for you if it is not
-    already installed, which requires `pip`. If you are not root, it may fail
-    to perform this operation. The solution to this problem is to install
-    ansible independently as described above.
+  * On OS X: `brew install ansible`: you can will need [Homebrew](https://brew.sh)
+  * Ubuntu/Debian: `apt-get install ansible -y`
+  * CentOS/RHEL: `yum install ansible -y`
 * [Go](https://golang.org) 1.6 to run the system tests.
 
 Your guests will configure themselves.
