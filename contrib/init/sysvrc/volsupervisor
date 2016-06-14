@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# volsupervisor - start the Contiv Storage supervisor service
+#
+# chkconfig: - 91 91
+#
+# Default-Start:  2 3 4 5
+# Default-Stop:   0 1 6
+
+## Edit this parameter! Volplugin will not work across hosts if you don't.
+PREFIX=/volplugin
+ETCD="http://localhost:2379"
+
+case "$1" in
+  start)
+    nohup bash -c "/usr/sbin/volsupervisor --etcd=${ETCD} --prefix=${PREFIX} &>/var/log/volplugin.log &"
+  ;;
+  stop)
+    pkill volsupervisor 
+  ;;
+  restart)
+    $0 stop
+    $0 start
+  ;;
+esac
