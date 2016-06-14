@@ -146,7 +146,7 @@ ifeq ($(VERSION),)
 else
 	VERSION=$(VERSION) make build
 endif
-	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib/completion/bash/volcli
+	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib
 
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
