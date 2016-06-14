@@ -72,7 +72,7 @@ unit-test-nocoverage-host: golint-host govet-host
 	HOST_TEST=1 GOGC=1000 go test -v ./... -check.v -check.f "${TESTRUN}"
 
 build: golint govet
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); VERSION=$(VERSION) make run-build"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 
@@ -103,8 +103,8 @@ run-volmaster:
 	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster &>/tmp/volmaster.log &'
 
 run-build: 
-	GOGC=1000 go install -a -v \
-		 -ldflags '-X main.version=$(if $(VERSION),$(VERSION),devbuild)' \
+	GOGC=1000 go install -v \
+		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
 		 ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
 	cp /opt/golang/bin/* /tmp/bin
 
@@ -134,18 +134,14 @@ reflex-unit-test: reflex
 # and 'release' targets.
 NAME := volplugin
 VERSION_FILE := /tmp/$(NAME)-version
+VERSION := `cat $(VERSION_FILE)`
 TAR_EXT := tar.bz2
 TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
 TAR_LOC := .
 TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
-tar: clean clean-tar
+tar: clean-tar
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-ifeq ($(VERSION),)
-	VERSION=`cat $(VERSION_FILE)` make build
-else
-	VERSION=$(VERSION) make build
-endif
 	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib
 
 clean-tar:
