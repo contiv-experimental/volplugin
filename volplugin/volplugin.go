@@ -138,15 +138,16 @@ func (dc *DaemonConfig) Daemon() error {
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
-		"/Plugin.Activate":      dc.activate,
-		"/Plugin.Deactivate":    dc.nilAction,
-		"/VolumeDriver.Create":  dc.create,
-		"/VolumeDriver.Remove":  dc.getPath, // we never actually remove through docker's interface.
-		"/VolumeDriver.List":    dc.list,
-		"/VolumeDriver.Get":     dc.get,
-		"/VolumeDriver.Path":    dc.getPath,
-		"/VolumeDriver.Mount":   dc.mount,
-		"/VolumeDriver.Unmount": dc.unmount,
+		"/Plugin.Activate":           dc.activate,
+		"/Plugin.Deactivate":         dc.nilAction,
+		"/VolumeDriver.Create":       dc.create,
+		"/VolumeDriver.Remove":       dc.getPath, // we never actually remove through docker's interface.
+		"/VolumeDriver.List":         dc.list,
+		"/VolumeDriver.Get":          dc.get,
+		"/VolumeDriver.Path":         dc.getPath,
+		"/VolumeDriver.Mount":        dc.mount,
+		"/VolumeDriver.Unmount":      dc.unmount,
+		"/VolumeDriver.Capabilities": dc.capabilities,
 	}
 
 	router := mux.NewRouter()
