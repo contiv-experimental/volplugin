@@ -75,7 +75,6 @@ build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
-
 docker: run-build
 	docker build -t contiv/volplugin .
 
@@ -83,7 +82,7 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -v "not running" | grep -c running) - 2))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 

@@ -389,6 +389,21 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	dc.returnMountPath(w, driver, driverOpts)
 }
 
+func (dc *DaemonConfig) capabilities(w http.ResponseWriter, r *http.Request) {
+	content, err := json.Marshal(map[string]map[string]string{
+		"Capabilities": map[string]string{
+			"Scope": "global",
+		},
+	})
+
+	if err != nil {
+		httpError(w, errors.UnmarshalRequest.Combine(err))
+		return
+	}
+
+	w.Write(content)
+}
+
 // Catchall for additional driver functions.
 func (dc *DaemonConfig) action(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
