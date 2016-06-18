@@ -57,6 +57,9 @@ ansible_provision = proc do |ansible|
   # In a production deployment, these should be secret
   ansible.extra_vars = {
     docker_version: "1.11.1",
+    scheduler_provider: ENV["UCP"] ? "ucp-swarm" : "native-swarm",
+    ucp_bootstrap_node_name: "mon0",
+    ucp_license_remote: ENV["HOME"] + "/docker_subscription.lic",
     use_nfs: true,
     swarm_bootstrap_node_name: "mon0",
     docker_device: "/dev/sdb",
@@ -102,6 +105,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "mon#{i}"
+
+      if ENV["UCP"] and mon.vm.hostname == "mon0"
+        mon.vm.network "forwarded_port", guest: 443, host: 4443
+      end
+
+      if ENV["WEB"] and mon.vm.hostname == "mon0"
+        mon.vm.network "forwarded_port", guest: 80, host: 8080
+      end
 
       [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
