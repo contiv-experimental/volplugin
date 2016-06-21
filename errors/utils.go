@@ -8,7 +8,7 @@ import (
 var etcdCodeTable = map[int]*errored.Error{
 	client.ErrorCodeKeyNotFound:       NotExists,
 	client.ErrorCodeNodeExist:         Exists,
-	client.ErrorCodePrevValueRequired: LockFailed,
+	client.ErrorCodePrevValueRequired: LockMismatch,
 	client.ErrorCodeTestFailed:        LockFailed,
 }
 
