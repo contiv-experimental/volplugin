@@ -76,7 +76,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vol, err := a.Client.GetVolume(policy, volume); err == nil && vol != nil {
-		a.HTTPError(w, err)
+		a.HTTPError(w, errors.Exists)
 		return
 	}
 
@@ -90,7 +90,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 
 	policyObj, err := a.Client.GetPolicy(policy)
 	if err != nil {
-		a.HTTPError(w, errors.GetPolicy.Combine(errored.New(policy).Combine(err)))
+		a.HTTPError(w, errors.GetPolicy.Combine(errored.New(policy)).Combine(err))
 		return
 	}
 
@@ -169,18 +169,22 @@ func (a *API) HTTPError(w http.ResponseWriter, err error) {
 // DockerHTTPError returns a 200 status to docker with an error struct. It returns
 // 500 if marshalling failed.
 func DockerHTTPError(w http.ResponseWriter, err error) {
-	content, errc := json.Marshal(VolumeResponse{"", err.Error()})
+	content, errc := json.Marshal(VolumeResponse{Mountpoint: "", Err: err.Error()})
 	if errc != nil {
 		http.Error(w, errc.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", err.Error())
+	log.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
 	http.Error(w, string(content), http.StatusOK)
 }
 
 // RESTHTTPError returns a 500 status with the error.
 func RESTHTTPError(w http.ResponseWriter, err error) {
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", err.Error())
+	if err == nil {
+		err = errors.Unknown
+	}
+
+	log.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }

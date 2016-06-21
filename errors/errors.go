@@ -4,6 +4,9 @@ import "github.com/contiv/errored"
 
 // service-level errors
 var (
+	// Unknown is for those times when we just. don't. know.
+	Unknown = errored.New("Unknown error")
+
 	// Exists is used to exit in situations where duplicated data would be written.
 	Exists = errored.New("Already exists")
 	// NotExists is used to exit in situations where no data would be read.
