@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
@@ -77,20 +78,8 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 	return driver, volConfig, driverOpts, nil
 }
 
-func httpError(w http.ResponseWriter, err error) {
-	content, errc := marshalResponse(VolumeResponse{"", err.Error()})
-	if errc != nil {
-		log.Warnf("Error received marshalling error response: %v, original error: %s", errc, err.Error())
-		http.Error(w, errc.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", err.Error())
-	http.Error(w, string(content), http.StatusOK)
-}
-
-func unmarshalRequest(body io.Reader) (VolumeRequest, error) {
-	vr := VolumeRequest{}
+func unmarshalRequest(body io.Reader) (api.VolumeRequest, error) {
+	vr := api.VolumeRequest{}
 
 	content, err := ioutil.ReadAll(body)
 	if err != nil {
