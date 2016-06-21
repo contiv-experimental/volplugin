@@ -108,7 +108,7 @@ run-build:
 	cp /opt/golang/bin/* /tmp/bin
 
 system-test: run 
-	@TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
+	@USE_DRIVER="${USE_DRIVER}" TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
 
 system-test-big:
 	BIG=1 make system-test
