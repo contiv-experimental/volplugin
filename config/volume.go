@@ -288,27 +288,21 @@ func (c *Client) ListAllVolumes() ([]string, error) {
 // back any information received through the activity channel.
 func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
-		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
+		vw := &watch.Watch{Key: strings.TrimPrefix(resp.Node.Key, c.prefixed(rootVolume)+"/")}
 
 		if !resp.Node.Dir && path.Base(resp.Node.Key) == "runtime" {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
-				volume := &RuntimeOptions{}
-
 				if resp.Node.Value != "" {
-					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
-						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
-						time.Sleep(time.Second)
-						return
-					}
+					volName := strings.TrimPrefix(path.Dir(vw.Key), c.prefixed(rootVolume)+"/")
 
-					if err := volume.Validate(); err != nil {
-						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
-						time.Sleep(time.Second)
+					policy, vol := path.Split(volName)
+					vw.Key = path.Join(policy, vol)
+					volume, err := c.GetVolume(policy, vol)
+					if err != nil {
+						log.Errorf("Could not retrieve volume %q after watch notification: %v", volName, err)
 						return
 					}
-					policy, vol := path.Split(path.Dir(resp.Node.Key))
-					vw.Key = path.Join(path.Base(policy), vol)
 					vw.Config = volume
 				}
 			}

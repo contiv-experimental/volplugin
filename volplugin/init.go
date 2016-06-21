@@ -33,7 +33,6 @@ func (dc *DaemonConfig) updateMounts() error {
 				continue
 			}
 
-			// FIXME docker needs to be polled to accomodate this functionality, or we need to write it to etcd.
 			dc.increaseMount(mount.Name)
 		}
 	}
@@ -58,11 +57,11 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-			vol, err := dc.requestVolume(parts[0], parts[1])
+			vol, err := dc.Client.GetVolume(parts[0], parts[1])
 			if erd, ok := err.(*errored.Error); ok {
 				switch {
 				case erd.Contains(errors.NotExists):
-					log.Warnf("Volume %q not found in database, skipping")
+					log.Warnf("Volume %q not found in database, skipping", mount.Volume.Name)
 					continue
 				case erd.Contains(errors.GetVolume):
 					log.Fatalf("Volmaster could not be contacted; aborting volplugin.")

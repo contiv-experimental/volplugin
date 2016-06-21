@@ -104,8 +104,8 @@ func (s *configSuite) TestWatchVolumes(c *C) {
 	vol2 := <-volumeChan
 	c.Assert(vol2.Key, Equals, "policy1/test")
 	c.Assert(vol2.Config, NotNil)
-	volConfig := vol2.Config.(*RuntimeOptions)
-	c.Assert(vol.RuntimeOptions, DeepEquals, *volConfig)
+	volConfig := vol2.Config.(*Volume)
+	c.Assert(vol, DeepEquals, volConfig)
 }
 
 func (s *configSuite) TestVolumeCRUD(c *C) {

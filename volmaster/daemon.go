@@ -20,6 +20,7 @@ import (
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
+	"github.com/contiv/volplugin/storage/control"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
@@ -629,7 +630,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	complete := func() error {
-		if err := d.removeVolume(vc, d.Global.Timeout); err != nil && err != errors.NoActionTaken {
+		if err := control.RemoveVolume(vc, d.Global.Timeout); err != nil && err != errors.NoActionTaken {
 			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
 		}
 
@@ -637,7 +638,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
-		exists, err := d.existsVolume(vc)
+		exists, err := control.ExistsVolume(vc, d.Global.Timeout)
 		if err != nil && err != errors.NoActionTaken {
 			return err
 		}
@@ -823,7 +824,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 		log.Debugf("Volume Create: %#v", *volConfig)
 
-		do, err := d.createVolume(policy, volConfig, d.Global.Timeout)
+		do, err := control.CreateVolume(policy, volConfig, d.Global.Timeout)
 		if err == errors.NoActionTaken {
 			goto publish
 		}
@@ -832,8 +833,8 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return errors.CreateVolume.Combine(err)
 		}
 
-		if err := d.formatVolume(volConfig, do); err != nil {
-			if err := d.removeVolume(volConfig, d.Global.Timeout); err != nil {
+		if err := control.FormatVolume(volConfig, do); err != nil {
+			if err := control.RemoveVolume(volConfig, d.Global.Timeout); err != nil {
 				log.Errorf("Error during cleanup of failed format: %v", err)
 			}
 			return errors.FormatVolume.Combine(err)

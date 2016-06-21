@@ -60,7 +60,7 @@ func (dc *DaemonConfig) volumeToDriverOptions(volConfig *config.Volume) (storage
 
 func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.MountDriver, *config.Volume, storage.DriverOptions, error) {
 	driverOpts := storage.DriverOptions{}
-	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
+	volConfig, err := dc.Client.GetVolume(uc.Policy, uc.Name)
 	if err != nil {
 		return nil, nil, driverOpts, err
 	}
@@ -88,99 +88,6 @@ func unmarshalRequest(body io.Reader) (api.VolumeRequest, error) {
 
 	err = json.Unmarshal(content, &vr)
 	return vr, err
-}
-
-func marshalResponse(vr VolumeResponse) ([]byte, error) {
-	return json.Marshal(vr)
-}
-
-func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, error) {
-	var volConfig *config.Volume
-
-	content, err := json.Marshal(config.Request{Volume: name, Policy: policy})
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/request", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return nil, errors.GetVolume.Combine(err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
-		return nil, errors.NotExists
-	}
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	if err != nil { // error is from the ReadAll above; we just care more about the status code is all
-		return nil, err
-	}
-
-	if err := json.Unmarshal(content, &volConfig); err != nil {
-		return nil, err
-	}
-
-	return volConfig, nil
-}
-
-func (dc *DaemonConfig) requestRemove(policy, name string) error {
-	content, err := json.Marshal(config.Request{Policy: policy, Volume: name})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/remove", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	return nil
-}
-
-func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]string) error {
-	content, err := json.Marshal(config.Request{Policy: policyName, Volume: name, Options: opts})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	return nil
 }
 
 func splitPath(name string) (string, string, error) {

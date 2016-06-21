@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -155,33 +156,26 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/", dc.Master))
+	volList, err := dc.Client.ListAllVolumes()
 	if err != nil {
-		httpError(w, errors.ListVolume.Combine(err))
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		httpError(w, errors.ListVolume.Combine(errored.New(resp.Status)))
-		return
-	}
-
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		httpError(w, errors.VolmasterRequest.Combine(err))
+		api.DockerHTTPError(w, errors.ListVolume.Combine(err))
 		return
 	}
 
 	volumes := []*config.Volume{}
-
-	if err := json.Unmarshal(content, &volumes); err != nil {
-		httpError(w, errors.UnmarshalRequest.Combine(err))
-		return
-	}
-
 	response := volumeList{Volumes: []volume{}}
+
+	for _, volume := range volList {
+		parts := strings.SplitN(volume, "/", 2)
+		if len(parts) != 2 {
+			log.Errorf("")
+			continue
+		}
+		if volObj, err := dc.Client.GetVolume(parts[0], parts[1]); err != nil {
+		} else {
+			volumes = append(volumes, volObj)
+		}
+	}
 
 	for _, volConfig := range volumes {
 		driver, err := backend.NewMountDriver(volConfig.Backends.Mount, dc.Global.MountPath)
@@ -198,14 +192,14 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 
 		path, err := driver.MountPath(do)
 		if err != nil {
-			httpError(w, errors.MountPath.Combine(err))
+			api.DockerHTTPError(w, errors.MountPath.Combine(err))
 			return
 		}
 
 		response.Volumes = append(response.Volumes, volume{Name: volConfig.String(), Mountpoint: path})
 	}
 
-	content, err = json.Marshal(response)
+	content, err := json.Marshal(response)
 	if err != nil {
 		api.DockerHTTPError(w, errors.MarshalResponse.Combine(err))
 		return
