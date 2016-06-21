@@ -12,6 +12,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 )
 
 type lockSuite struct {
@@ -94,7 +95,7 @@ func (s *lockSuite) TestExecuteWithUseLock(c *C) {
 	}
 
 	for i := 0; i < 50; i++ {
-		c.Assert(<-chErr, Equals, ErrPublish)
+		c.Assert(<-chErr, Equals, errors.ErrLockPublish)
 	}
 
 	c.Assert(<-ch2, Equals, 1)
@@ -170,7 +171,7 @@ func (s *lockSuite) TestExecuteWithMultiUseLock(c *C) {
 	}
 
 	for i := 0; i < 50; i++ {
-		c.Assert(<-chErr, Equals, ErrPublish)
+		c.Assert(<-chErr, Equals, errors.ErrLockPublish)
 	}
 
 	c.Assert(<-ch2, Equals, 1)
