@@ -69,6 +69,9 @@ func (d *DaemonConfig) Daemon(listen string) {
 
 			errored.AlwaysDebug = d.Global.Debug
 			errored.AlwaysTrace = d.Global.Debug
+			if d.Global.Debug {
+				log.SetLevel(log.DebugLevel)
+			}
 		}
 	}()
 

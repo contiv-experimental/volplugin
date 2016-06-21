@@ -16,6 +16,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock/client"
@@ -77,42 +78,68 @@ type volumeGet struct {
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
 // arguments.
-func NewDaemonConfig(master, host string) *DaemonConfig {
-	return &DaemonConfig{
-		Master: master,
-		Host:   host,
+func NewDaemonConfig(ctx *cli.Context) *DaemonConfig {
 
-		runtimeMutex:     new(sync.RWMutex),
-		runtimeVolumeMap: map[string]config.RuntimeOptions{},
-		runtimeStopChans: map[string]chan struct{}{},
-		mountMutex:       new(sync.Mutex),
-		mountCount:       map[string]int{},
+retry:
+	client, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	if err != nil {
+		log.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
+		time.Sleep(wait.Jitter(1*time.Second, 0))
+		goto retry
+	}
+
+	driver := lock.NewDriver(client)
+
+	return &DaemonConfig{
+		Host:   ctx.String("host-label"),
+		Client: client,
+		Lock:   driver,
+
+		lockStopChans: map[string]chan struct{}{},
+		mountCount:    map[string]int{},
+		mountMap:      map[string]*storage.Mount{},
 	}
 }
 
 // Daemon starts the volplugin service.
 func (dc *DaemonConfig) Daemon() error {
-	dc.Client = client.NewDriver(dc.Master)
+	global, err := dc.Client.GetGlobal()
+	if err != nil {
+		log.Errorf("Error fetching global configuration: %v", err)
+		log.Infof("No global configuration. Proceeding with defaults...")
+		global = config.NewGlobalConfig()
+	}
 
-	for {
-		dc.getGlobal()
-
-		if dc.Global != nil {
-			break
-		}
-
-		log.Errorf("Global configuration is missing; waiting for volmaster at %q.", dc.Master)
-		time.Sleep(time.Second)
+	dc.Global = global
+	errored.AlwaysDebug = dc.Global.Debug
+	errored.AlwaysTrace = dc.Global.Debug
+	if dc.Global.Debug {
+		log.SetLevel(log.DebugLevel)
 	}
 
 	go info.HandleDebugSignal()
-	go dc.watchGlobal()
 
-	log.Infof("Reached volmaster at %q. Continuing startup.", dc.Master)
+	activity := make(chan *watch.Watch)
+	dc.Client.WatchGlobal(activity)
+	go func() {
+		for {
+			dc.Global = (<-activity).Config.(*config.Global)
+
+			log.Debugf("Received global %#v", dc.Global)
+
+			errored.AlwaysDebug = dc.Global.Debug
+			errored.AlwaysTrace = dc.Global.Debug
+			if dc.Global.Debug {
+				log.SetLevel(log.DebugLevel)
+			}
+		}
+	}()
 
 	if err := dc.updateMounts(); err != nil {
 		return err
 	}
+
+	go dc.pollRuntime()
 
 	driverPath := path.Join(basePath, "volplugin.sock")
 	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
@@ -180,41 +207,5 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		}
 
 		actionFunc(w, r)
-	}
-}
-
-func (dc *DaemonConfig) getGlobal() {
-	resp, err := http.Get(fmt.Sprintf("http://%s/global", dc.Master))
-	if err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	global := config.NewGlobalConfig()
-
-	if err := json.Unmarshal(content, global); err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	dc.Global = global
-}
-
-func (dc *DaemonConfig) watchGlobal() error {
-	for {
-		time.Sleep(time.Second)
-		dc.getGlobal()
-
-		if dc.Global.Debug {
-			log.SetLevel(log.DebugLevel)
-			errored.AlwaysTrace = true
-			errored.AlwaysDebug = true
-		}
 	}
 }
