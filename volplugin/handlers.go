@@ -353,8 +353,8 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dc.Client.RemoveStopChan(uc.Request.Name)
-	dc.stopRuntimePoll(uc.Request.Name)
+	dc.removeStopChan(volName)
+	dc.removeMount(volName)
 
 	ut := &config.UseMount{
 		Volume:   volName,

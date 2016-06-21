@@ -70,6 +70,12 @@ func (dc *DaemonConfig) updateMounts() error {
 				log.Fatalf("Unknown error reading from volmaster: %v", err)
 			}
 
+			// XXX some of the mounts get propagated above from docker itself, so
+			// this is only necessary when that is missing reports.
+			if dc.getMountCount(mount.Name) == 0 {
+				dc.increaseMount(mount.Name)
+			}
+
 			payload := &config.UseMount{
 				Volume:   mount.Volume.Name,
 				Reason:   lock.ReasonMount,
@@ -87,8 +93,7 @@ func (dc *DaemonConfig) updateMounts() error {
 				}
 			}
 
-			go dc.startRuntimePoll(mount.Volume.Name, mount)
-			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
+			dc.addMount(mount)
 		}
 	}
 

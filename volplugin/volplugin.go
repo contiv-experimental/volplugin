@@ -20,6 +20,7 @@ import (
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock/client"
+	"github.com/contiv/volplugin/storage"
 	"github.com/gorilla/mux"
 )
 
@@ -28,29 +29,17 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Master           string
-	Host             string
-	Global           *config.Global
-	Client           *client.Driver
-	runtimeMutex     *sync.RWMutex
-	runtimeVolumeMap map[string]config.RuntimeOptions
-	runtimeStopChans map[string]chan struct{}
-	mountMutex       *sync.Mutex
-	mountCount       map[string]int
-}
+	Host   string
+	Lock   *lock.Driver
+	Global *config.Global
+	Client *config.Client
 
-// VolumeRequest is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeRequest struct {
-	Name string
-	Opts map[string]string
-}
-
-// VolumeResponse is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeResponse struct {
-	Mountpoint string
-	Err        string
+	lockStopChanMutex sync.RWMutex
+	lockStopChans     map[string]chan struct{}
+	mountCountMutex   sync.Mutex
+	mountCount        map[string]int
+	mountMap          map[string]*storage.Mount
+	mountMapMutex     sync.Mutex
 }
 
 // volumeGet is taken from this struct in docker:
@@ -164,10 +153,12 @@ func (dc *DaemonConfig) Daemon() error {
 }
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {
+	api := api.NewAPI(dc.Client, &dc.Global, true)
+
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":           dc.activate,
 		"/Plugin.Deactivate":         dc.nilAction,
-		"/VolumeDriver.Create":       dc.create,
+		"/VolumeDriver.Create":       api.Create,
 		"/VolumeDriver.Remove":       dc.getPath, // we never actually remove through docker's interface.
 		"/VolumeDriver.List":         dc.list,
 		"/VolumeDriver.Get":          dc.get,
