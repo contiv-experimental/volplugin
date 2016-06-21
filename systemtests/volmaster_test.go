@@ -8,18 +8,6 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (s *systemtestSuite) TestVolmasterNoGlobalConfiguration(c *C) {
-	c.Assert(s.vagrant.IterateNodes(stopVolmaster), IsNil)
-	_, err := s.mon0cmd("etcdctl rm /volplugin/global-config")
-	c.Assert(err, IsNil)
-	c.Assert(s.vagrant.IterateNodes(startVolmaster), IsNil)
-	c.Assert(s.vagrant.IterateNodes(waitForVolmaster), IsNil)
-
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	out, err := s.dockerRun("mon0", false, false, "policy1/test", "echo")
-	c.Assert(err, IsNil, Commentf(out))
-}
-
 func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
 	if !cephDriver() {
 		c.Skip("Only ceph supports filesystem formatting")

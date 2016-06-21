@@ -222,15 +222,12 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(ut.Hostname, Equals, "mon0")
 	c.Assert(ut.Reason, Equals, lock.ReasonMount)
 
-	out, err = s.volcli("use force-remove policy1/foo")
+	out, err = s.mon0cmd("docker rm -f " + id)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(out, Equals, "")
-
-	out, err = s.mon0cmd("docker rm -f " + id)
-	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.mon0cmd("docker volume rm policy1/foo")
 	c.Assert(err, IsNil, Commentf("output: %s", out))

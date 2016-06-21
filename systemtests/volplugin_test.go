@@ -13,6 +13,15 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func (s *systemtestSuite) TestVolpluginNoGlobalConfiguration(c *C) {
+	_, err := s.mon0cmd("etcdctl rm /volplugin/global-config")
+	c.Assert(err, IsNil)
+
+	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	out, err := s.dockerRun("mon0", false, false, "policy1/test", "echo")
+	c.Assert(err, IsNil, Commentf(out))
+}
+
 func (s *systemtestSuite) TestVolpluginLockFreeOperation(c *C) {
 	if !nfsDriver() {
 		c.Skip("Cannot run this test on any driver but NFS")
@@ -80,7 +89,7 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	_, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
 	c.Assert(err, IsNil)
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(45 * time.Second) // this is based on a 5s ttl set at volmaster/volplugin startup
+	time.Sleep(5 * time.Second)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
@@ -115,8 +124,8 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	c.Assert(s.clearContainers(), IsNil)
 
 	c.Assert(s.createVolume("mon1", "policy1", "test", nil), IsNil)
-	_, err = s.dockerRun("mon1", false, true, "policy1/test", "sleep 10m")
-	c.Assert(err, IsNil)
+	out, err = s.dockerRun("mon1", false, true, "policy1/test", "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
 }
 
 func (s *systemtestSuite) TestVolpluginHostLabel(c *C) {
