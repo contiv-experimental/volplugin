@@ -86,13 +86,13 @@ func (dc *DaemonConfig) updateMounts() error {
 				payload.Hostname = lock.Unlocked
 			}
 
-			if err := dc.Client.ReportMount(payload); err != nil {
-				if err := dc.Client.ReportMountStatus(payload); err != nil {
-					// FIXME everything is effed up. what should we really be doing here?
-					return err
-				}
+			stopChan, err := dc.Lock.AcquireWithTTLRefresh(payload, dc.Global.TTL, dc.Global.Timeout)
+			if err != nil {
+				log.Fatalf("Error encountered while trying to acquire lock for mount %v: %v", payload, err)
+				continue
 			}
 
+			dc.addStopChan(mount.Volume.Name, stopChan)
 			dc.addMount(mount)
 		}
 	}

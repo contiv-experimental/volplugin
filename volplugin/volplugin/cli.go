@@ -27,10 +27,14 @@ func main() {
 	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:   "master",
-			Usage:  "Set the volmaster host:port",
-			EnvVar: "MASTER",
-			Value:  "localhost:9005",
+			Name:  "prefix",
+			Usage: "prefix key used in etcd for namespacing",
+			Value: "/volplugin",
+		},
+		cli.StringSliceFlag{
+			Name:  "etcd",
+			Usage: "URL for etcd",
+			Value: &cli.StringSlice{"http://localhost:2379"},
 		},
 		cli.StringFlag{
 			Name:   "host-label",
@@ -48,7 +52,7 @@ func main() {
 }
 
 func run(ctx *cli.Context) {
-	dc := volplugin.NewDaemonConfig(ctx.String("master"), ctx.String("host-label"))
+	dc := volplugin.NewDaemonConfig(ctx)
 
 	if err := dc.Daemon(); err != nil {
 		fmt.Fprintf(os.Stderr, "\nError: %v\n\n", err)

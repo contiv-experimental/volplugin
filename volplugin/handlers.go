@@ -366,8 +366,10 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 		ut.Hostname = lock.Unlocked
 	}
 
-	if err := dc.Client.ReportUnmount(ut); err != nil {
-		httpError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
+	d := lock.NewDriver(dc.Client)
+
+	if err := d.ClearLock(ut, 0); err != nil {
+		api.DockerHTTPError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
 		return
 	}
 

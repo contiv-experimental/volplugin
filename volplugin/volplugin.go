@@ -2,10 +2,7 @@ package volplugin
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -15,13 +12,16 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
-	"github.com/contiv/volplugin/lock/client"
+	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/watch"
 	"github.com/gorilla/mux"
+	"github.com/jbeda/go-wait"
 )
 
 const basePath = "/run/docker/plugins"
