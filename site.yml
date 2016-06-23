@@ -8,7 +8,7 @@
 # - pre-bake some binaries that are otherwise installed as part of contiv
 #   service deployments like collins, sky-dns, ceph etc.
 - hosts: devtest
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
@@ -16,15 +16,15 @@
   - { role: test }
 
 - hosts: volplugin-test
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles: 
   - { role: base }
   - { role: nfs }
   - { role: vagrant }
   - { role: ucarp }
-  - { role: etcd, run_as: master }
   - { role: docker, etcd_client_port1: 2379 }
+  - { role: etcd, run_as: master }
   - { role: ceph-mon, mon_group_name: volplugin-test }
   - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }
   - { role: scheduler_stack, run_as: master }
@@ -34,7 +34,7 @@
 # This host group shall provision a host with all required packages needed to make
 # the node ready to be managed by cluster-manager
 - hosts: cluster-node
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
@@ -43,7 +43,7 @@
 # cluster-control hosts corresponds to the first machine in the cluster that is provisioned
 # to bootstrap the cluster by starting cluster manager and inventory database (collins)
 - hosts: cluster-control
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
@@ -54,40 +54,42 @@
 # service-master hosts correspond to cluster machines that run the master/controller
 # logic of the infra services
 - hosts: service-master
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: ucarp }
   - { role: docker }
   - { role: etcd, run_as: master }
-#  - { role: ceph-mon, mon_group_name: service-master, when: host_capability|match('.*can-run-user-containers.*') }
-#  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master, when: host_capability|match('.*storage.*') }
+  - { role: nfs }
+  # - { role: ceph-mon, mon_group_name: service-master, when: host_capability|match('.*can-run-user-containers.*') }
+  # - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-master, when: host_capability|match('.*storage.*') }
   - { role: scheduler_stack, run_as: master, when: host_capability|match('.*can-run-user-containers.*') }
   - { role: contiv_network, run_as: master, when: host_capability|match('.*can-run-user-containers.*') }
-#  - { role: contiv_storage, run_as: master }
+  - { role: contiv_storage, run_as: master }
 
 # service-worker hosts correspond to cluster machines that run the worker/driver
 # logic of the infra services.
 - hosts: service-worker
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
   - { role: docker }
   - { role: etcd, run_as: worker }
-#  - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker, when: host_capability|match('.*storage.*') }
+  - { role: nfs }
+  # - { role: ceph-osd, mon_group_name: service-master, osd_group_name: service-worker, when: host_capability|match('.*storage.*') }
   - { role: scheduler_stack, run_as: worker, when: host_capability|match('.*can-run-user-containers.*') }
   - { role: contiv_network, run_as: worker, when: host_capability|match('.*can-run-user-containers.*') }
-#  - { role: contiv_storage, run_as: worker }
+  - { role: contiv_storage, run_as: worker }
 
 # netplugin-node hosts set up netmast/netplugin in a cluster
 - hosts: netplugin-node
-  sudo: true
+  become: true
   environment: '{{ env }}'
   roles:
   - { role: base }
-  - { role: etcd, run_as: master }
   - { role: docker, etcd_client_port1: 2379 }
+  - { role: etcd, run_as: master }
   - { role: scheduler_stack, run_as: master }
   - { role: contiv_network, run_as: master }

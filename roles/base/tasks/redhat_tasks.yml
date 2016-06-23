@@ -19,6 +19,8 @@
     - bash-completion
     - kernel #keep kernel up to date
     - libselinux-python
+    - e2fsprogs
+    - openssh-server
 
 - name: install and start ntp
   service: name=ntpd state=started enabled=yes

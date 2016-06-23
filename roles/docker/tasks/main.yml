@@ -33,7 +33,6 @@
   shell: >
       ( iptables -L INPUT | grep "{{ docker_rule_comment }} ({{ item }})" ) || \
       iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ docker_rule_comment }} ({{ item }})"
-  become: true
   with_items:
     - "{{ docker_api_port }}"
 
@@ -59,7 +58,7 @@
 
   # tcp socket service requires docker service to be started after it
 - name: reload systemd configuration
-  shell: sudo systemctl daemon-reload
+  shell: systemctl daemon-reload
   when: "(docker_tcp_socket | changed) or (docker_tcp_socket_state.stdout != 'Active: active')"
 
 - name: stop docker
@@ -75,7 +74,7 @@
   when: "(docker_tcp_socket | changed) or (docker_tcp_socket_state.stdout != 'Active: active')"
 
 - name: check docker service state
-  shell: sudo systemctl status docker | grep 'Active.*active' -o
+  shell: systemctl status docker | grep 'Active.*active' -o
   ignore_errors: true
   register: docker_service_state
   tags:
@@ -89,7 +88,7 @@
 # https://github.com/ansible/ansible-modules-core/issues/191
 - name: reload docker systemd configuration
   #service: name=docker state=restarted
-  shell: sudo systemctl daemon-reload
+  shell: systemctl daemon-reload
   when: "(docker_service_state.stderr | match('.*docker.service changed on disk.*')) or (docker_service_state.stdout != 'Active: active')"
   tags:
     - prebake-for-dev

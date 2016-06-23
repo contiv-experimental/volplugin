@@ -1,0 +1,7 @@
+---
+# role variable for the test environment packages
+
+vbox_major_version: "5.0.20"
+vbox_version: "5.0-{{ vbox_major_version }}_106931"
+vagrant_version: "1.8.1"
+packer_version: "0.10.0"

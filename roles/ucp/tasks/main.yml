@@ -50,9 +50,11 @@
   wait_for:
     path: "{{ ucp_remote_dir }}/{{ item }}"
     state: present
+    timeout: 600
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
+    - "{{ ucp_certificate_file }}"
   when: node_name == ucp_bootstrap_node_name
 
 - name: fetch the ucp files from master nodes
@@ -64,6 +66,7 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
+    - "{{ ucp_certificate_file }}"
   when: node_name == ucp_bootstrap_node_name
 
 - name: copy the ucp files to replicas and worker nodes
@@ -73,4 +76,5 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
+    - "{{ ucp_certificate_file }}"
   when: node_name != ucp_bootstrap_node_name

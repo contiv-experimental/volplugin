@@ -13,4 +13,4 @@
   service: name=aci-gw state=started
 
 - name: set aci mode
-  shell: contivctl net global set --fabric-mode aci
+  shell: contivctl network global set --fabric-mode aci
