@@ -1,0 +1,14 @@
+---
+- name: stop nfs services (redhat)
+  service: "name={{item}} state=stopped"
+  with_items:
+    - rpcbind
+    - nfs-server
+    - rpc-statd
+    - nfs-idmapd
+
+- name: stop nfs services (debian)
+  service: "name={{item}} state=stopped"
+  with_items:
+    - nfs-kernel-server
+    - nfs-common

@@ -5,4 +5,5 @@ After=auditd.service systemd-user-sessions.service time-sync.target etcd.service
 [Service]
 EnvironmentFile=/etc/default/volplugin
 ExecStart=/usr/bin/volplugin $VOLPLUGIN_ARGS
+ExecStopPost=/usr/bin/rm -f /run/docker/plugins/volplugin.sock
 KillMode=control-group

@@ -1,7 +1,7 @@
 ---
 # This role contains tasks for configuring and starting etcd service
 
-- name: download etcd {{ etcd_version }}
+- name: download etcdctl {{ etcd_version }}
   get_url:
     validate_certs: "{{ validate_certs }}"
     url: https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz
@@ -9,10 +9,15 @@
   tags:
     - prebake-for-dev
 
-- name: install etcd
+- name: install etcdctl
   shell: >
       tar vxzf /tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz && \
       mv etcd-{{ etcd_version }}-linux-amd64/etcd* /usr/bin
+  tags:
+    - prebake-for-dev
+
+- name: install etcd {{ etcd_version }}
+  shell: docker pull quay.io/coreos/etcd:{{ etcd_version }}
   tags:
     - prebake-for-dev
 

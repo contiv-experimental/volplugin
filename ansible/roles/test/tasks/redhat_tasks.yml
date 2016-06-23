@@ -1,12 +1,12 @@
 - name: download VBox (redhat)
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: http://download.virtualbox.org/virtualbox/5.0.12/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
-    dest: /tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm
+    url: http://download.virtualbox.org/virtualbox/{{ vbox_major_version }}/VirtualBox-{{ vbox_version }}_el7-1.x86_64.rpm
+    dest: /tmp/VirtualBox-{{ vbox_major_version }}.rpm
     force: no
 
 - name: install VBox (redhat)
-  yum: name=/tmp/VirtualBox-5.0-5.0.12_104815_el7-1.x86_64.rpm state=present
+  yum: name=/tmp/VirtualBox-{{ vbox_major_version }}.rpm state=present
 
 - name: install VBox dkms and dependencies (redhat)
   yum: name={{ item }} state=latest
@@ -25,9 +25,9 @@
 - name: download vagrant (redhat)
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.rpm
-    dest: /tmp/vagrant_1.8.1_x86_64.rpm
+    url: https://releases.hashicorp.com/vagrant/{{ vagrant_version }}/vagrant_{{ vagrant_version }}_x86_64.rpm
+    dest: /tmp/vagrant_{{ vagrant_version }}.rpm
     force: no
 
 - name: install vagrant (redhat)
-  yum: name=/tmp/vagrant_1.8.1_x86_64.rpm state=present
+  yum: name=/tmp/vagrant_{{ vagrant_version }}.rpm state=present

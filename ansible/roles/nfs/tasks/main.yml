@@ -1,14 +1,6 @@
 ---
-- name: enable NFS server
-  service:
-    name: nfs-server
-    state: started
-    enabled: yes
-  when: use_nfs
+- include: ./server.yml
+  when: use_nfs_server
 
-- name: enable NFS client
-  service:
-    name: nfs-client.target
-    state: started
-    enabled: yes
-  when: use_nfs
+- include: ./client.yml
+  when: not use_nfs_server

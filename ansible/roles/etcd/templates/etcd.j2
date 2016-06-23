@@ -5,7 +5,11 @@ http://{{ addr }}:{{ etcd_peer_port1 }},http://{{ addr }}:{{ etcd_peer_port2 }}
 {%- endmacro -%}
 
 {%- macro client_url(addr) -%}
-http://{{ addr }}:{{ etcd_client_port1 }},http://{{ addr }}:{{ etcd_client_port2 }}
+    {%- if addr != "" -%}
+        http://{{ addr }}:{{ etcd_client_port1 }},http://{{ addr }}:{{ etcd_client_port2 }}
+    {%- else -%}
+        {#- print nothing -#}
+    {%- endif -%}
 {%- endmacro -%}
 
 {%- macro cluster_url(name,addr) -%}
@@ -15,7 +19,7 @@ http://{{ addr }}:{{ etcd_client_port1 }},http://{{ addr }}:{{ etcd_client_port2
 {%- macro get_peer_addr() -%}
     {# we can't use a simple filter as shown, as it needs python 2.8.
      # So resorting to loop below to get a peer.
-    {%- set peer_name=groups[etcd_peers_group]|reject("equalto", node_name)|first -%} #}
+     #{%- set peer_name=groups[etcd_peers_group]|reject("equalto", node_name)|first -%} #}
     {%- set peers=[] -%}
     {%- for host in groups[etcd_peers_group] -%}
         {%- if host != node_name -%}
@@ -32,78 +36,8 @@ http://{{ addr }}:{{ etcd_client_port1 }},http://{{ addr }}:{{ etcd_client_port2
 {%- endmacro -%}
 
 {%- macro etcdctl_flags(peer_addr) -%}
---endpoints="{{ client_url(peer_addr) }},{{ client_url(node_addr) }}" --total-timeout=15s --timeout=5s
-{%- endmacro -%}
-
-{% macro add_proxy() -%}
-    # on worker nodes, run etcd in proxy mode
-    export ETCD_PROXY=on
-    export ETCD_INITIAL_CLUSTER="{{ cluster_url(etcd_master_name, etcd_master_addr) }}"
-{% endmacro %}
-
-{% macro add_member(peer_addr) -%}
-{#- if you change the indentation below, make sure the generated file stays readable -#}
-        # member addition can occassionally fail, retry a few times on failure
-        res=1
-        for i in {1..10}; do
-            sleep $[ ( $RANDOM % 10 )  + 1 ]s
-            # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
-            # ETCD_LISTEN_PEER_URLS for now
-            out=`etcdctl {{ etcdctl_flags(peer_addr) }} \
-                    member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS" 2>&1`
-            res=$?
-            if [ "$res" == "0" ]; then
-                break
-            elif [ "$out" == "etcdserver: peerURL exists" ]; then
-                # delete member state before retrying
-                {{ remove_member(peer_addr) }}
-            fi
-        done
-        if [ "$res" -ne 0 ]; then
-            echo "failed to add member {{ node_name }}"
-            exit 1
-        fi
-        # parse and export the environment returned by member add
-        export `echo $out | awk -F 'ETCD_' '{print "ETCD_"$2 "ETCD_"$3 "ETCD_"$4}' | sed s/\"//g`
-{% endmacro %}
-
-{% macro remove_member(peer_addr) -%}
-{#- if you change the indentation below, make sure the generated file stays readable -#}
-                # we grep for node_addr in place of name as it the member wasn't started, then it's name is not printed
-                out=`etcdctl {{ etcdctl_flags(peer_addr) }} \
-                        member list | grep "{{ node_addr }}" | awk -F ':' '{print $1}' | awk -F '[' '{print $1}'`
-                if [ "$out" != "" ]; then
-                    echo "==> removing member: " $out
-                    etcdctl {{ etcdctl_flags(peer_addr) }} \
-                        member remove $out
-                fi
-{% endmacro %}
-
-{% macro init_cluster() -%}
-{#- if you change the indentation below, make sure the generated file stays readable -#}
-    # on master nodes, if the cluster is being initialized for first time then initialize it
-    if [ ! -f {{ etcd_tmp_filename }} ]; then
-        touch {{ etcd_tmp_filename }}
-        export ETCD_INITIAL_CLUSTER_STATE=new
-        export ETCD_INITIAL_CLUSTER="
-        {%- for host in groups[etcd_peers_group] -%}
-        {%- if loop.last -%}
-        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }}
-        {%- else -%}
-        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }},
-        {%- endif -%}
-        {%- endfor -%}
-        "
-    else
-        {% set peer_addr=get_peer_addr() -%}
-        {% if peer_addr == "" -%}
-        echo "==> no peer found or single member cluster at time of commission, failing now"
-        exit 1
-        {% else -%}
-        {{ add_member(peer_addr=peer_addr) -}}
-        {% endif %}
-    fi
-{% endmacro %}
+--endpoints="{{ client_url(peer_addr) }},{{ client_url(node_addr) }},{{ client_url(service_vip) }}" --total-timeout=15s --timeout=5s
+{%- endmacro %}
 
 usage="$0 <start|stop|post-stop>"
 if [ $# -ne 1 ]; then
@@ -121,42 +55,157 @@ export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
 export ETCD_HEARTBEAT_INTERVAL={{ etcd_heartbeat_interval }}
 export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
 
+{% if run_as == "worker" %}
+# add_proxy() sets up the environment to run node as proxy
+# @args:
+#  - name of a peer node
+#  - address of that peer node
+add_proxy() {
+    export ETCD_PROXY=on
+    export ETCD_INITIAL_CLUSTER="{{ cluster_url("${1}", "${2}") }}"
+}
+{% else %}
+# get_peers() returns a comma separated list of peers in 'peers' variable
+get_peers() {
+    #query for any members that might have been added overtime
+    out=$(etcdctl {{ etcdctl_flags("${1}") }} member list | \
+        egrep -o 'clientURLs=.* ' | \
+        awk -F= '{ print $2 }')
+    peers=""; for i in ${out}; do peers=${peers},${i}; done
+    #apply a series of transformations to reduce the list to a comma separated list of addresses
+    peers="`echo | awk '{print gensub("http://", "", "g", "'"${peers}"'")}'`"
+    peers="`echo | awk '{print gensub(":[0-9][0-9]*", "", "g", "'"${peers}"'")}'`"
+    peers="`echo | awk '{print gensub("{{ node_addr }}", "", "g", "'"${peers}"'")}'`"
+    peers="`echo | awk '{print gensub("{{ service_vip }}", "", "g", "'"${peers}"'")}'`"
+    peers="`echo | awk '{print gensub(",,", "", "g", "'"${peers}"'")}'`"
+    peers="${peers/#,/}"
+}
+
+# remove_member() removes the node from an existing cluster
+# @args:
+# - address of one of the peer nodes
+remove_member() {
+    # we grep for node_addr in place of name as it the member wasn't started, then it's name is not printed
+    out=`etcdctl {{ etcdctl_flags("${1}") }} \
+        member list | grep "{{ node_addr }}" | awk -F ':' '{print $1}' | awk -F '[' '{print $1}'`
+    if [ "${out}" != "" ]; then
+        echo "==> removing member: " ${out}
+        etcdctl {{ etcdctl_flags("${1}") }} \
+            member remove ${out}
+    fi
+}
+
+# add_member() adds the node to an existing cluster
+# @args:
+# - address of one of the peer nodes
+add_member() {
+    # member addition can occassionally fail, retry a few times on failure
+    res=1
+    for i in {1..10}; do
+        sleep $[ ( $RANDOM % 10 )  + 1 ]s
+        # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
+        # ETCD_LISTEN_PEER_URLS for now
+        out=`etcdctl {{ etcdctl_flags("${1}") }} \
+            member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS" 2>&1`
+        res=$?
+        if [ "${res}" == "0" ]; then
+            break
+        elif [ "${out}" == "etcdserver: peerURL exists" ]; then
+            # delete member state before retrying
+            remove_member "${1}"
+        fi
+    done
+    if [ "${res}" -ne 0 ]; then
+        echo "failed to add member {{ node_name }}"
+        exit 1
+    fi
+    # parse and export the environment returned by member add
+    export `echo $out | awk -F 'ETCD_' '{print "ETCD_"$2 "ETCD_"$3 "ETCD_"$4}' | sed s/\"//g`
+}
+
+# init_cluster() inits an etcd cluster, if no peers are configured and are not found.
+# Else it adds the node to exisitng cluster
+# @args:
+# - none
+init_cluster() {
+    # on master nodes, if the cluster is being initialized for first time then initialize it
+    peers=""
+    get_peers "{{ get_peer_addr() }}"
+    if [ "${peers}" == "" ]; then
+        echo "==> no peers configured or rest of the etcd cluster is unhealthy, trying to init the cluster"
+        export ETCD_INITIAL_CLUSTER_STATE=new
+        export ETCD_INITIAL_CLUSTER="
+        {%- for host in groups[etcd_peers_group] -%}
+        {%- if loop.last -%}
+        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }}
+        {%- else -%}
+        {{ cluster_url(hostvars[host]['inventory_hostname'], hostvars[host]['ansible_' + hostvars[host]['control_interface']]['ipv4']['address']) }},
+        {%- endif -%}
+        {%- endfor -%}
+        "
+    else
+        peer=$(echo ${peers} | awk -F, '{print $1}')
+        add_member "${peer}"
+    fi
+}
+{% endif %}
+
 set -x
 case $1 in
 start)
+    # check if docker is running, else fail early.
+    # this is done instead of adding a 'Requires' dependency for docker in
+    # unit file to ensure that the etcd service starts as soon as docker starts
+    # even after a manual restart of docker.
+    out=$(/usr/bin/docker ps 2>&1 | grep -o "Cannot connect to the Docker daemon")
+    if [ "${out}" == "Cannot connect to the Docker daemon" ]; then
+        echo "docker is not running."
+        exit 1
+    fi
     {% if run_as == "worker" -%}
-    {{ add_proxy() }}
+    # on worker nodes, run etcd in proxy mode
+    add_proxy "{{ etcd_master_name }}" "{{ etcd_master_addr }}"
     {% elif etcd_init_cluster -%}
-    {{ init_cluster() }}
+    init_cluster
     {% else -%}
     # if a new master node is being commissioned then add it to existing cluster
-    {{ add_member(peer_addr=etcd_master_addr) }}
+    add_member "{{ etcd_master_addr }}"
     {% endif -%}
 
     #start etcd
     echo "==> starting etcd with environment:" `env`
-    /usr/bin/etcd
+    /usr/bin/docker run -t --rm --net=host --name etcd \
+        -e ETCD_NAME=${ETCD_NAME} \
+        -e ETCD_DATA_DIR=${ETCD_DATA_DIR} \
+        -e ETCD_INITIAL_CLUSTER_TOKEN=${ETCD_INITIAL_CLUSTER_TOKEN} \
+        -e ETCD_LISTEN_CLIENT_URLS=${ETCD_LISTEN_CLIENT_URLS} \
+        -e ETCD_ADVERTISE_CLIENT_URLS=${ETCD_ADVERTISE_CLIENT_URLS} \
+        -e ETCD_INITIAL_ADVERTISE_PEER_URLS=${ETCD_INITIAL_ADVERTISE_PEER_URLS} \
+        -e ETCD_LISTEN_PEER_URLS=${ETCD_LISTEN_PEER_URLS} \
+        -e ETCD_HEARTBEAT_INTERVAL=${ETCD_HEARTBEAT_INTERVAL} \
+        -e ETCD_ELECTION_TIMEOUT=${ETCD_ELECTION_TIMEOUT} \
+        -e ETCD_INITIAL_CLUSTER=${ETCD_INITIAL_CLUSTER} \
+        -e ETCD_INITIAL_CLUSTER_STATE=${ETCD_INITIAL_CLUSTER_STATE} \
+        -e ETCD_PROXY=${ETCD_PROXY} \
+        quay.io/coreos/etcd:{{ etcd_version }}
     ;;
 
 stop)
     {% if run_as == "worker" -%}
     echo "==> no 'stop' action for proxy"
-    {% elif etcd_init_cluster -%}
-        {% set peer_addr=get_peer_addr() -%}
-        {% if peer_addr == "" -%}
-        echo "==> no peer found or single member cluster at time of commission"
-        exit 1
-        {% else -%}
-        {{ remove_member(peer_addr=peer_addr) }}
-        {% endif %}
     {% else -%}
-    {{ remove_member(peer_addr=etcd_master_addr) }}
-    {% endif -%}
-    ;;
+    peers=""
+    get_peers "{{ get_peer_addr() }}"
+    if [ "${peers}" == "" ]; then
+        echo "==> no peers found or single member cluster"
+    else
+        peer=$(echo ${peers} | awk -F, '{print $1}')
+        remove_member "${peer}"
+    fi
+    {%- endif %}
 
-post-stop)
-    #XXX: is there a case when we should not cleanup the data dir on stop?
-    rm -rf $ETCD_DATA_DIR
+    /usr/bin/docker stop etcd
+    /usr/bin/docker rm etcd
     ;;
 
 *)

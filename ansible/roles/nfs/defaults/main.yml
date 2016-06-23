@@ -1,2 +1,2 @@
 ---
-use_nfs: false
+use_nfs_server: false

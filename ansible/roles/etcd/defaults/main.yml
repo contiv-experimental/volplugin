@@ -7,7 +7,6 @@ etcd_peer_port1: 2380
 etcd_peer_port2: 7001
 etcd_peers_group: "service-master"
 etcd_init_cluster: true
-etcd_tmp_filename: "/tmp/etcd.existing"
 etcd_rule_comment: "etcd traffic"
 etcd_version: "v2.3.1"
 etcd_heartbeat_interval: 1000

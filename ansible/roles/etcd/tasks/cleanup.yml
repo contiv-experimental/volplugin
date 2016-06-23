@@ -4,9 +4,6 @@
 - name: stop etcd
   service: name=etcd state=stopped
 
-- name: remove the temp etcd file
-  file: name={{ etcd_tmp_filename }} state=absent
-
 - name: cleanup iptables for etcd
   shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ etcd_rule_comment }} ({{ item }})"
   become: true

@@ -1,18 +1,18 @@
 - name: check packer's version
   shell: packer --version
-  register: packer_version
+  register: packer_installed_version
   ignore_errors: yes
 
 - name: download packer
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://releases.hashicorp.com/packer/0.8.6/packer_0.8.6_linux_amd64.zip
-    dest: /tmp/packer_0.8.6_linux_amd64.zip
+    url: "https://releases.hashicorp.com/packer/{{ packer_version }}/packer_{{ packer_version }}_linux_amd64.zip"
+    dest: "/tmp/packer_{{ packer_version }}_linux_amd64.zip"
     force: no
-  when: packer_version.stdout != "0.8.6"
+  when: packer_installed_version.stdout != "{{ packer_version }}"
 
 - name: install packer
-  shell: rm -f packer* && unzip /tmp/packer_0.8.6_linux_amd64.zip
+  shell: rm -f packer* && unzip /tmp/packer_{{ packer_version }}_linux_amd64.zip
   args:
     chdir: /usr/local/bin
-  when: packer_version.stdout != "0.8.6"
+  when: packer_installed_version.stdout != "{{ packer_version }}"

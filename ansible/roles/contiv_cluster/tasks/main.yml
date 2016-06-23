@@ -45,12 +45,12 @@
 
 - name: copy conf files for clusterm
   copy:
-    src: "{{ item }}"
-    dest: /etc/default/clusterm/{{ item }}
-    force: yes
+    src: "{{ item.file }}"
+    dest: "/etc/default/clusterm/{{ item.file }}"
+    force: "{{ item.force }}"
   with_items:
-    - "{{ clusterm_args_file }}"
-    - "{{ clusterm_conf_file }}"
+    - { file: "{{ clusterm_args_file }}", force: "yes" }
+    - { file: "{{ clusterm_conf_file }}", force: "no" }
 
 - name: copy systemd units for clusterm
   template: src=clusterm.j2 dest=/etc/systemd/system/clusterm.service

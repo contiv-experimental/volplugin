@@ -34,7 +34,9 @@
 
 - name: start volsupervisor
   service: name=volsupervisor state=restarted
-  when: run_as == "master"
+  when: run_as == "master" and contiv_storage_supervisor_host != ""
+  run_once: true
+  delegate_to: "{{ contiv_storage_supervisor_host }}"
 
 - name: copy environment file for volplugin
   template: src=volplugin.j2 dest=/etc/default/volplugin
