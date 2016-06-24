@@ -23,6 +23,7 @@ debian_package_dependencies:
   - python-pycurl
   - hdparm
   - ntp
+  - python-flask
 
 redhat_package_dependencies:
   - python-pycurl
@@ -30,6 +31,7 @@ redhat_package_dependencies:
   - yum-plugin-priorities.noarch
   - epel-release
   - ntp
+  - python-flask
 
 ## Configure package origin
 #

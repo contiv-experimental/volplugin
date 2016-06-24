@@ -9,7 +9,7 @@
   with_items:
     - "{{ ucp_fingerprint_file }}"
     - "{{ ucp_instance_id_file }}"
-    - "{{ ucp_fifo_file }}"
+    - "{{ ucp_certificate_file }}"
 
 # XXX: temporary fix for issue with ucp 1.1.0 where it doesn't cleanup this file
 # remove this once it is fixed. Target fix version is 1.1.2

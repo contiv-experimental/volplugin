@@ -21,7 +21,6 @@
   shell: >
       ( iptables -L INPUT | grep "{{ netplugin_rule_comment }} ({{ item }})" ) || \
       iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ netplugin_rule_comment }} ({{ item }})"
-  become: true
   with_items:
     - "{{ ofnet_master_port }}"
     - "{{ ofnet_agent_port1 }}"
@@ -70,7 +69,17 @@
     line: "{{ service_vip }} netmaster"
     regexp: " netmaster$"
     state: present
-  become: true
+
+# XXX: remove this task once the following is resolved: https://github.com/contiv/netplugin/issues/275
+- name: setup hostname alias
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+    state: present
+  with_items:
+    - { line: '127.0.0.1 localhost', regexp: '^127\.0\.0\.1' }
+    - { line: '{{ node_addr }} {{ ansible_hostname }}', regexp: ' {{ ansible_hostname }}$' }
 
 - name: copy environment file for netmaster
   copy: src=netmaster dest=/etc/default/netmaster
@@ -93,7 +102,7 @@
     force: no
 
 - name: install contivctl
-  shell: tar vxjf {{ contivctl_dest_file }}
+  shell: tar vxzf {{ contivctl_dest_file }} --strip-components=1 contivctl-{{ contivctl_version_no_v }}/contivctl
   args:
     chdir: /usr/bin/
 

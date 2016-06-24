@@ -15,3 +15,5 @@
     - python-software-properties
     - bash-completion
     - python-selinux
+    - e2fsprogs
+    - openssh-server

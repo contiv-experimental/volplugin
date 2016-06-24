@@ -1,0 +1,20 @@
+---
+- name: install nfs client (redhat)
+  yum: "update_cache=yes name={{ item }}"
+  with_items:
+    - nfs-utils
+    - libnfsidmap
+  when: ansible_os_family == "RedHat"
+
+- name: install nfs client (debian)
+  apt: "update_cache=yes name={{ item }}"
+  with_items:
+    - nfs-common
+    - rpcbind
+  when: ansible_os_family == "Debian"
+
+- name: enable nfs client services (redhat)
+  service: "name={{item}} enabled=yes state=started"
+  when: ansible_os_family == "RedHat"
+  with_items:
+    - rpcbind

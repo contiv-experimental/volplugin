@@ -98,6 +98,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 
 	c.Assert(s.clearContainers(), IsNil)
 	c.Assert(s.restartDocker(), IsNil)
+	c.Assert(s.waitDockerizedServices(), IsNil)
 	c.Assert(s.pullDebian(), IsNil)
 	c.Assert(s.rebootstrap(), IsNil)
 

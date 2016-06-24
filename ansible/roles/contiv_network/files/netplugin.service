@@ -5,4 +5,5 @@ After=auditd.service systemd-user-sessions.service time-sync.target etcd.service
 [Service]
 EnvironmentFile=/etc/default/netplugin
 ExecStart=/usr/bin/netplugin $NETPLUGIN_ARGS
+ExecStopPost=/usr/bin/rm -f /run/docker/plugins/netplugin.sock
 KillMode=control-group

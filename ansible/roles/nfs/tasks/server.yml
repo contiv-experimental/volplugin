@@ -1,0 +1,36 @@
+---
+- name: install nfs server (redhat)
+  yum: "update_cache=yes name={{ item }}"
+  with_items:
+    - nfs-utils
+    - libnfsidmap
+  when: ansible_os_family == "RedHat"
+
+- name: install nfs server (debian)
+  apt: "update_cache=yes name={{ item }}"
+  with_items:
+    - nfs-kernel-server
+    - rpcbind
+  when: ansible_os_family == "Debian"
+
+- name: enable nfs server services (redhat)
+  service: "name={{item}} enabled=yes"
+  when: ansible_os_family == "RedHat"
+  with_items:
+    - rpcbind
+    - nfs-server
+
+- name: start nfs server services (redhat)
+  service: "name={{item}} state=started"
+  when: ansible_os_family == "RedHat"
+  with_items:
+    - rpcbind
+    - nfs-server
+    - rpc-statd
+    - nfs-idmapd
+
+- name: ensure nfs service is running (debian)
+  service: "name={{item}} enabled=yes state=started"
+  when: ansible_os_family == "Debian"
+  with_items:
+    - nfs-kernel-server

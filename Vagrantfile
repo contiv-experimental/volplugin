@@ -60,7 +60,7 @@ ansible_provision = proc do |ansible|
     scheduler_provider: ENV["UCP"] ? "ucp-swarm" : "native-swarm",
     ucp_bootstrap_node_name: "mon0",
     ucp_license_remote: ENV["HOME"] + "/docker_subscription.lic",
-    use_nfs: true,
+    use_nfs_server: true,
     swarm_bootstrap_node_name: "mon0",
     docker_device: "/dev/sdb",
     etcd_peers_group: 'volplugin-test',
