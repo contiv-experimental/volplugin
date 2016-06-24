@@ -31,7 +31,7 @@ type Volume struct {
 	Backends       BackendDrivers    `json:"backends"`
 }
 
-// CreateOptions are the set of options used by volmaster during the volume
+// CreateOptions are the set of options used by apiserver during the volume
 // create operation.
 type CreateOptions struct {
 	Size       string `json:"size" merge:"size"`
@@ -265,7 +265,7 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 }
 
 // ListAllVolumes returns an array with all the named policies and volumes the
-// volmaster knows about. Volumes have syntax: policy/volumeName which will be
+// apiserver knows about. Volumes have syntax: policy/volumeName which will be
 // reflected in the returned string.
 func (c *Client) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})

@@ -1,4 +1,4 @@
-package volmaster
+package apiserver
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// DaemonConfig is the configuration struct used by the volmaster to hold globals.
+// DaemonConfig is the configuration struct used by the apiserver to hold globals.
 type DaemonConfig struct {
 	Config   *config.Client
 	MountTTL int
@@ -92,7 +92,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, postRouter, "POST", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting volmaster: %v", err)
+		log.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -102,7 +102,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, deleteRouter, "DELETE", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting volmaster: %v", err)
+		log.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -119,7 +119,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, getRouter, "GET", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting volmaster: %v", err)
+		log.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	if d.Global.Debug {
@@ -127,7 +127,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := http.ListenAndServe(listen, r); err != nil {
-		log.Fatalf("Error starting volmaster: %v", err)
+		log.Fatalf("Error starting apiserver: %v", err)
 	}
 }
 

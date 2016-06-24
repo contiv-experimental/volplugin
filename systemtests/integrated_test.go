@@ -16,7 +16,7 @@ import (
 
 func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
 	// this not-very-obvious test ensures that the policy can be uploaded after
-	// the volplugin/volmaster pair are started.
+	// the volplugin/apiserver pair are started.
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 }
 

@@ -27,10 +27,10 @@ var (
 	// ErrRemove is an error for when use locks cannot be removed
 	ErrLockRemove = errored.New("Could not remove use lock")
 
-	// VolmasterDown signifies that the volmaster could not be reached.
-	VolmasterDown = errored.New("volmaster could not be contacted")
+	// VolmasterDown signifies that the apiserver could not be reached.
+	VolmasterDown = errored.New("apiserver could not be contacted")
 	// VolmasterRequest is used when a request fails.
-	VolmasterRequest = errored.New("Making request to volmaster")
+	VolmasterRequest = errored.New("Making request to apiserver")
 )
 
 // storage-level errors

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/contiv/volplugin/config"
-	"github.com/contiv/volplugin/volmaster"
+	"github.com/contiv/volplugin/apiserver"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -21,7 +21,7 @@ func start(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
-	d := &volmaster.DaemonConfig{
+	d := &apiserver.DaemonConfig{
 		Config:   cfg,
 		MountTTL: ctx.Int("ttl"),
 		Timeout:  time.Duration(ctx.Int("timeout")) * time.Minute,
@@ -38,7 +38,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "listen",
-			Usage:  "listen address for volmaster",
+			Usage:  "listen address for apiserver",
 			EnvVar: "LISTEN",
 			Value:  ":9005",
 		},

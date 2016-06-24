@@ -124,7 +124,7 @@ Tools and configurations for building the VM images can be found in the [build r
 Our system tests are an integration suite that runs from the host, unlike the
 unit tests which run on the guest(s). As a result system tests have unique
 requirements. The system tests also are responsible for setting up volplugin,
-volmaster, etcd and other dependencies.
+apiserver, etcd and other dependencies.
 
 * Must run on all (reasonably supported) platforms for development, e.g.:
   * Mac OS X

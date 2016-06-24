@@ -73,7 +73,7 @@ unit-test-nocoverage-host: golint-host govet-host
 
 build: golint govet
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
-	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill volmaster; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
+	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill apiserver; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 docker: run-build
 	docker build -t contiv/volplugin .
@@ -82,7 +82,7 @@ docker-push: docker
 	docker push contiv/volplugin
 
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-volmaster'; done
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-apiserver'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 
@@ -97,14 +97,14 @@ run-volsupervisor:
 	sudo pkill volsupervisor || exit 0
 	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor &>/tmp/volsupervisor.log &'
 
-run-volmaster:
-	sudo pkill volmaster || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volmaster &>/tmp/volmaster.log &'
+run-apiserver:
+	sudo pkill apiserver || exit 0
+	sudo -E nohup bash -c '$(GUESTBINPATH)/apiserver &>/tmp/apiserver.log &'
 
 run-build: 
 	GOGC=1000 go install -v \
 		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
-		 ./volcli/volcli/ ./volplugin/volplugin/ ./volmaster/volmaster/ ./volsupervisor/volsupervisor/
+		 ./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/
 	cp /opt/golang/bin/* /tmp/bin
 
 system-test: run 
@@ -141,7 +141,7 @@ TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
 tar: clean-tar
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli volmaster volplugin volsupervisor -C ${PWD} contrib
+	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli apiserver volplugin volsupervisor -C ${PWD} contrib
 
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)

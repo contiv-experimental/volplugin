@@ -1,4 +1,4 @@
-// Package client implements a client to the volmaster to acquire locks.
+// Package client implements a client to the apiserver to acquire locks.
 package client
 
 import (
@@ -65,7 +65,7 @@ func (d *Driver) RemoveStopChan(name string) {
 	}
 }
 
-// HeartbeatMount reports a mount to a volmaster periodically. It loops
+// HeartbeatMount reports a mount to a apiserver periodically. It loops
 // endlessly, and is intended to run as a goroutine. Note the stop channel,
 // AddStopChan and RemoveStopChan are used to manage these entities.
 func (d *Driver) HeartbeatMount(ttl time.Duration, payload *config.UseMount, stop chan struct{}) {
@@ -122,7 +122,7 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 	return nil
 }
 
-// ReportMount reports a new mount to the volmaster.
+// ReportMount reports a new mount to the apiserver.
 func (d *Driver) ReportMount(ut *config.UseMount) error {
 	err := d.reportMountEndpoint("mount", ut)
 	log.Debugf("Reporting mount %#v: %v", ut, err)
@@ -136,7 +136,7 @@ func (d *Driver) ReportMountStatus(ut *config.UseMount) error {
 	return err
 }
 
-// ReportUnmount reports an unmount event to the volmaster, which frees locks.
+// ReportUnmount reports an unmount event to the apiserver, which frees locks.
 func (d *Driver) ReportUnmount(ut *config.UseMount) error {
 	ut.Reason = lock.ReasonMount
 	content, err := json.Marshal(ut)

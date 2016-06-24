@@ -67,7 +67,7 @@ func (dc *DaemonConfig) updateMounts() error {
 					log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
 				}
 			} else if err != nil {
-				log.Fatalf("Unknown error reading from volmaster: %v", err)
+				log.Fatalf("Unknown error reading from apiserver: %v", err)
 			}
 
 			// XXX some of the mounts get propagated above from docker itself, so

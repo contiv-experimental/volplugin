@@ -27,7 +27,7 @@ const (
 var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootSnapshots}
 
 // Request provides a request structure for communicating with the
-// volmaster.
+// apiserver.
 type Request struct {
 	Volume  string            `json:"volume"`
 	Policy  string            `json:"policy"`
