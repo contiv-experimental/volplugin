@@ -7,12 +7,15 @@ VAGRANTFILE_API_VERSION = '2'
 OSX_VMWARE_DIR = "/Applications/VMware Fusion.app/Contents/Library/"
 
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
+ansible_config_file=File.expand_path(File.join(File.dirname(__FILE__), 'ansible', 'ansible.cfg'))
 settings=YAML.load_file(config_file)
 
 if ENV["DEMO"]
   settings["vms"] = 1
   settings["memory"] = 4096
 end
+
+ENV['ANSIBLE_CONFIG'] = ansible_config_file
 
 NMONS        = ENV["VMS"] || settings['vms']
 SUBNET       = settings['subnet']
