@@ -7,10 +7,10 @@ func (dc *DaemonConfig) addStopChan(name string, stopChan chan struct{}) {
 }
 
 func (dc *DaemonConfig) removeStopChan(name string) {
-	dc.lockStopChanMutex.RLock()
+	dc.lockStopChanMutex.Lock()
 	if test, ok := dc.lockStopChans[name]; ok && test != nil {
 		dc.lockStopChans[name] <- struct{}{}
 	}
 	delete(dc.lockStopChans, name)
-	dc.lockStopChanMutex.RUnlock()
+	dc.lockStopChanMutex.Unlock()
 }

@@ -34,7 +34,7 @@ type DaemonConfig struct {
 	Global *config.Global
 	Client *config.Client
 
-	lockStopChanMutex sync.RWMutex
+	lockStopChanMutex sync.Mutex
 	lockStopChans     map[string]chan struct{}
 	mountCountMutex   sync.Mutex
 	mountCount        map[string]int
