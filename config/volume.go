@@ -270,6 +270,10 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 func (c *Client) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
+		if er, ok := errors.EtcdToErrored(err).(*errored.Error); ok && er.Contains(errors.NotExists) {
+			return []string{}, nil
+		}
+
 		return nil, errors.EtcdToErrored(err)
 	}
 
