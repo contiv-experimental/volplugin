@@ -117,6 +117,6 @@ live throughout the codebase as `*_test` files. The system tests / integration
 tests (`make system-test`) live in the `systemtests` directory.
 
 [ReportCard-URL]: https://goreportcard.com/report/github.com/contiv/volplugin
-[ReportCard-Image]: http://goreportcard.com/badge/contiv/volplugin
+[ReportCard-Image]: https://goreportcard.com/badge/github.com/contiv/volplugin
 [Build-Status-URL]: http://contiv.ngrok.io/job/Volplugin%20Push%20Build%20Master
 [Build-Status-Image]: http://contiv.ngrok.io/buildStatus/icon?job=Volplugin%20Push%20Build%20Master
