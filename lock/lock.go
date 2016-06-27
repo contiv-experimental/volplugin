@@ -134,11 +134,11 @@ func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Du
 
 func (d *Driver) lockWait(uc config.UseLocker, timeout time.Duration, now time.Time, reason string) (bool, error) {
 	log.Warnf("Could not %s %q lock for %q", reason, uc.GetReason(), uc.GetVolume())
-	if timeout != 0 && (timeout == -1 || time.Now().Sub(now) < timeout) {
+	if timeout != 0 && (timeout == -1 || time.Since(now) < timeout) {
 		log.Warnf("Waiting 100ms for %q lock on %q to free", uc.GetReason(), uc.GetVolume())
 		time.Sleep(wait.Jitter(100*time.Millisecond, 0))
 		return true, nil
-	} else if time.Now().Sub(now) >= timeout {
+	} else if time.Since(now) >= timeout {
 		return false, errors.LockFailed
 	}
 
