@@ -1,7 +1,6 @@
 package volsupervisor
 
 import (
-	"path"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -15,13 +14,13 @@ func (dc *DaemonConfig) updatePolicies() {
 		for _, name := range myVolumes {
 			parts := strings.SplitN(name, "/", 2)
 			if len(parts) < 2 {
-				log.Errorf("Invalid volume %q. Skipping on volmaster startup.", name)
+				log.Errorf("Invalid volume %q. Skipping on apiserver startup.", name)
 				continue
 			}
 
 			vol, err := dc.Config.GetVolume(parts[0], parts[1])
 			if err != nil {
-				log.Errorf("Could not get volume %q at volmaster startup. Skipping and waiting for update.", name)
+				log.Errorf("Could not get volume %q at apiserver startup. Skipping and waiting for update.", name)
 				continue
 			}
 			volumeMutex.Lock()
@@ -35,23 +34,15 @@ func (dc *DaemonConfig) updatePolicies() {
 
 	go func() {
 		for {
-			runtimeConfig := <-volumeChan
+			vc := <-volumeChan
 
 			volumeMutex.Lock()
-			if runtimeConfig.Config == nil {
-				log.Debugf("Deleting volume %q from cache", runtimeConfig.Key)
-				delete(volumes, runtimeConfig.Key)
+			if vc.Config == nil {
+				log.Debugf("Deleting volume %q from cache", vc.Key)
+				delete(volumes, vc.Key)
 			} else {
-				log.Debugf("Adding volume %q to cache", runtimeConfig.Key)
-				policy, volname := path.Split(runtimeConfig.Key)
-				vol, err := dc.Config.GetVolume(policy, volname)
-				if err != nil {
-					log.Errorf("Could not get volume %q processing runtime update", runtimeConfig.Key)
-					continue
-				}
-
-				vol.RuntimeOptions = *(runtimeConfig.Config.(*config.RuntimeOptions))
-				volumes[runtimeConfig.Key] = vol
+				log.Debugf("Adding volume %q to cache", vc.Key)
+				volumes[vc.Key] = vc.Config.(*config.Volume)
 			}
 			volumeMutex.Unlock()
 		}

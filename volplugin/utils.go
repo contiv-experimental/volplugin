@@ -1,16 +1,13 @@
 package volplugin
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
@@ -59,7 +56,7 @@ func (dc *DaemonConfig) volumeToDriverOptions(volConfig *config.Volume) (storage
 
 func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.MountDriver, *config.Volume, storage.DriverOptions, error) {
 	driverOpts := storage.DriverOptions{}
-	volConfig, err := dc.requestVolume(uc.Policy, uc.Name)
+	volConfig, err := dc.Client.GetVolume(uc.Policy, uc.Name)
 	if err != nil {
 		return nil, nil, driverOpts, err
 	}
@@ -77,20 +74,8 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 	return driver, volConfig, driverOpts, nil
 }
 
-func httpError(w http.ResponseWriter, err error) {
-	content, errc := marshalResponse(VolumeResponse{"", err.Error()})
-	if errc != nil {
-		log.Warnf("Error received marshalling error response: %v, original error: %s", errc, err.Error())
-		http.Error(w, errc.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	log.Warnf("Returning HTTP error handling plugin negotiation: %s", err.Error())
-	http.Error(w, string(content), http.StatusOK)
-}
-
-func unmarshalRequest(body io.Reader) (VolumeRequest, error) {
-	vr := VolumeRequest{}
+func unmarshalRequest(body io.Reader) (api.VolumeRequest, error) {
+	vr := api.VolumeRequest{}
 
 	content, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -99,99 +84,6 @@ func unmarshalRequest(body io.Reader) (VolumeRequest, error) {
 
 	err = json.Unmarshal(content, &vr)
 	return vr, err
-}
-
-func marshalResponse(vr VolumeResponse) ([]byte, error) {
-	return json.Marshal(vr)
-}
-
-func (dc *DaemonConfig) requestVolume(policy, name string) (*config.Volume, error) {
-	var volConfig *config.Volume
-
-	content, err := json.Marshal(config.Request{Volume: name, Policy: policy})
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/request", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return nil, errors.GetVolume.Combine(err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
-		return nil, errors.NotExists
-	}
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	if err != nil { // error is from the ReadAll above; we just care more about the status code is all
-		return nil, err
-	}
-
-	if err := json.Unmarshal(content, &volConfig); err != nil {
-		return nil, err
-	}
-
-	return volConfig, nil
-}
-
-func (dc *DaemonConfig) requestRemove(policy, name string) error {
-	content, err := json.Marshal(config.Request{Policy: policy, Volume: name})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/remove", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	return nil
-}
-
-func (dc *DaemonConfig) requestCreate(policyName, name string, opts map[string]string) error {
-	content, err := json.Marshal(config.Request{Policy: policyName, Volume: name, Options: opts})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", dc.Master), "application/json", bytes.NewBuffer(content))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errored.Errorf("Could not read response body: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		return errored.Errorf("Status was not 200: was %d: %q", resp.StatusCode, strings.TrimSpace(string(content)))
-	}
-
-	return nil
 }
 
 func splitPath(name string) (string, string, error) {

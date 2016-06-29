@@ -325,8 +325,8 @@ func waitForVolsupervisor(node vagrantssh.TestbedNode) error {
 }
 
 func waitForVolmaster(node vagrantssh.TestbedNode) error {
-	log.Infof("Checking if volmaster is running on %q", node.GetName())
-	err := runCommandUntilNoError(node, "pgrep -c volmaster", 10)
+	log.Infof("Checking if apiserver is running on %q", node.GetName())
+	err := runCommandUntilNoError(node, "pgrep -c apiserver", 10)
 	if err == nil {
 		log.Infof("Volmaster is running on %q", node.GetName())
 
@@ -370,16 +370,16 @@ func stopVolsupervisor(node vagrantssh.TestbedNode) error {
 }
 
 func startVolmaster(node vagrantssh.TestbedNode) error {
-	log.Infof("Starting the volmaster on %q", node.GetName())
-	err := node.RunCommandBackground("(sudo -E nohup `which volmaster` </dev/null 2>&1 | sudo tee -a /tmp/volmaster.log) &")
-	log.Infof("Waiting for volmaster startup on %q", node.GetName())
+	log.Infof("Starting the apiserver on %q", node.GetName())
+	err := node.RunCommandBackground("(sudo -E nohup `which apiserver` </dev/null 2>&1 | sudo tee -a /tmp/apiserver.log) &")
+	log.Infof("Waiting for apiserver startup on %q", node.GetName())
 	time.Sleep(10 * time.Millisecond)
 	return err
 }
 
 func stopVolmaster(node vagrantssh.TestbedNode) error {
-	log.Infof("Stopping the volmaster on %q", node.GetName())
-	return node.RunCommand("sudo pkill volmaster")
+	log.Infof("Stopping the apiserver on %q", node.GetName())
+	return node.RunCommand("sudo pkill apiserver")
 }
 
 func startVolplugin(node vagrantssh.TestbedNode) error {

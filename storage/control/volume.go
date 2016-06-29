@@ -1,4 +1,4 @@
-package volmaster
+package control
 
 import (
 	"time"
@@ -14,7 +14,8 @@ import (
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
 
-func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volume, timeout time.Duration) (storage.DriverOptions, error) {
+// CreateVolume performs the dirty work of actually constructing a volume.
+func CreateVolume(policy *config.Policy, config *config.Volume, timeout time.Duration) (storage.DriverOptions, error) {
 	var (
 		fscmd string
 		ok    bool
@@ -61,7 +62,8 @@ func (dc *DaemonConfig) createVolume(policy *config.Policy, config *config.Volum
 	return driverOpts, driver.Create(driverOpts)
 }
 
-func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOptions) error {
+// FormatVolume formats an existing volume.
+func FormatVolume(config *config.Volume, do storage.DriverOptions) error {
 	actualSize, err := config.CreateOptions.ActualSize()
 	if err != nil {
 		return err
@@ -81,7 +83,8 @@ func (dc *DaemonConfig) formatVolume(config *config.Volume, do storage.DriverOpt
 	return driver.Format(do)
 }
 
-func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
+// ExistsVolume tells if a volume exists. It is *not* suitable for any locking primitive.
+func ExistsVolume(config *config.Volume, timeout time.Duration) (bool, error) {
 	if config.Backends.CRUD == "" {
 		log.Debugf("volume %q, backend is unspecified", config)
 		return true, errors.NoActionTaken
@@ -97,13 +100,14 @@ func (dc *DaemonConfig) existsVolume(config *config.Volume) (bool, error) {
 			Name:   config.String(),
 			Params: config.DriverOptions,
 		},
-		Timeout: dc.Global.Timeout,
+		Timeout: timeout,
 	}
 
 	return driver.Exists(driverOpts)
 }
 
-func (dc *DaemonConfig) removeVolume(config *config.Volume, timeout time.Duration) error {
+// RemoveVolume removes a volume.
+func RemoveVolume(config *config.Volume, timeout time.Duration) error {
 	if config.Backends.CRUD == "" {
 		log.Debugf("Not removing volume %q, backend is unspecified", config)
 		return errors.NoActionTaken

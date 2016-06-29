@@ -41,7 +41,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	s.vagrant = vagrantssh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
 
-	stopServices := []string{"volplugin", "volmaster", "volsupervisor"}
+	stopServices := []string{"volplugin", "apiserver", "volsupervisor"}
 	startServices := []string{"ceph.target", "etcd"}
 
 	/* FIXME too volatile. The intent was to ensure ceph was not a factor in some

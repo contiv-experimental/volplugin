@@ -6,9 +6,15 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func (dc *DaemonConfig) getMountCount(mp string) int {
+	dc.mountCountMutex.Lock()
+	defer dc.mountCountMutex.Unlock()
+	return dc.mountCount[mp]
+}
+
 func (dc *DaemonConfig) increaseMount(mp string) int {
-	dc.mountMutex.Lock()
-	defer dc.mountMutex.Unlock()
+	dc.mountCountMutex.Lock()
+	defer dc.mountCountMutex.Unlock()
 
 	dc.mountCount[mp]++
 	log.Debugf("Mount count increased to %d for %q", dc.mountCount[mp], mp)
@@ -16,8 +22,8 @@ func (dc *DaemonConfig) increaseMount(mp string) int {
 }
 
 func (dc *DaemonConfig) decreaseMount(mp string) int {
-	dc.mountMutex.Lock()
-	defer dc.mountMutex.Unlock()
+	dc.mountCountMutex.Lock()
+	defer dc.mountCountMutex.Unlock()
 
 	dc.mountCount[mp]--
 	log.Debugf("Mount count decreased to %d for %q", dc.mountCount[mp], mp)

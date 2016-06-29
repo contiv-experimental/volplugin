@@ -15,8 +15,8 @@ var GlobalFlags = []cli.Flag{
 		Value: &cli.StringSlice{"http://localhost:2379"},
 	},
 	cli.StringFlag{
-		Name:  "volmaster",
-		Usage: "address of volmaster process",
+		Name:  "apiserver",
+		Usage: "address of apiserver process",
 		Value: "127.0.0.1:9005",
 	},
 }
@@ -89,7 +89,7 @@ var Commands = []cli.Command{
 					Usage: "Provide key=value options to create the volume",
 				}},
 				ArgsUsage:   "[policy name]/[volume name]",
-				Description: "This creates a logical volume. Calls out to the volmaster and sets the policy based on the policy name provided.",
+				Description: "This creates a logical volume. Calls out to the apiserver and sets the policy based on the policy name provided.",
 				Usage:       "Create a volume for a given policy",
 				Action:      VolumeCreate,
 			},
@@ -186,7 +186,7 @@ var Commands = []cli.Command{
 			{
 				Name:        "list",
 				Usage:       "List uses",
-				Description: "List the uses the volmaster knows about, in newline-delimited form.",
+				Description: "List the uses the apiserver knows about, in newline-delimited form.",
 				ArgsUsage:   "",
 				Flags: []cli.Flag{
 					cli.BoolFlag{

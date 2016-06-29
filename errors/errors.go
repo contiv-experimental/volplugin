@@ -4,6 +4,9 @@ import "github.com/contiv/errored"
 
 // service-level errors
 var (
+	// Unknown is for those times when we just. don't. know.
+	Unknown = errored.New("Unknown error")
+
 	// Exists is used to exit in situations where duplicated data would be written.
 	Exists = errored.New("Already exists")
 	// NotExists is used to exit in situations where no data would be read.
@@ -12,13 +15,22 @@ var (
 	// LockFailed is for when locks fails to acquire.
 	LockFailed = errored.New("Locking Operation Failed")
 
+	// LockMismatch is when our compare/swap operations fail.
+	LockMismatch = errored.New("Compare/swap lock operation failed. Perhaps it's mounted on a different host?")
+
 	// NoActionTaken signifies that the requested operation was ignored.
 	NoActionTaken = errored.New("No action taken")
 
-	// VolmasterDown signifies that the volmaster could not be reached.
-	VolmasterDown = errored.New("volmaster could not be contacted")
+	// ErrPublish is an error for when use locks cannot be published
+	ErrLockPublish = errored.New("Could not publish use lock")
+
+	// ErrRemove is an error for when use locks cannot be removed
+	ErrLockRemove = errored.New("Could not remove use lock")
+
+	// VolmasterDown signifies that the apiserver could not be reached.
+	VolmasterDown = errored.New("apiserver could not be contacted")
 	// VolmasterRequest is used when a request fails.
-	VolmasterRequest = errored.New("Making request to volmaster")
+	VolmasterRequest = errored.New("Making request to apiserver")
 )
 
 // storage-level errors
@@ -49,6 +61,8 @@ var (
 	UnmarshalGlobal = errored.New("Unmarshalling global configuration")
 	// PublishGlobal is used when failing to publish global configuration
 	PublishGlobal = errored.New("Publishing global configuration")
+	// GetGlobal is used when retriving globals.
+	GetGlobal = errored.New("Retrieving global configuration")
 
 	// CannotCopyVolume is used when snapshot copy -> volume operations fail.
 	CannotCopyVolume = errored.New("Cannot copy volume")

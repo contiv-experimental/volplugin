@@ -175,6 +175,10 @@
 			"Rev": "8096f47503459bcc74d1f4c487b7e6e42e5746b5"
 		},
 		{
+			"ImportPath": "github.com/jbeda/go-wait",
+			"Rev": "5fadd5b02ba61b782169d8d65306b0a8d075970d"
+		},
+		{
 			"ImportPath": "github.com/kr/pty",
 			"Comment": "release.r56-29-gf7ee69f",
 			"Rev": "f7ee69f31298ecbe5d2b349c711e2547a617d398"

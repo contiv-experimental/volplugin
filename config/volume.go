@@ -31,7 +31,7 @@ type Volume struct {
 	Backends       BackendDrivers    `json:"backends"`
 }
 
-// CreateOptions are the set of options used by volmaster during the volume
+// CreateOptions are the set of options used by apiserver during the volume
 // create operation.
 type CreateOptions struct {
 	Size       string `json:"size" merge:"size"`
@@ -265,11 +265,15 @@ func (c *Client) ListVolumes(policy string) (map[string]*Volume, error) {
 }
 
 // ListAllVolumes returns an array with all the named policies and volumes the
-// volmaster knows about. Volumes have syntax: policy/volumeName which will be
+// apiserver knows about. Volumes have syntax: policy/volumeName which will be
 // reflected in the returned string.
 func (c *Client) ListAllVolumes() ([]string, error) {
 	resp, err := c.etcdClient.Get(context.Background(), c.prefixed(rootVolume), &client.GetOptions{Recursive: true, Sort: true})
 	if err != nil {
+		if er, ok := errors.EtcdToErrored(err).(*errored.Error); ok && er.Contains(errors.NotExists) {
+			return []string{}, nil
+		}
+
 		return nil, errors.EtcdToErrored(err)
 	}
 
@@ -288,27 +292,21 @@ func (c *Client) ListAllVolumes() ([]string, error) {
 // back any information received through the activity channel.
 func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	w := watch.NewWatcher(activity, c.prefixed(rootVolume), func(resp *client.Response, w *watch.Watcher) {
-		vw := &watch.Watch{Key: strings.Replace(resp.Node.Key, c.prefixed(rootVolume)+"/", "", -1), Config: nil}
+		vw := &watch.Watch{Key: strings.TrimPrefix(resp.Node.Key, c.prefixed(rootVolume)+"/")}
 
 		if !resp.Node.Dir && path.Base(resp.Node.Key) == "runtime" {
 			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
-				volume := &RuntimeOptions{}
-
 				if resp.Node.Value != "" {
-					if err := json.Unmarshal([]byte(resp.Node.Value), volume); err != nil {
-						log.Errorf("Error decoding volume %q, not updating", resp.Node.Key)
-						time.Sleep(time.Second)
-						return
-					}
+					volName := strings.TrimPrefix(path.Dir(vw.Key), c.prefixed(rootVolume)+"/")
 
-					if err := volume.Validate(); err != nil {
-						log.Errorf("Error validating volume %q, not updating", resp.Node.Key)
-						time.Sleep(time.Second)
+					policy, vol := path.Split(volName)
+					vw.Key = path.Join(policy, vol)
+					volume, err := c.GetVolume(policy, vol)
+					if err != nil {
+						log.Errorf("Could not retrieve volume %q after watch notification: %v", volName, err)
 						return
 					}
-					policy, vol := path.Split(path.Dir(resp.Node.Key))
-					vw.Key = path.Join(path.Base(policy), vol)
 					vw.Config = volume
 				}
 			}

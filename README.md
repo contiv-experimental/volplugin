@@ -107,9 +107,9 @@ See our [CONTRIBUTING](https://github.com/contiv/volplugin/blob/master/CONTRIBUT
 document as well.
 
 Please read the `Makefile` for most targets. If you `make build` you will get
-volmaster/volplugin/volcli installed on the guests, so `make run-build` if you
+apiserver/volplugin/volcli installed on the guests, so `make run-build` if you
 want a `go install`'d version of these programs on your host.
-volmaster/volplugin **do not** run on anything but linux (you can use volcli,
+apiserver/volplugin **do not** run on anything but linux (you can use volcli,
 however, on other platforms).
 
 If you wish to run the tests, `make test`. The unit tests (`make unit-test`)

@@ -72,7 +72,7 @@ func GlobalGet(ctx *cli.Context) {
 }
 
 func queryGlobalConfig(ctx *cli.Context) (*config.Global, error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.GlobalString("volmaster")))
+	resp, err := http.Get(fmt.Sprintf("http://%s/global", ctx.GlobalString("apiserver")))
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func globalUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/global", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/global", ctx.GlobalString("apiserver")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -167,7 +167,7 @@ func policyUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policyName), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("apiserver"), policyName), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -194,7 +194,7 @@ func policyDelete(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := deleteRequest(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policy), "application/json", nil)
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("apiserver"), policy), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
@@ -224,7 +224,7 @@ func policyGet(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("volmaster"), policy))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policies/%s", ctx.GlobalString("apiserver"), policy))
 	if err != nil {
 		return false, err
 	}
@@ -257,7 +257,7 @@ func policyList(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/policies", ctx.GlobalString("volmaster")))
+	resp, err := http.Get(fmt.Sprintf("http://%s/policies", ctx.GlobalString("apiserver")))
 	if err != nil {
 		return false, err
 	}
@@ -323,7 +323,7 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/create", ctx.GlobalString("apiserver")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, errored.Errorf("Error in request: %v - %v", err, resp.Status)
 	}
@@ -354,7 +354,7 @@ func volumeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s/%s", ctx.GlobalString("apiserver"), policy, volume))
 	if err != nil {
 		return false, err
 	}
@@ -417,7 +417,7 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/removeforce", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/removeforce", ctx.GlobalString("apiserver")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -463,7 +463,7 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/remove", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := deleteRequest(fmt.Sprintf("http://%s/volumes/remove", ctx.GlobalString("apiserver")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -497,7 +497,7 @@ func volumeList(ctx *cli.Context) (bool, error) {
 
 	policy := ctx.Args()[0]
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s", ctx.GlobalString("volmaster"), policy))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/%s", ctx.GlobalString("apiserver"), policy))
 	if err != nil {
 		return false, err
 	}
@@ -540,7 +540,7 @@ func volumeSnapshotTake(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/snapshots/take/%s/%s", ctx.GlobalString("volmaster"), policy, volume), "application/json", nil)
+	resp, err := http.Post(fmt.Sprintf("http://%s/snapshots/take/%s/%s", ctx.GlobalString("apiserver"), policy, volume), "application/json", nil)
 	if err != nil {
 		return false, err
 	}
@@ -588,7 +588,7 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 		return false, errored.Errorf("Could not create request JSON: %v", err)
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/copy", ctx.GlobalString("volmaster")), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/volumes/copy", ctx.GlobalString("apiserver")), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}
@@ -619,7 +619,7 @@ func volumeSnapshotList(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/snapshots/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
+	resp, err := http.Get(fmt.Sprintf("http://%s/snapshots/%s/%s", ctx.GlobalString("apiserver"), policy, volume))
 	if err != nil {
 		return false, err
 	}
@@ -650,7 +650,7 @@ func volumeSnapshotList(ctx *cli.Context) (bool, error) {
 	return false, nil
 }
 
-// VolumeListAll returns a list of the pools the volmaster knows about.
+// VolumeListAll returns a list of the pools the apiserver knows about.
 func VolumeListAll(ctx *cli.Context) {
 	execCliAndExit(ctx, volumeListAll)
 }
@@ -661,7 +661,7 @@ func volumeListAll(ctx *cli.Context) (bool, error) {
 		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/", ctx.GlobalString("volmaster")))
+	resp, err := http.Get(fmt.Sprintf("http://%s/volumes/", ctx.GlobalString("apiserver")))
 	if err != nil {
 		return false, err
 	}
@@ -689,7 +689,7 @@ func volumeListAll(ctx *cli.Context) (bool, error) {
 	return false, nil
 }
 
-// UseList returns a list of the mounts the volmaster knows about.
+// UseList returns a list of the mounts the apiserver knows about.
 func UseList(ctx *cli.Context) {
 	execCliAndExit(ctx, useList)
 }
@@ -891,7 +891,7 @@ func volumeRuntimeGet(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("volmaster"), policy, volume))
+	resp, err := http.Get(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("apiserver"), policy, volume))
 	if err != nil {
 		return false, err
 	}
@@ -951,7 +951,7 @@ func volumeRuntimeUpload(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("volmaster"), policy, volume), "application/json", bytes.NewBuffer(content))
+	resp, err := http.Post(fmt.Sprintf("http://%s/runtime/%s/%s", ctx.GlobalString("apiserver"), policy, volume), "application/json", bytes.NewBuffer(content))
 	if err != nil {
 		return false, err
 	}

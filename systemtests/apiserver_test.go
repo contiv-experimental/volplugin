@@ -8,19 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (s *systemtestSuite) TestVolmasterNoGlobalConfiguration(c *C) {
-	c.Assert(s.vagrant.IterateNodes(stopVolmaster), IsNil)
-	_, err := s.mon0cmd("etcdctl rm /volplugin/global-config")
-	c.Assert(err, IsNil)
-	c.Assert(s.vagrant.IterateNodes(startVolmaster), IsNil)
-	c.Assert(s.vagrant.IterateNodes(waitForVolmaster), IsNil)
-
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	out, err := s.dockerRun("mon0", false, false, "policy1/test", "echo")
-	c.Assert(err, IsNil, Commentf(out))
-}
-
-func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
+func (s *systemtestSuite) TestAPIServerFailedFormat(c *C) {
 	if !cephDriver() {
 		c.Skip("Only ceph supports filesystem formatting")
 		return
@@ -33,7 +21,7 @@ func (s *systemtestSuite) TestVolmasterFailedFormat(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
+func (s *systemtestSuite) TestAPIServerGlobalConfigUpdate(c *C) {
 	content, err := ioutil.ReadFile("testdata/globals/global1.json")
 	c.Assert(err, IsNil)
 
@@ -69,7 +57,7 @@ func (s *systemtestSuite) TestVolmasterGlobalConfigUpdate(c *C) {
 	c.Assert(globalBase2, DeepEquals, global)
 }
 
-func (s *systemtestSuite) TestVolmasterMultiRemove(c *C) {
+func (s *systemtestSuite) TestAPIServerMultiRemove(c *C) {
 	if !cephDriver() {
 		c.Skip("Only ceph driver supports CRUD operations")
 		return

@@ -59,11 +59,12 @@ ansible_provision = proc do |ansible|
 
   # In a production deployment, these should be secret
   ansible.extra_vars = {
-    docker_version: "1.11.1",
     scheduler_provider: ENV["UCP"] ? "ucp-swarm" : "native-swarm",
     ucp_bootstrap_node_name: "mon0",
     ucp_license_remote: ENV["HOME"] + "/docker_subscription.lic",
     use_nfs_server: true,
+    docker_version: "1.11.2",
+    use_nfs: true,
     swarm_bootstrap_node_name: "mon0",
     docker_device: "/dev/sdb",
     etcd_peers_group: 'volplugin-test',

@@ -2,10 +2,7 @@ package volplugin
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -15,11 +12,16 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
+	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
-	"github.com/contiv/volplugin/lock/client"
+	"github.com/contiv/volplugin/lock"
+	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/watch"
 	"github.com/gorilla/mux"
+	"github.com/jbeda/go-wait"
 )
 
 const basePath = "/run/docker/plugins"
@@ -27,29 +29,17 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Master           string
-	Host             string
-	Global           *config.Global
-	Client           *client.Driver
-	runtimeMutex     *sync.RWMutex
-	runtimeVolumeMap map[string]config.RuntimeOptions
-	runtimeStopChans map[string]chan struct{}
-	mountMutex       *sync.Mutex
-	mountCount       map[string]int
-}
+	Host   string
+	Lock   *lock.Driver
+	Global *config.Global
+	Client *config.Client
 
-// VolumeRequest is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeRequest struct {
-	Name string
-	Opts map[string]string
-}
-
-// VolumeResponse is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeResponse struct {
-	Mountpoint string
-	Err        string
+	lockStopChanMutex sync.Mutex
+	lockStopChans     map[string]chan struct{}
+	mountCountMutex   sync.Mutex
+	mountCount        map[string]int
+	mountMap          map[string]*storage.Mount
+	mountMapMutex     sync.Mutex
 }
 
 // volumeGet is taken from this struct in docker:
@@ -77,42 +67,68 @@ type volumeGet struct {
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
 // arguments.
-func NewDaemonConfig(master, host string) *DaemonConfig {
-	return &DaemonConfig{
-		Master: master,
-		Host:   host,
+func NewDaemonConfig(ctx *cli.Context) *DaemonConfig {
 
-		runtimeMutex:     new(sync.RWMutex),
-		runtimeVolumeMap: map[string]config.RuntimeOptions{},
-		runtimeStopChans: map[string]chan struct{}{},
-		mountMutex:       new(sync.Mutex),
-		mountCount:       map[string]int{},
+retry:
+	client, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
+	if err != nil {
+		log.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
+		time.Sleep(wait.Jitter(1*time.Second, 0))
+		goto retry
+	}
+
+	driver := lock.NewDriver(client)
+
+	return &DaemonConfig{
+		Host:   ctx.String("host-label"),
+		Client: client,
+		Lock:   driver,
+
+		lockStopChans: map[string]chan struct{}{},
+		mountCount:    map[string]int{},
+		mountMap:      map[string]*storage.Mount{},
 	}
 }
 
 // Daemon starts the volplugin service.
 func (dc *DaemonConfig) Daemon() error {
-	dc.Client = client.NewDriver(dc.Master)
+	global, err := dc.Client.GetGlobal()
+	if err != nil {
+		log.Errorf("Error fetching global configuration: %v", err)
+		log.Infof("No global configuration. Proceeding with defaults...")
+		global = config.NewGlobalConfig()
+	}
 
-	for {
-		dc.getGlobal()
-
-		if dc.Global != nil {
-			break
-		}
-
-		log.Errorf("Global configuration is missing; waiting for volmaster at %q.", dc.Master)
-		time.Sleep(time.Second)
+	dc.Global = global
+	errored.AlwaysDebug = dc.Global.Debug
+	errored.AlwaysTrace = dc.Global.Debug
+	if dc.Global.Debug {
+		log.SetLevel(log.DebugLevel)
 	}
 
 	go info.HandleDebugSignal()
-	go dc.watchGlobal()
 
-	log.Infof("Reached volmaster at %q. Continuing startup.", dc.Master)
+	activity := make(chan *watch.Watch)
+	dc.Client.WatchGlobal(activity)
+	go func() {
+		for {
+			dc.Global = (<-activity).Config.(*config.Global)
+
+			log.Debugf("Received global %#v", dc.Global)
+
+			errored.AlwaysDebug = dc.Global.Debug
+			errored.AlwaysTrace = dc.Global.Debug
+			if dc.Global.Debug {
+				log.SetLevel(log.DebugLevel)
+			}
+		}
+	}()
 
 	if err := dc.updateMounts(); err != nil {
 		return err
 	}
+
+	go dc.pollRuntime()
 
 	driverPath := path.Join(basePath, "volplugin.sock")
 	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
@@ -137,10 +153,12 @@ func (dc *DaemonConfig) Daemon() error {
 }
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {
+	api := api.NewAPI(dc.Client, &dc.Global, true)
+
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
 		"/Plugin.Activate":           dc.activate,
 		"/Plugin.Deactivate":         dc.nilAction,
-		"/VolumeDriver.Create":       dc.create,
+		"/VolumeDriver.Create":       api.Create,
 		"/VolumeDriver.Remove":       dc.getPath, // we never actually remove through docker's interface.
 		"/VolumeDriver.List":         dc.list,
 		"/VolumeDriver.Get":          dc.get,
@@ -180,41 +198,5 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		}
 
 		actionFunc(w, r)
-	}
-}
-
-func (dc *DaemonConfig) getGlobal() {
-	resp, err := http.Get(fmt.Sprintf("http://%s/global", dc.Master))
-	if err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	global := config.NewGlobalConfig()
-
-	if err := json.Unmarshal(content, global); err != nil {
-		log.Errorf("Could not request global configuration: %v", err)
-		return
-	}
-
-	dc.Global = global
-}
-
-func (dc *DaemonConfig) watchGlobal() error {
-	for {
-		time.Sleep(time.Second)
-		dc.getGlobal()
-
-		if dc.Global.Debug {
-			log.SetLevel(log.DebugLevel)
-			errored.AlwaysTrace = true
-			errored.AlwaysDebug = true
-		}
 	}
 }

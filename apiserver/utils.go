@@ -1,4 +1,4 @@
-package volmaster
+package apiserver
 
 import (
 	"encoding/json"
@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/contiv/volplugin/config"
 )
@@ -17,11 +16,6 @@ func errExit(ctx *cli.Context, err error) {
 	fmt.Printf("\nError: %v\n\n", err)
 	cli.ShowAppHelp(ctx)
 	os.Exit(1)
-}
-
-func httpError(w http.ResponseWriter, err error) {
-	log.Warnf("Returning HTTP error handling plugin negotiation: %v", err)
-	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 func unmarshalRequest(r *http.Request) (config.Request, error) {

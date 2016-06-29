@@ -110,9 +110,17 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	// so we don't check it.
 	defer s.volcli("volume remove policy1/foo")
 
+	out, err := s.volcli("volume list policy1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, "")
+
+	out, err = s.volcli("volume list-all")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, "")
+
 	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
 
-	out, err := s.dockerRun("mon0", false, false, "policy1/foo", "ls")
+	out, err = s.dockerRun("mon0", false, false, "policy1/foo", "ls")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume list policy1")
@@ -222,15 +230,12 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(ut.Hostname, Equals, "mon0")
 	c.Assert(ut.Reason, Equals, lock.ReasonMount)
 
-	out, err = s.volcli("use force-remove policy1/foo")
+	out, err = s.mon0cmd("docker rm -f " + id)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(out, Equals, "")
-
-	out, err = s.mon0cmd("docker rm -f " + id)
-	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.mon0cmd("docker volume rm policy1/foo")
 	c.Assert(err, IsNil, Commentf("output: %s", out))

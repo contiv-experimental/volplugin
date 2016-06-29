@@ -33,7 +33,6 @@ func (dc *DaemonConfig) updateMounts() error {
 				continue
 			}
 
-			// FIXME docker needs to be polled to accomodate this functionality, or we need to write it to etcd.
 			dc.increaseMount(mount.Name)
 		}
 	}
@@ -58,17 +57,23 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			log.Infof("Refreshing existing mount for %q", mount.Volume.Name)
 
-			vol, err := dc.requestVolume(parts[0], parts[1])
+			vol, err := dc.Client.GetVolume(parts[0], parts[1])
 			if erd, ok := err.(*errored.Error); ok {
 				switch {
 				case erd.Contains(errors.NotExists):
-					log.Warnf("Volume %q not found in database, skipping")
+					log.Warnf("Volume %q not found in database, skipping", mount.Volume.Name)
 					continue
 				case erd.Contains(errors.GetVolume):
 					log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
 				}
 			} else if err != nil {
-				log.Fatalf("Unknown error reading from volmaster: %v", err)
+				log.Fatalf("Unknown error reading from apiserver: %v", err)
+			}
+
+			// XXX some of the mounts get propagated above from docker itself, so
+			// this is only necessary when that is missing reports.
+			if dc.getMountCount(mount.Name) == 0 {
+				dc.increaseMount(mount.Name)
 			}
 
 			payload := &config.UseMount{
@@ -81,15 +86,14 @@ func (dc *DaemonConfig) updateMounts() error {
 				payload.Hostname = lock.Unlocked
 			}
 
-			if err := dc.Client.ReportMount(payload); err != nil {
-				if err := dc.Client.ReportMountStatus(payload); err != nil {
-					// FIXME everything is effed up. what should we really be doing here?
-					return err
-				}
+			stopChan, err := dc.Lock.AcquireWithTTLRefresh(payload, dc.Global.TTL, dc.Global.Timeout)
+			if err != nil {
+				log.Fatalf("Error encountered while trying to acquire lock for mount %v: %v", payload, err)
+				continue
 			}
 
-			go dc.startRuntimePoll(mount.Volume.Name, mount)
-			go dc.Client.HeartbeatMount(dc.Global.TTL, payload, dc.Client.AddStopChan(mount.Volume.Name))
+			dc.addStopChan(mount.Volume.Name, stopChan)
+			dc.addMount(mount)
 		}
 	}
 
