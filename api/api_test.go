@@ -15,6 +15,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
+	"github.com/contiv/volplugin/docker"
 
 	. "gopkg.in/check.v1"
 )
@@ -85,7 +86,7 @@ func (a *apiSuite) TestCreate(c *C) {
 	m := mockServer(a.api.Create)
 	a.server = httptest.NewServer(m)
 
-	callContent, err := json.Marshal(VolumeRequest{Name: "policy1/test"})
+	callContent, err := json.Marshal(docker.VolumeRequest{Name: "policy1/test"})
 	c.Assert(err, IsNil)
 	resp, err := http.Post(a.server.URL, "application/json", bytes.NewBuffer(callContent))
 	c.Assert(err, IsNil)
@@ -110,7 +111,7 @@ func (a *apiSuite) TestCreate(c *C) {
 	c.Assert(resp.StatusCode, Equals, 500)
 
 	for _, name := range []string{"invalid", "/foo", "foo/bar/baz", "policy/"} {
-		failContent, err := json.Marshal(VolumeRequest{Name: name})
+		failContent, err := json.Marshal(docker.VolumeRequest{Name: name})
 		c.Assert(err, IsNil)
 		resp, err = http.Post(a.server.URL, "application/json", bytes.NewBuffer(failContent))
 		c.Assert(err, IsNil)
@@ -124,7 +125,7 @@ func (a *apiSuite) TestCreateDocker(c *C) {
 	m := mockServer(a.api.Create)
 	a.server = httptest.NewServer(m)
 
-	callContent, err := json.Marshal(VolumeRequest{Name: "policy1/test"})
+	callContent, err := json.Marshal(docker.VolumeRequest{Name: "policy1/test"})
 	c.Assert(err, IsNil)
 	resp, err := http.Post(a.server.URL, "application/json", bytes.NewBuffer(callContent))
 	c.Assert(err, IsNil)

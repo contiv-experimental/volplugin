@@ -16,11 +16,12 @@ import (
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
+	"github.com/contiv/volplugin/docker"
 	"github.com/docker/docker/pkg/plugins"
 )
 
 type unmarshalledConfig struct {
-	Request api.VolumeRequest
+	Request docker.VolumeRequest
 	Name    string
 	Policy  string
 }

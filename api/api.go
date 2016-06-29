@@ -12,16 +12,10 @@ import (
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage/control"
+	"github.com/contiv/volplugin/docker"
 
 	log "github.com/Sirupsen/logrus"
 )
-
-// VolumeRequest is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeRequest struct {
-	Name string
-	Opts map[string]string
-}
 
 // VolumeResponse is taken from
 // https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
@@ -50,7 +44,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req VolumeRequest
+	var req docker.VolumeRequest
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		a.HTTPError(w, errors.UnmarshalRequest.Combine(err))
@@ -108,7 +102,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 	global := *a.Global
 
 	err = lock.NewDriver(a.Client).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
-		volConfig, err := a.Client.CreateVolume(config.Request{Policy: policy, Volume: volume, Options: req.Opts})
+		volConfig, err := a.Client.CreateVolume(config.Request{Policy: policy, Volume: volume, Options: req.DriverOpts})
 		if err != nil {
 			return err
 		}
