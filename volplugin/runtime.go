@@ -1,8 +1,6 @@
 package volplugin
 
 import (
-	"fmt"
-
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
@@ -16,8 +14,6 @@ func (dc *DaemonConfig) pollRuntime() {
 	dc.Client.WatchVolumeRuntimes(volumeChan)
 	for {
 		volWatch := <-volumeChan
-
-		fmt.Printf("%#v\n", volWatch)
 
 		if volWatch.Config == nil {
 			continue
