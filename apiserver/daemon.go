@@ -592,10 +592,21 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
+	// set a default timeout if none is specified
+	timeout := d.Global.Timeout
 	req, err := unmarshalRequest(r)
 	if err != nil {
 		api.RESTHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
+	}
+
+	if req.Options["timeout"] != "" {
+		var t time.Duration
+		if t, err = time.ParseDuration(req.Options["timeout"]); err != nil {
+			api.RESTHTTPError(w, errors.RemoveVolume.Combine(err))
+			return
+		}
+		timeout = t
 	}
 
 	vc, err := d.Config.GetVolume(req.Policy, req.Volume)
@@ -630,15 +641,53 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	complete := func() error {
-		if err := control.RemoveVolume(vc, d.Global.Timeout); err != nil && err != errors.NoActionTaken {
+		if err := control.RemoveVolume(vc, timeout); err != nil && err != errors.NoActionTaken {
 			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
 		}
 
 		return etcdRemove()
 	}
+	// this cleans up uses when forcing the removal
+	removeUse := func() {
+		if err := d.Config.RemoveUse(uc, true); err != nil {
+			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
+		}
+	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
-		exists, err := control.ExistsVolume(vc, d.Global.Timeout)
+	if req.Options["force"] == "true" {
+		exists, err := control.ExistsVolume(vc, timeout)
+		if err != nil && err != errors.NoActionTaken {
+			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err))
+			return
+		}
+
+		if err == errors.NoActionTaken {
+			err = complete()
+			removeUse()
+		}
+
+		if err != nil {
+			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err))
+			return
+		}
+
+		if !exists {
+			etcdRemove()
+			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists))
+			return
+		}
+
+		err = complete()
+		if err != nil {
+			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists))
+			return
+		}
+
+		removeUse()
+	}
+
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+		exists, err := control.ExistsVolume(vc, timeout)
 		if err != nil && err != errors.NoActionTaken {
 			return err
 		}

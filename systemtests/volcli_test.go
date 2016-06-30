@@ -259,6 +259,78 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
+func (s *systemtestSuite) TestVolCLIRemoveForce(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+
+	id, err := s.dockerRun("mon0", false, true, "policy1/foo", "sleep 10m")
+	c.Assert(err, IsNil, Commentf("output: %s", id))
+
+	out, err := s.volcli("use list")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+
+	out, err = s.volcli("use get policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	ut := &config.UseMount{}
+	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
+	c.Assert(ut.Volume, NotNil)
+	c.Assert(ut.Hostname, Equals, "mon0")
+	c.Assert(ut.Reason, Equals, lock.ReasonMount)
+
+	out, err = s.mon0cmd("docker rm -f " + id)
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("remove -f policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("use list")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(out, Equals, "")
+
+	out, err = s.mon0cmd("docker volume rm policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume remove policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+}
+
+func (s *systemtestSuite) TestVolCLIRemoveTimeout(c *C) {
+	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+
+	id, err := s.dockerRun("mon0", false, true, "policy1/foo", "sleep 10m")
+	c.Assert(err, IsNil, Commentf("output: %s", id))
+
+	out, err := s.volcli("use list")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+
+	out, err = s.volcli("use get policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	ut := &config.UseMount{}
+	c.Assert(json.Unmarshal([]byte(out), ut), IsNil)
+	c.Assert(ut.Volume, NotNil)
+	c.Assert(ut.Hostname, Equals, "mon0")
+	c.Assert(ut.Reason, Equals, lock.ReasonMount)
+
+	out, err = s.mon0cmd("docker rm -f " + id)
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("remove -t 2s policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("use list")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(out, Equals, "")
+
+	out, err = s.mon0cmd("docker volume rm policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	out, err = s.volcli("volume remove policy1/foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+}
+
 func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
 	if !cephDriver() {
 		c.Skip("Only the ceph driver supports runtime parameters")
