@@ -42,29 +42,6 @@ type DaemonConfig struct {
 	mountMapMutex     sync.Mutex
 }
 
-// volumeGet is taken from this struct in docker:
-// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
-type volumeGetRequest struct {
-	Name string
-}
-
-type volume struct {
-	Name       string
-	Mountpoint string
-}
-
-type volumeList struct {
-	Volumes []volume
-	Err     string
-}
-
-// volumeGet is taken from this struct in docker:
-// https://github.com/docker/docker/blob/master/volume/drivers/proxy.go#L180
-type volumeGet struct {
-	Volume volume
-	Err    string
-}
-
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
 // arguments.
 func NewDaemonConfig(ctx *cli.Context) *DaemonConfig {
