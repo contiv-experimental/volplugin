@@ -15,7 +15,6 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
-	"github.com/contiv/volplugin/docker"
 
 	. "gopkg.in/check.v1"
 )
@@ -36,8 +35,8 @@ var _ = Suite(&apiSuite{})
 
 func TestAPI(t *T) { TestingT(t) }
 
-func (a *apiSuite) getVolumeResponse(body io.Reader) (VolumeResponse, error) {
-	vr := VolumeResponse{}
+func (a *apiSuite) getVolumeResponse(body io.Reader) (VolumeCreateResponse, error) {
+	vr := VolumeCreateResponse{}
 	content, err := ioutil.ReadAll(body)
 	if err != nil {
 		return vr, err
@@ -86,7 +85,7 @@ func (a *apiSuite) TestCreate(c *C) {
 	m := mockServer(a.api.Create)
 	a.server = httptest.NewServer(m)
 
-	callContent, err := json.Marshal(docker.VolumeRequest{Name: "policy1/test"})
+	callContent, err := json.Marshal(VolumeCreateRequest{Name: "policy1/test"})
 	c.Assert(err, IsNil)
 	resp, err := http.Post(a.server.URL, "application/json", bytes.NewBuffer(callContent))
 	c.Assert(err, IsNil)
@@ -111,7 +110,7 @@ func (a *apiSuite) TestCreate(c *C) {
 	c.Assert(resp.StatusCode, Equals, 500)
 
 	for _, name := range []string{"invalid", "/foo", "foo/bar/baz", "policy/"} {
-		failContent, err := json.Marshal(docker.VolumeRequest{Name: name})
+		failContent, err := json.Marshal(VolumeCreateRequest{Name: name})
 		c.Assert(err, IsNil)
 		resp, err = http.Post(a.server.URL, "application/json", bytes.NewBuffer(failContent))
 		c.Assert(err, IsNil)
@@ -125,7 +124,7 @@ func (a *apiSuite) TestCreateDocker(c *C) {
 	m := mockServer(a.api.Create)
 	a.server = httptest.NewServer(m)
 
-	callContent, err := json.Marshal(docker.VolumeRequest{Name: "policy1/test"})
+	callContent, err := json.Marshal(VolumeCreateRequest{Name: "policy1/test"})
 	c.Assert(err, IsNil)
 	resp, err := http.Post(a.server.URL, "application/json", bytes.NewBuffer(callContent))
 	c.Assert(err, IsNil)
@@ -172,7 +171,7 @@ func (a *apiSuite) TestErrors(c *C) {
 	rec := httptest.NewRecorder()
 	DockerHTTPError(rec, errored.New("An error"))
 	c.Assert(rec.Code, Equals, http.StatusOK)
-	content, err := json.Marshal(VolumeResponse{Err: "An error"})
+	content, err := json.Marshal(VolumeCreateResponse{Err: "An error"})
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(rec.Body.String()), Equals, string(content))
 

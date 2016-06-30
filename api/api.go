@@ -12,17 +12,9 @@ import (
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage/control"
-	"github.com/contiv/volplugin/docker"
 
 	log "github.com/Sirupsen/logrus"
 )
-
-// VolumeResponse is taken from
-// https://github.com/calavera/docker-volume-api/blob/master/api.go#L23
-type VolumeResponse struct {
-	Mountpoint string
-	Err        string
-}
 
 // API is a typed representation of API handlers.
 type API struct {
@@ -44,7 +36,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req docker.VolumeRequest
+	var req VolumeCreateRequest
 
 	if err := json.Unmarshal(content, &req); err != nil {
 		a.HTTPError(w, errors.UnmarshalRequest.Combine(err))
@@ -102,7 +94,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 	global := *a.Global
 
 	err = lock.NewDriver(a.Client).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
-		volConfig, err := a.Client.CreateVolume(config.Request{Policy: policy, Volume: volume, Options: req.DriverOpts})
+		volConfig, err := a.Client.CreateVolume(config.Request{Policy: policy, Volume: volume, Options: req.Opts})
 		if err != nil {
 			return err
 		}
@@ -163,7 +155,7 @@ func (a *API) HTTPError(w http.ResponseWriter, err error) {
 // DockerHTTPError returns a 200 status to docker with an error struct. It returns
 // 500 if marshalling failed.
 func DockerHTTPError(w http.ResponseWriter, err error) {
-	content, errc := json.Marshal(VolumeResponse{Mountpoint: "", Err: err.Error()})
+	content, errc := json.Marshal(VolumeCreateResponse{Mountpoint: "", Err: err.Error()})
 	if errc != nil {
 		http.Error(w, errc.Error(), http.StatusInternalServerError)
 		return

@@ -11,7 +11,7 @@ import (
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-	"github.com/contiv/volplugin/docker"
+	"github.com/contiv/volplugin/api"
 )
 
 func (dc *DaemonConfig) mountExists(driver storage.MountDriver, driverOpts storage.DriverOptions) (bool, error) {
@@ -74,8 +74,8 @@ func (dc *DaemonConfig) structsVolumeName(uc *unmarshalledConfig) (storage.Mount
 	return driver, volConfig, driverOpts, nil
 }
 
-func unmarshalRequest(body io.Reader) (docker.VolumeRequest, error) {
-	vr := docker.VolumeRequest{}
+func unmarshalRequest(body io.Reader) (api.VolumeCreateRequest, error) {
+	vr := api.VolumeCreateRequest{}
 
 	content, err := ioutil.ReadAll(body)
 	if err != nil {
