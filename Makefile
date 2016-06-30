@@ -23,6 +23,7 @@ stop:
 	make clean
 
 clean:
+	rm -f subnet_assignment.state
 	rm -f *.vdi
 	rm -f .vagrant/*.vmdk
 

@@ -16,3 +16,4 @@ docs/docs
 .DS_Store
 *.swp
 cscope.*
+subnet_assignment.state
