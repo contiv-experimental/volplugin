@@ -20,13 +20,13 @@ import (
 )
 
 type unmarshalledConfig struct {
-	Request api.VolumeRequest
+	Request api.VolumeCreateRequest
 	Name    string
 	Policy  string
 }
 
 func (dc *DaemonConfig) nilAction(w http.ResponseWriter, r *http.Request) {
-	content, err := json.Marshal(api.VolumeResponse{})
+	content, err := json.Marshal(api.VolumeCreateResponse{})
 	if err != nil {
 		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
@@ -76,7 +76,7 @@ func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledCon
 	return &uc, nil
 }
 
-func writeResponse(w http.ResponseWriter, vr *api.VolumeResponse) {
+func writeResponse(w http.ResponseWriter, vr *api.VolumeCreateResponse) {
 	content, err := json.Marshal(*vr)
 	if err != nil {
 		api.DockerHTTPError(w, errors.MarshalResponse.Combine(err))
@@ -95,7 +95,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vg := volumeGetRequest{}
+	vg := api.VolumeGetRequest{}
 
 	if err := json.Unmarshal(content, &vg); err != nil {
 		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
@@ -146,7 +146,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err = json.Marshal(volumeGet{Volume: volume{Name: volConfig.String(), Mountpoint: path}})
+	content, err = json.Marshal(api.VolumeGetResponse{Volume: api.Volume{Name: volConfig.String(), Mountpoint: path}})
 	if err != nil {
 		api.DockerHTTPError(w, errors.MarshalResponse.Combine(err))
 		return
@@ -163,7 +163,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volumes := []*config.Volume{}
-	response := volumeList{Volumes: []volume{}}
+	response := api.VolumeList{Volumes: []api.Volume{}}
 
 	for _, volume := range volList {
 		parts := strings.SplitN(volume, "/", 2)
@@ -196,7 +196,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.Volumes = append(response.Volumes, volume{Name: volConfig.String(), Mountpoint: path})
+		response.Volumes = append(response.Volumes, api.Volume{Name: volConfig.String(), Mountpoint: path})
 	}
 
 	content, err := json.Marshal(response)
@@ -231,7 +231,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, &api.VolumeResponse{Mountpoint: path})
+	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.MountDriver, driverOpts storage.DriverOptions) {
@@ -241,7 +241,7 @@ func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.Mo
 		return
 	}
 
-	writeResponse(w, &api.VolumeResponse{Mountpoint: path})
+	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
@@ -322,7 +322,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, &api.VolumeResponse{Mountpoint: path})
+	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
