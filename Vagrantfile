@@ -6,9 +6,9 @@ require 'fileutils'
 VAGRANTFILE_API_VERSION = '2'
 OSX_VMWARE_DIR = "/Applications/VMware Fusion.app/Contents/Library/"
 
-config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
-ansible_config_file=File.expand_path(File.join(File.dirname(__FILE__), 'ansible', 'ansible.cfg'))
-settings=YAML.load_file(config_file)
+config_file = File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
+ansible_config_file = File.expand_path(File.join(File.dirname(__FILE__), 'ansible', 'ansible.cfg'))
+settings = YAML.load_file(config_file)
 
 if ENV["DEMO"]
   settings["vms"] = 1
@@ -18,17 +18,90 @@ end
 ENV['ANSIBLE_CONFIG'] = ansible_config_file
 
 NMONS        = ENV["VMS"] || settings['vms']
-SUBNET       = settings['subnet']
 BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
 memory       = settings['memory']
+
+SUBNET_PREFIX          = settings['subnet_prefix']
+SUBNET_ASSIGNMENT_DIR  = "/tmp/volplugin_vagrant_subnets/"
+SUBNET_ASSIGNMENT_FILE = File.expand_path(File.join(File.dirname(__FILE__), "subnet_assignment.state"))
+
+class SubnetAssignmentFileError < Exception; end
+class NoAvailableSubnetsError < Exception; end
+
+# This method allocates a random subnet for Vagrant to use by combining the prefix
+# specified in vagrant_variables.yml with a random third octet guaranteed to be
+# unused by other environments.  If a previous subnet was allocated, it will be used.
+#
+# The subnet reservation process is locked, so multiple environments can be brought
+# up in parallel with no issues.
+def random_subnet
+  begin
+    Dir.mkdir(SUBNET_ASSIGNMENT_DIR)
+  rescue Errno::EEXIST
+  end
+
+  if File.exists?(SUBNET_ASSIGNMENT_FILE)
+    assigned_octet = File.read(SUBNET_ASSIGNMENT_FILE).strip
+
+    # only use the existing assignment if the master assignment file still exists
+    # i.e., the machine hasn't been rebooted
+    if File.exists?(SUBNET_ASSIGNMENT_DIR + assigned_octet)
+      return SUBNET_PREFIX + assigned_octet
+    else
+      msg = [
+        "Subnet assignment database is missing.",
+        "Are you trying to re-use an existing environment after a reboot?",
+        "To continue, you should delete #{SUBNET_ASSIGNMENT_FILE}",
+        "and rebuild the environment from scratch."
+      ]
+      raise SubnetAssignmentFileError.new(msg.join(" "))
+    end
+  end
+
+  # no existing subnet assignment, so reserve a new one
+
+  all_octets = (0..255).to_a.map(&:to_s)
+  assigned_octet = nil
+
+  loop do
+    # filter out . and ..
+    used_octets = Dir.entries(SUBNET_ASSIGNMENT_DIR).reject { |e| "." == e || ".." == e }
+
+    # sanity check to make sure we can't loop forever
+    if used_octets.size >= all_octets.size
+      msg = [
+        "All available subnets have been assigned.",
+        "Delete #{SUBNET_ASSIGNMENT_DIR} or reboot to clear Vagrant's memory of what has been previously assigned."
+      ]
+      raise NoAvailableSubnetsError.new(msg.join(" "))
+    end
+
+    assigned_octet = (all_octets - used_octets).sample
+
+    # make sure nothing else has taken the assigned_octet since our last directory check
+    begin
+      Dir.mkdir(SUBNET_ASSIGNMENT_DIR + assigned_octet)
+    rescue Errno::EEXIST
+      next
+    end
+
+    # subsequent invocations of vagrant will just use the octet from this file
+    File.write(SUBNET_ASSIGNMENT_FILE, assigned_octet)
+    break
+  end
+
+  SUBNET_PREFIX + assigned_octet
+end
+
+SUBNET = random_subnet
 
 if ENV["BIG"]
   memory = 8192
 end
 
 MEMORY   = memory
-NO_PROXY = '192.168.24.50,192.168.24.10,192.168.24.11,192.168.24.12'
+NO_PROXY = [50,10,11,12].map { |n| "#{SUBNET}.#{n}" }.join(",")
 
 shell_provision = <<-EOF
 echo "export http_proxy='$1'" >> /etc/profile.d/envvar.sh
@@ -77,7 +150,7 @@ ansible_provision = proc do |ansible|
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdc', '/dev/sdd' ]",
-    service_vip: "192.168.24.50",
+    service_vip: "#{SUBNET}.50",
     journal_collocation: 'true',
     validate_certs: 'no',
   }
@@ -121,7 +194,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       [:vmware_desktop, :vmware_workstation, :vmware_fusion].each do |provider|
         mon.vm.provider provider do |v, override|
           override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.1#{i}", auto_config: false
-          override.vm.network :private_network, type: "dhcp", ip: "#{SUBNET}.2#{i}", auto_config: false
+
           v.vmx["scsi0:1.present"] = 'TRUE'
           v.vmx["scsi0:1.fileName"] = create_vmdk("docker-#{i}", '15000MB')
 
@@ -162,7 +235,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
 
         override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
-        override.vm.network :private_network, ip: "#{SUBNET}.2#{i}", virtualbox__intnet: true
 
         vb.customize ['createhd',
                       '--filename', "docker-#{i}",
