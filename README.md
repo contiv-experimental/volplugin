@@ -114,7 +114,8 @@ however, on other platforms).
 
 If you wish to run the tests, `make test`. The unit tests (`make unit-test`)
 live throughout the codebase as `*_test` files. The system tests / integration
-tests (`make system-test`) live in the `systemtests` directory.
+tests (`make system-test`) live in the `systemtests` directory.  Note that `make system-test`
+**will not** successfully run on OSX due to dependencies on unavailable libraries.
 
 [ReportCard-URL]: https://goreportcard.com/report/github.com/contiv/volplugin
 [ReportCard-Image]: https://goreportcard.com/badge/github.com/contiv/volplugin
