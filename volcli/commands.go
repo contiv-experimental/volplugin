@@ -122,7 +122,17 @@ var Commands = []cli.Command{
 				Action:      VolumeForceRemove,
 			},
 			{
-				Name:        "remove",
+				Name: "remove",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:  "timeout, t",
+						Usage: "Retry to remove the volume until the timeout is reached",
+					},
+					cli.BoolFlag{
+						Name:  "force, f",
+						Usage: "Remove the volume forcefully if possible",
+					},
+				},
 				ArgsUsage:   "[policy name]/[volume name]",
 				Description: "Remove the volume for a policy, deleting its contents.",
 				Usage:       "Remove a volume and its contents",

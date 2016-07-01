@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
@@ -453,9 +454,18 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
+	timeout := ctx.String("timeout")
+	if _, err = time.ParseDuration(timeout); err != nil && timeout != "" {
+		return false, errored.Errorf("%v is not a valid timeout", ctx.String("timeout"))
+	}
+
 	request := config.Request{
 		Policy: policy,
 		Volume: volume,
+		Options: map[string]string{
+			"timeout": timeout,
+			"force":   fmt.Sprintf("%v", ctx.Bool("force")),
+		},
 	}
 
 	content, err := json.Marshal(request)
