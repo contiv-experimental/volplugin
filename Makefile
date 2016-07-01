@@ -26,6 +26,12 @@ clean:
 	rm -f *.vdi
 	rm -f .vagrant/*.vmdk
 
+clean-vms:
+	@echo DO NOT USE THIS COMMAND UNLESS YOU ABSOLUTELY HAVE TO. PRESS CTRL-C NOW.
+	@sleep 20
+	for i in $$(vboxmanage list vms | grep volplugin | awk '{ print $$2 }'); do vboxmanage controlvm "$$i" poweroff; vboxmanage unregistervm "$$i"; done
+	make clean
+
 update:
 	vagrant box update || exit 0
 
