@@ -127,7 +127,7 @@ type SnapshotDriver interface {
 // storage drivers.
 func (do DriverOptions) Validate() error {
 	if do.Timeout == 0 {
-		return errored.Errorf("Missing timeout in ceph storage driver")
+		return errored.Errorf("Missing timeout in storage driver")
 	}
 
 	return do.Volume.Validate()
@@ -137,11 +137,11 @@ func (do DriverOptions) Validate() error {
 // storage drivers.
 func (v Volume) Validate() error {
 	if v.Name == "" {
-		return errored.Errorf("Name is missing in ceph storage driver")
+		return errored.Errorf("Name is missing in storage driver")
 	}
 
 	if v.Params == nil {
-		return errored.Errorf("Params are nil in ceph storage driver")
+		return errored.Errorf("Params are nil in storage driver")
 	}
 
 	return nil
