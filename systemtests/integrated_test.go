@@ -14,40 +14,36 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func (s *systemtestSuite) TestIntegratedEtcdUpdate(c *C) {
-	// this not-very-obvious test ensures that the policy can be uploaded after
-	// the volplugin/apiserver pair are started.
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
-}
-
 func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 	if nullDriver() {
 		c.Skip("Null driver does not support cross-host tests at the moment.")
 		return
 	}
 
+	volName := fqVolume("policy1", genRandomVolume())
+
 	for _, name := range []string{"mon0", "mon1", "mon2"} {
-		c.Assert(s.createVolume(name, "policy1", "test", nil), IsNil)
+		c.Assert(s.createVolume(name, volName, nil), IsNil)
 	}
 
-	out, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	if err != nil {
 		log.Info(out)
 	}
 	c.Assert(err, IsNil)
 
 	for _, nodeName := range []string{"mon1", "mon2"} {
-		_, err := s.dockerRun(nodeName, false, false, "policy1/test", "sleep 10m")
+		_, err := s.dockerRun(nodeName, false, false, volName, "sleep 10m")
 		c.Assert(err, NotNil)
 	}
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	out, err = s.dockerRun("mon1", false, true, "policy1/test", "sleep 10m")
+	out, err = s.dockerRun("mon1", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf(out))
 
 	for _, nodeName := range []string{"mon0", "mon2"} {
-		out, err := s.dockerRun(nodeName, false, false, "policy1/test", "sleep 10m")
+		out, err := s.dockerRun(nodeName, false, false, volName, "sleep 10m")
 		c.Assert(err, NotNil, Commentf(out))
 	}
 }
@@ -65,9 +61,11 @@ func (s *systemtestSuite) TestIntegratedMultiPool(c *C) {
 	_, err = s.uploadIntent("testpool", "testpool")
 	c.Assert(err, IsNil)
 
-	c.Assert(s.createVolume("mon0", "testpool", "test", nil), IsNil)
+	volName := fqVolume("testpool", genRandomVolume())
 
-	out, err := s.volcli("volume get testpool/test")
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+
+	out, err := s.volcli("volume get " + volName)
 	c.Assert(err, IsNil)
 
 	vc := &config.Volume{}
@@ -83,6 +81,8 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 		return
 	}
 
+	volName := fqVolume("policy1", genRandomVolume())
+
 	opts := map[string]string{
 		"size":                "200MB",
 		"snapshots":           "true",
@@ -90,11 +90,11 @@ func (s *systemtestSuite) TestIntegratedDriverOptions(c *C) {
 		"snapshots.keep":      "20",
 	}
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", opts), IsNil)
+	c.Assert(s.createVolume("mon0", volName, opts), IsNil)
 
-	defer s.purgeVolume("mon0", "policy1", "test", true)
+	defer s.purgeVolume("mon0", volName)
 
-	out, err := s.volcli("volume get policy1/test")
+	out, err := s.volcli("volume get " + volName)
 	c.Assert(err, IsNil)
 
 	vc := &config.Volume{}
@@ -135,8 +135,10 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 		"rate-limit.read.iops":  readIOPSFile,
 	}
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", opts), IsNil)
-	_, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	volName := fqVolume("policy1", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, opts), IsNil)
+	_, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil)
 
 	for key, fn := range optMap {
@@ -159,7 +161,7 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 		c.Assert(found, Equals, true)
 	}
 
-	s.volcli("volume runtime upload policy1/test < /testdata/iops1.json")
+	s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
 	// copied from iops1.json
 	opts = map[string]string{
 		"rate-limit.write.bps":  "1000000",
@@ -199,16 +201,18 @@ func (s *systemtestSuite) TestIntegratedRemoveWhileMount(c *C) {
 
 	c.Assert(s.uploadGlobal("global-fasttimeout"), IsNil)
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
-	out, err := s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	volName := fqVolume("policy1", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf(out))
 
-	out, err = s.volcli("volume remove policy1/test")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, NotNil, Commentf(out))
 
 	s.clearContainers()
 
-	out, err = s.volcli("volume remove policy1/test")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf(out))
 }
 
@@ -220,26 +224,32 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	volName := genRandomVolume()
+	fqVolName := fqVolume("policy1", volName)
+	targetName := genRandomVolume()
+	targetName2 := genRandomVolume()
+
+	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err := s.volcli("volume snapshot list policy1/test")
+	out, err := s.volcli("volume snapshot list " + fqVolName)
 	c.Assert(err, IsNil)
 
 	lines := strings.Split(out, "\n")
 	c.Assert(len(lines), Not(Equals), 0)
 
-	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test2", lines[0]))
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy %s %s %s", fqVolName, lines[0], targetName))
 	c.Assert(err, IsNil)
 
 	defer func() {
-		s.purgeVolume("mon0", "policy1", "test3", true)
-		s.purgeVolume("mon0", "policy1", "test2", true)
-		_, err := s.mon0cmd(fmt.Sprintf("sudo rbd snap unprotect policy1.test --snap %s --pool rbd", lines[0]))
+		s.purgeVolume("mon0", fqVolume("policy1", targetName2))
+		s.purgeVolume("mon0", fqVolume("policy1", targetName))
+		_, err := s.mon0cmd(fmt.Sprintf("sudo rbd snap unprotect policy1.%s --snap %s --pool rbd", volName, lines[0]))
 		c.Assert(err, IsNil)
 		s.clearContainers()
-		c.Assert(s.purgeVolume("mon0", "policy1", "test", true), IsNil)
+		c.Assert(s.purgeVolume("mon0", fqVolName), IsNil)
 	}()
 
 	out, err = s.volcli("volume list-all")
@@ -249,13 +259,16 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 
 	sort.Strings(lines2)
 
+	vols := []string{fqVolName, fqVolume("policy1", targetName)}
+	sort.Strings(vols)
+
 	// off-by-one because of the initial newline in the volcli output
-	c.Assert([]string{"policy1/test", "policy1/test2"}, DeepEquals, lines2[1:])
+	c.Assert(vols, DeepEquals, lines2[1:])
 
 	// mount the volume and try a new copy: should succeed
-	out, err = s.dockerRun("mon0", false, true, "policy1/test", "sleep 10m")
+	out, err = s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf(out))
-	out, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test3", lines[0]))
+	out, err = s.volcli(fmt.Sprintf("volume snapshot copy %s %s %s", fqVolName, lines[0], targetName2))
 	c.Assert(err, IsNil, Commentf(out))
 
 	out, err = s.volcli("volume list-all")
@@ -263,9 +276,12 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 
 	sort.Strings(lines2)
 
+	vols2 := []string{fqVolName, fqVolume("policy1", targetName), fqVolume("policy1", targetName2)}
+	sort.Strings(vols2)
+
 	// off-by-one because of the initial newline in the volcli output
 	// re-test after the second volume was copied.
-	c.Assert([]string{"policy1/test", "policy1/test2", "policy1/test3"}, DeepEquals, lines2[1:])
+	c.Assert(vols2, DeepEquals, lines2[1:])
 }
 
 func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
@@ -276,31 +292,35 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopyFailures(c *C) {
 
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+
+	volName := fqVolume("policy1", genRandomVolume())
+	targetName := genRandomVolume()
+
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err := s.volcli("volume snapshot list policy1/test")
+	out, err := s.volcli("volume snapshot list " + volName)
 	c.Assert(err, IsNil)
 
 	lines := strings.Split(out, "\n")
 	c.Assert(len(lines), Not(Equals), 0)
 
-	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/test %s test", lines[0]))
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy %s %s %s", volName, lines[0], volName))
 	c.Assert(err, NotNil)
-	_, err = s.volcli("volume snapshot copy policy1/test foo test2")
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy %s foo %s", volName, targetName))
 	c.Assert(err, NotNil)
-	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/nonexistent %s test2", lines[0]))
+	_, err = s.volcli(fmt.Sprintf("volume snapshot copy policy1/nonexistent %s %s", lines[0], targetName))
 	c.Assert(err, NotNil)
 
 	// cleanup paranoia so other tests still pass
 	defer func() {
-		s.purgeVolume("mon0", "policy1", "test2", true)
-		s.purgeVolume("mon0", "policy1", "test", true)
+		s.purgeVolume("mon0", fqVolume("policy1", targetName))
+		s.purgeVolume("mon0", volName)
 	}()
 
 	// test that the remove is safe after all the snapshot ops
-	_, err = s.volcli("volume remove policy1/test")
+	_, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil)
 }
 
@@ -317,8 +337,10 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 		"size": "1GB",
 	}
 
-	c.Assert(s.createVolume("mon0", "policy2", "test", opts), IsNil)
-	_, err = s.dockerRun("mon0", false, true, "policy2/test", "sleep 10m")
+	volName := fqVolume("policy2", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, opts), IsNil)
+	_, err = s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t btrfs")
@@ -335,9 +357,12 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 	}
 
 	c.Assert(pass, Equals, true)
-	c.Assert(s.createVolume("mon0", "policy2", "testext4", map[string]string{"filesystem": "ext4"}), IsNil)
 
-	out, err = s.dockerRun("mon0", false, true, "policy2/testext4", "sleep 10m")
+	ext4vol := fqVolume("policy2", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", ext4vol, map[string]string{"filesystem": "ext4"}), IsNil)
+
+	out, err = s.dockerRun("mon0", false, true, ext4vol, "sleep 10m")
 	c.Assert(err, IsNil)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")

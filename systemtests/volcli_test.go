@@ -106,10 +106,6 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 }
 
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {
-	// XXX note that this is removed as a standard part of the tests and may error,
-	// so we don't check it.
-	defer s.volcli("volume remove policy1/foo")
-
 	out, err := s.volcli("volume list policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(strings.TrimSpace(out), Equals, "")
@@ -118,20 +114,26 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(strings.TrimSpace(out), Equals, "")
 
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	shortVolName := genRandomVolume()
+	volName := fqVolume("policy1", shortVolName)
+	// XXX note that this is removed as a standard part of the tests and may error,
+	// so we don't check it.
+	defer s.volcli("volume remove " + volName)
 
-	out, err = s.dockerRun("mon0", false, false, "policy1/foo", "ls")
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+
+	out, err = s.dockerRun("mon0", false, false, volName, "ls")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume list policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	c.Assert(strings.TrimSpace(out), Equals, "foo")
+	c.Assert(strings.TrimSpace(out), Equals, shortVolName)
 
 	out, err = s.volcli("volume list-all")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, volName)
 
-	out, err = s.volcli("volume get policy1/foo")
+	out, err = s.volcli("volume get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	cfg := &config.Volume{}
@@ -148,22 +150,22 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 
 	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create policy1/foo")
+	out, err = s.volcli("volume create " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume get policy1/foo")
+	out, err = s.volcli("volume get " + volName)
 	c.Assert(err, NotNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create policy1/foo --opt snapshots=false")
+	out, err = s.volcli(fmt.Sprintf("volume create %s --opt snapshots=false", volName))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume get policy1/foo")
+	out, err = s.volcli("volume get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	cfg = &config.Volume{}
@@ -181,13 +183,17 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 	out, err := s.uploadIntent("test1", "policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create test1/foo")
+	volName := fqVolume("test1", genRandomVolume())
+
+	out, err = s.volcli("volume create " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.uploadIntent("test1", "policy2")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create test1/bar")
+	volName2 := fqVolume("test1", genRandomVolume())
+
+	out, err = s.volcli("volume create " + volName2)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume list-all")
@@ -196,32 +202,36 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 	// matches assertion below doesn't handle newlines too well
 	out = strings.Replace(out, "\n", " ", -1)
 
-	c.Assert(out, Matches, ".*test1/foo.*", Commentf("output: %s", out))
-	c.Assert(out, Matches, ".*test1/bar.*", Commentf("output: %s", out))
+	c.Assert(out, Matches, fmt.Sprintf(".*%s.*", volName), Commentf("output: %s", out))
+	c.Assert(out, Matches, fmt.Sprintf(".*%s.*", volName2), Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) TestVolCLIVolumeTakeSnapshot(c *C) {
 	out, err := s.uploadIntent("test1", "policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create test1/foo")
+	volName := fqVolume("test1", genRandomVolume())
+
+	out, err = s.volcli("volume create " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume snapshot take test1/foo")
+	out, err = s.volcli("volume snapshot take " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) TestVolCLIUse(c *C) {
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	volName := fqVolume("policy1", genRandomVolume())
 
-	id, err := s.dockerRun("mon0", false, true, "policy1/foo", "sleep 10m")
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+
+	id, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf("output: %s", id))
 
 	out, err := s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, volName)
 
-	out, err = s.volcli("use get policy1/foo")
+	out, err = s.volcli("use get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	ut := &config.UseMount{}
@@ -237,39 +247,41 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(out, Equals, "")
 
-	out, err = s.mon0cmd("docker volume rm policy1/foo")
+	out, err = s.mon0cmd("docker volume rm " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	// the defer comes ahead of time here because of concerns that volume create
 	// will half-create a volume
-	defer s.purgeVolume("mon0", "policy1", "foo", true)
-	out, err = s.volcli("volume create policy1/foo")
+	defer s.purgeVolume("mon0", volName)
+	out, err = s.volcli("volume create " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	if cephDriver() {
 		// ensure that double-create errors
-		out, err = s.volcli("volume create policy1/foo")
+		out, err = s.volcli("volume create " + volName)
 		c.Assert(err, NotNil, Commentf("output: %s", out))
 	}
 
-	out, err = s.volcli("volume get policy1/foo")
+	out, err = s.volcli("volume get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) TestVolCLIRemoveForce(c *C) {
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	volName := fqVolume("policy1", genRandomVolume())
 
-	id, err := s.dockerRun("mon0", false, true, "policy1/foo", "sleep 10m")
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+
+	id, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf("output: %s", id))
 
 	out, err := s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, volName)
 
-	out, err = s.volcli("use get policy1/foo")
+	out, err = s.volcli("use get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	ut := &config.UseMount{}
@@ -281,31 +293,33 @@ func (s *systemtestSuite) TestVolCLIRemoveForce(c *C) {
 	out, err = s.mon0cmd("docker rm -f " + id)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("remove -f policy1/foo")
+	out, err = s.volcli("remove -f " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(out, Equals, "")
 
-	out, err = s.mon0cmd("docker volume rm policy1/foo")
+	out, err = s.mon0cmd("docker volume rm " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) TestVolCLIRemoveTimeout(c *C) {
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+	volName := fqVolume("policy1", genRandomVolume())
 
-	id, err := s.dockerRun("mon0", false, true, "policy1/foo", "sleep 10m")
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+
+	id, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf("output: %s", id))
 
 	out, err := s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	c.Assert(strings.TrimSpace(out), Equals, "policy1/foo")
+	c.Assert(strings.TrimSpace(out), Equals, volName)
 
-	out, err = s.volcli("use get policy1/foo")
+	out, err = s.volcli("use get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	ut := &config.UseMount{}
@@ -317,17 +331,17 @@ func (s *systemtestSuite) TestVolCLIRemoveTimeout(c *C) {
 	out, err = s.mon0cmd("docker rm -f " + id)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("remove -t 2s policy1/foo")
+	out, err = s.volcli("remove -t 2s " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("use list")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	c.Assert(out, Equals, "")
 
-	out, err = s.mon0cmd("docker volume rm policy1/foo")
+	out, err = s.mon0cmd("docker volume rm " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
@@ -337,13 +351,15 @@ func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
 		return
 	}
 
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
-	volcliOut, err := s.volcli("volume runtime get policy1/foo")
+	volName := fqVolume("policy1", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+	volcliOut, err := s.volcli("volume runtime get " + volName)
 	c.Assert(err, IsNil)
 	runtimeOptions := config.RuntimeOptions{}
 	c.Assert(json.Unmarshal([]byte(volcliOut), &runtimeOptions), IsNil)
 
-	volcliOut, err = s.volcli("volume get policy1/foo")
+	volcliOut, err = s.volcli("volume get " + volName)
 	c.Assert(err, IsNil)
 	volume := &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
@@ -351,9 +367,9 @@ func (s *systemtestSuite) TestVolCLIRuntime(c *C) {
 	c.Assert(volume.RuntimeOptions, DeepEquals, runtimeOptions)
 	c.Assert(volume.RuntimeOptions.Snapshot.Keep, Equals, uint(20))
 
-	out, err := s.volcli("volume runtime upload policy1/foo < /testdata/runtime1.json")
+	out, err := s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/runtime1.json", volName))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
-	volcliOut, err = s.volcli("volume get policy1/foo")
+	volcliOut, err = s.volcli("volume get " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 	volume = &config.Volume{}
 	c.Assert(json.Unmarshal([]byte(volcliOut), volume), IsNil)
