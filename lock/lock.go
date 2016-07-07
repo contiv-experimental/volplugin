@@ -169,10 +169,12 @@ retry:
 	if ttl != time.Duration(0) {
 		if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevExist); err != nil {
 			log.Debugf("Lock publish failed for %q with error: %v. Continuing.", uc, err)
-			if err.(*errored.Error).Contains(errors.NotExists) {
+			if er, ok := err.(*errored.Error); ok && er.Contains(errors.NotExists) {
 				if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevNoExist); err != nil {
 					log.Warnf("Could not acquire %q lock for %q: %v", uc.GetReason(), uc.GetVolume(), err)
 				}
+			} else if err != nil {
+				return err
 			}
 		}
 	} else {
