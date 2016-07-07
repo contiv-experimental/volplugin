@@ -181,7 +181,7 @@ func (s *systemtestSuite) TestVolpluginRestartMultiMount(c *C) {
 
 	volName := fqVolume("policy1", genRandomVolume())
 
-	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
+	c.Assert(s.createVolume("mon0", volName, map[string]string{"unlocked": "true"}), IsNil)
 	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10")
 	c.Assert(err, IsNil)
 	out2, err := s.dockerRun("mon0", false, true, volName, "sleep 10")
