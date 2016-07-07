@@ -2,9 +2,10 @@
 
 # volplugin: cluster-wide volume management for container ecosystems
 
-**Note:** we have extended documentation for users @ http://docs.contiv.io
+**Note**: Most of this documentation is about the open source project. If you
+came to try Contiv Storage, [read our documentation](http://contiv.github.io/documents/storage/index.html).
 
-volplugin controls [Ceph](http://ceph.com/) RBD -- or NFS -- devices, in a way that
+volplugin controls [Ceph](http://ceph.com/) RBD or NFS devices, in a way that
 makes them easy to use for devs with docker, and flexible to configure for ops.
 Reference your volumes with docker from anywhere your storage is available, and
 they are located and mounted. Works great with [Compose](https://github.com/docker/compose) and
