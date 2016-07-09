@@ -115,24 +115,18 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 
 	// FIXME find a better place for these
 	var (
-		writeIOPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_iops_device"
-		readIOPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_iops_device"
-		writeBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
-		readBPSFile   = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
+		writeBPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
+		readBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
 	)
 
 	opts := map[string]string{
-		"rate-limit.write.bps":  "100000",
-		"rate-limit.write.iops": "110000",
-		"rate-limit.read.bps":   "120000",
-		"rate-limit.read.iops":  "130000",
+		"rate-limit.write.bps": "100000",
+		"rate-limit.read.bps":  "120000",
 	}
 
 	optMap := map[string]string{
-		"rate-limit.write.bps":  writeBPSFile,
-		"rate-limit.write.iops": writeIOPSFile,
-		"rate-limit.read.bps":   readBPSFile,
-		"rate-limit.read.iops":  readIOPSFile,
+		"rate-limit.write.bps": writeBPSFile,
+		"rate-limit.read.bps":  readBPSFile,
 	}
 
 	volName := fqVolume("policy1", genRandomVolume())
@@ -158,16 +152,14 @@ func (s *systemtestSuite) TestIntegratedRateLimiting(c *C) {
 			}
 		}
 
-		c.Assert(found, Equals, true)
+		c.Assert(found, Equals, true, Commentf(out))
 	}
 
 	s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
 	// copied from iops1.json
 	opts = map[string]string{
-		"rate-limit.write.bps":  "1000000",
-		"rate-limit.write.iops": "1000",
-		"rate-limit.read.bps":   "10",
-		"rate-limit.read.iops":  "1200",
+		"rate-limit.write.bps": "1000",
+		"rate-limit.read.bps":  "10",
 	}
 
 	time.Sleep(30 * time.Second) // TTL

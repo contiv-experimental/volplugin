@@ -203,18 +203,18 @@ func (s *configSuite) TestVolumeRuntime(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.tlc.PublishVolume(vol), IsNil)
 	runtime := vol.RuntimeOptions
-	runtime.RateLimit.ReadIOPS = 1000
+	runtime.RateLimit.ReadBPS = 1000
 	c.Assert(s.tlc.PublishVolumeRuntime(vol, runtime), IsNil)
 
 	runtime2, err := s.tlc.GetVolumeRuntime("policy1", "test")
 	c.Assert(err, IsNil)
-	c.Assert(runtime2.RateLimit.ReadIOPS, Equals, uint(1000))
+	c.Assert(runtime2.RateLimit.ReadBPS, Equals, uint64(1000))
 	c.Assert(runtime, DeepEquals, runtime2)
 
 	vol, err = s.tlc.GetVolume("policy1", "test")
 	c.Assert(err, IsNil)
 	c.Assert(vol.RuntimeOptions, DeepEquals, runtime2)
-	c.Assert(vol.RuntimeOptions.RateLimit.ReadIOPS, Equals, uint(1000))
+	c.Assert(vol.RuntimeOptions.RateLimit.ReadBPS, Equals, uint64(1000))
 }
 
 func (s *configSuite) TestToDriverOptions(c *C) {

@@ -48,10 +48,8 @@ type RuntimeOptions struct {
 
 // RateLimitConfig is the configuration for limiting the rate of disk access.
 type RateLimitConfig struct {
-	WriteIOPS uint   `json:"write-iops" merge:"rate-limit.write.iops"`
-	ReadIOPS  uint   `json:"read-iops" merge:"rate-limit.read.iops"`
-	WriteBPS  uint64 `json:"write-bps" merge:"rate-limit.write.bps"`
-	ReadBPS   uint64 `json:"read-bps" merge:"rate-limit.read.bps"`
+	WriteBPS uint64 `json:"write-bps" merge:"rate-limit.write.bps"`
+	ReadBPS  uint64 `json:"read-bps" merge:"rate-limit.read.bps"`
 }
 
 // SnapshotConfig is the configuration for snapshots.
