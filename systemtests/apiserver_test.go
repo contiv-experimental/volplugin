@@ -1,6 +1,7 @@
 package systemtests
 
 import (
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -16,8 +17,11 @@ func (s *systemtestSuite) TestAPIServerFailedFormat(c *C) {
 
 	_, err := s.uploadIntent("policy2", "fs")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy2", "testfalse", map[string]string{"filesystem": "falsefs"}), NotNil)
-	_, err = s.volcli("volume remove policy2/testfalse")
+
+	volName := fqVolume("policy2", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, map[string]string{"filesystem": "falsefs"}), NotNil)
+	_, err = s.volcli("volume remove " + volName)
 	c.Assert(err, NotNil)
 }
 
@@ -63,7 +67,9 @@ func (s *systemtestSuite) TestAPIServerMultiRemove(c *C) {
 		return
 	}
 
-	c.Assert(s.createVolume("mon0", "policy1", "test", nil), IsNil)
+	volName := fqVolume("policy1", genRandomVolume())
+
+	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
 
 	type out struct {
 		out string
@@ -74,7 +80,7 @@ func (s *systemtestSuite) TestAPIServerMultiRemove(c *C) {
 
 	for i := 0; i < 5; i++ {
 		go func() {
-			myout, err := s.volcli("volume remove policy1/test")
+			myout, err := s.volcli("volume remove " + volName)
 			outChan <- out{myout, err}
 		}()
 	}
@@ -85,12 +91,12 @@ func (s *systemtestSuite) TestAPIServerMultiRemove(c *C) {
 		myout := <-outChan
 		if myout.err != nil {
 			if myout.out != "" {
-				c.Assert(strings.Contains(myout.out, `Error: Volume policy1/test no longer exists`), Equals, true, Commentf("%v %v", myout.out, myout.err))
+				c.Assert(strings.Contains(myout.out, fmt.Sprintf(`Error: Volume %s no longer exists`, volName)), Equals, true, Commentf("%v %v", myout.out, myout.err))
 			}
 			errs++
 		}
 	}
 
 	c.Assert(errs, Equals, 4)
-	c.Assert(s.purgeVolume("mon0", "policy1", "test", true), NotNil)
+	c.Assert(s.purgeVolume("mon0", volName), NotNil)
 }

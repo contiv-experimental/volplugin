@@ -22,6 +22,44 @@ var startedContainers struct {
 	names map[string]struct{}
 }
 
+var (
+	volumeListMutex = sync.Mutex{}
+	volumeList      = map[string]struct{}{}
+)
+
+func volumeParts(volume string) (string, string) {
+	parts := strings.SplitN(volume, "/", 2)
+	return parts[0], parts[1] // panic, schmanick
+}
+
+func fqVolume(policy, volume string) string {
+	return strings.Join([]string{policy, volume}, "/")
+}
+
+func genRandomVolume() string {
+retry:
+	volume := genRandomString("test", "", 20)
+	volumeListMutex.Lock()
+	if _, ok := volumeList[volume]; ok {
+		volumeListMutex.Unlock()
+		goto retry
+	}
+	volumeList[volume] = struct{}{}
+	volumeListMutex.Unlock()
+
+	return volume
+}
+
+func genRandomVolumes(count int) []string {
+	res := []string{}
+
+	for i := 0; i < count; i++ {
+		res = append(res, genRandomVolume())
+	}
+
+	return res
+}
+
 // genRandomString returns a pseudo random string.
 // It doesn't worry about name collisions much at the moment.
 func genRandomString(prefix, suffix string, strlen int) string {
@@ -103,22 +141,24 @@ func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 	return cfg, nil
 }
 
-func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool) error {
-	log.Infof("Purging %s/%s. Purging ceph: %v", host, name, purgeCeph)
+func (s *systemtestSuite) purgeVolume(host, volume string) error {
+	log.Infof("Purging %s on %s", volume, host)
+
+	policy, name := volumeParts(volume)
 
 	// ignore the error here so we get to the purge if we have to
-	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(fmt.Sprintf("docker volume rm %s/%s", policy, name)); err != nil {
+	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(fmt.Sprintf("docker volume rm %s", volume)); err != nil {
 		log.Error(out, err)
 	}
 
 	defer func() {
-		if purgeCeph && cephDriver() {
+		if cephDriver() {
 			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd snap purge rbd/%s.%s", policy, name))
 			s.vagrant.GetNode("mon0").RunCommand(fmt.Sprintf("sudo rbd rm rbd/%s.%s", policy, name))
 		}
 	}()
 
-	if out, err := s.volcli(fmt.Sprintf("volume remove %s/%s", policy, name)); err != nil {
+	if out, err := s.volcli(fmt.Sprintf("volume remove %s", volume)); err != nil {
 		log.Error(out)
 		return err
 	}
@@ -126,18 +166,11 @@ func (s *systemtestSuite) purgeVolume(host, policy, name string, purgeCeph bool)
 	return nil
 }
 
-func (s *systemtestSuite) purgeVolumeHost(policy, host string, purgeCeph bool) {
-	s.purgeVolume(host, policy, host, purgeCeph)
-}
-
-func (s *systemtestSuite) createVolumeHost(policy, host string, opts map[string]string) error {
-	return s.createVolume(host, policy, host, opts)
-}
-
-func (s *systemtestSuite) createVolume(host, policy, name string, opts map[string]string) error {
-	log.Infof("Creating %s/%s on %q", policy, name, host)
+func (s *systemtestSuite) createVolume(host, volume string, opts map[string]string) error {
+	log.Infof("Creating %s on %q", volume, host)
 
 	optsStr := []string{}
+	policy, name := volumeParts(volume)
 
 	if nfsDriver() {
 		log.Infof("Making NFS mount directory /volplugin/%s/%s", policy, name)
@@ -199,7 +232,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		s.clearContainers()
 		stopVolsupervisor(s.vagrant.GetNode("mon0"))
 		s.vagrant.IterateNodes(stopVolplugin)
-		s.vagrant.IterateNodes(stopVolmaster)
+		s.vagrant.IterateNodes(stopAPIServer)
 		if cephDriver() {
 			s.clearRBD()
 		}
@@ -210,20 +243,13 @@ func (s *systemtestSuite) rebootstrap() error {
 
 		log.Info("Clearing etcd")
 		utils.ClearEtcd(s.vagrant.GetNode("mon0"))
-
-		if err := s.restartDocker(); err != nil {
-			return err
-		}
-		if err := s.waitDockerizedServices(); err != nil {
-			return err
-		}
 	}
 
-	if err := s.vagrant.IterateNodes(startVolmaster); err != nil {
+	if err := s.vagrant.IterateNodes(startAPIServer); err != nil {
 		return err
 	}
 
-	if err := s.vagrant.IterateNodes(waitForVolmaster); err != nil {
+	if err := s.vagrant.IterateNodes(waitForAPIServer); err != nil {
 		return err
 	}
 
@@ -324,11 +350,11 @@ func waitForVolsupervisor(node vagrantssh.TestbedNode) error {
 	return nil
 }
 
-func waitForVolmaster(node vagrantssh.TestbedNode) error {
+func waitForAPIServer(node vagrantssh.TestbedNode) error {
 	log.Infof("Checking if apiserver is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "pgrep -c apiserver", 10)
 	if err == nil {
-		log.Infof("Volmaster is running on %q", node.GetName())
+		log.Infof("APIServer is running on %q", node.GetName())
 
 	}
 	return nil
@@ -369,15 +395,15 @@ func stopVolsupervisor(node vagrantssh.TestbedNode) error {
 	return node.RunCommand("sudo pkill volsupervisor")
 }
 
-func startVolmaster(node vagrantssh.TestbedNode) error {
+func startAPIServer(node vagrantssh.TestbedNode) error {
 	log.Infof("Starting the apiserver on %q", node.GetName())
 	err := node.RunCommandBackground("(sudo -E nohup `which apiserver` </dev/null 2>&1 | sudo tee -a /tmp/apiserver.log) &")
 	log.Infof("Waiting for apiserver startup on %q", node.GetName())
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(time.Second)
 	return err
 }
 
-func stopVolmaster(node vagrantssh.TestbedNode) error {
+func stopAPIServer(node vagrantssh.TestbedNode) error {
 	log.Infof("Stopping the apiserver on %q", node.GetName())
 	return node.RunCommand("sudo pkill apiserver")
 }

@@ -18,19 +18,22 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 
 	for i := 0; i < outerCount; i++ {
 		syncChan := make(chan struct{}, count)
+		volumes := genRandomVolumes(count)
 
 		for x := 0; x < count; x++ {
-			go func(x int) {
+			go func(volName string, x int) {
 				defer func() { syncChan <- struct{}{} }()
-				c.Assert(s.createVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), nil), IsNil)
-				out, err := s.dockerRun("mon0", false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
+				fqVolName := fqVolume("policy1", volName)
+
+				c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
+				out, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
 				c.Assert(err, IsNil, Commentf("Output: %s", out))
-				second, err := s.dockerRun("mon0", false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
+				second, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
 				log.Debug(second, err)
 				c.Assert(err, IsNil, Commentf("Output: %s", second))
 
 				if cephDriver() {
-					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.test%02d", x))
+					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.%s", volName))
 					c.Assert(err, IsNil)
 					out2, err := s.mon0cmd(fmt.Sprintf("docker exec %s ls /mnt", strings.TrimSpace(out)))
 					c.Assert(err, IsNil)
@@ -42,7 +45,7 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 					log.Error(strings.TrimSpace(out3))
 				}
 				c.Assert(err, IsNil)
-			}(x)
+			}(volumes[x], x)
 		}
 
 		for x := 0; x < count; x++ {
@@ -54,14 +57,11 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 			c.Assert(err, IsNil)
 		}
 
-		// FIXME netplugin is broken
-		c.Assert(s.restartNetplugin(), IsNil)
 		c.Assert(s.clearContainers(), IsNil)
-		c.Assert(s.restartNetplugin(), IsNil)
 
 		purgeChan := make(chan error, count)
-		for x := 0; x < count; x++ {
-			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
+		for _, volume := range volumes {
+			go func(volume string) { purgeChan <- s.purgeVolume("mon0", fqVolume("policy1", volume)) }(volume)
 		}
 
 		var errs int
@@ -111,20 +111,22 @@ repeat:
 		}
 
 		outputChan := make(chan output, len(nodes)*count)
+		volumes := genRandomVolumes(count)
 
-		for x := 0; x < count; x++ {
-			go func(nodes []vagrantssh.TestbedNode, x int) {
+		for _, volume := range volumes {
+			go func(nodes []vagrantssh.TestbedNode, volName string) {
+				fqVolName := fqVolume("policy1", volName)
 				for _, node := range nodes {
-					c.Assert(s.createVolume(node.GetName(), "policy1", fmt.Sprintf("test%02d", x), nil), IsNil)
+					c.Assert(s.createVolume(node.GetName(), fqVolName, nil), IsNil)
 				}
 
 				for _, node := range nodes {
-					go func(node vagrantssh.TestbedNode, x int) {
-						out, err := s.dockerRun(node.GetName(), false, true, fmt.Sprintf("policy1/test%02d", x), "sleep 10m")
-						outputChan <- output{out, err, fmt.Sprintf("policy1/test%02d", x)}
-					}(node, x)
+					go func(node vagrantssh.TestbedNode, fqVolName string) {
+						out, err := s.dockerRun(node.GetName(), false, true, fqVolName, "sleep 10m")
+						outputChan <- output{out, err, volName}
+					}(node, fqVolName)
 				}
-			}(nodes, x)
+			}(nodes, volume)
 		}
 
 		var errs int
@@ -149,8 +151,8 @@ repeat:
 		c.Assert(s.clearContainers(), IsNil)
 
 		purgeChan := make(chan error, count)
-		for x := 0; x < count; x++ {
-			go func(x int) { purgeChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
+		for _, volume := range volumes {
+			go func(volume string) { purgeChan <- s.purgeVolume("mon0", fqVolume("policy1", volume)) }(volume)
 		}
 
 		errs = 0
@@ -164,8 +166,6 @@ repeat:
 		}
 
 		c.Assert(errs, Equals, 0)
-		c.Assert(s.restartDocker(), IsNil)
-		c.Assert(s.waitDockerizedServices(), IsNil)
 	}
 
 	if nfsDriver() && !unlocked {
@@ -181,29 +181,31 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 	outwg := sync.WaitGroup{}
 
 	for outer := 0; outer < outcount; outer++ {
-		for x := 0; x < count; x++ {
+		volumes := genRandomVolumes(count)
+		for _, volume := range volumes {
 			outwg.Add(1)
-			go func(nodes []vagrantssh.TestbedNode, x int) {
+			go func(nodes []vagrantssh.TestbedNode, volume string) {
 				defer outwg.Done()
 				wg := sync.WaitGroup{}
 				errChan := make(chan error, len(nodes))
 
 				for i := range rand.Perm(len(nodes)) {
 					wg.Add(1)
-					go func(i, x int) {
+					go func(i int, volume string) {
 						defer wg.Done()
+						fqVolName := fqVolume("policy1", volume)
 						node := nodes[i]
-						log.Infof("Creating image policy1/test%02d on %q", x, node.GetName())
+						log.Infof("Creating image %s on %q", fqVolName, node.GetName())
 
 						var opt string
 
 						if nfsDriver() {
-							opt = fmt.Sprintf("--opt mount=%s:policy1/test%02d", s.mon0ip, x)
+							opt = fmt.Sprintf("--opt mount=%s:%s", s.mon0ip, fqVolName)
 						}
 
-						_, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create policy1/test%02d %s", x, opt))
+						_, err := node.RunCommandWithOutput(fmt.Sprintf("volcli volume create %s %s", fqVolName, opt))
 						errChan <- err
-					}(i, x)
+					}(i, volume)
 				}
 
 				var errs int
@@ -222,14 +224,14 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 				} else {
 					c.Assert(errs, Equals, 2)
 				}
-			}(nodes, x)
+			}(nodes, volume)
 		}
 
 		outwg.Wait()
 
 		errChan := make(chan error, count)
-		for x := 0; x < count; x++ {
-			go func(x int) { errChan <- s.purgeVolume("mon0", "policy1", fmt.Sprintf("test%02d", x), true) }(x)
+		for _, volume := range volumes {
+			go func(volume string) { errChan <- s.purgeVolume("mon0", fqVolume("policy1", volume)) }(volume)
 		}
 
 		var realErr error

@@ -15,17 +15,20 @@ func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
 
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+
+	volName := genRandomVolume()
+
+	c.Assert(s.createVolume("mon0", fqVolume("policy1", volName), nil), IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.Split(out, "\n")) > 2, Equals, true)
 
 	time.Sleep(15 * time.Second)
 
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 	mylen := len(strings.Split(out, "\n"))
 	c.Assert(mylen, Not(Equals), 0)
@@ -40,18 +43,22 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+
+	volName := genRandomVolume()
+	fqVolName := fqVolume("policy1", volName)
+
+	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.Split(out, "\n")) > 2, Equals, true)
 
-	out, err = s.volcli("volume remove policy1/foo")
+	out, err = s.volcli("volume remove " + fqVolName)
 	c.Assert(err, IsNil)
 
-	_, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	_, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, NotNil)
 
 	_, err = s.uploadIntent("policy1", "nosnap")
@@ -59,12 +66,12 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 
 	// XXX we don't use createVolume here because of a bug in docker that doesn't
 	// allow it to create the same volume twice
-	_, err = s.volcli("volume create policy1/foo")
+	_, err = s.volcli("volume create " + fqVolName)
 	c.Assert(err, IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 	c.Assert(len(out), Equals, 0)
 }
@@ -77,11 +84,15 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 
 	_, err := s.uploadIntent("policy1", "fastsnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
+
+	volName := genRandomVolume()
+	fqVolName := fqVolume("policy1", volName)
+
+	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
 
 	time.Sleep(4 * time.Second)
 
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 
 	count := len(strings.Split(out, "\n"))
@@ -93,7 +104,7 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 
 	time.Sleep(10 * time.Second)
 
-	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1.foo")
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
 	count2 := len(strings.Split(out, "\n"))
 	c.Assert(count2 > count, Equals, true)
@@ -107,13 +118,17 @@ func (s *systemtestSuite) TestVolsupervisorSignal(c *C) {
 
 	_, err := s.uploadIntent("policy1", "nosnap")
 	c.Assert(err, IsNil)
-	c.Assert(s.createVolume("mon0", "policy1", "foo", nil), IsNil)
-	_, err = s.volcli("volume snapshot take policy1/foo")
+
+	volName := genRandomVolume()
+	fqVolName := fqVolume("policy1", volName)
+
+	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
+	_, err = s.volcli("volume snapshot take " + fqVolName)
 	c.Assert(err, IsNil)
 
 	time.Sleep(time.Second)
 
-	out, err := s.volcli("volume snapshot list policy1/foo")
+	out, err := s.volcli("volume snapshot list " + fqVolName)
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.TrimSpace(out)), Not(Equals), 0, Commentf(out))
 }
