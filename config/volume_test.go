@@ -241,3 +241,16 @@ func (s *configSuite) TestToDriverOptions(c *C) {
 
 	c.Assert(do, DeepEquals, expected)
 }
+
+func (s *configSuite) TestMountSource(c *C) {
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["nfs"]), IsNil)
+	vol, err := s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test", Options: map[string]string{"mount": "localhost:/mnt"}})
+	c.Assert(err, IsNil)
+	c.Assert(vol.MountSource, Equals, "localhost:/mnt")
+	_, err = s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test2"})
+	c.Assert(err, NotNil)
+	c.Assert(s.tlc.PublishPolicy("policy1", testPolicies["basic"]), IsNil)
+	vol, err = s.tlc.CreateVolume(Request{Policy: "policy1", Volume: "test2"})
+	c.Assert(err, IsNil)
+	c.Assert(vol.MountSource, Equals, "")
+}

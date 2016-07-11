@@ -64,8 +64,8 @@ func (a *apiSuite) uploadPolicy(policyName string) error {
 }
 
 func (a *apiSuite) SetUpTest(c *C) {
-	c.Assert(exec.Command("sh", "-c", "for i in $(rbd ls); do rbd snap purge $i; rbd rm $i; done").Run(), IsNil)
-	c.Assert(exec.Command("etcdctl", "rm", "--recursive", "/volplugin").Run(), IsNil)
+	exec.Command("sh", "-c", "for i in $(rbd ls); do rbd snap purge $i; rbd rm $i; done").Run()
+	exec.Command("etcdctl", "rm", "--recursive", "/volplugin").Run()
 	a.server = nil
 	client, err := config.NewClient("/volplugin", []string{"http://127.0.0.1:2379"})
 	c.Assert(err, IsNil)

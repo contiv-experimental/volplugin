@@ -368,6 +368,10 @@ func (cfg *Volume) Validate() error {
 		return errored.Errorf("Policy name was omitted for volume %v", cfg)
 	}
 
+	if err := cfg.validateBackends(); err != nil {
+		return err
+	}
+
 	return cfg.RuntimeOptions.Validate()
 }
 
@@ -383,6 +387,7 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 			Name:   cfg.String(),
 			Size:   actualSize,
 			Params: cfg.DriverOptions,
+			Source: cfg.MountSource,
 		},
 		FSOptions: storage.FSOptions{
 			Type: cfg.CreateOptions.FileSystem,
@@ -400,9 +405,15 @@ func (cfg *Volume) validateBackends() error {
 		return err
 	}
 
-	crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
-	if err != nil {
-		return err
+	if cfg.Backends.CRUD != "" {
+		crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
+		if err != nil {
+			return err
+		}
+
+		if err := crud.Validate(do); err != nil {
+			return err
+		}
 	}
 
 	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, "/mnt")
@@ -410,13 +421,16 @@ func (cfg *Volume) validateBackends() error {
 		return err
 	}
 
-	snapshot, err := backend.NewSnapshotDriver(cfg.Backends.Snapshot)
-	if err != nil {
+	if err := mnt.Validate(do); err != nil {
 		return err
 	}
 
-	for _, driver := range []storage.ValidatingDriver{crud, mnt, snapshot} {
-		if err := driver.Validate(do); err != nil {
+	if cfg.Backends.Snapshot != "" {
+		snapshot, err := backend.NewSnapshotDriver(cfg.Backends.Snapshot)
+		if err != nil {
+			return err
+		}
+		if err := snapshot.Validate(do); err != nil {
 			return err
 		}
 	}

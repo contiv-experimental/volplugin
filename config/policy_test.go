@@ -136,6 +136,11 @@ var testPolicies = map[string]*Policy{
 		RuntimeOptions: RuntimeOptions{},
 		FileSystems:    defaultFilesystems,
 	},
+	"nfs": {
+		Backends: BackendDrivers{
+			Mount: "nfs",
+		},
+	},
 }
 
 func (s *configSuite) TestBasicPolicy(c *C) {

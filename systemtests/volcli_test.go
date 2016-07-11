@@ -149,11 +149,17 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	policy1.CreateOptions.FileSystem = "ext4"
 
 	c.Assert(policy1.CreateOptions, DeepEquals, cfg.CreateOptions)
+	options := ""
+
+	if nfsDriver() {
+		s.mon0cmd("sudo mkdir -p -m 4777 /volplugin/policy1/foo")
+		options = fmt.Sprintf("--opt mount=%s:/volplugin/policy1/foo", s.mon0ip)
+	}
 
 	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	out, err = s.volcli("volume create " + volName)
+	out, err = s.volcli(fmt.Sprintf("volume create %s %s", volName, options))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume remove " + volName)
@@ -162,7 +168,7 @@ func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err = s.volcli("volume get " + volName)
 	c.Assert(err, NotNil, Commentf("output: %s", out))
 
-	out, err = s.volcli(fmt.Sprintf("volume create %s --opt snapshots=false", volName))
+	out, err = s.volcli(fmt.Sprintf("volume create %s --opt snapshots=false %s", volName, options))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume get " + volName)
@@ -185,7 +191,13 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 
 	volName := fqVolume("test1", genRandomVolume())
 
-	out, err = s.volcli("volume create " + volName)
+	options := ""
+
+	if nfsDriver() {
+		options = fmt.Sprintf("--opt mount=%s:/volplugin/%s", s.mon0ip, volName)
+	}
+
+	out, err = s.volcli(fmt.Sprintf("volume create %s %s", volName, options))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.uploadIntent("test1", "policy2")
@@ -193,7 +205,7 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 
 	volName2 := fqVolume("test1", genRandomVolume())
 
-	out, err = s.volcli("volume create " + volName2)
+	out, err = s.volcli(fmt.Sprintf("volume create %s %s", volName2, options))
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
 	out, err = s.volcli("volume list-all")
@@ -207,6 +219,11 @@ func (s *systemtestSuite) TestVolCLIVolumePolicyUpdate(c *C) {
 }
 
 func (s *systemtestSuite) TestVolCLIVolumeTakeSnapshot(c *C) {
+	if !cephDriver() {
+		c.Skip("Cannot test snapshots without ceph driver")
+		return
+	}
+
 	out, err := s.uploadIntent("test1", "policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
@@ -253,20 +270,20 @@ func (s *systemtestSuite) TestVolCLIUse(c *C) {
 	out, err = s.volcli("volume remove " + volName)
 	c.Assert(err, IsNil, Commentf("output: %s", out))
 
-	// the defer comes ahead of time here because of concerns that volume create
-	// will half-create a volume
-	defer s.purgeVolume("mon0", volName)
-	out, err = s.volcli("volume create " + volName)
-	c.Assert(err, IsNil, Commentf("output: %s", out))
-
 	if cephDriver() {
+		// the defer comes ahead of time here because of concerns that volume create
+		// will half-create a volume
+		defer s.purgeVolume("mon0", volName)
+		out, err = s.volcli("volume create " + volName)
+		c.Assert(err, IsNil, Commentf("output: %s", out))
+
 		// ensure that double-create errors
 		out, err = s.volcli("volume create " + volName)
 		c.Assert(err, NotNil, Commentf("output: %s", out))
-	}
 
-	out, err = s.volcli("volume get " + volName)
-	c.Assert(err, IsNil, Commentf("output: %s", out))
+		out, err = s.volcli("volume get " + volName)
+		c.Assert(err, IsNil, Commentf("output: %s", out))
+	}
 }
 
 func (s *systemtestSuite) TestVolCLIRemoveForce(c *C) {

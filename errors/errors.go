@@ -88,6 +88,8 @@ var (
 	MarshalVolume = errored.New("Marshalling volume parameters")
 	// UnmarshalVolume is used when unmarshalling volumes.
 	UnmarshalVolume = errored.New("Unmarshalling volume parameters")
+	// MountSourceRequired is used when a mount source does not exist, but is required.
+	MountSourceRequired = errored.New("A mount source does not exist, but is required")
 
 	// UnmarshalRuntime is used when unmarshalling runtime parameters.
 	UnmarshalRuntime = errored.New("Unmarshalling runtime parameters")
