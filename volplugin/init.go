@@ -28,12 +28,13 @@ func (dc *DaemonConfig) updateMounts() error {
 	}
 
 	for _, container := range containers {
-		for _, mount := range container.Mounts {
-			if mount.Driver != "volplugin" {
-				continue
+		if container.State == "running" {
+			for _, mount := range container.Mounts {
+				if mount.Driver != "volplugin" {
+					continue
+				}
+				dc.increaseMount(mount.Name)
 			}
-
-			dc.increaseMount(mount.Name)
 		}
 	}
 

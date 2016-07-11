@@ -98,7 +98,6 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	time.Sleep(5 * time.Second)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(s.createVolume("mon1", volName, nil), IsNil)
 	_, err = s.dockerRun("mon1", false, true, volName, "sleep 10m")
 	c.Assert(err, NotNil)
 
@@ -123,13 +122,11 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	}
 	c.Assert(found, Equals, true)
 
-	c.Assert(s.createVolume("mon1", volName, nil), IsNil)
 	_, err = s.dockerRun("mon1", false, true, volName, "sleep 10m")
 	c.Assert(err, NotNil)
 
 	c.Assert(s.clearContainers(), IsNil)
 
-	c.Assert(s.createVolume("mon1", volName, nil), IsNil)
 	out, err = s.dockerRun("mon1", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf(out))
 }

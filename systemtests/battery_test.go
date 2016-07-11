@@ -21,6 +21,7 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
 	totalIterations := 5
 	threadCount := 15
+	totalMounts := 5
 
 	for i := 0; i < totalIterations; i++ {
 		syncChan := make(chan struct{}, threadCount)
