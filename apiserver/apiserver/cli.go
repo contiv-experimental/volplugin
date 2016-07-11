@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/apiserver"
+	"github.com/contiv/volplugin/config"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"

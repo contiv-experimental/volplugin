@@ -160,9 +160,9 @@ func (s *nfsSuite) TestNFSOptionsFromString(c *C) {
 	}
 
 	valid := map[string]map[string]string{
-		"foo=bar":                 map[string]string{"foo": "bar"},
-		"foo=bar,baz=quux":        map[string]string{"foo": "bar", "baz": "quux"},
-		"spork,comma=text,market": map[string]string{"spork": "", "comma": "text", "market": ""},
+		"foo=bar":                 {"foo": "bar"},
+		"foo=bar,baz=quux":        {"foo": "bar", "baz": "quux"},
+		"spork,comma=text,market": {"spork": "", "comma": "text", "market": ""},
 	}
 
 	for str, val := range valid {
