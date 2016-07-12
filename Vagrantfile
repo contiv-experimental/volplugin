@@ -149,10 +149,13 @@ ansible_provision = proc do |ansible|
     netplugin_if: "enp0s9",
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
-    devices: "[ '/dev/sdc', '/dev/sdd' ]",
+    devices: "[ '/dev/sdd' ]",
     service_vip: "#{SUBNET}.50",
     journal_collocation: 'true',
     validate_certs: 'no',
+    install_gluster: 'true',
+    gluster_device: '/dev/sdc',
+    gluster_interface: "enp0s8",
   }
   ansible.limit = 'all'
 end
