@@ -378,7 +378,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 func (dc *DaemonConfig) capabilities(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(map[string]map[string]string{
-		"Capabilities": map[string]string{
+		"Capabilities": {
 			"Scope": "global",
 		},
 	})
