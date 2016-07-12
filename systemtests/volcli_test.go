@@ -20,7 +20,7 @@ func (s *systemtestSuite) TestVolCLIEmptyGlobal(c *C) {
 	target := &config.Global{}
 
 	c.Assert(json.Unmarshal([]byte(out), target), IsNil, Commentf(out))
-	c.Assert(config.NewGlobalConfig(), DeepEquals, target, Commentf("%q %#v", out, target))
+	c.Assert(config.NewGlobalConfig().Published(), DeepEquals, target, Commentf("%q %#v", out, target))
 }
 
 func (s *systemtestSuite) TestVolCLIPolicy(c *C) {

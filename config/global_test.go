@@ -11,15 +11,15 @@ func (s *configSuite) TestGlobal(c *C) {
 
 	global := &Global{
 		Debug:     true,
-		TTL:       10,
-		Timeout:   1,
+		TTL:       DefaultGlobalTTL,
+		Timeout:   DefaultTimeout,
 		MountPath: defaultMountPath,
 	}
 
 	c.Assert(s.tlc.PublishGlobal(global), IsNil)
 	global2, err := s.tlc.GetGlobal()
 	c.Assert(err, IsNil)
-	global.fixupParameters()
+	global = global.Canonical()
 	c.Assert(global, DeepEquals, global2)
 }
 
@@ -28,7 +28,7 @@ func (s *configSuite) TestGlobalEmpty(c *C) {
 	global, err := s.tlc.GetGlobal()
 	c.Assert(err, IsNil)
 
-	c.Assert(global, DeepEquals, &Global{
+	c.Assert(global.SetEmpty(), DeepEquals, &Global{
 		TTL:       DefaultGlobalTTL,
 		MountPath: defaultMountPath,
 		Timeout:   DefaultTimeout,
@@ -40,8 +40,8 @@ func (s *configSuite) TestGlobalWatch(c *C) {
 
 	global := &Global{
 		Debug:     true,
-		TTL:       10,
-		Timeout:   1,
+		TTL:       DefaultGlobalTTL,
+		Timeout:   DefaultTimeout,
 		MountPath: defaultMountPath,
 	}
 
@@ -52,6 +52,6 @@ func (s *configSuite) TestGlobalWatch(c *C) {
 	c.Assert(s.tlc.PublishGlobal(global), IsNil)
 	global2 := (<-activity).Config.(*Global)
 	c.Assert(global2, NotNil)
-	global.fixupParameters()
+	global2 = global2.Canonical()
 	c.Assert(global, DeepEquals, global2)
 }

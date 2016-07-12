@@ -39,9 +39,7 @@ func NewGlobalConfigFromJSON(content []byte) (*Global, error) {
 		return nil, err
 	}
 
-	global.fixupParameters()
-
-	return global, nil
+	return global.SetEmpty(), nil
 }
 
 // NewGlobalConfig returns global config with preset defaults
@@ -57,8 +55,7 @@ func NewGlobalConfig() *Global {
 func (tlc *Client) PublishGlobal(g *Global) error {
 	gcPath := tlc.prefixed("global-config")
 
-	g.fixupParameters()
-	value, err := json.Marshal(g)
+	value, err := json.Marshal(g.Canonical())
 	if err != nil {
 		return err
 	}
@@ -82,31 +79,62 @@ func (tlc *Client) GetGlobal() (*Global, error) {
 		return nil, err
 	}
 
-	global.fixupParameters()
-
-	return global, nil
+	return global.SetEmpty(), nil
 }
 
-func (global *Global) fixupParameters() {
-	if global.Timeout == 0 {
-		global.Timeout = DefaultTimeout
-	}
+// Published returns a copy of the current global with the parameters adjusted
+// to fit the published representation. To see the internal/system/canonical
+// version, please see Canonical() below.
+//
+// It is very important that you do not run this function multiple times
+// against the same data set. It will adjust the parameters twice.
+func (global *Global) Published() *Global {
+	newGlobal := *global
 
-	if global.TTL == 0 {
-		global.TTL = DefaultGlobalTTL
-	}
+	newGlobal.TTL /= ttlFixBase
+	newGlobal.Timeout /= timeoutFixBase
 
-	if global.MountPath == "" {
-		global.MountPath = defaultMountPath
-	}
+	return &newGlobal
+}
+
+// Canonical returns a copy of the current global with the parameters adjusted
+// to fit the internal (or canonical) representation. To see the published
+// version, see Published() above.
+//
+// It is very important that you do not run this function multiple times
+// against the same data set. It will adjust the parameters twice.
+func (global *Global) Canonical() *Global {
+	newGlobal := *global
 
 	if global.TTL < ttlFixBase {
-		global.TTL = ttlFixBase * global.TTL
+		newGlobal.TTL *= ttlFixBase
 	}
 
 	if global.Timeout < timeoutFixBase {
-		global.Timeout = timeoutFixBase * global.Timeout
+		newGlobal.Timeout *= timeoutFixBase
 	}
+
+	return &newGlobal
+}
+
+// SetEmpty sets any emptied parameters. This is typically used during the
+// creation of the object accepted from user input.
+func (global *Global) SetEmpty() *Global {
+	newGlobal := *global
+
+	if newGlobal.Timeout == 0 {
+		newGlobal.Timeout = DefaultTimeout
+	}
+
+	if global.TTL == 0 {
+		newGlobal.TTL = DefaultGlobalTTL
+	}
+
+	if global.MountPath == "" {
+		newGlobal.MountPath = defaultMountPath
+	}
+
+	return &newGlobal
 }
 
 // WatchGlobal watches a global and updates it as soon as the config changes.
@@ -122,8 +150,6 @@ func (tlc *Client) WatchGlobal(activity chan *watch.Watch) {
 				time.Sleep(time.Second)
 				return
 			}
-
-			global.fixupParameters()
 		}
 
 		w.Channel <- &watch.Watch{Key: resp.Node.Key, Config: global}
