@@ -44,6 +44,13 @@ provision:
 ssh:
 	vagrant ssh mon0
 
+ineffassign-host:
+	[ -n "`which ineffassign`" ] || go get github.com/gordonklaus/ineffassign
+	set -e; for i in $$(find . -mindepth 1 -maxdepth 1 -type d | grep -vE '^\./\.|^\./vendor'); do ineffassign $$i; done
+
+ineffassign:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make ineffassign-host'"
+
 gofmt-host:
 	@build/scripts/gofmt.sh
 
@@ -84,7 +91,7 @@ unit-test-nocoverage:
 unit-test-nocoverage-host: golint-host govet-host
 	HOST_TEST=1 GOGC=1000 go test -v ./... -check.v -check.f "${TESTRUN}"
 
-build: golint govet gofmt
+build: golint govet gofmt ineffassign
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill apiserver; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
