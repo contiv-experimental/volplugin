@@ -1,0 +1,4 @@
+---
+
+- include: install_gluster.yml
+  when: install_gluster

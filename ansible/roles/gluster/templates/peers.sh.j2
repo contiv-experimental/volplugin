@@ -1,0 +1,17 @@
+#!/bin/sh
+
+{%- set peers=[] -%}
+{%- for host in groups[etcd_peers_group] -%}
+    {%- if host != node_name -%}
+        {%- if peers.append(host) -%}
+        {%- endif -%}
+    {%- endif -%}
+{%- endfor -%}
+PEERS='
+{%- if peers -%}
+    {#- print the peer addr -#}
+    {{- hostvars[peers[0]]['ansible_' + hostvars[peers[0]]['control_interface']]['ipv4']['address'] -}}
+{%- else -%}
+    {#- print nothing -#}
+{%- endif -%}
+'

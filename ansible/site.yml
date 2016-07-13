@@ -29,6 +29,7 @@
   - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }
   - { role: scheduler_stack, run_as: master }
   - { role: contiv_network, run_as: master }
+  - { role: gluster, gluster_peers_group: volplugin-test, gluster_interface: "{{ control_interface }}"}
 
 # cluster-node hosts corresponds to the hosts that shall be managed by cluster manager.
 # This host group shall provision a host with all required packages needed to make
