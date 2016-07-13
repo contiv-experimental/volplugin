@@ -272,6 +272,7 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 	c.Assert(err, IsNil, Commentf(out))
 
 	out, err = s.volcli("volume list-all")
+	c.Assert(err, IsNil)
 	lines2 = strings.Split(out, "\n")
 
 	sort.Strings(lines2)
