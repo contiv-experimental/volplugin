@@ -8,6 +8,7 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
+	"github.com/contiv/volplugin/merge"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/watch"
@@ -94,7 +95,7 @@ func (c *Client) CreateVolume(rc Request) (*Volume, error) {
 		delete(rc.Options, "mount")
 	}
 
-	if err := mergeOpts(resp, rc.Options); err != nil {
+	if err := merge.Opts(resp, rc.Options); err != nil {
 		return nil, err
 	}
 

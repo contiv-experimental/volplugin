@@ -1,4 +1,4 @@
-package config
+package merge
 
 import (
 	"reflect"
@@ -7,12 +7,12 @@ import (
 	"github.com/contiv/errored"
 )
 
-// mergeOpts is used to merge docker's driver options (which are flat) with our
+// Opts is used to merge docker's driver options (which are flat) with our
 // options data structures (which are not).
 //
 // most of the work is done in setKey() and setValueWithType().
 //
-func mergeOpts(v interface{}, opts map[string]string) error {
+func Opts(v interface{}, opts map[string]string) error {
 	for key, value := range opts {
 		ptrVal := reflect.ValueOf(v)
 		if err := setKey(reflect.TypeOf(v).Elem(), &ptrVal, key, value); err != nil {
