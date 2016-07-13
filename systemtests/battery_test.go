@@ -9,7 +9,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/vagrantssh"
+	"github.com/contiv/remotessh"
 )
 
 func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
@@ -114,14 +114,14 @@ repeat:
 		volumes := genRandomVolumes(count)
 
 		for _, volume := range volumes {
-			go func(nodes []vagrantssh.TestbedNode, volName string) {
+			go func(nodes []remotessh.TestbedNode, volName string) {
 				fqVolName := fqVolume("policy1", volName)
 				for _, node := range nodes {
 					c.Assert(s.createVolume(node.GetName(), fqVolName, nil), IsNil)
 				}
 
 				for _, node := range nodes {
-					go func(node vagrantssh.TestbedNode, fqVolName string) {
+					go func(node remotessh.TestbedNode, fqVolName string) {
 						out, err := s.dockerRun(node.GetName(), false, true, fqVolName, "sleep 10m")
 						outputChan <- output{out, err, volName}
 					}(node, fqVolName)
@@ -184,7 +184,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 		volumes := genRandomVolumes(count)
 		for _, volume := range volumes {
 			outwg.Add(1)
-			go func(nodes []vagrantssh.TestbedNode, volume string) {
+			go func(nodes []remotessh.TestbedNode, volume string) {
 				defer outwg.Done()
 				wg := sync.WaitGroup{}
 				errChan := make(chan error, len(nodes))

@@ -9,11 +9,11 @@ import (
 	. "gopkg.in/check.v1"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/vagrantssh"
+	"github.com/contiv/remotessh"
 )
 
 type systemtestSuite struct {
-	vagrant vagrantssh.Vagrant
+	vagrant remotessh.Vagrant
 	mon0ip  string
 }
 
@@ -38,8 +38,8 @@ func (s *systemtestSuite) SetUpTest(c *C) {
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
 	log.Infof("Bootstrapping system tests")
-	s.vagrant = vagrantssh.Vagrant{}
-	c.Assert(s.vagrant.Setup(false, "", 3), IsNil)
+	s.vagrant = remotessh.Vagrant{}
+	c.Assert(s.vagrant.Setup(false, []string{}, 3), IsNil)
 
 	stopServices := []string{"volplugin", "apiserver", "volsupervisor"}
 	startServices := []string{"ceph.target", "etcd"}
@@ -62,7 +62,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	for _, service := range stopServices {
 		for _, node := range s.vagrant.GetNodes() {
 			log.Infof("Stopping %q service", service)
-			go func(node vagrantssh.TestbedNode) {
+			go func(node remotessh.TestbedNode) {
 				node.RunCommand(fmt.Sprintf("sudo systemctl stop %s", service))
 				sync <- struct{}{}
 			}(node)
@@ -76,7 +76,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	for _, service := range startServices {
 		for _, node := range s.vagrant.GetNodes() {
 			log.Infof("Starting %q service", service)
-			go func(node vagrantssh.TestbedNode) {
+			go func(node remotessh.TestbedNode) {
 				node.RunCommand(fmt.Sprintf("sudo systemctl start %s", service))
 				sync <- struct{}{}
 			}(node)

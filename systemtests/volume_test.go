@@ -3,7 +3,7 @@ package systemtests
 import (
 	"strings"
 
-	"github.com/contiv/vagrantssh"
+	"github.com/contiv/remotessh"
 
 	. "gopkg.in/check.v1"
 )
@@ -82,11 +82,11 @@ func (s *systemtestSuite) TestVolumeMultiCreateThroughDocker(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Equals, "policy1."+volName)
 
-	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+	c.Assert(s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
 		return node.RunCommand("docker volume create -d volplugin --name " + fqVolName)
 	}), IsNil)
 
-	c.Assert(s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+	c.Assert(s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
 		return node.RunCommand("docker volume rm " + fqVolName)
 	}), IsNil)
 }
