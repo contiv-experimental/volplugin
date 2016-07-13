@@ -1,5 +1,5 @@
 /*
-Package vagrantssh provides host connectivity in go for system/integration
+Package remotessh provides host connectivity in go for system/integration
 testing in a multi host environment. It supports two testbed environments viz.
 baremetal and vagrant
 
@@ -8,14 +8,17 @@ Use this library to do remote testing with baremetal or vagrant nodes.
 For example, To setup a baremetal setup with a host node with ssh reachability '1.2.3.4' and
 port '22' for user 'foo', you can initialize the setup as:
 	hosts := []HostInfo{
-		{ Name: "mynode",
+		{
+      Name: "mynode",
 		  SSHAddr: "1.2.3.4",
 		  SSHPort: "22"
 		  User: "foo",
 		  PrivKey: "path/to/foo's/privkey/file",
-	    },
+      Env: []string{},
+    },
 	}
-    tb := &Baremetal{}
+
+  tb := &Baremetal{}
 	tb.Setup(hosts)
 
 Or to auto connect to a vagrant based setup you can initialize the setup as:
@@ -43,7 +46,7 @@ Sequentially:
 
 In Parallel:
 
-    err := tb.IterateNodes(func (node vagrantssh.TestbedNode) error {
+    err := tb.IterateNodes(func (node remotessh.TestbedNode) error {
       return node.RunCommand("docker ps -aq | xargs docker rm")
     })
 
@@ -65,7 +68,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package vagrantssh
+package remotessh
 
 import (
 	"fmt"
@@ -90,10 +93,10 @@ type Vagrant struct {
 // a string of values to prefix before each command run on each SSHNode.
 // numNodes is the number of nodes you want to track: these will be scanned
 // from the vagrant file sequentially.
-func (v *Vagrant) setup(start bool, env string, numNodes int) error {
+func (v *Vagrant) setup(start bool, env []string, numNodes int) error {
 	v.nodes = map[string]TestbedNode{}
 
-	vCmd := &VagrantCommand{ContivNodes: numNodes, ContivEnv: env}
+	vCmd := &VagrantCommand{ContivNodes: numNodes}
 
 	if start {
 		output, err := vCmd.RunWithOutput("up")
@@ -135,6 +138,7 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 		nodeName := strings.Fields(string(nodeNameByte))[0]
 		nodeNames = append(nodeNames, nodeName)
 	}
+
 	if len(nodeNames) != numNodes {
 		err = fmt.Errorf("Number of running node(s) (%d) is not equal to number of expected node(s) (%d) in vagrant status output: \n%s\n",
 			len(nodeNames), numNodes, output)
@@ -194,9 +198,10 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 
 		log.Infof("Adding node: %q(%s:%s)", nodeName, port[1], privKeyFile[1])
 		var node *SSHNode
-		if node, err = NewSSHNode(nodeName, "vagrant", hostname[1], port[1], privKeyFile[1]); err != nil {
+		if node, err = NewSSHNode(nodeName, "vagrant", env, hostname[1], port[1], privKeyFile[1]); err != nil {
 			return err
 		}
+
 		v.nodes[node.GetName()] = TestbedNode(node)
 	}
 
@@ -206,15 +211,16 @@ func (v *Vagrant) setup(start bool, env string, numNodes int) error {
 // Setup initializes a vagrant testbed.
 func (v *Vagrant) Setup(args ...interface{}) error {
 	if _, ok := args[0].(bool); !ok {
-		return unexpectedSetupArgError("bool, string, int", args...)
+		return unexpectedSetupArgError("bool, []string, int", args...)
 	}
-	if _, ok := args[1].(string); !ok {
-		return unexpectedSetupArgError("bool, string, int", args...)
+	if _, ok := args[1].([]string); !ok {
+		return unexpectedSetupArgError("bool, []string, int", args...)
 	}
 	if _, ok := args[2].(int); !ok {
-		return unexpectedSetupArgError("bool, string, int", args...)
+		return unexpectedSetupArgError("bool, []string, int", args...)
 	}
-	return v.setup(args[0].(bool), args[1].(string), args[2].(int))
+
+	return v.setup(args[0].(bool), args[1].([]string), args[2].(int))
 }
 
 // Teardown cleans up a vagrant testbed. It performs `vagrant destroy -f` to

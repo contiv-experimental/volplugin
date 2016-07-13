@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v62",
+	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -29,12 +29,8 @@
 			"Rev": "9a6e949287fd462992a565086efe12c195f837b7"
 		},
 		{
-			"ImportPath": "github.com/contiv/systemtests-utils",
-			"Rev": "912796a0a1310b462f441bbe7f4140da781d0548"
-		},
-		{
-			"ImportPath": "github.com/contiv/vagrantssh",
-			"Rev": "772f193af15fb2f70b5b054edf195c80ec566034"
+			"ImportPath": "github.com/contiv/remotessh",
+			"Rev": "d382e9cea099cb31728d00160b34e52cb9127f28"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",

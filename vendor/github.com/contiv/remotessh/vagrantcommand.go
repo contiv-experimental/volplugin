@@ -13,32 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package vagrantssh
+package remotessh
 
-import (
-	"fmt"
-	"os"
-	"os/exec"
-)
+import "os/exec"
 
 // VagrantCommand is a command that is run on a vagrant node
 type VagrantCommand struct {
 	ContivNodes int
-	ContivEnv   string
 }
 
 func (c *VagrantCommand) getCmd(cmd string, args ...string) *exec.Cmd {
-	newArgs := append([]string{cmd}, args...)
-	osCmd := exec.Command("vagrant", newArgs...)
-	osCmd.Env = os.Environ()
-	if c.ContivNodes != 0 {
-		osCmd.Env = append(osCmd.Env, fmt.Sprintf("CONTIV_NODES=%d", c.ContivNodes))
-	}
-	if c.ContivEnv != "" {
-		osCmd.Env = append(osCmd.Env, fmt.Sprintf("CONTIV_ENV=%s", c.ContivEnv))
-	}
-
-	return osCmd
+	return exec.Command("vagrant", append([]string{cmd}, args...)...)
 }
 
 // Run runs a command and return its exit status
