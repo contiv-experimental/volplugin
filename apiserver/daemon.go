@@ -493,7 +493,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
-	content, err := json.Marshal(d.Global)
+	content, err := json.Marshal(d.Global.Published())
 	if err != nil {
 		api.RESTHTTPError(w, errors.MarshalGlobal.Combine(err))
 		return
