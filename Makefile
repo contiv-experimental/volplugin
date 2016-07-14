@@ -38,6 +38,9 @@ update:
 
 restart: stop update start
 
+reload:
+	vagrant reload
+
 provision:
 	vagrant provision
 

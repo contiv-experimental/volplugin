@@ -239,16 +239,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         override.vm.network :private_network, ip: "#{SUBNET}.1#{i}", virtualbox__intnet: true
 
-        vb.customize ['createhd',
-                      '--filename', "docker-#{i}",
-                      '--size', '15000']
-        # Controller names are dependent on the VM being built.
-        # Be careful while changing the box.
-        vb.customize ['storageattach', :id,
-                      '--storagectl', 'SATA Controller',
-                      '--port', 3,
-                      '--type', 'hdd',
-                      '--medium', "docker-#{i}.vdi"]
+        disk_path = "docker-#{i}"
+        vdi_disk_path = disk_path + ".vdi"
+
+        unless File.exist?(vdi_disk_path)
+          vb.customize ['createhd',
+                        '--filename', disk_path,
+                        '--size', '15000']
+
+          # Controller names are dependent on the VM being built.
+          # Be careful while changing the box.
+          vb.customize ['storageattach', :id,
+                        '--storagectl', 'SATA Controller',
+                        '--port', 3,
+                        '--type', 'hdd',
+                        '--medium', vdi_disk_path]
+        end
 
         (0..1).each do |d|
           disk_path = "disk-#{i}-#{d}"
