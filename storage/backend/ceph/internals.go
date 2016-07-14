@@ -79,20 +79,36 @@ func (c *Driver) mkfsVolume(fscmd, devicePath string, timeout time.Duration) err
 }
 
 func (c *Driver) unmapImage(do storage.DriverOptions) error {
-	poolName := do.Volume.Params["pool"]
-
-	intName, err := c.internalName(do.Volume.Name)
-	if err != nil {
-		return err
-	}
-
 	rbdmap, err := c.showMapped(do.Timeout)
 	if err != nil {
 		return err
 	}
 
-	var retries uint
-retry:
+	retry := true
+
+	for retries := 0; retry && retries < 10; retries++ {
+		var err error
+		retry, err = c.doUnmap(do, rbdmap)
+		if err != nil {
+			return err
+		}
+	}
+
+	if retry {
+		return errored.Errorf("Could not unmap volume %q after 10 retries", do.Volume.Name)
+	}
+
+	return nil
+}
+
+func (c *Driver) doUnmap(do storage.DriverOptions, rbdmap rbdMap) (bool, error) {
+	poolName := do.Volume.Params["pool"]
+
+	intName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		return false, err
+	}
+
 	for _, rbd := range rbdmap {
 		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
 			log.Debugf("Unmapping volume %s/%s at device %q", poolName, intName, strings.TrimSpace(rbd.Device))
@@ -104,37 +120,32 @@ retry:
 
 			cmd := exec.Command("rbd", "unmap", rbd.Device)
 			er, err := runWithTimeout(cmd, do.Timeout)
-			if retries < 10 && (err != nil || er.ExitStatus != 0) {
+			if err != nil || er.ExitStatus != 0 {
 				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", intName, rbd.Device, er, err, er.Stderr)
 				if er.ExitStatus == int(unix.EBUSY) {
 					log.Errorf("Retrying to unmap volume %q (device %q)...", intName, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
-					retries++
-					goto retry
+					return true, nil
 				}
-				return err
-			} else if retries < 10 {
-				rbdmap2, err := c.showMapped(do.Timeout)
-				if err != nil {
-					return err
-				}
-
-				for _, rbd2 := range rbdmap2 {
-					if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
-						retries++
-						goto retry
-					}
-				}
+				return false, err
 			}
 
-			if retries > 10 {
-				return errored.Errorf("Could not unmap volume %q after 10 retries", rbd.Device)
+			rbdmap2, err := c.showMapped(do.Timeout)
+			if err != nil {
+				return false, err
+			}
+
+			for _, rbd2 := range rbdmap2 {
+				if rbd.Name == rbd2.Name && rbd.Pool == rbd2.Pool {
+					return true, nil
+				}
 			}
 
 			break
 		}
 	}
-	return nil
+
+	return false, nil
 }
 
 func (c *Driver) showMapped(timeout time.Duration) (rbdMap, error) {

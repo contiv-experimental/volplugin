@@ -57,6 +57,10 @@ gofmt-host:
 gofmt:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make gofmt-host'"
 
+gocyclo-host:
+	[ -n "`which gocyclo`" ] || go get github.com/kzipp/gocyclo
+	find . -name '*.go' -type f | grep -vE '^\./vendor' | xargs gocyclo -over 15
+
 golint-host:
 	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
 	set -e; for i in $$(go list ./... | grep -v vendor); do golint $$i; done
