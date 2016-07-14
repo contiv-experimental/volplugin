@@ -12,8 +12,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
-	utils "github.com/contiv/systemtests-utils"
-	"github.com/contiv/vagrantssh"
+	"github.com/contiv/remotessh"
 	"github.com/contiv/volplugin/config"
 )
 
@@ -26,6 +25,39 @@ var (
 	volumeListMutex = sync.Mutex{}
 	volumeList      = map[string]struct{}{}
 )
+
+func ClearEtcd(node remotessh.TestbedNode) {
+	log.Infof("Clearing etcd data")
+	node.RunCommand(`for i in $(etcdctl ls /); do etcdctl rm --recursive "$i"; done`)
+}
+
+// WaitForDone polls for checkDoneFn function to return true up until specified timeout
+func WaitForDone(doneFn func() (string, bool), tickDur time.Duration, timeoutDur time.Duration, timeoutMsg string) (string, error) {
+	tick := time.Tick(tickDur)
+	timeout := time.After(timeoutDur)
+	doneCount := 0
+	for {
+		select {
+		case <-tick:
+			if ctxt, done := doneFn(); done {
+				doneCount++
+				// add some resiliency to poll in order to avoid false positives,
+				// while polling more frequently
+				if doneCount == 2 {
+					// end poll
+					return ctxt, nil
+				}
+			}
+			// continue polling
+		case <-timeout:
+			ctxt, done := doneFn()
+			if !done {
+				return ctxt, fmt.Errorf("wait timeout. Msg: %s", timeoutMsg)
+			}
+			return ctxt, nil
+		}
+	}
+}
 
 func volumeParts(volume string) (string, string) {
 	parts := strings.SplitN(volume, "/", 2)
@@ -242,7 +274,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		}
 
 		log.Info("Clearing etcd")
-		utils.ClearEtcd(s.vagrant.GetNode("mon0"))
+		ClearEtcd(s.vagrant.GetNode("mon0"))
 	}
 
 	if err := s.vagrant.IterateNodes(startAPIServer); err != nil {
@@ -328,7 +360,7 @@ func (s *systemtestSuite) uploadIntent(policyName, fileName string) (string, err
 	return s.volcli(fmt.Sprintf("policy upload %s < /testdata/%s/%s.json", policyName, getDriver(), fileName))
 }
 
-func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int) error {
+func runCommandUntilNoError(node remotessh.TestbedNode, cmd string, timeout int) error {
 	runCmd := func() (string, bool) {
 		if err := node.RunCommand(cmd); err != nil {
 			return "", false
@@ -336,11 +368,11 @@ func runCommandUntilNoError(node vagrantssh.TestbedNode, cmd string, timeout int
 		return "", true
 	}
 	timeoutMessage := fmt.Sprintf("timeout reached trying to run %v on %q", cmd, node.GetName())
-	_, err := utils.WaitForDone(runCmd, 10*time.Millisecond, 10*time.Second, timeoutMessage)
+	_, err := WaitForDone(runCmd, 10*time.Millisecond, 10*time.Second, timeoutMessage)
 	return err
 }
 
-func waitForVolsupervisor(node vagrantssh.TestbedNode) error {
+func waitForVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Checking if volsupervisor is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "pgrep -c volsupervisor", 10)
 	if err == nil {
@@ -350,7 +382,7 @@ func waitForVolsupervisor(node vagrantssh.TestbedNode) error {
 	return nil
 }
 
-func waitForAPIServer(node vagrantssh.TestbedNode) error {
+func waitForAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Checking if apiserver is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "pgrep -c apiserver", 10)
 	if err == nil {
@@ -360,7 +392,7 @@ func waitForAPIServer(node vagrantssh.TestbedNode) error {
 	return nil
 }
 
-func waitForVolplugin(node vagrantssh.TestbedNode) error {
+func waitForVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Checking if volplugin is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "pgrep -c volplugin", 10)
 	if err == nil {
@@ -375,7 +407,7 @@ func (s *systemtestSuite) pullDebian() error {
 	return s.vagrant.SSHExecAllNodes("docker pull alpine")
 }
 
-func restartNetplugin(node vagrantssh.TestbedNode) error {
+func restartNetplugin(node remotessh.TestbedNode) error {
 	log.Infof("Restarting netplugin on %q", node.GetName())
 	err := node.RunCommand("sudo systemctl restart netplugin netmaster")
 	if err != nil {
@@ -385,17 +417,17 @@ func restartNetplugin(node vagrantssh.TestbedNode) error {
 	return nil
 }
 
-func startVolsupervisor(node vagrantssh.TestbedNode) error {
+func startVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %q", node.GetName())
 	return node.RunCommandBackground("(sudo -E nohup `which volsupervisor` </dev/null 2>&1 | sudo tee -a /tmp/volsupervisor.log) &")
 }
 
-func stopVolsupervisor(node vagrantssh.TestbedNode) error {
+func stopVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the volsupervisor on %q", node.GetName())
 	return node.RunCommand("sudo pkill volsupervisor")
 }
 
-func startAPIServer(node vagrantssh.TestbedNode) error {
+func startAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Starting the apiserver on %q", node.GetName())
 	err := node.RunCommandBackground("(sudo -E nohup `which apiserver` </dev/null 2>&1 | sudo tee -a /tmp/apiserver.log) &")
 	log.Infof("Waiting for apiserver startup on %q", node.GetName())
@@ -403,12 +435,12 @@ func startAPIServer(node vagrantssh.TestbedNode) error {
 	return err
 }
 
-func stopAPIServer(node vagrantssh.TestbedNode) error {
+func stopAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the apiserver on %q", node.GetName())
 	return node.RunCommand("sudo pkill apiserver")
 }
 
-func startVolplugin(node vagrantssh.TestbedNode) error {
+func startVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Starting the volplugin on %q", node.GetName())
 	defer time.Sleep(10 * time.Millisecond)
 
@@ -417,19 +449,19 @@ func startVolplugin(node vagrantssh.TestbedNode) error {
 	return node.RunCommandBackground("(sudo -E `which volplugin` 2>&1 | sudo tee -a /tmp/volplugin.log) &")
 }
 
-func stopVolplugin(node vagrantssh.TestbedNode) error {
+func stopVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the volplugin on %q", node.GetName())
 	return node.RunCommand("sudo pkill volplugin")
 }
 
-func waitDockerizedServicesHost(node vagrantssh.TestbedNode) error {
+func waitDockerizedServicesHost(node remotessh.TestbedNode) error {
 	services := map[string]string{
 		"etcd": "etcdctl cluster-health",
 	}
 
 	for s, cmd := range services {
 		log.Infof("Waiting for %s on %q", s, node.GetName())
-		out, err := utils.WaitForDone(
+		out, err := WaitForDone(
 			func() (string, bool) {
 				out, err := node.RunCommandWithOutput(cmd)
 				if err != nil {
@@ -449,7 +481,7 @@ func (s *systemtestSuite) waitDockerizedServices() error {
 	return s.vagrant.IterateNodes(waitDockerizedServicesHost)
 }
 
-func restartDockerHost(node vagrantssh.TestbedNode) error {
+func restartDockerHost(node remotessh.TestbedNode) error {
 	log.Infof("Restarting docker on %q", node.GetName())
 	// note that for all these restart tasks we error out quietly to avoid other
 	// hosts being cleaned up
@@ -465,7 +497,7 @@ func (s *systemtestSuite) restartNetplugin() error {
 	return s.vagrant.IterateNodes(restartNetplugin)
 }
 
-func (s *systemtestSuite) clearContainerHost(node vagrantssh.TestbedNode) error {
+func (s *systemtestSuite) clearContainerHost(node remotessh.TestbedNode) error {
 	startedContainers.Lock()
 	names := []string{}
 	for name := range startedContainers.names {
@@ -487,7 +519,7 @@ func (s *systemtestSuite) clearContainers() error {
 	return s.vagrant.IterateNodes(s.clearContainerHost)
 }
 
-func (s *systemtestSuite) clearVolumeHost(node vagrantssh.TestbedNode) error {
+func (s *systemtestSuite) clearVolumeHost(node remotessh.TestbedNode) error {
 	log.Infof("Clearing volumes on %q", node.GetName())
 	node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
 	return nil
@@ -504,12 +536,12 @@ func (s *systemtestSuite) clearRBD() error {
 
 	log.Info("Clearing rbd images")
 
-	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+	s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
 		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo umount -f $img; done")
 		return nil
 	})
 
-	s.vagrant.IterateNodes(func(node vagrantssh.TestbedNode) error {
+	s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
 		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo rbd unmap $img; done")
 		return nil
 	})
