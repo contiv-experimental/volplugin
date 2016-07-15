@@ -51,7 +51,7 @@ export ETCD_INITIAL_CLUSTER_TOKEN=contiv-cluster
 export ETCD_LISTEN_CLIENT_URLS={{ client_url("0.0.0.0") }}
 export ETCD_ADVERTISE_CLIENT_URLS={{ client_url(node_addr) }}
 export ETCD_INITIAL_ADVERTISE_PEER_URLS={{ peer_url(node_addr) }}
-export ETCD_LISTEN_PEER_URLS=http://{{ node_addr }}:{{ etcd_peer_port1 }}
+export ETCD_LISTEN_PEER_URLS=http://0.0.0.0:{{ etcd_peer_port1 }}
 export ETCD_HEARTBEAT_INTERVAL={{ etcd_heartbeat_interval }}
 export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
 
@@ -62,7 +62,7 @@ export ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
 #  - address of that peer node
 add_proxy() {
     export ETCD_PROXY=on
-    export ETCD_INITIAL_CLUSTER="{{ cluster_url("${1}", "${2}") }}"
+    export ETCD_INITIAL_CLUSTER="{{ cluster_url('cluster_vip', service_vip) }}"
 }
 {% else %}
 # get_peers() returns a comma separated list of peers in 'peers' variable
@@ -103,10 +103,10 @@ add_member() {
     res=1
     for i in {1..10}; do
         sleep $[ ( $RANDOM % 10 )  + 1 ]s
-        # XXX: There seems an issue using etcdctl with ETCD_INITIAL_ADVERTISE_PEER_URLS so passing
-        # ETCD_LISTEN_PEER_URLS for now
+        # XXX: There seems an issue using etcdctl with multiple urls set in ETCD_INITIAL_ADVERTISE_PEER_URLS
+        # so setting the single url manually here
         out=`etcdctl {{ etcdctl_flags("${1}") }} \
-            member add {{ node_name }} "$ETCD_LISTEN_PEER_URLS" 2>&1`
+            member add {{ node_name }} "http://{{ node_addr }}:{{ etcd_peer_port1 }}" 2>&1`
         res=$?
         if [ "${res}" == "0" ]; then
             break
@@ -127,7 +127,7 @@ add_member() {
 # Else it adds the node to exisitng cluster
 # @args:
 # - none
-init_cluster() {
+init_update_cluster() {
     # on master nodes, if the cluster is being initialized for first time then initialize it
     peers=""
     get_peers "{{ get_peer_addr() }}"
@@ -164,12 +164,9 @@ start)
     fi
     {% if run_as == "worker" -%}
     # on worker nodes, run etcd in proxy mode
-    add_proxy "{{ etcd_master_name }}" "{{ etcd_master_addr }}"
-    {% elif etcd_init_cluster -%}
-    init_cluster
+    add_proxy
     {% else -%}
-    # if a new master node is being commissioned then add it to existing cluster
-    add_member "{{ etcd_master_addr }}"
+    init_update_cluster
     {% endif -%}
 
     #start etcd

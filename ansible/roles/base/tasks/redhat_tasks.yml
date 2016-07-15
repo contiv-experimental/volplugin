@@ -17,7 +17,6 @@
     - curl
     - python-requests # XXX required by ceph repo, but it has a bad package on it
     - bash-completion
-    - kernel #keep kernel up to date
     - libselinux-python
     - e2fsprogs
     - openssh-server

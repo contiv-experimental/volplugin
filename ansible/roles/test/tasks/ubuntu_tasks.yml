@@ -1,7 +1,7 @@
 - name: download VBox (debian)
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: http://download.virtualbox.org/virtualbox/{{ vbox_major_version }}/virtualbox-{{ vbox_version }}~{{ ansible_distribution }}~{{ ansible_distribution_release }}_amd64.deb
+    url: http://download.virtualbox.org/virtualbox/{{ vbox_major_version }}/virtualbox-{{ vbox_version_ubuntu_dist_version[ansible_distribution_release] }}_amd64.deb
     dest: /tmp/virtualbox-{{ vbox_major_version }}.deb
     force: no
 

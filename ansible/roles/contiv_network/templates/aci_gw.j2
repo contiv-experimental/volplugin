@@ -19,7 +19,7 @@ start)
     -e "APIC_EPG_BRIDGE_DOMAIN={{ apic_epg_bridge_domain }}" \
     -e "APIC_CONTRACTS_UNRESTRICTED_MODE={{ apic_contracts_unrestricted_mode }}" \
     --name=contiv-aci-gw \
-    contiv/aci-gw
+    {{ aci_gw_image }}
     ;;
 
 stop)
