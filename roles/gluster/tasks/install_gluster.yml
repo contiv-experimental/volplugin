@@ -1,0 +1,59 @@
+---
+
+- name: install glusterfs repository
+  yum: name=centos-release-gluster state=present
+
+- name: install glusterfs
+  yum: name=glusterfs-server state=present
+
+- name: configure gluster brick device
+  filesystem:
+    dev: "{{ gluster_device }}"
+    fstype: xfs
+    opts: "-i size=512"
+
+- name: make mountpoint for gluster brick
+  file:
+    name: /data/brick1
+    state: directory
+
+- name: mount gluster brick
+  mount:
+    fstype: xfs
+    src: "{{ gluster_device }}"
+    name: /data/brick1
+    state: mounted
+
+## NOTE: fstab configuration is separate from mounting, according to ansible
+## docs for the mount module.
+- name: configure fstab for gluster brick
+  mount:
+    fstype: xfs
+    src: "{{ gluster_device }}"
+    name: /data/brick1
+    state: present
+
+- name: start glusterd
+  service:
+    name: glusterd
+    enabled: true
+    state: started
+
+- name: "compute peers for each host"
+  set_fact:
+    hosts: |
+      {%- set peers=[] -%}
+      {%- for host in groups[gluster_peers_group] -%}
+          {%- if host != ansible_hostname -%}
+            {%- if peers.append(hostvars[host]['ansible_' + hostvars[host]['gluster_interface']]['ipv4']['address']) -%}
+            {%- endif -%}
+          {%- endif -%}
+      {%- endfor -%}
+      {{ peers }}
+
+- name: "probe peers"
+  command: "gluster peer probe {{ item }}"
+  with_items: hosts
+  when: install_gluster
+  register: command_result
+  failed_when: "command_result.rc != 0 and command_result.rc != 1"

@@ -1,6 +1,11 @@
 ---
 # This play contains tasks for cleaning up contiv_cluster services
 
+- name: cleanup iptables for clusterm
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ clusterm_rule_comment }} ({{ item }})"
+  with_items:
+    - "{{ clusterm_client_port }}"
+
 - name: stop clusterm
   service: name=clusterm state=stopped
 

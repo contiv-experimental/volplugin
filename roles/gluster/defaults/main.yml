@@ -1,0 +1,5 @@
+---
+gluster_peers_group:
+gluster_interface:
+install_gluster: false
+gluster_device: ""

@@ -5,11 +5,12 @@ collins_image: contiv/collins
 collins_image_version: "02_25_2016"
 collins_host_port: 9000
 collins_guest_port: 9000
-
+clusterm_rule_comment: "clusterm traffic"
+clusterm_client_port: 9007
 clusterm_args_file: "clusterm.args"
 clusterm_conf_file: "clusterm.conf"
 
-contiv_cluster_version: "v0.1-06-09-2016.08-27-13.UTC"
+contiv_cluster_version: "v0.1-07-15-2016.08-32-18.UTC"
 contiv_cluster_tar_file: "cluster-{{ contiv_cluster_version }}.tar.bz2"
 contiv_cluster_src_file: "https://github.com/contiv/cluster/releases/download/{{ contiv_cluster_version }}/{{ contiv_cluster_tar_file }}"
 contiv_cluster_dest_file: "/tmp/{{ contiv_cluster_tar_file }}"
