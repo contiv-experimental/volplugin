@@ -261,10 +261,18 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	volName := volConfig.String()
 
+	// XXX docker issues unmount request after every mount failure so, this evens out
+	//     decreaseMount() in unmount
 	if dc.increaseMount(volName) > 1 {
-		log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
-		dc.returnMountPath(w, driver, driverOpts)
-		return
+		if !volConfig.Unlocked {
+			log.Warnf("Duplicate mount of %q detected: Lock failed", volName)
+			api.DockerHTTPError(w, errors.LockFailed.Combine(err))
+			return
+		} else {
+			log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
+			dc.returnMountPath(w, driver, driverOpts)
+			return
+		}
 	}
 
 	ut := &config.UseMount{

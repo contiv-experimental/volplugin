@@ -3,77 +3,95 @@ package systemtests
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
+
 	. "gopkg.in/check.v1"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/remotessh"
 )
 
 func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
-	outerCount := 5
-	count := 15
+	s.BatteryMultiMountSameHost(c, "true")  //unlocked mount
+	s.BatteryMultiMountSameHost(c, "false") //locked mount
+}
+func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
+	totalIterations := 5
+	threadCount := 15
+	totalMounts := 5
 
-	for i := 0; i < outerCount; i++ {
-		syncChan := make(chan struct{}, count)
-		volumes := genRandomVolumes(count)
+	for i := 0; i < totalIterations; i++ {
+		syncChan := make(chan struct{}, threadCount)
+		volumes := genRandomVolumes(threadCount)
 
-		for x := 0; x < count; x++ {
-			go func(volName string, x int) {
+		for workerID := 0; workerID < threadCount; workerID++ {
+			go func(volume string, workerID int) {
 				defer func() { syncChan <- struct{}{} }()
-				fqVolName := fqVolume("policy1", volName)
+				fqVolName := fqVolume("policy1", volume)
 
-				c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
-				out, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
-				c.Assert(err, IsNil, Commentf("Output: %s", out))
-				second, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
-				log.Debug(second, err)
-				c.Assert(err, IsNil, Commentf("Output: %s", second))
+				c.Assert(s.createVolume("mon0", fqVolName, map[string]string{"unlocked": isUnlocked}), IsNil)
+				containerID, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
+				c.Assert(err, IsNil, Commentf("Output: %s", containerID))
+
+				for x := 0; x < totalMounts; x++ {
+					id, err := s.dockerRun("mon0", false, true, fqVolName, "sleep 10m")
+					if unlocked, _ := strconv.ParseBool(isUnlocked); unlocked {
+						c.Assert(err, IsNil, Commentf("Output: %s", id))
+						dockerRmOut, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(id)))
+						if err != nil {
+							log.Error(strings.TrimSpace(dockerRmOut))
+						}
+						c.Assert(err, IsNil)
+					} else { // locked volumes
+						log.Debug("Volume %s already mounted in container %s", fqVolName, containerID)
+						c.Assert(err, NotNil)
+					}
+				}
 
 				if cephDriver() {
-					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q policy1.%s", volName))
+					_, err = s.mon0cmd(fmt.Sprintf("mount | grep rbd | grep -q %s", strings.Join([]string{"policy1", volume}, ".")))
 					c.Assert(err, IsNil)
-					out2, err := s.mon0cmd(fmt.Sprintf("docker exec %s ls /mnt", strings.TrimSpace(out)))
+					mountedDirContent, err := s.mon0cmd(fmt.Sprintf("docker exec %s ls /mnt", strings.TrimSpace(containerID)))
 					c.Assert(err, IsNil)
-					c.Assert(strings.TrimSpace(out2), Equals, "lost+found")
+					c.Assert(strings.TrimSpace(mountedDirContent), Equals, "lost+found")
 				}
 
-				out3, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(out)))
+				dockerRmOut, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(containerID)))
 				if err != nil {
-					log.Error(strings.TrimSpace(out3))
+					log.Error(strings.TrimSpace(dockerRmOut))
 				}
 				c.Assert(err, IsNil)
-			}(volumes[x], x)
+			}(volumes[workerID], workerID)
 		}
 
-		for x := 0; x < count; x++ {
+		for x := 0; x < threadCount; x++ {
 			<-syncChan
 		}
 
 		if cephDriver() {
 			_, err := s.mon0cmd("mount | grep -q rbd")
-			c.Assert(err, IsNil)
+			c.Assert(err, NotNil)
 		}
 
 		c.Assert(s.clearContainers(), IsNil)
 
-		purgeChan := make(chan error, count)
+		purgeChan := make(chan error, threadCount)
 		for _, volume := range volumes {
 			go func(volume string) { purgeChan <- s.purgeVolume("mon0", fqVolume("policy1", volume)) }(volume)
 		}
 
 		var errs int
 
-		for x := 0; x < count; x++ {
+		for x := 0; x < threadCount; x++ {
 			err := <-purgeChan
 			if err != nil {
 				log.Error(err)
 				errs++
 			}
 		}
-
 		c.Assert(errs, Equals, 0)
 	}
 }
