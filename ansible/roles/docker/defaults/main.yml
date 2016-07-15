@@ -2,7 +2,8 @@
 # Default values for docker role
 
 docker_api_port: 2385
-docker_version: 1.9.1
+docker_version: 1.11.1
+docker_compose_version: 1.8.0-rc1
 docker_rule_comment: "docker api"
 docker_device: ""
 docker_device_size: "10000MB"

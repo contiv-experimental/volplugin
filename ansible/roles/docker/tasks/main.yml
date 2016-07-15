@@ -120,7 +120,7 @@
 
 - name: check docker-compose version
   shell: docker-compose --version
-  register: docker_compose_version
+  register: docker_compose_installed_version
   ignore_errors: yes
   tags:
     - prebake-for-dev
@@ -128,10 +128,11 @@
 - name: download and install docker-compose
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://github.com/docker/compose/releases/download/1.5.2/docker-compose-{{ ansible_system }}-{{ ansible_userspace_architecture }}
+    url: https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-{{ ansible_system }}-{{ ansible_userspace_architecture }}
     dest: /usr/bin/docker-compose
     mode: u=rwx,g=rx,o=rx
-  when: docker_compose_version.stdout != "docker-compose version 1.5.2, build 7240ff3"
+    force: yes
+  when: not (docker_compose_installed_version.stdout | match('docker-compose version {{ docker_compose_version }},.*'))
   tags:
     - prebake-for-dev
 

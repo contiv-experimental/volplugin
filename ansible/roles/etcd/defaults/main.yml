@@ -6,14 +6,7 @@ etcd_client_port2: 4001
 etcd_peer_port1: 2380
 etcd_peer_port2: 7001
 etcd_peers_group: "service-master"
-etcd_init_cluster: true
 etcd_rule_comment: "etcd traffic"
 etcd_version: "v2.3.1"
 etcd_heartbeat_interval: 1000
 etcd_election_timeout: 10000
-
-# following variables are used in one or more roles, but have no good default value to pick from.
-# Leaving them as commented so that playbooks can fail early with variable not defined error.
-
-#etcd_master_addr:
-#etcd_master_name:

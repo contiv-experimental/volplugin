@@ -1,7 +1,12 @@
 ---
 # role variable for the test environment packages
 
-vbox_major_version: "5.0.20"
-vbox_version: "5.0-{{ vbox_major_version }}_106931"
+vbox_major_version: "5.0.24"
+vbox_version_ubuntu: "5.0_{{ vbox_major_version }}-108355"
+vbox_version_ubuntu_dist_version:
+    vivid: "{{ vbox_version_ubuntu }}~Ubuntu~trusty"
+    wily:  "{{ vbox_version_ubuntu }}~Ubuntu~wily"
+    xenial:  "{{ vbox_version_ubuntu }}~Ubuntu~xenial"
+vbox_version_redhat: "5.0-{{ vbox_major_version }}_108355"
 vagrant_version: "1.8.1"
 packer_version: "0.10.0"

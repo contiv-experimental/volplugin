@@ -1,7 +1,7 @@
 - name: download VBox (redhat)
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: http://download.virtualbox.org/virtualbox/{{ vbox_major_version }}/VirtualBox-{{ vbox_version }}_el7-1.x86_64.rpm
+    url: http://download.virtualbox.org/virtualbox/{{ vbox_major_version }}/VirtualBox-{{ vbox_version_redhat }}_el7-1.x86_64.rpm
     dest: /tmp/VirtualBox-{{ vbox_major_version }}.rpm
     force: no
 

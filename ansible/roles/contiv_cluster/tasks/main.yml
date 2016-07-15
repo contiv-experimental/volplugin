@@ -55,5 +55,12 @@
 - name: copy systemd units for clusterm
   template: src=clusterm.j2 dest=/etc/systemd/system/clusterm.service
 
+- name: setup iptables for clusterm
+  shell: >
+      ( iptables -L INPUT | grep "{{ clusterm_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ clusterm_rule_comment }} ({{ item }})"
+  with_items:
+    - "{{ clusterm_client_port }}"
+
 - name: start clusterm
   service: name=clusterm state=started
