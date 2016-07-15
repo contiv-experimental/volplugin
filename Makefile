@@ -140,6 +140,9 @@ system-test: run
 system-test-big:
 	BIG=1 make system-test
 
+vendor-ansible:
+	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD --squash
+
 reflex:
 	@echo 'To use this task, `go get github.com/cespare/reflex`'
 
@@ -173,8 +176,10 @@ tar: clean-tar
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
 
+release:
+
 # GITHUB_USER and GITHUB_TOKEN are needed be set to run github-release
-release: tar
+release-github: tar
 	@go get github.com/aktau/github-release
 	@latest_tag=$$(git describe --tags `git rev-list --tags --max-count=1`); \
 		comparison="$$latest_tag..HEAD"; \
@@ -185,6 +190,3 @@ release: tar
 		( github-release -v upload -r volplugin -t $(VERSION) -n $(TAR_FILENAME) -f $(TAR_FILE) || \
 		github-release -v delete -r volplugin -t $(VERSION) ) ) || exit 1
 	@make clean-tar
-
-vendor-ansible:
-	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD --squash
