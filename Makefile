@@ -39,7 +39,7 @@ update:
 restart: stop update start
 
 reload:
-	vagrant reload
+	vagrant reload --provision
 
 provision:
 	vagrant provision
