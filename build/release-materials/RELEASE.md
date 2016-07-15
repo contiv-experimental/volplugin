@@ -12,5 +12,20 @@ bugfixes.
 
 <release notes>
 
-If you want a newer release than the latest release build, you can find Contiv
-Storage's latest builds [here](https://github.com/contiv/volplugin/releases).
+You can get volplugin below, or if you wish to run it in containers you can try
+the [contiv/volplugin-autorun](https://hub.docker.com/r/contiv/volplugin-autorun) image:
+
+```
+docker run -it -v /var/run/docker.sock:/var/run/docker.sock contiv/volplugin-autorun:<version>
+```
+
+Note that you *must* have an existing ceph installation for this to work!
+
+If you just wish to configure volplugin itself, you can pull
+[contiv/volplugin](https://hub.docker.com/r/contiv/volplugin). It contains
+volcli, volplugin, apiserver, and volsupervisor and is tagged by release
+version.
+
+```
+docker pull contiv/volplugin:<version>
+```
