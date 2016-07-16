@@ -10,10 +10,8 @@ import (
 
 // FIXME find a better place for these
 const (
-	writeIOPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_iops_device"
-	readIOPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_iops_device"
-	writeBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
-	readBPSFile   = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
+	writeBPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
+	readBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
 )
 
 func makeLimit(mc *storage.Mount, limit uint64) []byte {
@@ -22,10 +20,8 @@ func makeLimit(mc *storage.Mount, limit uint64) []byte {
 
 func applyCGroupRateLimit(ro config.RuntimeOptions, mc *storage.Mount) error {
 	opMap := map[string]uint64{
-		writeIOPSFile: uint64(ro.RateLimit.WriteIOPS),
-		readIOPSFile:  uint64(ro.RateLimit.ReadIOPS),
-		writeBPSFile:  ro.RateLimit.WriteBPS,
-		readBPSFile:   ro.RateLimit.ReadBPS,
+		writeBPSFile: ro.RateLimit.WriteBPS,
+		readBPSFile:  ro.RateLimit.ReadBPS,
 	}
 
 	for fn, val := range opMap {

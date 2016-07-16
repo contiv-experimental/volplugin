@@ -105,10 +105,10 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 
-	_, err = s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
-	c.Assert(err, IsNil)
+	out, err := s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
+	c.Assert(err, IsNil, Commentf(out))
 	time.Sleep(45 * time.Second)
-	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo cat /sys/fs/cgroup/blkio/blkio.throttle.write_iops_device")
+	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo cat /sys/fs/cgroup/blkio/blkio.throttle.write_bps_device")
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(out), Not(Equals), "")
 	lines := strings.Split(strings.TrimSpace(out), "\n")

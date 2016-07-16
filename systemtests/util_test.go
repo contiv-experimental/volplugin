@@ -387,8 +387,10 @@ func waitForAPIServer(node remotessh.TestbedNode) error {
 	err := runCommandUntilNoError(node, "pgrep -c apiserver", 10)
 	if err == nil {
 		log.Infof("APIServer is running on %q", node.GetName())
-
 	}
+
+	time.Sleep(time.Second)
+
 	return nil
 }
 

@@ -44,18 +44,6 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	stopServices := []string{"volplugin", "apiserver", "volsupervisor"}
 	startServices := []string{"ceph.target", "etcd"}
 
-	/* FIXME too volatile. The intent was to ensure ceph was not a factor in some
-	   of our work. I'm not sure this is as necessary now, but we should do it if
-	   we have the time to do it properly. We'll need better orchestration here.
-
-		if cephDriver() {
-			startServices = append(startServices, "ceph.target")
-		} else {
-			stopServices = append(stopServices, "ceph.target")
-		}
-
-	*/
-
 	nodelen := len(s.vagrant.GetNodes())
 	sync := make(chan struct{}, nodelen)
 

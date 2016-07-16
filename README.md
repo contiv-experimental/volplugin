@@ -31,7 +31,7 @@ release.
 * Manage many kinds of filesystems, including providing mkfs commands.
 * Snapshot frequency and pruning. Also copy snapshots to new volumes!
 * Ephemeral (removed on container teardown) volumes
-* IOPS limiting (via blkio cgroup)
+* BPS limiting (via blkio cgroup)
 
 volplugin is still alpha at the time of this writing; features and the API may
 be extremely volatile and it is not suggested that you use this in production.
