@@ -51,7 +51,7 @@ retry:
 	client, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
-		time.Sleep(wait.Jitter(1*time.Second, 0))
+		time.Sleep(wait.Jitter(time.Second, 0))
 		goto retry
 	}
 
