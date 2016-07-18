@@ -134,11 +134,13 @@ run-build:
 		 ./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/
 	cp /opt/golang/bin/* /tmp/bin
 
-system-test: run 
-	@USE_DRIVER="${USE_DRIVER}" TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
+system-test: system-test-ceph system-test-nfs
 
-system-test-big:
-	BIG=1 make system-test
+system-test-ceph: run
+	USE_DRIVER=ceph TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
+
+system-test-nfs: run
+	USE_DRIVER=nfs TESTRUN="${TESTRUN}" ./build/scripts/systemtests.sh
 
 vendor-ansible:
 	git subtree pull --prefix ansible https://github.com/contiv/ansible HEAD --squash
