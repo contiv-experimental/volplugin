@@ -33,7 +33,7 @@ func (dc *DaemonConfig) updateMounts() error {
 				if mount.Driver != "volplugin" {
 					continue
 				}
-				dc.increaseMount(mount.Name)
+				dc.mountCounter.Add(mount.Name)
 			}
 		}
 	}
@@ -73,8 +73,8 @@ func (dc *DaemonConfig) updateMounts() error {
 
 			// XXX some of the mounts get propagated above from docker itself, so
 			// this is only necessary when that is missing reports.
-			if dc.getMountCount(mount.Name) == 0 {
-				dc.increaseMount(mount.Name)
+			if dc.mountCounter.Get(mount.Name) == 0 {
+				dc.mountCounter.Add(mount.Name)
 			}
 
 			payload := &config.UseMount{

@@ -37,8 +37,7 @@ type DaemonConfig struct {
 
 	lockStopChanMutex sync.Mutex
 	lockStopChans     map[string]chan struct{}
-	mountCountMutex   sync.Mutex
-	mountCount        map[string]int
+	mountCounter      *mount.Counter
 	mountCollection   *mount.Collection
 }
 
@@ -62,8 +61,8 @@ retry:
 		Lock:   driver,
 
 		lockStopChans:   map[string]chan struct{}{},
-		mountCount:      map[string]int{},
 		mountCollection: mount.NewCollection(),
+		mountCounter:    mount.NewCounter(),
 	}
 }
 

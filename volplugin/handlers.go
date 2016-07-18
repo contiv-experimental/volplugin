@@ -195,7 +195,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	// XXX docker issues unmount request after every mount failure so, this evens out
 	//     decreaseMount() in unmount
-	if dc.increaseMount(volName) > 1 {
+	if dc.mountCounter.Add(volName) > 1 {
 		if !volConfig.Unlocked {
 			log.Warnf("Duplicate mount of %q detected: Lock failed", volName)
 			api.DockerHTTPError(w, errors.LockFailed.Combine(err))
@@ -230,13 +230,13 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
-		dc.decreaseMount(volName)
+		dc.mountCounter.Sub(volName)
 		api.DockerHTTPError(w, errors.MountFailed.Combine(err))
 		return
 	}
 
 	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
-		if dc.decreaseMount(volName) == 0 {
+		if dc.mountCounter.Sub(volName) == 0 {
 			if err := driver.Unmount(driverOpts); err != nil {
 				log.Errorf("Could not unmount device for volume %q: %v", volName, err)
 			}
@@ -251,7 +251,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
-		if dc.decreaseMount(volName) == 0 {
+		if dc.mountCounter.Sub(volName) == 0 {
 			if err := driver.Unmount(driverOpts); err != nil {
 				log.Errorf("Could not unmount device for volume %q: %v", volName, err)
 			}
@@ -282,7 +282,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	volName := volConfig.String()
 
-	if dc.decreaseMount(volName) > 0 {
+	if dc.mountCounter.Sub(volName) > 0 {
 		log.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
 		dc.returnMountPath(w, driver, driverOpts)
 		return
