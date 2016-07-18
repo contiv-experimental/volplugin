@@ -174,3 +174,12 @@ func RESTHTTPError(w http.ResponseWriter, err error) {
 	log.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
+
+// Action is a catchall for additional driver functions.
+func Action(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	log.Debugf("Unknown driver action at %q", r.URL.Path)
+	content, _ := ioutil.ReadAll(r.Body)
+	log.Debug("Body content:", string(content))
+	w.WriteHeader(503)
+}

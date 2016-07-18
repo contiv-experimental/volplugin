@@ -15,6 +15,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
+	"github.com/contiv/volplugin/api/docker"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
@@ -130,19 +131,19 @@ func (dc *DaemonConfig) Daemon() error {
 }
 
 func (dc *DaemonConfig) configureRouter() *mux.Router {
-	api := api.NewAPI(dc.Client, &dc.Global, true)
+	apiObj := api.NewAPI(dc.Client, &dc.Global, true)
 
 	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
-		"/Plugin.Activate":           dc.activate,
-		"/Plugin.Deactivate":         dc.nilAction,
-		"/VolumeDriver.Create":       api.Create,
+		"/Plugin.Activate":           docker.Activate,
+		"/Plugin.Deactivate":         docker.Deactivate,
+		"/VolumeDriver.Create":       apiObj.Create,
 		"/VolumeDriver.Remove":       dc.getPath, // we never actually remove through docker's interface.
 		"/VolumeDriver.List":         dc.list,
 		"/VolumeDriver.Get":          dc.get,
 		"/VolumeDriver.Path":         dc.getPath,
 		"/VolumeDriver.Mount":        dc.mount,
 		"/VolumeDriver.Unmount":      dc.unmount,
-		"/VolumeDriver.Capabilities": dc.capabilities,
+		"/VolumeDriver.Capabilities": docker.Capabilities,
 	}
 
 	router := mux.NewRouter()
@@ -154,7 +155,7 @@ func (dc *DaemonConfig) configureRouter() *mux.Router {
 	}
 
 	if dc.Global.Debug {
-		s.HandleFunc("{action:.*}", dc.action)
+		s.HandleFunc("{action:.*}", api.Action)
 	}
 
 	return router
