@@ -246,7 +246,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dc.addMount(mc)
+	dc.mountCollection.Add(mc)
 	dc.addStopChan(volName, stopChan)
 
 	path, err := driver.MountPath(driverOpts)
@@ -257,7 +257,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		dc.removeStopChan(volName)
-		dc.removeMount(volName)
+		dc.mountCollection.Remove(volName)
 		api.DockerHTTPError(w, errors.MountPath.Combine(err))
 		return
 	}
@@ -294,7 +294,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dc.removeStopChan(volName)
-	dc.removeMount(volName)
+	dc.mountCollection.Remove(volName)
 
 	ut := &config.UseMount{
 		Volume:   volName,

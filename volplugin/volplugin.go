@@ -16,10 +16,10 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/api/docker"
+	"github.com/contiv/volplugin/api/internals/mount"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
-	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/watch"
 	"github.com/gorilla/mux"
 	"github.com/jbeda/go-wait"
@@ -39,8 +39,7 @@ type DaemonConfig struct {
 	lockStopChans     map[string]chan struct{}
 	mountCountMutex   sync.Mutex
 	mountCount        map[string]int
-	mountMap          map[string]*storage.Mount
-	mountMapMutex     sync.Mutex
+	mountCollection   *mount.Collection
 }
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
@@ -62,9 +61,9 @@ retry:
 		Client: client,
 		Lock:   driver,
 
-		lockStopChans: map[string]chan struct{}{},
-		mountCount:    map[string]int{},
-		mountMap:      map[string]*storage.Mount{},
+		lockStopChans:   map[string]chan struct{}{},
+		mountCount:      map[string]int{},
+		mountCollection: mount.NewCollection(),
 	}
 }
 

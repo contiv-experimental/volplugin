@@ -94,7 +94,7 @@ func (dc *DaemonConfig) updateMounts() error {
 			}
 
 			dc.addStopChan(mount.Volume.Name, stopChan)
-			dc.addMount(mount)
+			dc.mountCollection.Add(mount)
 		}
 	}
 
