@@ -4,6 +4,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
+	"github.com/contiv/volplugin/storage/cgroup"
 	"github.com/contiv/volplugin/watch"
 
 	log "github.com/Sirupsen/logrus"
@@ -40,7 +41,7 @@ func (dc *DaemonConfig) pollRuntime() {
 			continue
 		}
 
-		if err := applyCGroupRateLimit(vol.RuntimeOptions, thisMC); err != nil {
+		if err := cgroup.ApplyCGroupRateLimit(vol.RuntimeOptions, thisMC); err != nil {
 			log.Error(errored.Errorf("Error processing runtime update for volume %q", vol).Combine(err))
 			continue
 		}
