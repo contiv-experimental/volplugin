@@ -16,6 +16,7 @@ import (
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
+	"github.com/contiv/volplugin/storage/cgroup"
 )
 
 func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +236,7 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
+	if err := cgroup.ApplyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
 		if dc.mountCounter.Sub(volName) == 0 {
 			if err := driver.Unmount(driverOpts); err != nil {
 				log.Errorf("Could not unmount device for volume %q: %v", volName, err)
