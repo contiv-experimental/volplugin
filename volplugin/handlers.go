@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -35,13 +34,13 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parts := strings.SplitN(vg.Name, "/", 2)
-
-	if len(parts) < 2 {
-		api.DockerHTTPError(w, errors.GetVolume.Combine(errored.Errorf("Could not parse volume %q", vg.Name)))
+	policy, name, err := storage.SplitName(vg.Name)
+	if err != nil {
+		api.DockerHTTPError(w, errors.GetVolume.Combine(err))
+		return
 	}
 
-	volConfig, err := dc.Client.GetVolume(parts[0], parts[1])
+	volConfig, err := dc.Client.GetVolume(policy, name)
 	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		w.Write([]byte("{}"))
 		return
@@ -99,12 +98,12 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	response := api.VolumeList{Volumes: []api.Volume{}}
 
 	for _, volume := range volList {
-		parts := strings.SplitN(volume, "/", 2)
-		if len(parts) != 2 {
-			log.Errorf("Invalid volume %q detected iterating volumes", volume)
+		policy, name, err := storage.SplitName(volume)
+		if err != nil {
+			log.Errorf("Invalid volume %q detected iterating volumes %v", volume, err)
 			continue
 		}
-		if volObj, err := dc.Client.GetVolume(parts[0], parts[1]); err != nil {
+		if volObj, err := dc.Client.GetVolume(policy, name); err != nil {
 		} else {
 			volumes = append(volumes, volObj)
 		}

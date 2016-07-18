@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
-	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/errors"
+	"github.com/contiv/volplugin/storage"
 	"github.com/docker/docker/pkg/plugins"
 )
 
@@ -65,7 +64,7 @@ func Unmarshal(r *http.Request) (*Request, error) {
 		return nil, err
 	}
 
-	policy, name, err := splitPath(vr.Name)
+	policy, name, err := storage.SplitName(vr.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -91,13 +90,4 @@ func Capabilities(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(content)
-}
-
-func splitPath(name string) (string, string, error) {
-	parts := strings.SplitN(name, "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", errors.InvalidVolume.Combine(errored.New(name))
-	}
-
-	return parts[0], parts[1], nil
 }
