@@ -16,10 +16,10 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/api/docker"
+	"github.com/contiv/volplugin/api/internals/mount"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
 	"github.com/contiv/volplugin/lock"
-	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/watch"
 	"github.com/gorilla/mux"
 	"github.com/jbeda/go-wait"
@@ -37,10 +37,8 @@ type DaemonConfig struct {
 
 	lockStopChanMutex sync.Mutex
 	lockStopChans     map[string]chan struct{}
-	mountCountMutex   sync.Mutex
-	mountCount        map[string]int
-	mountMap          map[string]*storage.Mount
-	mountMapMutex     sync.Mutex
+	mountCounter      *mount.Counter
+	mountCollection   *mount.Collection
 }
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
@@ -51,7 +49,7 @@ retry:
 	client, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
 		log.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
-		time.Sleep(wait.Jitter(1*time.Second, 0))
+		time.Sleep(wait.Jitter(time.Second, 0))
 		goto retry
 	}
 
@@ -62,9 +60,9 @@ retry:
 		Client: client,
 		Lock:   driver,
 
-		lockStopChans: map[string]chan struct{}{},
-		mountCount:    map[string]int{},
-		mountMap:      map[string]*storage.Mount{},
+		lockStopChans:   map[string]chan struct{}{},
+		mountCollection: mount.NewCollection(),
+		mountCounter:    mount.NewCounter(),
 	}
 }
 

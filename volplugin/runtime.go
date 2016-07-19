@@ -28,7 +28,7 @@ func (dc *DaemonConfig) pollRuntime() {
 		}
 
 		log.Debugf("Processing volume %q", vol)
-		thisMC, err := dc.getMount(vol.String())
+		thisMC, err := dc.mountCollection.Get(vol.String())
 		if err != nil {
 			log.Errorf("Error retrieving mount information for %q from cache: %v", vol, err)
 			continue

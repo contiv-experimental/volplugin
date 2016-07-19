@@ -18,9 +18,11 @@ import (
 
 // API is a typed representation of API handlers.
 type API struct {
+	Hostname     string
 	DockerPlugin bool
 	Client       *config.Client
 	Global       **config.Global // double pointer so we can track watch updates
+	Lock         *lock.Driver
 }
 
 // NewAPI returns an *API
