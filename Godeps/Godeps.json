@@ -30,7 +30,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/remotessh",
-			"Rev": "d382e9cea099cb31728d00160b34e52cb9127f28"
+			"Rev": "8dcb1d91ec1a78e25bf375b2b38a9d693a252fb9"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",
