@@ -239,7 +239,7 @@ func (d *Driver) MountPath(do storage.DriverOptions) (string, error) {
 }
 
 // Validate validates the NFS drivers implementation of handling storage.DriverOptions.
-func (d *Driver) Validate(do storage.DriverOptions) error {
+func (d *Driver) Validate(do *storage.DriverOptions) error {
 	if do.Volume.Name == "" || do.Source == "" {
 		return errored.Errorf("No source or volume supplied, cannot mount this volume")
 	}

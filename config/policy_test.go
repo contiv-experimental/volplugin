@@ -5,7 +5,7 @@ import . "gopkg.in/check.v1"
 var testPolicies = map[string]*Policy{
 	"basic": {
 		Name: "basic",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -26,7 +26,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"basic2": {
 		Name: "basic2",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -40,7 +40,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"untouchedwithzerosize": {
 		Name: "untouchedwithzerosize",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -54,7 +54,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"nilfs": {
 		Name: "nilfs",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -68,7 +68,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"badsize3": {
 		Name: "badsize3",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -82,7 +82,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"badsnaps": {
 		Name: "badsnaps",
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:     "ceph",
 			Mount:    "ceph",
 			Snapshot: "ceph",
@@ -102,7 +102,7 @@ var testPolicies = map[string]*Policy{
 		FileSystems: defaultFilesystems,
 	},
 	"blanksize": {
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			Mount: "ceph",
 		},
 		Name:          "blanksize",
@@ -114,7 +114,7 @@ var testPolicies = map[string]*Policy{
 		FileSystems:    defaultFilesystems,
 	},
 	"blanksizewithcrud": {
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			CRUD:  "ceph",
 			Mount: "ceph",
 		},
@@ -137,10 +137,56 @@ var testPolicies = map[string]*Policy{
 		FileSystems:    defaultFilesystems,
 	},
 	"nfs": {
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			Mount: "nfs",
 		},
 	},
+	"cephbackend": {
+		Backend: "ceph",
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+		},
+	},
+	"nfsbackend": {
+		Backend: "nfs",
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+		},
+	},
+	"emptybackend": {
+		Backend: "",
+	},
+	"badbackend": {
+		Backend: "dummy",
+	},
+	"backends": { // "Backend" attribute will be ignored
+		Backends: &BackendDrivers{
+			Mount: "nfs",
+		},
+		Backend: "ceph",
+		CreateOptions: CreateOptions{
+			Size:       "10MB",
+			FileSystem: defaultFilesystem,
+		},
+	},
+	"badbackends": {
+		Backend: "nfs",
+		Backends: &BackendDrivers{
+			Mount: "", // This should not be empty
+		},
+	},
+}
+
+func (s *configSuite) TestBackendPolicy(c *C) {
+	c.Assert(s.tlc.PublishPolicy("cephbackend", testPolicies["cephbackend"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("nfsbackend", testPolicies["nfsbackend"]), IsNil)
+	c.Assert(s.tlc.PublishPolicy("backends", testPolicies["backends"]), IsNil)
+
+	c.Assert(s.tlc.PublishPolicy("emptybackend", testPolicies["emptybackend"]), NotNil)
+	c.Assert(s.tlc.PublishPolicy("badbackends", testPolicies["badbackends"]), NotNil)
+	c.Assert(s.tlc.PublishPolicy("badbackend", testPolicies["badbackend"]), NotNil)
 }
 
 func (s *configSuite) TestBasicPolicy(c *C) {

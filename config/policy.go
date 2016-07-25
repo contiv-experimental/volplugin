@@ -9,6 +9,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+// Type definitions for backend drivers
+var defaultDrivers = map[string]*BackendDrivers{
+	"ceph": {"ceph", "ceph", "ceph"},
+	"nfs":  {"", "nfs", ""},
+}
+
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
@@ -18,7 +24,8 @@ type Policy struct {
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
 	DriverOptions  map[string]string `json:"driver"`
 	FileSystems    map[string]string `json:"filesystems"`
-	Backends       BackendDrivers    `json:"backends"`
+	Backends       *BackendDrivers   `json:"backends,omitempty"`
+	Backend        string            `json:"backend,omitempty"`
 }
 
 // BackendDrivers is a struct containing all the drivers used under this policy
@@ -134,12 +141,16 @@ func (cfg *Policy) Validate() error {
 		cfg.FileSystems = defaultFilesystems
 	}
 
-	if cfg.Name == "" {
-		return errored.Errorf("Name is empty for policy")
+	if err := cfg.ValidateJSON(); err != nil {
+		return errors.ErrJSONValidation.Combine(err)
 	}
 
-	if cfg.Backends.Mount == "" {
-		return errored.Errorf("Mount backend cannot be empty for policy %v", cfg)
+	if cfg.Backends == nil { // backend should be defined and its validated
+		if backends, ok := defaultDrivers[cfg.Backend]; !ok {
+			return errored.Errorf("Invalid backend: %v", cfg.Backend)
+		} else {
+			cfg.Backends = backends
+		}
 	}
 
 	size, err := cfg.CreateOptions.ActualSize()
@@ -147,7 +158,7 @@ func (cfg *Policy) Validate() error {
 		return errored.Errorf("Size set to zero for non-empty CRUD backend %v", cfg.Backends.CRUD).Combine(err)
 	}
 
-	return cfg.RuntimeOptions.Validate()
+	return nil
 }
 
 func (cfg *Policy) String() string {
