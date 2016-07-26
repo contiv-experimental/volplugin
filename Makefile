@@ -23,6 +23,7 @@ stop:
 	make clean
 
 clean:
+	([ -n "$$(cat subnet_assignment.state)" ] && rm -rf /tmp/volplugin_vagrant_subnets/`cat subnet_assignment.state`) || :
 	rm -f subnet_assignment.state
 	rm -f *.vdi
 	rm -f .vagrant/*.vmdk
