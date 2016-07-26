@@ -17,10 +17,10 @@ func (s *storageSuite) TestSplitName(c *C) {
 	}
 
 	successes := map[string][]string{
-		"foo/bar":                      []string{"foo", "bar"},
-		"policy-with-dashes/quux":      []string{"policy-with-dashes", "quux"},
-		"policy_with_underscores/quux": []string{"policy_with_underscores", "quux"},
-		"policy.with.periods/quux":     []string{"policy.with.periods", "quux"},
+		"foo/bar":                      {"foo", "bar"},
+		"policy-with-dashes/quux":      {"policy-with-dashes", "quux"},
+		"policy_with_underscores/quux": {"policy_with_underscores", "quux"},
+		"policy.with.periods/quux":     {"policy.with.periods", "quux"},
 	}
 
 	for _, fail := range failures {
