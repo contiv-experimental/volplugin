@@ -151,6 +151,7 @@ ansible_provision = proc do |ansible|
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdd' ]",
     service_vip: "#{SUBNET}.50",
+    consul_leader: "#{SUBNET}.10",
     journal_collocation: 'true',
     validate_certs: 'no',
     install_gluster: 'true',
