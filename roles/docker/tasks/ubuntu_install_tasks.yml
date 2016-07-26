@@ -12,9 +12,7 @@
   apt_repository:
     repo: "deb https://packages.docker.com/{{ item }}/apt/repo ubuntu-{{ ansible_distribution_release }} main"
     state: present
-  with_items:
-    - "1.10"
-    - "1.11"
+  with_items: "{{ docker_cs_engine_supported_versions_ubuntu[ansible_distribution_release] }}"
 
 - name: install docker (debian)
   shell: curl https://get.docker.com | sed 's/docker-engine/--force-yes docker-engine={{ docker_version }}-0~{{ ansible_distribution_release }}/' | bash
