@@ -106,6 +106,10 @@ var (
 	ListPolicy = errored.New("Listing policies")
 	// PublishPolicy is used when publishing policies.
 	PublishPolicy = errored.New("Publishing policies")
+	// ListPolicyRevision is used when listing policy revisions.
+	ListPolicyRevision = errored.New("Listing policy revisions")
+	// ListPolicyRevision is used when getting a single policy revision.
+	GetPolicyRevision = errored.New("Getting policy revision")
 
 	// RemoveImage is used when removing the underlying ceph RBD image.
 	RemoveImage = errored.New("Removing image")

@@ -18,6 +18,7 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/lock"
+	"github.com/contiv/volplugin/watch"
 	"github.com/kr/pty"
 )
 
@@ -281,6 +282,120 @@ func policyList(ctx *cli.Context) (bool, error) {
 
 	for _, policy := range policies {
 		fmt.Println(policy.Name)
+	}
+
+	return false, nil
+}
+
+// PolicyGetRevision retrieves a single revision from a policy's history.
+func PolicyGetRevision(ctx *cli.Context) {
+	execCliAndExit(ctx, policyGetRevision)
+}
+
+func policyGetRevision(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 2 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 2, ctx.Args())
+	}
+
+	name := ctx.Args()[0]
+	revision := ctx.Args()[1]
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/policy-archives/%s/%s",
+		ctx.GlobalString("apiserver"),
+		name,
+		revision,
+	))
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(content))
+
+	return false, nil
+}
+
+// PolicyListRevisions retrieves all the revisions for a given policy.
+func PolicyListRevisions(ctx *cli.Context) {
+	execCliAndExit(ctx, policyListRevisions)
+}
+
+func policyListRevisions(ctx *cli.Context) (bool, error) {
+	var revisions []string
+
+	if len(ctx.Args()) != 1 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 1, ctx.Args())
+	}
+
+	name := ctx.Args()[0]
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/policy-archives/%s",
+		ctx.GlobalString("apiserver"),
+		name,
+	))
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		if _, err := io.Copy(os.Stderr, resp.Body); err != nil {
+			return false, errored.Errorf("Error copying body: %v\nResponse Status Code was %d, not 200", err, resp.StatusCode)
+		}
+		return false, errored.Errorf("Response Status Code was %d, not 200", resp.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(content, &revisions); err != nil {
+		return false, err
+	}
+
+	for _, revision := range revisions {
+		fmt.Println(revision)
+	}
+
+	return false, nil
+}
+
+// PolicyWatch watches etcd for policy changes and prints the name and revision when a policy is uploaded.
+func PolicyWatch(ctx *cli.Context) {
+	execCliAndExit(ctx, policyWatch)
+}
+
+func policyWatch(ctx *cli.Context) (bool, error) {
+	if len(ctx.Args()) != 0 {
+		return true, errorInvalidArgCount(len(ctx.Args()), 0, ctx.Args())
+	}
+
+	cfg, err := config.NewClient(ctx.GlobalString("prefix"), ctx.GlobalStringSlice("etcd"))
+	if err != nil {
+		return false, err
+	}
+
+	activity := make(chan *watch.Watch)
+	cfg.WatchForPolicyChanges(activity)
+
+	for w := range activity {
+		changeset := w.Config.([]string)
+
+		name := changeset[0]
+		revision := changeset[1]
+
+		fmt.Printf("%s\t%s\n", name, revision)
 	}
 
 	return false, nil

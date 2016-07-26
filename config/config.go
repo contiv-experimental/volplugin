@@ -18,13 +18,14 @@ import (
 )
 
 const (
-	rootVolume    = "volumes"
-	rootUse       = "users"
-	rootPolicy    = "policies"
-	rootSnapshots = "snapshots"
+	rootVolume        = "volumes"
+	rootUse           = "users"
+	rootPolicy        = "policies"
+	rootPolicyArchive = "policy-archives"
+	rootSnapshots     = "snapshots"
 )
 
-var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootSnapshots}
+var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootPolicyArchive, rootSnapshots}
 
 // Request provides a request structure for communicating with the
 // apiserver.
