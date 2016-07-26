@@ -1,0 +1,45 @@
+- name: download consul binary
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_linux_amd64.zip"
+    dest: "/tmp/consul_{{ consul_version }}_linux_amd64.zip"
+
+- name: install consul
+  unarchive:
+    copy: no
+    src: "/tmp/consul_{{ consul_version }}_linux_amd64.zip"
+    dest: /usr/bin
+
+- name: install consul run script
+  template:
+    src: "consul.j2"
+    dest: "/usr/bin/consul.sh"
+    mode: 0755
+    owner: root
+
+- name: install consul service
+  copy: src=consul.service dest=/etc/systemd/system/consul.service
+
+- name: start consul 
+  service: name=consul state=started
+
+- name: setup UDP iptables for consul
+  shell: >
+      ( iptables -L INPUT | grep -q 'consul udp ({{ item }})' ) || \
+      iptables -I INPUT 1 -p udp --dport {{ item }} -j ACCEPT -m comment --comment "consul udp ({{ item }})" 
+  become: true
+  with_items:
+    - 8300
+    - 8301
+    - 8500
+
+- name: setup TCP iptables for consul
+  shell: >
+      ( iptables -L INPUT | grep -q 'consul tcp ({{ item }})' ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "consul tcp ({{ item }})" 
+  become: true
+  with_items:
+    - 8400
+    - 8300
+    - 8301
+    - 8500
