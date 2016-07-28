@@ -1,6 +1,7 @@
 package ceph
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -29,6 +30,12 @@ var volumeSpec = storage.Volume{
 	Params: storage.Params{"pool": "rbd"},
 }
 
+var volumeSpecTestPool = storage.Volume{
+	Name:   "test/pithos",
+	Size:   10,
+	Params: storage.Params{"pool": "test"},
+}
+
 type cephSuite struct{}
 
 var _ = Suite(&cephSuite{})
@@ -41,6 +48,14 @@ func (s *cephSuite) SetUpTest(c *C) {
 	}
 
 	c.Assert(exec.Command("sh", "-c", "set -e; for i in $(rbd ls); do rbd snap purge $i; rbd rm $i; done").Run(), IsNil)
+}
+
+func (s *cephSuite) SetUpSuite(c *C) {
+	c.Assert(exec.Command("sh", "-c", "sudo ceph osd pool create test 1 1").Run(), IsNil)
+}
+
+func (s *cephSuite) TearDownSuite(c *C) {
+	c.Assert(exec.Command("sh", "-c", "sudo ceph osd pool delete test test --yes-i-really-really-mean-it").Run(), IsNil)
 }
 
 func (s *cephSuite) readWriteTest(c *C, mountDir string) {
@@ -90,17 +105,21 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 		Timeout:   5 * time.Second,
 	}
 
+	done := false
+
+again:
+
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	mountDriver.Unmount(driverOpts)
-	crudDriver.Destroy(driverOpts)
+	defer mountDriver.Unmount(driverOpts)
+	defer crudDriver.Destroy(driverOpts)
 
 	c.Assert(crudDriver.Create(driverOpts), IsNil)
 	defer crudDriver.Destroy(driverOpts)
 	c.Assert(crudDriver.Format(driverOpts), IsNil)
 	ms, err := mountDriver.Mount(driverOpts)
 	c.Assert(err, IsNil)
-	c.Assert(ms.Volume, DeepEquals, volumeSpec)
+	c.Assert(ms.Volume, DeepEquals, driverOpts.Volume)
 	c.Assert(ms.DevMajor, Equals, uint(252))
 	c.Assert(ms.DevMinor, Equals, uint(0))
 	c.Assert(strings.HasPrefix(ms.Device, "/dev/rbd"), Equals, true)
@@ -109,6 +128,20 @@ func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	s.readWriteTest(c, mp)
 	c.Assert(mountDriver.Unmount(driverOpts), IsNil)
 	c.Assert(crudDriver.Destroy(driverOpts), IsNil)
+
+	driverOpts = storage.DriverOptions{
+		Volume:    volumeSpecTestPool,
+		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
+	}
+
+	if done {
+		return
+	}
+
+	done = true
+
+	goto again
 }
 
 func (s *cephSuite) TestSnapshots(c *C) {
@@ -123,6 +156,9 @@ func (s *cephSuite) TestSnapshots(c *C) {
 		Timeout:   5 * time.Second,
 	}
 
+	done := false
+
+again:
 	c.Assert(crudDrv.Create(driverOpts), IsNil)
 	defer crudDrv.Destroy(driverOpts)
 	c.Assert(snapDrv.CreateSnapshot("hello", driverOpts), IsNil)
@@ -140,6 +176,20 @@ func (s *cephSuite) TestSnapshots(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(list), Equals, 0)
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	driverOpts = storage.DriverOptions{
+		Volume:    volumeSpecTestPool,
+		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
+	}
+
+	if done {
+		return
+	}
+
+	done = true
+
+	goto again
 }
 
 func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
@@ -154,11 +204,12 @@ func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
 		Timeout:   5 * time.Second,
 	}
 
+	done := false
+
+again:
+
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	mountDrv.Unmount(driverOpts)
-	crudDrv.Destroy(driverOpts)
-
 	defer mountDrv.Unmount(driverOpts)
 	defer crudDrv.Destroy(driverOpts)
 
@@ -167,10 +218,24 @@ func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
 	for i := 0; i < 10; i++ {
 		_, err := mountDrv.Mount(driverOpts)
 		c.Assert(err, IsNil)
-		s.readWriteTest(c, "/mnt/ceph/rbd/test.pithos")
+		s.readWriteTest(c, fmt.Sprintf("/mnt/ceph/%s/test.pithos", driverOpts.Volume.Params["pool"]))
 		c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	}
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	driverOpts = storage.DriverOptions{
+		Volume:    volumeSpecTestPool,
+		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
+	}
+
+	if done {
+		return
+	}
+
+	done = true
+
+	goto again
 }
 
 func (s *cephSuite) TestTemplateFSCmd(c *C) {
@@ -194,10 +259,14 @@ func (s *cephSuite) TestMounted(c *C) {
 		Timeout:   2 * time.Minute,
 	}
 
+	done := false
+
+again:
+
 	// we don't care if there's an error here, just want to make sure the create
 	// succeeds. Easier restart of failed tests this way.
-	mountDrv.Unmount(driverOpts)
-	crudDrv.Destroy(driverOpts)
+	defer mountDrv.Unmount(driverOpts)
+	defer crudDrv.Destroy(driverOpts)
 
 	c.Assert(crudDrv.Create(driverOpts), IsNil)
 	c.Assert(crudDrv.Format(driverOpts), IsNil)
@@ -206,24 +275,34 @@ func (s *cephSuite) TestMounted(c *C) {
 	mounts, err := mountDrv.Mounted(2 * time.Minute)
 	c.Assert(err, IsNil)
 
-	intName, err := (&Driver{}).internalName(volumeSpec.Name) // totally cheating
+	intName, err := (&Driver{}).internalName(driverOpts.Volume.Name) // totally cheating
 	c.Assert(err, IsNil)
 
+	(*mounts[0]).Volume.Size = 10 // correct this value even though it is an unnecessary value returned
 	c.Assert(*mounts[0], DeepEquals, storage.Mount{
 		Device:   "/dev/rbd0",
 		DevMajor: 252,
 		DevMinor: 0,
-		Path:     strings.Join([]string{myMountpath, volumeSpec.Params["pool"], intName}, "/"),
-		Volume: storage.Volume{
-			Name: "test/pithos",
-			Params: map[string]string{
-				"pool": "rbd",
-			},
-		},
+		Path:     strings.Join([]string{myMountpath, driverOpts.Volume.Params["pool"], intName}, "/"),
+		Volume:   driverOpts.Volume,
 	})
 
 	c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	driverOpts = storage.DriverOptions{
+		Volume:    volumeSpecTestPool,
+		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
+	}
+
+	if done {
+		return
+	}
+
+	done = true
+
+	goto again
 }
 
 func (s *cephSuite) TestExternalInternalNames(c *C) {
@@ -261,23 +340,40 @@ func (s *cephSuite) TestSnapshotClone(c *C) {
 		Timeout:   5 * time.Second,
 	}
 
+	done := false
+
+again:
+
 	c.Assert(crudDrv.Create(driverOpts), IsNil)
 	c.Assert(snapDrv.CreateSnapshot("test", driverOpts), IsNil)
 	c.Assert(snapDrv.CreateSnapshot("testsnap", driverOpts), IsNil)
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), IsNil)
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
-	defer func(driverOpts storage.DriverOptions) {
-		driverOpts.Volume.Name = "test/image"
-		crudDrv.Destroy(driverOpts)
-		exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "test", "--pool", volumeSpec.Params["pool"]).Run()
-		exec.Command("rbd", "snap", "unprotect", "test.pithos", "--snap", "testsnap", "--pool", volumeSpec.Params["pool"]).Run()
-		driverOpts.Volume.Name = "test/pithos"
-		crudDrv.Destroy(driverOpts)
-	}(driverOpts)
 
-	content, err := exec.Command("rbd", "ls").CombinedOutput()
+	content, err := exec.Command("rbd", "ls", driverOpts.Volume.Params["pool"]).CombinedOutput()
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(string(content)), Equals, "test.image\ntest.pithos")
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "foo", "test/image"), NotNil)
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), NotNil)
+
+	driverOpts.Volume.Name = "test/image"
+	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "test").Run()
+	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "testsnap").Run()
+	driverOpts.Volume.Name = "test/pithos"
+	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	driverOpts = storage.DriverOptions{
+		Volume:    volumeSpecTestPool,
+		FSOptions: filesystems["ext4"],
+		Timeout:   5 * time.Second,
+	}
+
+	if done {
+		return
+	}
+
+	done = true
+
+	goto again
 }
