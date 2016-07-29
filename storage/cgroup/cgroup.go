@@ -1,4 +1,4 @@
-package volplugin
+package cgroup
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"github.com/contiv/volplugin/storage"
 )
 
-// FIXME find a better place for these
 const (
 	writeBPSFile = "/sys/fs/cgroup/blkio/blkio.throttle.write_bps_device"
 	readBPSFile  = "/sys/fs/cgroup/blkio/blkio.throttle.read_bps_device"
@@ -18,7 +17,9 @@ func makeLimit(mc *storage.Mount, limit uint64) []byte {
 	return []byte(fmt.Sprintf("%d:%d %d\n", mc.DevMajor, mc.DevMinor, limit))
 }
 
-func applyCGroupRateLimit(ro config.RuntimeOptions, mc *storage.Mount) error {
+// ApplyCGroupRateLimit applies cgroups based on the runtime options. Current
+// this is restricted to BPS-related functions.
+func ApplyCGroupRateLimit(ro config.RuntimeOptions, mc *storage.Mount) error {
 	opMap := map[string]uint64{
 		writeBPSFile: ro.RateLimit.WriteBPS,
 		readBPSFile:  ro.RateLimit.ReadBPS,
