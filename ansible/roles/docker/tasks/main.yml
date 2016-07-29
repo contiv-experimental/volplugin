@@ -9,16 +9,6 @@
   tags:
     - prebake-for-dev
 
-- include: ubuntu_install_tasks.yml
-  when: (ansible_os_family == "Debian") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
-  tags:
-    - prebake-for-dev
-
-- include: redhat_install_tasks.yml
-  when: (ansible_os_family == "RedHat") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
-  tags:
-    - prebake-for-dev
-
 - name: create docker daemon's config directory
   file: path=/etc/systemd/system/docker.service.d state=directory
   tags:
@@ -26,6 +16,16 @@
 
 - name: setup docker daemon's environment
   template: src=env.conf.j2 dest=/etc/systemd/system/docker.service.d/env.conf
+  tags:
+    - prebake-for-dev
+
+- include: ubuntu_install_tasks.yml
+  when: (ansible_os_family == "Debian") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
+  tags:
+    - prebake-for-dev
+
+- include: redhat_install_tasks.yml
+  when: (ansible_os_family == "RedHat") and not (docker_installed_version.stdout | match("Docker version {{ docker_version }}, build.*"))
   tags:
     - prebake-for-dev
 

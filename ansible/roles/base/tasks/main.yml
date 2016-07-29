@@ -10,7 +10,3 @@
   when: ansible_os_family == "RedHat"
   tags:
     - prebake-for-dev
-
-- include: os_agnostic_tasks.yml
-  tags:
-    - prebake-for-dev

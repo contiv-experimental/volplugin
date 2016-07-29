@@ -8,3 +8,6 @@ docker_rule_comment: "docker api"
 docker_device: ""
 docker_device_size: "10000MB"
 docker_device_metadata_size: "1000MB"
+docker_cs_engine_supported_versions_ubuntu:
+    "wily": [ "1.10", "1.11" ]
+    "xenial": [ "1.11" ]
