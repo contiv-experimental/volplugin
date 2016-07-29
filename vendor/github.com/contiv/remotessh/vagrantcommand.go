@@ -15,15 +15,23 @@ limitations under the License.
 
 package remotessh
 
-import "os/exec"
+import (
+	"os"
+	"os/exec"
+)
 
 // VagrantCommand is a command that is run on a vagrant node
 type VagrantCommand struct {
 	ContivNodes int
+	Env         []string
 }
 
 func (c *VagrantCommand) getCmd(cmd string, args ...string) *exec.Cmd {
-	return exec.Command("vagrant", append([]string{cmd}, args...)...)
+	newArgs := append([]string{cmd}, args...)
+	osCmd := exec.Command("vagrant", newArgs...)
+	osCmd.Env = os.Environ()
+	osCmd.Env = append(osCmd.Env, c.Env...)
+	return osCmd
 }
 
 // Run runs a command and return its exit status
