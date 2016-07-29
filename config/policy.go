@@ -56,6 +56,17 @@ func (c *Client) PublishPolicy(name string, cfg *Policy) error {
 		return err
 	}
 
+	// NOTE: The creation of the policy revision entry and the actual publishing of the policy
+	//       should be wrapped in a transaction so they either both succeed or both fail, but
+	//       etcd2 doesn't support transactions (etcd3 does/will).
+	//
+	//       For now, we create the revision entry first and then publish the policy.  It's
+	//       better to have an entry for a policy revision that was never actually published
+	//       than to have a policy published which has no revision recorded for it.
+	if err := c.CreatePolicyRevision(name, string(value)); err != nil {
+		return err
+	}
+
 	// create the volume directory for the policy so that files can be written there.
 	// for example: /volplugin/policies/policy1 will create
 	// /volplugin/volumes/policy1 so that a volume of policy1/test can be created

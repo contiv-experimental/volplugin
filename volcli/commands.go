@@ -76,6 +76,34 @@ var Commands = []cli.Command{
 				Usage:       "List all policies",
 				Action:      PolicyList,
 			},
+			{
+				Name:        "history",
+				Description: "See historical policy revisions",
+				Usage:       "See historical policy revisions",
+				Subcommands: []cli.Command{
+					{
+						Name:        "get",
+						ArgsUsage:   "[policy name] [revision]",
+						Description: "Retrieve a single revision of a policy",
+						Usage:       "Retrieve a single revision of a policy",
+						Action:      PolicyGetRevision,
+					},
+					{
+						Name:        "list",
+						ArgsUsage:   "[policy name]",
+						Description: "List all revisions of a policy",
+						Usage:       "List all revisions of a policy",
+						Action:      PolicyListRevisions,
+					},
+				},
+			},
+			{
+				Name:        "watch",
+				ArgsUsage:   "",
+				Description: "Watch for policy changes",
+				Usage:       "Watch for policy changes",
+				Action:      PolicyWatch,
+			},
 		},
 	},
 	{
