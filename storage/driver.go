@@ -60,7 +60,7 @@ type NamedDriver interface {
 
 // ValidatingDriver implements Validate() against storage.DriverOptions.
 type ValidatingDriver interface {
-	Validate(DriverOptions) error
+	Validate(*DriverOptions) error
 }
 
 // MountDriver mounts volumes.
@@ -125,7 +125,7 @@ type SnapshotDriver interface {
 
 // Validate validates driver options to ensure they are compatible with all
 // storage drivers.
-func (do DriverOptions) Validate() error {
+func (do *DriverOptions) Validate() error {
 	if do.Timeout == 0 {
 		return errored.Errorf("Missing timeout in storage driver")
 	}

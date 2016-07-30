@@ -31,6 +31,9 @@ var (
 	VolmasterDown = errored.New("apiserver could not be contacted")
 	// VolmasterRequest is used when a request fails.
 	VolmasterRequest = errored.New("Making request to apiserver")
+
+	// ErrJSONValidation is used when JSON validation fails
+	ErrJSONValidation = errored.New("JSON validation failed")
 )
 
 // storage-level errors

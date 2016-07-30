@@ -65,7 +65,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		Backends: BackendDrivers{
+		Backends: &BackendDrivers{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 			CRUD:     "ceph",
@@ -82,15 +82,15 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 
 func (s *configSuite) TestVolumeOptionsValidate(c *C) {
 	opts := RuntimeOptions{UseSnapshots: true}
-	c.Assert(opts.Validate(), NotNil)
+	c.Assert(opts.ValidateJSON(), NotNil)
 	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{}}
-	c.Assert(opts.Validate(), NotNil)
+	c.Assert(opts.ValidateJSON(), NotNil)
 	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 0}}
-	c.Assert(opts.Validate(), NotNil)
+	c.Assert(opts.ValidateJSON(), NotNil)
 	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "", Keep: 10}}
-	c.Assert(opts.Validate(), NotNil)
+	c.Assert(opts.ValidateJSON(), NotNil)
 	opts = RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}}
-	c.Assert(opts.Validate(), IsNil)
+	c.Assert(opts.ValidateJSON(), IsNil)
 }
 
 func (s *configSuite) TestWatchVolumes(c *C) {

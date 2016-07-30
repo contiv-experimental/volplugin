@@ -29,7 +29,7 @@ type Volume struct {
 	MountSource    string            `json:"mount" merge:"mount"`
 	CreateOptions  CreateOptions     `json:"create"`
 	RuntimeOptions RuntimeOptions    `json:"runtime"`
-	Backends       BackendDrivers    `json:"backends"`
+	Backends       *BackendDrivers   `json:"backends,omitempty"`
 }
 
 // CreateOptions are the set of options used by apiserver during the volume
@@ -65,6 +65,10 @@ func (c *Client) volume(policy, name, typ string) string {
 
 // PublishVolumeRuntime publishes the runtime parameters for each volume.
 func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
+	if err := ro.ValidateJSON(); err != nil {
+		return errors.ErrJSONValidation.Combine(err)
+	}
+
 	content, err := json.Marshal(ro)
 	if err != nil {
 		return err
@@ -343,35 +347,38 @@ func (c *Client) WatchSnapshotSignal(activity chan *watch.Watch) {
 	watch.Create(w)
 }
 
-// Validate options for a volume. Should be called anytime options are
-// considered.
-func (ro *RuntimeOptions) Validate() error {
-	if ro.UseSnapshots && (ro.Snapshot.Frequency == "" || ro.Snapshot.Keep == 0) {
-		return errored.Errorf("Snapshots are configured but cannot be used due to blank settings")
-	}
-
-	return nil
-}
-
 // Validate validates a volume configuration, returning error on any issue.
 func (cfg *Volume) Validate() error {
-	if cfg.Backends.Mount == "" {
-		return errored.Errorf("Mount volume cannot be blank for volume %v", cfg)
+	if err := cfg.ValidateJSON(); err != nil {
+		return errors.ErrJSONValidation.Combine(err)
 	}
 
-	if cfg.VolumeName == "" {
-		return errored.Errorf("Volume Name was omitted for volume %v", cfg)
-	}
-
-	if cfg.PolicyName == "" {
-		return errored.Errorf("Policy name was omitted for volume %v", cfg)
-	}
-
-	if err := cfg.validateBackends(); err != nil {
+	do, err := cfg.ToDriverOptions(time.Second)
+	if err != nil {
 		return err
 	}
 
-	return cfg.RuntimeOptions.Validate()
+	// We use a few dummy variables to ensure that global configuration is
+	// not needed in the storage drivers, that the validation does not fail
+	// because of it.
+	var mountPath string
+	for driverType, backendName := range map[string]string{backend.Mount: cfg.Backends.Mount, backend.CRUD: cfg.Backends.CRUD, backend.Snapshot: cfg.Backends.Snapshot} {
+		if backendName == "" {
+			continue
+		}
+
+		if driverType == backend.Mount {
+			mountPath = backend.MountPath
+		} else {
+			mountPath = ""
+		}
+
+		if err := backend.NewDriver(backendName, driverType, mountPath, &do); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ToDriverOptions converts a volume to a storage.DriverOptions.
@@ -393,48 +400,6 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 		},
 		Timeout: timeout,
 	}, nil
-}
-
-func (cfg *Volume) validateBackends() error {
-	// We use a few dummy variables to ensure that global configuration is
-	// not needed in the storage drivers, that the validation does not fail
-	// because of it.
-	do, err := cfg.ToDriverOptions(time.Second)
-	if err != nil {
-		return err
-	}
-
-	if cfg.Backends.CRUD != "" {
-		crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
-		if err != nil {
-			return err
-		}
-
-		if err := crud.Validate(do); err != nil {
-			return err
-		}
-	}
-
-	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, "/mnt")
-	if err != nil {
-		return err
-	}
-
-	if err := mnt.Validate(do); err != nil {
-		return err
-	}
-
-	if cfg.Backends.Snapshot != "" {
-		snapshot, err := backend.NewSnapshotDriver(cfg.Backends.Snapshot)
-		if err != nil {
-			return err
-		}
-		if err := snapshot.Validate(do); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (cfg *Volume) String() string {

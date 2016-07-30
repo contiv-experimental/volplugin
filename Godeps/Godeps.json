@@ -30,7 +30,7 @@
 		},
 		{
 			"ImportPath": "github.com/contiv/remotessh",
-			"Rev": "d382e9cea099cb31728d00160b34e52cb9127f28"
+			"Rev": "8dcb1d91ec1a78e25bf375b2b38a9d693a252fb9"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",
@@ -191,6 +191,18 @@
 		{
 			"ImportPath": "github.com/vishvananda/netlink/nl",
 			"Rev": "a632d6dc2806fa19d2f7693017d3fb79d3d8fa03"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonpointer",
+			"Rev": "e0fe6f68307607d540ed8eac07a342c33fa1b54a"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonreference",
+			"Rev": "e02fc20de94c78484cd5ffb007f8af96be030a45"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonschema",
+			"Rev": "66a3de92def23708184148ae337750915875e7c1"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
