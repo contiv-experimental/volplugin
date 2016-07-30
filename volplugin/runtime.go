@@ -28,16 +28,17 @@ func (dc *DaemonConfig) pollRuntime() {
 			continue
 		}
 
-		log.Debugf("Processing volume %q", vol)
-		thisMC, err := dc.mountCollection.Get(vol.String())
-		if err != nil {
-			log.Errorf("Error retrieving mount information for %q from cache: %v", vol, err)
+		log.Infof("Adjusting runtime parameters for volume %q", vol)
+		thisMC, err := dc.API.MountCollection.Get(vol.String())
+
+		if er, ok := err.(*errored.Error); ok && !er.Contains(errors.NotExists) {
+			log.Errorf("Unknown error processing runtime configuration parameters for volume %q: %v", vol, er)
 			continue
 		}
 
 		// if we can't look it up, it's possible it was mounted on a different host.
-		if er, ok := err.(*errored.Error); ok && !er.Contains(errors.NotExists) {
-			log.Errorf("Unknown error processing runtime configuration parameters for volume %q: %v", vol, er)
+		if err != nil {
+			log.Errorf("Error retrieving mount information for %q from cache: %v", vol, err)
 			continue
 		}
 

@@ -199,8 +199,6 @@ func (s *systemtestSuite) purgeVolume(host, volume string) error {
 }
 
 func (s *systemtestSuite) createVolume(host, volume string, opts map[string]string) error {
-	log.Infof("Creating %s on %q", volume, host)
-
 	optsStr := []string{}
 	policy, name := volumeParts(volume)
 
@@ -225,9 +223,9 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 			optsStr = append(optsStr, "--opt")
 			optsStr = append(optsStr, key+"="+value)
 		}
-
-		log.Infof("Creating with options: %q", strings.Join(optsStr, " "))
 	}
+
+	log.Infof("Creating %s on %q with options %q", volume, host, strings.Join(optsStr, " "))
 
 	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
 
@@ -260,22 +258,20 @@ func (s *systemtestSuite) clearNFS() {
 }
 
 func (s *systemtestSuite) rebootstrap() error {
-	if os.Getenv("NO_TEARDOWN") == "" {
-		s.clearContainers()
-		stopVolsupervisor(s.vagrant.GetNode("mon0"))
-		s.vagrant.IterateNodes(stopVolplugin)
-		s.vagrant.IterateNodes(stopAPIServer)
-		if cephDriver() {
-			s.clearRBD()
-		}
-
-		if nfsDriver() {
-			s.clearNFS()
-		}
-
-		log.Info("Clearing etcd")
-		ClearEtcd(s.vagrant.GetNode("mon0"))
+	s.clearContainers()
+	stopVolsupervisor(s.vagrant.GetNode("mon0"))
+	s.vagrant.IterateNodes(stopVolplugin)
+	s.vagrant.IterateNodes(stopAPIServer)
+	if cephDriver() {
+		s.clearRBD()
 	}
+
+	if nfsDriver() {
+		s.clearNFS()
+	}
+
+	log.Info("Clearing etcd")
+	ClearEtcd(s.vagrant.GetNode("mon0"))
 
 	if err := s.vagrant.IterateNodes(startAPIServer); err != nil {
 		return err
@@ -448,7 +444,7 @@ func startVolplugin(node remotessh.TestbedNode) error {
 
 	// FIXME this is hardcoded because it's simpler. If we move to
 	// multimaster or change the monitor subnet, we will have issues.
-	return node.RunCommandBackground("(sudo -E `which volplugin` 2>&1 | sudo tee -a /tmp/volplugin.log) &")
+	return node.RunCommandBackground("(sudo -E `which volplugin` </dev/null 2>&1 | sudo tee -a /tmp/volplugin.log) &")
 }
 
 func stopVolplugin(node remotessh.TestbedNode) error {

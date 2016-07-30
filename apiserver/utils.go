@@ -18,19 +18,23 @@ func errExit(ctx *cli.Context, err error) {
 	os.Exit(1)
 }
 
-func unmarshalRequest(r *http.Request) (config.Request, error) {
-	var cfg config.Request
+func unmarshalRequest(r *http.Request) (*config.VolumeRequest, error) {
+	cfg := &config.VolumeRequest{}
 
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return cfg, err
 	}
 
-	if err := json.Unmarshal(content, &cfg); err != nil {
+	if err := json.Unmarshal(content, cfg); err != nil {
 		return cfg, err
 	}
 
-	if cfg.Volume == "" {
+	if cfg.Policy == "" {
+		return cfg, errors.New("Policy was blank")
+	}
+
+	if cfg.Name == "" {
 		return cfg, errors.New("volume was blank")
 	}
 

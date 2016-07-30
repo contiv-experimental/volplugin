@@ -1,8 +1,8 @@
 package systemtests
 
 import (
-	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	. "testing"
 
@@ -16,6 +16,11 @@ type systemtestSuite struct {
 	vagrant remotessh.Vagrant
 	mon0ip  string
 }
+
+var (
+	batteryIterations int
+	defaultIterations int64 = 5
+)
 
 var _ = Suite(&systemtestSuite{})
 
@@ -38,42 +43,16 @@ func (s *systemtestSuite) SetUpTest(c *C) {
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
 	log.Infof("Bootstrapping system tests")
+
+	iter, err := strconv.ParseInt(os.Getenv("ITERATIONS"), 10, 64)
+	if err != nil {
+		iter = defaultIterations
+	}
+
+	batteryIterations = int(iter)
+
 	s.vagrant = remotessh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, []string{}, 3), IsNil)
-
-	stopServices := []string{"volplugin", "apiserver", "volsupervisor"}
-	startServices := []string{"ceph.target", "etcd"}
-
-	nodelen := len(s.vagrant.GetNodes())
-	sync := make(chan struct{}, nodelen)
-
-	for _, service := range stopServices {
-		for _, node := range s.vagrant.GetNodes() {
-			log.Infof("Stopping %q service", service)
-			go func(node remotessh.TestbedNode) {
-				node.RunCommand(fmt.Sprintf("sudo systemctl stop %s", service))
-				sync <- struct{}{}
-			}(node)
-		}
-	}
-
-	for i := 0; i < nodelen; i++ {
-		<-sync
-	}
-
-	for _, service := range startServices {
-		for _, node := range s.vagrant.GetNodes() {
-			log.Infof("Starting %q service", service)
-			go func(node remotessh.TestbedNode) {
-				node.RunCommand(fmt.Sprintf("sudo systemctl start %s", service))
-				sync <- struct{}{}
-			}(node)
-		}
-	}
-
-	for i := 0; i < nodelen; i++ {
-		<-sync
-	}
 
 	if nfsDriver() {
 		log.Info("NFS Driver detected: configuring exports.")
@@ -97,5 +76,9 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 func (s *systemtestSuite) TearDownSuite(c *C) {
 	if cephDriver() && os.Getenv("NO_TEARDOWN") == "" {
 		s.clearRBD()
+	}
+
+	if os.Getenv("NO_TEARDOWN") == "" {
+		c.Assert(s.rebootstrap(), IsNil)
 	}
 }

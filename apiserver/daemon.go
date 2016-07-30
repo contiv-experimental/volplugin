@@ -446,7 +446,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
+	volConfig, err := d.Config.GetVolume(req.Policy, req.Name)
 	if err != nil {
 		api.RESTHTTPError(w, errors.GetVolume.Combine(err))
 		return
@@ -463,7 +463,7 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newVolConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
+	newVolConfig, err := d.Config.GetVolume(req.Policy, req.Name)
 	if err != nil {
 		api.RESTHTTPError(w, errors.GetVolume.Combine(err))
 		return
@@ -645,7 +645,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		timeout = t
 	}
 
-	vc, err := d.Config.GetVolume(req.Policy, req.Volume)
+	vc, err := d.Config.GetVolume(req.Policy, req.Name)
 	if err != nil {
 		api.RESTHTTPError(w, errors.GetVolume.Combine(err))
 		return
@@ -669,7 +669,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	etcdRemove := func() error {
-		if err := d.Config.RemoveVolume(req.Policy, req.Volume); err != nil {
+		if err := d.Config.RemoveVolume(req.Policy, req.Name); err != nil {
 			return errors.ClearVolume.Combine(errored.New(vc.String())).Combine(err)
 		}
 
@@ -758,14 +758,14 @@ func (d *DaemonConfig) handleRemoveForce(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = d.Config.RemoveVolume(req.Policy, req.Volume)
+	err = d.Config.RemoveVolume(req.Policy, req.Name)
 	if err == errors.NotExists {
 		w.WriteHeader(404)
 		return
 	}
 
 	if err != nil {
-		api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.Errorf("%v/%v", req.Policy, req.Volume)).Combine(err))
+		api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.Errorf("%v/%v", req.Policy, req.Name)).Combine(err))
 		return
 	}
 }
@@ -836,7 +836,7 @@ func (d *DaemonConfig) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenConfig, err := d.Config.GetVolume(req.Policy, req.Volume)
+	tenConfig, err := d.Config.GetVolume(req.Policy, req.Name)
 	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		w.WriteHeader(404)
 		return
@@ -861,9 +861,9 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req config.Request
+	req := &config.VolumeRequest{}
 
-	if err := json.Unmarshal(content, &req); err != nil {
+	if err := json.Unmarshal(content, req); err != nil {
 		api.RESTHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
 	}
@@ -873,7 +873,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Volume == "" {
+	if req.Name == "" {
 		api.RESTHTTPError(w, errors.GetVolume.Combine(errored.Errorf("volume was blank")))
 		return
 	}
@@ -891,13 +891,13 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uc := &config.UseMount{
-		Volume:   strings.Join([]string{req.Policy, req.Volume}, "/"),
+		Volume:   strings.Join([]string{req.Policy, req.Name}, "/"),
 		Reason:   lock.ReasonCreate,
 		Hostname: hostname,
 	}
 
 	snapUC := &config.UseSnapshot{
-		Volume: strings.Join([]string{req.Policy, req.Volume}, "/"),
+		Volume: strings.Join([]string{req.Policy, req.Name}, "/"),
 		Reason: lock.ReasonCreate,
 	}
 

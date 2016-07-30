@@ -428,9 +428,9 @@ func volumeCreate(ctx *cli.Context) (bool, error) {
 		opts[pair[0]] = pair[1]
 	}
 
-	tc := &config.Request{
+	tc := &config.VolumeRequest{
 		Policy:  policy,
-		Volume:  volume,
+		Name:    volume,
 		Options: opts,
 	}
 
@@ -523,9 +523,9 @@ func volumeForceRemove(ctx *cli.Context) (bool, error) {
 		return true, err
 	}
 
-	request := config.Request{
+	request := config.VolumeRequest{
 		Policy: policy,
-		Volume: volume,
+		Name:   volume,
 	}
 
 	content, err := json.Marshal(request)
@@ -574,9 +574,9 @@ func volumeRemove(ctx *cli.Context) (bool, error) {
 		return false, errored.Errorf("%v is not a valid timeout", ctx.String("timeout"))
 	}
 
-	request := config.Request{
+	request := config.VolumeRequest{
 		Policy: policy,
-		Volume: volume,
+		Name:   volume,
 		Options: map[string]string{
 			"timeout": timeout,
 			"force":   fmt.Sprintf("%v", ctx.Bool("force")),
@@ -699,8 +699,8 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 	snapName := ctx.Args()[1]
 	volume2 := ctx.Args()[2]
 
-	req := &config.Request{
-		Volume: volume1,
+	req := &config.VolumeRequest{
+		Name:   volume1,
 		Policy: policy,
 		Options: map[string]string{
 			"target":   volume2,

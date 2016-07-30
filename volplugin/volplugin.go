@@ -1,27 +1,20 @@
 package volplugin
 
 import (
-	"bytes"
-	"io"
 	"net"
 	"net/http"
 	"os"
 	"path"
-	"strings"
-	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
-	"github.com/contiv/volplugin/api/docker"
-	"github.com/contiv/volplugin/api/internals/mount"
+	"github.com/contiv/volplugin/api/impl/docker"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
-	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/watch"
-	"github.com/gorilla/mux"
 	"github.com/jbeda/go-wait"
 )
 
@@ -30,15 +23,10 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Host   string
-	Lock   *lock.Driver
-	Global *config.Global
-	Client *config.Client
-
-	lockStopChanMutex sync.Mutex
-	lockStopChans     map[string]chan struct{}
-	mountCounter      *mount.Counter
-	mountCollection   *mount.Collection
+	Hostname string
+	Global   *config.Global
+	Client   *config.Client
+	API      *api.API
 }
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
@@ -53,16 +41,9 @@ retry:
 		goto retry
 	}
 
-	driver := lock.NewDriver(client)
-
 	return &DaemonConfig{
-		Host:   ctx.String("host-label"),
-		Client: client,
-		Lock:   driver,
-
-		lockStopChans:   map[string]chan struct{}{},
-		mountCollection: mount.NewCollection(),
-		mountCounter:    mount.NewCounter(),
+		Hostname: ctx.String("host-label"),
+		Client:   client,
 	}
 }
 
@@ -100,6 +81,8 @@ func (dc *DaemonConfig) Daemon() error {
 		}
 	}()
 
+	dc.API = api.NewAPI(docker.NewVolplugin(), dc.Hostname, dc.Client, &dc.Global)
+
 	if err := dc.updateMounts(); err != nil {
 		return err
 	}
@@ -119,60 +102,11 @@ func (dc *DaemonConfig) Daemon() error {
 		return err
 	}
 
-	srv := http.Server{Handler: dc.configureRouter()}
+	srv := http.Server{Handler: dc.API.Router(dc.API)}
 	srv.SetKeepAlivesEnabled(false)
 	if err := srv.Serve(l); err != nil {
 		log.Fatalf("Fatal error serving volplugin: %v", err)
 	}
 	l.Close()
 	return os.Remove(driverPath)
-}
-
-func (dc *DaemonConfig) configureRouter() *mux.Router {
-	apiObj := api.NewAPI(dc.Client, &dc.Global, true)
-
-	var routeMap = map[string]func(http.ResponseWriter, *http.Request){
-		"/Plugin.Activate":           docker.Activate,
-		"/Plugin.Deactivate":         docker.Deactivate,
-		"/VolumeDriver.Create":       apiObj.Create,
-		"/VolumeDriver.Remove":       dc.getPath, // we never actually remove through docker's interface.
-		"/VolumeDriver.List":         dc.list,
-		"/VolumeDriver.Get":          dc.get,
-		"/VolumeDriver.Path":         dc.getPath,
-		"/VolumeDriver.Mount":        dc.mount,
-		"/VolumeDriver.Unmount":      dc.unmount,
-		"/VolumeDriver.Capabilities": docker.Capabilities,
-	}
-
-	router := mux.NewRouter()
-	s := router.Methods("POST").Subrouter()
-
-	for key, value := range routeMap {
-		parts := strings.SplitN(key, ".", 2)
-		s.HandleFunc(key, logHandler(parts[1], dc.Global.Debug, value))
-	}
-
-	if dc.Global.Debug {
-		s.HandleFunc("{action:.*}", api.Action)
-	}
-
-	return router
-}
-
-func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if debug {
-			buf := new(bytes.Buffer)
-			io.Copy(buf, r.Body)
-			log.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
-			var writer *io.PipeWriter
-			r.Body, writer = io.Pipe()
-			go func() {
-				io.Copy(writer, buf)
-				writer.Close()
-			}()
-		}
-
-		actionFunc(w, r)
-	}
 }

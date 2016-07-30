@@ -19,7 +19,7 @@ func (s *systemtestSuite) TestBatteryMultiMountSameHost(c *C) {
 	s.BatteryMultiMountSameHost(c, "false") //locked mount
 }
 func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
-	totalIterations := 5
+	totalIterations := batteryIterations
 	threadCount := 15
 	totalMounts := 5
 
@@ -115,7 +115,7 @@ repeat:
 	}
 
 	nodes := s.vagrant.GetNodes()
-	outerCount := 5
+	outerCount := batteryIterations
 	count := 15
 
 	for outer := 0; outer < outerCount; outer++ {
@@ -195,7 +195,7 @@ repeat:
 func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 	nodes := s.vagrant.GetNodes()
 	count := 15
-	outcount := 5
+	outcount := batteryIterations
 	outwg := sync.WaitGroup{}
 
 	for outer := 0; outer < outcount; outer++ {

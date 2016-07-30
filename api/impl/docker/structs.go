@@ -1,4 +1,4 @@
-package api
+package docker
 
 // VolumeCreateRequest is taken from struct Request in https://github.com/calavera/docker-volume-api/blob/master/api.go#L27
 type VolumeCreateRequest struct {
@@ -6,13 +6,13 @@ type VolumeCreateRequest struct {
 	Opts map[string]string
 }
 
-// VolumeCreateResponse is taken from struct Response in https://github.com/calavera/docker-volume-api/blob/master/api.go#L33
-type VolumeCreateResponse struct {
+// Response is taken from struct Response in https://github.com/calavera/docker-volume-api/blob/master/api.go#L33
+type Response struct {
 	Mountpoint string
 	Err        string
 }
 
-// Volume represents the contiv 'Volume' entity used in get and list
+// Volume represents the docker 'Volume' entity used in get and list
 type Volume struct {
 	Name       string
 	Mountpoint string
