@@ -1,0 +1,8 @@
+[Unit]
+Description=volplugin
+After=auditd.service systemd-user-sessions.service time-sync.target docker.service
+
+[Service]
+ExecStart=/usr/bin/volplugin.sh start
+ExecStop=/usr/bin/volplugin.sh stop
+KillMode=control-group

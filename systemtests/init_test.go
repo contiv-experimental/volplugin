@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	. "testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -60,6 +61,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	for i := 0; i < nodelen; i++ {
 		<-sync
 	}
+	time.Sleep(time.Second)
 
 	for _, service := range startServices {
 		for _, node := range s.vagrant.GetNodes() {
@@ -74,6 +76,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	for i := 0; i < nodelen; i++ {
 		<-sync
 	}
+	time.Sleep(time.Second)
 
 	if nfsDriver() {
 		log.Info("NFS Driver detected: configuring exports.")

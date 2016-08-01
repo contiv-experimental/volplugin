@@ -1,0 +1,5 @@
+FROM docker
+
+ADD build/scripts/bootstrap-volplugin.sh /bootstrap.sh
+RUN chmod +x /bootstrap.sh
+ENTRYPOINT [ "/bin/sh", "/bootstrap.sh"  ]
