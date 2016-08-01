@@ -27,7 +27,7 @@ var (
 		"title": "Policy config validation",
 		"type": "object",
 		"properties": {
-			"name": {"type": "string", "minLength": 1},
+			"name": {"type": "string", "minLength": 1, "pattern": "^[^./]+$" },
 			"backends": {
 				"type": "object",
 				"properties": {
@@ -37,12 +37,7 @@ var (
 				},
 				"required": [ "mount" ]
 			}, 
-			"backend": { "enum": [ "ceph", "nfs" ] },
-			"rate-limit": {
-				"type": "object",
-				"write-bps": { "type": "number", "minimum": 1},
-				"read-bps": { "type": "number", "minimum": 1}
-			}
+			"backend": { "enum": [ "ceph", "nfs" ] }
 		},
 		"anyOf": [
 			{ "required": [ "backend" ] },
@@ -56,8 +51,8 @@ var (
 		"title": "Volume config validation",
 		"type": "object",
 		"properties": {
-			"name": { "type": "string", "minLength": 1 },
-			"policy": { "type": "string", "minLength": 1 },
+			"name": { "type": "string", "minLength": 1, "pattern": "^[^./]+$" },
+			"policy": { "type": "string", "minLength": 1, "pattern": "^[^./]+$" },
 			"backends": {
 				"type": "object",
 				"properties": {
