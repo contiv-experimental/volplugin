@@ -146,11 +146,12 @@ func (cfg *Policy) Validate() error {
 	}
 
 	if cfg.Backends == nil { // backend should be defined and its validated
-		if backends, ok := defaultDrivers[cfg.Backend]; !ok {
+		backends, ok := defaultDrivers[cfg.Backend]
+
+		if !ok {
 			return errored.Errorf("Invalid backend: %v", cfg.Backend)
-		} else {
-			cfg.Backends = backends
 		}
+		cfg.Backends = backends
 	}
 
 	size, err := cfg.CreateOptions.ActualSize()

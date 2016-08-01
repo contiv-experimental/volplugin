@@ -48,36 +48,8 @@ provision:
 ssh:
 	vagrant ssh mon0
 
-ineffassign-host:
-	[ -n "`which ineffassign`" ] || go get github.com/gordonklaus/ineffassign
-	set -e; for i in $$(find . -mindepth 1 -maxdepth 1 -type d | grep -vE '^\./\.|^\./vendor'); do ineffassign $$i; done
-
-ineffassign:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make ineffassign-host'"
-
-gofmt-host:
-	@build/scripts/gofmt.sh
-
-gofmt:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make gofmt-host'"
-
-gocyclo-host:
-	[ -n "`which gocyclo`" ] || go get github.com/kzipp/gocyclo
-	find . -name '*.go' -type f | grep -vE '^\./vendor' | xargs gocyclo -over 15
-
-golint-host:
-	[ -n "`which golint`" ] || go get github.com/golang/lint/golint
-	set -e; for i in $$(go list ./... | grep -v vendor); do golint $$i; done
-
-golint:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make golint-host'"
-
-# -composites=false is required to work around bug https://github.com/golang/go/issues/11394
-govet-host:
-	go tool vet -composites=false `find . -name '*.go' | grep -v vendor`
-
-govet:
-	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); http_proxy=${http_proxy} https_proxy=${https_proxy} make govet-host'"
+checks:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); ./build/scripts/checks.sh'"
 
 check-ansible:
 	@build/scripts/check-ansible.sh
@@ -90,16 +62,16 @@ test: unit-test system-test
 unit-test:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-host"'
 
-unit-test-host: golint-host govet-host
+unit-test-host:
 	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -check.f "${TESTRUN}"
 
 unit-test-nocoverage:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-nocoverage-host"'
 
-unit-test-nocoverage-host: golint-host govet-host
+unit-test-nocoverage-host:
 	HOST_TEST=1 GOGC=1000 go test -v ./... -check.v -check.f "${TESTRUN}"
 
-build: golint govet gofmt ineffassign
+build: checks
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
 	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill apiserver; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
