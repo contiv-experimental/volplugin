@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	. "testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -48,6 +49,7 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	if err != nil {
 		iter = defaultIterations
 	}
+	time.Sleep(time.Second)
 
 	batteryIterations = int(iter)
 

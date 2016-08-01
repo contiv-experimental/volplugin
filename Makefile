@@ -30,7 +30,7 @@ clean:
 
 clean-vms:
 	@echo DO NOT USE THIS COMMAND UNLESS YOU ABSOLUTELY HAVE TO. PRESS CTRL-C NOW.
-	@sleep 20
+	#@sleep 20
 	for i in $$(vboxmanage list vms | grep volplugin | awk '{ print $$2 }'); do vboxmanage controlvm "$$i" poweroff; vboxmanage unregistervm "$$i"; done
 	make clean
 
@@ -81,13 +81,38 @@ docker: run-build
 docker-push: docker
 	docker push contiv/volplugin
 
+clean-volplugin-containers:
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'docker ps | grep "volplugin" | cut -d " " -f 1 | xargs docker rm -fv'; done
+
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-apiserver'; done
-	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && make run-volplugin-cont run-apiserver-cont'; done
+	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor-cont'
+	sleep 10
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 
 run-etcd:
 	sudo systemctl start etcd
+
+create-systemd-services:
+	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.sh' /usr/bin/
+	sudo systemctl daemon-reload
+
+run-volplugin-cont: run-etcd create-systemd-services
+	sudo systemctl stop volplugin
+	sudo systemctl start volplugin
+
+run-volsupervisor-cont:
+	sudo systemctl stop volsupervisor
+	sudo systemctl start volsupervisor
+
+run-apiserver-cont:
+	sudo systemctl stop apiserver
+	sudo systemctl start apiserver
 
 run-volplugin: run-etcd
 	sudo pkill volplugin || exit 0
@@ -101,11 +126,11 @@ run-apiserver:
 	sudo pkill apiserver || exit 0
 	sudo -E nohup bash -c '$(GUESTBINPATH)/apiserver &>/tmp/apiserver.log &'
 
-run-build: 
+run-build:
 	GOGC=1000 go install -v \
 		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
 		 ./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/
-	cp /opt/golang/bin/* /tmp/bin
+	cp $(GUESTBINPATH)/* bin/
 
 system-test: system-test-ceph system-test-nfs
 
