@@ -179,6 +179,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = BOX
   config.vm.box_version = BOX_VERSION
 
+  config.ssh.insert_key = false
+
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
   config.vm.synced_folder "bin", "/tmp/bin"
