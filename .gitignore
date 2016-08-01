@@ -17,3 +17,4 @@ docs/docs
 *.swp
 cscope.*
 subnet_assignment.state
+tags
