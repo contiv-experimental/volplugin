@@ -51,6 +51,9 @@ ssh:
 checks:
 	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); ./build/scripts/checks.sh'"
 
+vendor-check:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); ./build/scripts/validate-godep.sh'"
+
 check-ansible:
 	@build/scripts/check-ansible.sh
 
