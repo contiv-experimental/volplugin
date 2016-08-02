@@ -84,7 +84,7 @@ func (c *Client) PublishVolumeRuntime(vo *Volume, ro RuntimeOptions) error {
 
 // CreateVolume sets the appropriate config metadata for a volume creation
 // operation, and returns the Volume that was copied in.
-func (c *Client) CreateVolume(rc Request) (*Volume, error) {
+func (c *Client) CreateVolume(rc *VolumeRequest) (*Volume, error) {
 	resp, err := c.GetPolicy(rc.Policy)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (c *Client) CreateVolume(rc Request) (*Volume, error) {
 		RuntimeOptions: resp.RuntimeOptions,
 		Unlocked:       resp.Unlocked,
 		PolicyName:     rc.Policy,
-		VolumeName:     rc.Volume,
+		VolumeName:     rc.Name,
 		MountSource:    mount,
 	}
 
@@ -304,7 +304,7 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 					volName := strings.TrimPrefix(path.Dir(vw.Key), c.prefixed(rootVolume)+"/")
 
 					policy, vol := path.Split(volName)
-					vw.Key = path.Join(policy, vol)
+					vw.Key = volName
 					volume, err := c.GetVolume(policy, vol)
 					if err != nil {
 						log.Errorf("Could not retrieve volume %q after watch notification: %v", volName, err)
@@ -393,12 +393,12 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 			Name:   cfg.String(),
 			Size:   actualSize,
 			Params: cfg.DriverOptions,
-			Source: cfg.MountSource,
 		},
 		FSOptions: storage.FSOptions{
 			Type: cfg.CreateOptions.FileSystem,
 		},
 		Timeout: timeout,
+		Source:  cfg.MountSource,
 	}, nil
 }
 

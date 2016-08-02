@@ -216,12 +216,6 @@ func (d *Driver) Unmount(do storage.DriverOptions) error {
 	return nil
 }
 
-// Mounted shows any volumes that belong to volplugin on the host, in
-// their native representation. They yield a *Mount.
-func (d *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
-	return []*storage.Mount{}, nil
-}
-
 // internalName translates a volplugin `tenant/volume` name to an internal
 // name suitable for the driver. Yields an error if impossible.
 func (d *Driver) internalName(volName string) (string, error) {
@@ -235,7 +229,7 @@ func (d *Driver) internalName(volName string) (string, error) {
 
 // MountPath describes the path at which the volume should be mounted.
 func (d *Driver) MountPath(do storage.DriverOptions) (string, error) {
-	return path.Join(d.mountpath, "nfs", do.Volume.Name), nil
+	return path.Join(d.mountpath, do.Volume.Name), nil
 }
 
 // Validate validates the NFS drivers implementation of handling storage.DriverOptions.

@@ -21,7 +21,7 @@ type Mount struct {
 	Path     string
 	DevMajor uint
 	DevMinor uint
-	Volume
+	Volume   Volume
 }
 
 // FSOptions encapsulates the parameters to create and manipulate filesystems.
@@ -33,23 +33,23 @@ type FSOptions struct {
 // DriverOptions are options frequently passed as the keystone for operations.
 // See Driver for more information.
 type DriverOptions struct {
-	Volume
-	FSOptions
-	Timeout time.Duration
-	Options map[string]string
+	Source    string
+	Volume    Volume
+	FSOptions FSOptions
+	Timeout   time.Duration
+	Options   map[string]string
 }
 
 // ListOptions is a set of parameters used for the List operation of Driver.
 type ListOptions struct {
-	Params
+	Params Params
 }
 
 // Volume is the basic representation of a volume name and its parameters.
 type Volume struct {
 	Name   string
 	Size   uint64
-	Source string
-	Params
+	Params Params
 }
 
 // NamedDriver is a named driver and has a method called Name()

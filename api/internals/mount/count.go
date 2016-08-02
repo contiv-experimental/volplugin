@@ -32,12 +32,24 @@ func (c *Counter) Get(mp string) int {
 	return c.count[mp]
 }
 
-// Add adds to the mount counter for a volume name and returns the new value.
+// Add increments the mount counter for a volume name and returns the new
+// value.
 func (c *Counter) Add(mp string) int {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	c.count[mp]++
+	log.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
+	return c.count[mp]
+}
+
+// AddCount adds n to the mount counter for a volume name and returns the new
+// value.
+func (c *Counter) AddCount(mp string, n int) int {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.count[mp] += n
 	log.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
 	return c.count[mp]
 }

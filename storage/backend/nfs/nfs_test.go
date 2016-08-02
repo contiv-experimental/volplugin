@@ -72,7 +72,7 @@ func mkPath(name string) string {
 }
 
 func mkTargetPath(name string) string {
-	return path.Join(mountPath, "nfs", name)
+	return path.Join(mountPath, name)
 }
 
 func nfsMount(name string) string {
@@ -113,11 +113,13 @@ func (s *nfsSuite) TestRepeatedMountSingleMountPoint(c *C) {
 		c.Assert(err, IsNil)
 
 		vol := storage.Volume{
-			Name:   "test1/basic",
-			Source: nfsMount("basic"),
+			Name: "test1/basic",
 		}
 
-		do := storage.DriverOptions{Volume: vol}
+		do := storage.DriverOptions{
+			Source: nfsMount("basic"),
+			Volume: vol,
+		}
 
 		m, err := d.Mount(do)
 		c.Assert(err, IsNil)
@@ -197,9 +199,9 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 
 	for _, source := range invalidSources {
 		do := storage.DriverOptions{
+			Source: source,
 			Volume: storage.Volume{
-				Source: source,
-				Name:   "foo/bar",
+				Name: "foo/bar",
 				Params: storage.Params{
 					"options": "test=1",
 				},
@@ -213,9 +215,9 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 
 	for _, options := range invalidOptions {
 		do := storage.DriverOptions{
+			Source: "localhost:/mnt",
 			Volume: storage.Volume{
-				Source: "localhost:/mnt",
-				Name:   "foo/bar",
+				Name: "foo/bar",
 				Params: storage.Params{
 					"options": options,
 				},
@@ -228,9 +230,9 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 	}
 
 	do := storage.DriverOptions{
+		Source: "localhost:/mnt",
 		Volume: storage.Volume{
-			Source: "localhost:/mnt",
-			Name:   "foo/bar",
+			Name: "foo/bar",
 			Params: storage.Params{
 				"options": "rw,sync,test=1",
 			},
