@@ -4,87 +4,19 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"golang.org/x/sys/unix"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
+	"github.com/contiv/volplugin/api/docker"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-	"github.com/docker/docker/pkg/plugins"
 )
-
-type unmarshalledConfig struct {
-	Request api.VolumeCreateRequest
-	Name    string
-	Policy  string
-}
-
-func (dc *DaemonConfig) nilAction(w http.ResponseWriter, r *http.Request) {
-	content, err := json.Marshal(api.VolumeCreateResponse{})
-	if err != nil {
-		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
-		return
-	}
-	w.Write(content)
-}
-
-func (dc *DaemonConfig) activate(w http.ResponseWriter, r *http.Request) {
-	content, err := json.Marshal(plugins.Manifest{Implements: []string{"VolumeDriver"}})
-	if err != nil {
-		api.DockerHTTPError(w, errors.MarshalResponse.Combine(err))
-		return
-	}
-
-	w.Write(content)
-}
-
-func (dc *DaemonConfig) deactivate(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(200)
-}
-
-func unmarshalAndCheck(w http.ResponseWriter, r *http.Request) (*unmarshalledConfig, error) {
-	defer r.Body.Close()
-	vr, err := unmarshalRequest(r.Body)
-	if err != nil {
-		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
-		return nil, err
-	}
-
-	if vr.Name == "" {
-		api.DockerHTTPError(w, errors.InvalidVolume.Combine(errored.New("Name is empty")))
-		return nil, err
-	}
-
-	policy, name, err := splitPath(vr.Name)
-	if err != nil {
-		api.DockerHTTPError(w, errors.ConfiguringVolume.Combine(err))
-		return nil, err
-	}
-
-	uc := unmarshalledConfig{
-		Request: vr,
-		Name:    name,
-		Policy:  policy,
-	}
-
-	return &uc, nil
-}
-
-func writeResponse(w http.ResponseWriter, vr *api.VolumeCreateResponse) {
-	content, err := json.Marshal(*vr)
-	if err != nil {
-		api.DockerHTTPError(w, errors.MarshalResponse.Combine(err))
-		return
-	}
-
-	w.Write(content)
-}
 
 func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -102,13 +34,13 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parts := strings.SplitN(vg.Name, "/", 2)
-
-	if len(parts) < 2 {
-		api.DockerHTTPError(w, errors.GetVolume.Combine(errored.Errorf("Could not parse volume %q", vg.Name)))
+	policy, name, err := storage.SplitName(vg.Name)
+	if err != nil {
+		api.DockerHTTPError(w, errors.GetVolume.Combine(err))
+		return
 	}
 
-	volConfig, err := dc.Client.GetVolume(parts[0], parts[1])
+	volConfig, err := dc.Client.GetVolume(policy, name)
 	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
 		w.Write([]byte("{}"))
 		return
@@ -134,7 +66,7 @@ func (dc *DaemonConfig) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	do, err := dc.volumeToDriverOptions(volConfig)
+	do, err := volConfig.ToDriverOptions(dc.Global.Timeout)
 	if err != nil {
 		api.DockerHTTPError(w, errors.MarshalVolume.Combine(err))
 		return
@@ -166,12 +98,12 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 	response := api.VolumeList{Volumes: []api.Volume{}}
 
 	for _, volume := range volList {
-		parts := strings.SplitN(volume, "/", 2)
-		if len(parts) != 2 {
-			log.Errorf("")
+		policy, name, err := storage.SplitName(volume)
+		if err != nil {
+			log.Errorf("Invalid volume %q detected iterating volumes %v", volume, err)
 			continue
 		}
-		if volObj, err := dc.Client.GetVolume(parts[0], parts[1]); err != nil {
+		if volObj, err := dc.Client.GetVolume(policy, name); err != nil {
 		} else {
 			volumes = append(volumes, volObj)
 		}
@@ -184,7 +116,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		do, err := dc.volumeToDriverOptions(volConfig)
+		do, err := volConfig.ToDriverOptions(dc.Global.Timeout)
 		if err != nil {
 			api.DockerHTTPError(w, errors.MarshalVolume.Combine(err))
 			return
@@ -209,7 +141,7 @@ func (dc *DaemonConfig) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
-	uc, err := unmarshalAndCheck(w, r)
+	uc, err := docker.Unmarshal(r)
 	if err != nil {
 		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
@@ -231,7 +163,7 @@ func (dc *DaemonConfig) getPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
+	docker.WriteResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.MountDriver, driverOpts storage.DriverOptions) {
@@ -241,11 +173,11 @@ func (dc *DaemonConfig) returnMountPath(w http.ResponseWriter, driver storage.Mo
 		return
 	}
 
-	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
+	docker.WriteResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
-	uc, err := unmarshalAndCheck(w, r)
+	uc, err := docker.Unmarshal(r)
 	if err != nil {
 		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
@@ -263,16 +195,16 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	// XXX docker issues unmount request after every mount failure so, this evens out
 	//     decreaseMount() in unmount
-	if dc.increaseMount(volName) > 1 {
+	if dc.mountCounter.Add(volName) > 1 {
 		if !volConfig.Unlocked {
 			log.Warnf("Duplicate mount of %q detected: Lock failed", volName)
 			api.DockerHTTPError(w, errors.LockFailed.Combine(err))
 			return
-		} else {
-			log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
-			dc.returnMountPath(w, driver, driverOpts)
-			return
 		}
+
+		log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
+		dc.returnMountPath(w, driver, driverOpts)
+		return
 	}
 
 	ut := &config.UseMount{
@@ -298,13 +230,13 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
-		dc.decreaseMount(volName)
+		dc.mountCounter.Sub(volName)
 		api.DockerHTTPError(w, errors.MountFailed.Combine(err))
 		return
 	}
 
 	if err := applyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
-		if dc.decreaseMount(volName) == 0 {
+		if dc.mountCounter.Sub(volName) == 0 {
 			if err := driver.Unmount(driverOpts); err != nil {
 				log.Errorf("Could not unmount device for volume %q: %v", volName, err)
 			}
@@ -314,27 +246,27 @@ func (dc *DaemonConfig) mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dc.addMount(mc)
+	dc.mountCollection.Add(mc)
 	dc.addStopChan(volName, stopChan)
 
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
-		if dc.decreaseMount(volName) == 0 {
+		if dc.mountCounter.Sub(volName) == 0 {
 			if err := driver.Unmount(driverOpts); err != nil {
 				log.Errorf("Could not unmount device for volume %q: %v", volName, err)
 			}
 		}
 		dc.removeStopChan(volName)
-		dc.removeMount(volName)
+		dc.mountCollection.Remove(volName)
 		api.DockerHTTPError(w, errors.MountPath.Combine(err))
 		return
 	}
 
-	writeResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
+	docker.WriteResponse(w, &api.VolumeCreateResponse{Mountpoint: path})
 }
 
 func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
-	uc, err := unmarshalAndCheck(w, r)
+	uc, err := docker.Unmarshal(r)
 	if err != nil {
 		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
 		return
@@ -350,7 +282,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 
 	volName := volConfig.String()
 
-	if dc.decreaseMount(volName) > 0 {
+	if dc.mountCounter.Sub(volName) > 0 {
 		log.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
 		dc.returnMountPath(w, driver, driverOpts)
 		return
@@ -362,7 +294,7 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dc.removeStopChan(volName)
-	dc.removeMount(volName)
+	dc.mountCollection.Remove(volName)
 
 	ut := &config.UseMount{
 		Volume:   volName,
@@ -382,28 +314,4 @@ func (dc *DaemonConfig) unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dc.returnMountPath(w, driver, driverOpts)
-}
-
-func (dc *DaemonConfig) capabilities(w http.ResponseWriter, r *http.Request) {
-	content, err := json.Marshal(map[string]map[string]string{
-		"Capabilities": {
-			"Scope": "global",
-		},
-	})
-
-	if err != nil {
-		api.DockerHTTPError(w, errors.UnmarshalRequest.Combine(err))
-		return
-	}
-
-	w.Write(content)
-}
-
-// Catchall for additional driver functions.
-func (dc *DaemonConfig) action(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	log.Debugf("Unknown driver action at %q", r.URL.Path)
-	content, _ := ioutil.ReadAll(r.Body)
-	log.Debug("Body content:", string(content))
-	w.WriteHeader(503)
 }

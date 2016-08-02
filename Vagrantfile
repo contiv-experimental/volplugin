@@ -151,6 +151,7 @@ ansible_provision = proc do |ansible|
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdd' ]",
     service_vip: "#{SUBNET}.50",
+    consul_leader: "#{SUBNET}.10",
     journal_collocation: 'true',
     validate_certs: 'no',
     install_gluster: 'true',
@@ -177,6 +178,8 @@ end
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = BOX
   config.vm.box_version = BOX_VERSION
+
+  config.ssh.insert_key = false
 
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
@@ -276,6 +279,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
         vb.customize ['modifyvm', :id, '--paravirtprovider', "kvm"]
+
+        override.vm.provision 'shell' do |s|
+          s.inline = <<-EOF
+          ethtool -K enp0s3 gro off
+          ethtool -K enp0s8 gro off
+          EOF
+          s.args = []
+        end
 
         override.vm.provision "shell" do |s|
           s.inline = shell_provision

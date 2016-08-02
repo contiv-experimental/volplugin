@@ -42,6 +42,21 @@ func (s *volcliSuite) TestErrorReturns(c *C) {
 			args: []string{"foo"},
 			err:  errorInvalidArgCount(1, 0, []string{"foo"}),
 		},
+		"policyHistoryGet": {
+			f:    policyGetRevision,
+			args: []string{},
+			err:  errorInvalidArgCount(0, 2, []string{}),
+		},
+		"policyHistoryList": {
+			f:    policyListRevisions,
+			args: []string{},
+			err:  errorInvalidArgCount(0, 1, []string{}),
+		},
+		"policyWatch": {
+			f:    policyWatch,
+			args: []string{"foo"},
+			err:  errorInvalidArgCount(1, 0, []string{"foo"}),
+		},
 		"volumeCreate": {
 			f:    volumeCreate,
 			args: []string{},

@@ -1,0 +1,9 @@
+{
+	"backend": "ceph",
+	"create": {
+		"size": "10MB"
+	},
+	"driver": {
+		"pool": "rbd"
+	}
+}

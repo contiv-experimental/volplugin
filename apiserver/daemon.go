@@ -106,16 +106,18 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
-		"/global":                           d.handleGlobal,
-		"/policies":                         d.handlePolicyList,
-		"/policies/{policy}":                d.handlePolicy,
-		"/uses/mounts/{policy}/{volume}":    d.handleUsesMountsVolume,
-		"/uses/snapshots/{policy}/{volume}": d.handleUsesMountsSnapshots,
-		"/volumes":                          d.handleListAll,
-		"/volumes/{policy}":                 d.handleList,
-		"/volumes/{policy}/{volume}":        d.handleGet,
-		"/runtime/{policy}/{volume}":        d.handleRuntime,
-		"/snapshots/{policy}/{volume}":      d.handleSnapshotList,
+		"/global":                              d.handleGlobal,
+		"/policy-archives/{policy}":            d.handlePolicyListRevisions,
+		"/policy-archives/{policy}/{revision}": d.handlePolicyGetRevision,
+		"/policies":                            d.handlePolicyList,
+		"/policies/{policy}":                   d.handlePolicy,
+		"/uses/mounts/{policy}/{volume}":       d.handleUsesMountsVolume,
+		"/uses/snapshots/{policy}/{volume}":    d.handleUsesMountsSnapshots,
+		"/volumes":                             d.handleListAll,
+		"/volumes/{policy}":                    d.handleList,
+		"/volumes/{policy}/{volume}":           d.handleGet,
+		"/runtime/{policy}/{volume}":           d.handleRuntime,
+		"/snapshots/{policy}/{volume}":         d.handleSnapshotList,
 	}
 
 	if err := addRoute(r, getRouter, "GET", d.Global.Debug); err != nil {
@@ -217,6 +219,39 @@ func (d *DaemonConfig) handlePolicyDelete(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (d *DaemonConfig) handlePolicyListRevisions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+
+	revisions, err := d.Config.ListPolicyRevisions(policy)
+	if err != nil {
+		api.RESTHTTPError(w, errors.ListPolicyRevision.Combine(err))
+		return
+	}
+
+	content, err := json.Marshal(revisions)
+	if err != nil {
+		api.RESTHTTPError(w, errors.ListPolicyRevision.Combine(err))
+		return
+	}
+
+	w.Write(content)
+}
+
+func (d *DaemonConfig) handlePolicyGetRevision(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+	revision := vars["revision"]
+
+	policyText, err := d.Config.GetPolicyRevision(policy, revision)
+	if err != nil {
+		api.RESTHTTPError(w, errors.GetPolicyRevision.Combine(err))
+		return
+	}
+
+	w.Write([]byte(policyText))
+}
+
 func (d *DaemonConfig) handlePolicyList(w http.ResponseWriter, r *http.Request) {
 	policies, err := d.Config.ListPolicies()
 	if err != nil {
@@ -232,6 +267,7 @@ func (d *DaemonConfig) handlePolicyList(w http.ResponseWriter, r *http.Request) 
 
 	w.Write(content)
 }
+
 func (d *DaemonConfig) handlePolicy(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	policy := vars["policy"]

@@ -28,37 +28,44 @@ ansible_extra_vars = {
 puts "Host environment: #{host_env}"
 
 Vagrant.configure(2) do |config|
-    node_name = "host0"
-    config.vm.define node_name do |node|
-        node.vm.hostname = node_name
-        node.vm.box = "puppetlabs/centos-7.2-64-nocm"
-        node.vm.box_version = "1.0.1"
-        node.vm.provision "shell" do |s|
-            #XXX: seems like the centos box has a broken packer binary which
-            #get's stuck on issuing 'packer --version' removing it manually here
-            s.inline = "rm -f /usr/sbin/packer"
-        end
+    (0..2).each do |n|
+        node_name = "host#{n}"
+        config.vm.define node_name do |node|
+            case n
+            when 0
+                node.vm.box = "puppetlabs/centos-7.2-64-nocm"
+                node.vm.box_version = "1.0.1"
+            when 1
+                node.vm.box = "boxcutter/ubuntu1604"
+                node.vm.box_version = "2.0.18"
+            when 2
+                node.vm.box = "boxcutter/ubuntu1510"
+                node.vm.box_version = "2.0.18"
+            end
 
-        # set the vm's ram and cpu big enough for docker to run fine
-        node.vm.provider "virtualbox" do |vb|
-            vb.customize ['modifyvm', :id, '--memory', "4096"]
-            vb.customize ["modifyvm", :id, "--cpus", "2"]
-            vb.customize ['modifyvm', :id, '--paravirtprovider', 'kvm']
-            vb.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
-            vb.customize ['modifyvm', :id, '--natdnsproxy1', 'on']
-            vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
-        end
+            node.vm.provider "virtualbox" do |vb|
+                vb.customize ['modifyvm', :id, '--memory', "4096"]
+                vb.customize ["modifyvm", :id, "--cpus", "2"]
+                vb.customize ['modifyvm', :id, '--paravirtprovider', 'kvm']
+                vb.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
+                vb.customize ['modifyvm', :id, '--natdnsproxy1', 'on']
+                vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+            end
 
-        if ansible_groups["devtest"] == nil then
-            ansible_groups["devtest"] = [ ]
-        end
-        ansible_groups["devtest"] << node_name
-        node.vm.provision 'ansible' do |ansible|
-            ansible.groups = ansible_groups
-            ansible.playbook = ansible_playbook
-            ansible.extra_vars = ansible_extra_vars
-            ansible.limit = 'all'
-            ansible.tags = ansible_tags
+            if ansible_groups["devtest"] == nil then
+                ansible_groups["devtest"] = [ ]
+            end
+            ansible_groups["devtest"] << node_name
+            # Run the provisioner after all machines are up
+            if n == 2 then
+                node.vm.provision 'ansible' do |ansible|
+                    ansible.groups = ansible_groups
+                    ansible.playbook = ansible_playbook
+                    ansible.extra_vars = ansible_extra_vars
+                    ansible.limit = 'all'
+                    ansible.tags = ansible_tags
+                end
+            end
         end
     end
 end

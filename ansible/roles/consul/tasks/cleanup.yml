@@ -1,0 +1,29 @@
+---
+
+- name: stop consul
+  service: name=consul state=stopped
+
+- name: disable consul
+  service: name=consul state=disabled
+
+- name: remove systemd unit
+  file:
+    state: absent
+    src: /etc/systemd/system/consul.service
+
+- name: cleanup iptables (udp)
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "consul udp ({{ item }})"
+  become: true
+  with_items:
+    - 8300
+    - 8301
+    - 8500
+
+- name: cleanup iptables (tcp)
+  shell: iptables -D INPUT -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "consul tcp ({{ item }})"
+  become: true
+  with_items:
+    - 8400
+    - 8300
+    - 8301
+    - 8500

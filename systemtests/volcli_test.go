@@ -11,6 +11,32 @@ import (
 	"github.com/contiv/volplugin/lock"
 )
 
+func (s *systemtestSuite) TestVolumeCreationWithBackendAttribute(c *C) {
+	policyName := "backend"
+	volName := genRandomVolume()
+	fqVolName := fqVolume(policyName, volName)
+
+	_, err := s.uploadIntent(policyName, policyName) // singleton "ceph" >> "ceph", "ceph", "ceph"
+	c.Assert(err, IsNil)
+
+	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil) // docker volume create -d volplugin --name <fqVolName>, with/without mount option
+
+	if cephDriver() {
+		out, err := s.mon0cmd("sudo rbd ls")
+		c.Assert(err, IsNil)
+		c.Assert(strings.TrimSpace(out), Equals, policyName+"."+volName)
+
+		c.Assert(s.purgeVolume("mon0", fqVolName), IsNil)
+
+		_, err = s.mon0cmd("mount | grep -q rbd")
+		c.Assert(err, NotNil)
+	} else if nfsDriver() {
+		c.Assert(s.purgeVolume("mon0", fqVolName), IsNil)
+	} else {
+		return // No action as of now
+	}
+}
+
 func (s *systemtestSuite) TestVolCLIEmptyGlobal(c *C) {
 	c.Assert(s.uploadGlobal("global-empty"), IsNil)
 

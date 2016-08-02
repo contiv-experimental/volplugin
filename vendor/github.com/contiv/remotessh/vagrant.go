@@ -211,13 +211,13 @@ func (v *Vagrant) setup(start bool, env []string, numNodes int) error {
 // Setup initializes a vagrant testbed.
 func (v *Vagrant) Setup(args ...interface{}) error {
 	if _, ok := args[0].(bool); !ok {
-		return unexpectedSetupArgError("bool, []string, int", args...)
+		return unexpectedSetupArgError("bool, string, int", args...)
 	}
 	if _, ok := args[1].([]string); !ok {
-		return unexpectedSetupArgError("bool, []string, int", args...)
+		return unexpectedSetupArgError("bool, string, int", args...)
 	}
 	if _, ok := args[2].(int); !ok {
-		return unexpectedSetupArgError("bool, []string, int", args...)
+		return unexpectedSetupArgError("bool, string, int", args...)
 	}
 
 	return v.setup(args[0].(bool), args[1].([]string), args[2].(int))
