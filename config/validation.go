@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"github.com/contiv/errored"
 	"strings"
+
+	"github.com/contiv/errored"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -30,7 +31,6 @@ func (cfg *RuntimeOptions) ValidateJSON() error {
 		return combineErrors(result.Errors())
 	}
 
-	log.Infof("Runtime config validation passed")
 	return nil
 }
 
@@ -49,7 +49,6 @@ func (cfg *Policy) ValidateJSON() error {
 		return err
 	}
 
-	log.Infof("Policy validation passed")
 	return nil
 }
 

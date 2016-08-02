@@ -28,7 +28,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Creating volume %s/%s", volume)
+	log.Infof("Creating volume %s", volume)
 
 	hostname, err := os.Hostname()
 	if err != nil {
