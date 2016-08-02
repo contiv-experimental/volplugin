@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/contiv/errored"
@@ -27,12 +28,16 @@ const (
 
 var defaultPaths = []string{rootVolume, rootUse, rootPolicy, rootPolicyArchive, rootSnapshots}
 
-// Request provides a request structure for communicating with the
-// apiserver.
-type Request struct {
-	Volume  string            `json:"volume"`
+// VolumeRequest provides a request structure for communicating volumes to the
+// apiserver or internally. it is the basic representation of a volume.
+type VolumeRequest struct {
+	Name    string            `json:"name"`
 	Policy  string            `json:"policy"`
 	Options map[string]string `json:"options"`
+}
+
+func (v *VolumeRequest) String() string {
+	return strings.Join([]string{v.Policy, v.Name}, "/")
 }
 
 // Client is the top-level struct for communicating with the intent store.

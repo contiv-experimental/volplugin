@@ -126,7 +126,7 @@ func (s *systemtestSuite) TestVolsupervisorSignal(c *C) {
 	_, err = s.volcli("volume snapshot take " + fqVolName)
 	c.Assert(err, IsNil)
 
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 
 	out, err := s.volcli("volume snapshot list " + fqVolName)
 	c.Assert(err, IsNil)

@@ -17,6 +17,10 @@ func (s *systemtestSuite) TestVolpluginNoGlobalConfiguration(c *C) {
 	_, err := s.mon0cmd("etcdctl rm /volplugin/global-config")
 	c.Assert(err, IsNil)
 
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+
 	volName := fqVolume("policy1", genRandomVolume())
 
 	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
@@ -92,30 +96,33 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	volName := fqVolume("policy1", genRandomVolume())
 
 	c.Assert(s.createVolume("mon0", volName, nil), IsNil)
-	_, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
-	c.Assert(err, IsNil)
-	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(5 * time.Second)
-	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	_, err = s.dockerRun("mon1", false, true, volName, "sleep 10m")
-	c.Assert(err, NotNil)
-
-	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-
-	out, err := s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
+	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, IsNil, Commentf(out))
-	time.Sleep(45 * time.Second)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(time.Second)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	out, err = s.dockerRun("mon0", false, true, volName, "sleep 10m")
+	c.Assert(err, NotNil, Commentf(out))
+	time.Sleep(5 * time.Second)
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(time.Second)
+	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(30 * time.Second)
+
+	out, err = s.volcli(fmt.Sprintf("volume runtime upload %s < /testdata/iops1.json", volName))
+	c.Assert(err, IsNil, Commentf(out))
+	time.Sleep(10 * time.Second)
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo cat /sys/fs/cgroup/blkio/blkio.throttle.write_bps_device")
-	c.Assert(err, IsNil)
+	c.Assert(err, IsNil, Commentf(out))
 	c.Assert(strings.TrimSpace(out), Not(Equals), "")
+
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	var found bool
 	for _, line := range lines {
 		parts := strings.Split(line, " ")
-		c.Assert(len(parts), Equals, 2)
+		c.Assert(len(parts), Equals, 2, Commentf("%v", parts))
 		if parts[1] == "1000" {
 			found = true
 		}
@@ -179,14 +186,18 @@ func (s *systemtestSuite) TestVolpluginRestartMultiMount(c *C) {
 	volName := fqVolume("policy1", genRandomVolume())
 
 	c.Assert(s.createVolume("mon0", volName, map[string]string{"unlocked": "true"}), IsNil)
-	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10")
-	c.Assert(err, IsNil)
-	out2, err := s.dockerRun("mon0", false, true, volName, "sleep 10")
-	c.Assert(err, IsNil)
+	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
+	// test if any containers can start after this -- they should be able to.
+	// This just starts and stops a container quickly.
+	outErr, err := s.dockerRun("mon0", false, false, volName, "echo")
+	c.Assert(err, IsNil, Commentf(outErr))
+	out2, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out2))
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(100 * time.Millisecond)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	time.Sleep(100 * time.Millisecond)
+	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(15 * time.Second)
 
 	out = strings.TrimSpace(out)
 	out2 = strings.TrimSpace(out2)
