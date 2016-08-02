@@ -73,7 +73,13 @@ func RESTHTTPError(w http.ResponseWriter, err error) {
 func Action(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Debugf("Unknown driver action at %q", r.URL.Path)
-	content, _ := ioutil.ReadAll(r.Body)
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Debug("Error reading body for %q", r.URL.Path)
+		RESTHTTPError(w, err)
+		return
+	}
+
 	log.Debug("Body content:", string(content))
 	w.WriteHeader(503)
 }
