@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	. "testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/mountscan"
 )
 
 const myMountpath = "/mnt/ceph"
@@ -22,6 +24,16 @@ var filesystems = map[string]storage.FSOptions{
 		Type:          "ext4",
 		CreateCommand: "mkfs.ext4 -m0 %",
 	},
+}
+
+var mountscanDriverOpts = storage.DriverOptions{
+	Volume: storage.Volume{
+		Name:   "test/mountscan",
+		Size:   10,
+		Params: storage.Params{"pool": "rbd"},
+	},
+	FSOptions: filesystems["ext4"],
+	Timeout:   5 * time.Second,
 }
 
 var volumeSpec = storage.Volume{
@@ -376,4 +388,77 @@ again:
 	done = true
 
 	goto again
+}
+
+func (s *cephSuite) TestMountScan(c *C) {
+	crudDriver, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+
+	mountDriver, err := NewMountDriver(myMountpath)
+	c.Assert(err, IsNil)
+
+	c.Assert(crudDriver.Create(mountscanDriverOpts), IsNil)
+	c.Assert(crudDriver.Format(mountscanDriverOpts), IsNil)
+
+	_, err = mountDriver.Mount(mountscanDriverOpts)
+	c.Assert(err, IsNil)
+
+	driver := &Driver{}
+	name, err := driver.internalName(mountscanDriverOpts.Volume.Name)
+	c.Assert(err, IsNil)
+
+	hostMounts, err := mountscan.GetMounts(&mountscan.GetMountsRequest{DriverName: "ceph", KernelDriver: "rbd"})
+	c.Assert(err, IsNil)
+
+	found := false
+	for _, hostMount := range hostMounts {
+		if found = (mountscanDriverOpts.FSOptions.Type == hostMount.FilesystemType && strings.Contains(hostMount.MountPoint, name)); found {
+			break
+		}
+	}
+
+	c.Assert(mountDriver.Unmount(mountscanDriverOpts), IsNil)
+	c.Assert(crudDriver.Destroy(mountscanDriverOpts), IsNil)
+	c.Assert(found, Equals, true)
+}
+
+func (s *cephSuite) TestMountSource(c *C) {
+	totalIterations := 5
+	crudDriver, err := NewCRUDDriver()
+	c.Assert(err, IsNil)
+
+	mountDriver, err := NewMountDriver(myMountpath)
+	c.Assert(err, IsNil)
+
+	driver := &Driver{}
+
+	volname := mountscanDriverOpts.Volume.Name
+	for idx := 0; idx < totalIterations; idx++ {
+		mountscanDriverOpts.Volume.Name = volname + strconv.Itoa(idx)
+		c.Assert(crudDriver.Create(mountscanDriverOpts), IsNil)
+		c.Assert(crudDriver.Format(mountscanDriverOpts), IsNil)
+
+		_, err = mountDriver.Mount(mountscanDriverOpts)
+		c.Assert(err, IsNil)
+	}
+
+	hostMounts, err := mountscan.GetMounts(&mountscan.GetMountsRequest{DriverName: "ceph", KernelDriver: "rbd"})
+	c.Assert(err, IsNil)
+
+	for idx := 0; idx < totalIterations; idx++ {
+		mountSource := "/dev/rbd" + strconv.Itoa(idx)
+		mountscanDriverOpts.Volume.Name = volname + strconv.Itoa(idx)
+		name, err := driver.internalName(mountscanDriverOpts.Volume.Name)
+		c.Assert(err, IsNil)
+
+		found := false
+		for _, hostMount := range hostMounts {
+			if found = (mountscanDriverOpts.FSOptions.Type == hostMount.FilesystemType && hostMount.MountSource == mountSource && strings.Contains(hostMount.MountPoint, name)); found {
+				break
+			}
+		}
+		c.Assert(mountDriver.Unmount(mountscanDriverOpts), IsNil)
+		c.Assert(crudDriver.Destroy(mountscanDriverOpts), IsNil)
+		c.Assert(found, Equals, true)
+	}
 }
