@@ -93,6 +93,9 @@ run: build
 run-etcd:
 	sudo systemctl start etcd
 
+docker-image:
+	docker build -t contiv/volplugin .
+
 create-systemd-services:
 	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.service' /etc/systemd/system/
 	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.service' /etc/systemd/system/
