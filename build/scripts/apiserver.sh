@@ -16,9 +16,9 @@ start)
 
     set -e
     echo starting apiserver
-    cont_id=$(docker run --rm -i --name contiv_apiserver \
+    docker run --rm -i --name contiv_apiserver \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        contiv/volplugin-apiserver)
+        contiv/volplugin-apiserver
 
     # now just sleep to keep the service up
     mkfifo "/tmp/apiserver-fifo"

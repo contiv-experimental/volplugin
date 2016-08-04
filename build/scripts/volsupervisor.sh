@@ -17,9 +17,9 @@ start)
 
     set -e
     echo starting volsupervisor
-    cont_id=$(docker run --rm -i --name contiv_volsupervisor \
+    docker run --rm -i --name contiv_volsupervisor \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        contiv/volplugin-volsupervisor)
+        contiv/volplugin-volsupervisor
 
     # now just sleep to keep the service up
     mkfifo "/tmp/volsupervisor-fifo"
