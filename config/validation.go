@@ -6,8 +6,6 @@ import (
 
 	"github.com/contiv/errored"
 
-	log "github.com/Sirupsen/logrus"
-
 	gojson "github.com/xeipuuv/gojsonschema"
 )
 
@@ -67,6 +65,5 @@ func (cfg *Volume) ValidateJSON() error {
 		return err
 	}
 
-	log.Infof("Volume validation passed")
 	return nil
 }
