@@ -53,9 +53,6 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 
 	batteryIterations = int(iter)
 
-	for i := 0; i < nodelen; i++ {
-		<-sync
-	}
 	time.Sleep(time.Second)
 
 	s.vagrant = remotessh.Vagrant{}

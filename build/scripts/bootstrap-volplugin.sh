@@ -25,4 +25,6 @@ docker run --net host --name volplugin \
   -v /mnt:/mnt:shared \
   -v /etc/ceph:/etc/ceph \
   -v /var/lib/ceph:/var/lib/ceph \
+  -v /var/run/ceph:/var/run/ceph \
+  -v sys:/sys:nocopy \
   contiv/volplugin volplugin
