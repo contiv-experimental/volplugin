@@ -1,5 +1,4 @@
 #!/bin/bash
-docker build -t contiv/volplugin-autorun -f Dockerfile.autorun .
 docker build -t contiv/volplugin .
 docker build -t contiv/volplugin-apiserver -f Dockerfile.apiserver .
 docker build -t contiv/volplugin-volsupervisor -f Dockerfile.volsupervisor .
