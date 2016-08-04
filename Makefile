@@ -85,8 +85,8 @@ clean-volplugin-containers:
 	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'docker ps | grep "volplugin" | cut -d " " -f 1 | xargs docker rm -fv'; done
 
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && make run-volplugin-cont run-apiserver-cont'; done
-	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor-cont'
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && make run-volplugin run-apiserver'; done
+	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 	sleep 10
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 
@@ -102,29 +102,17 @@ create-systemd-services:
 	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.sh' /usr/bin/
 	sudo systemctl daemon-reload
 
-run-volplugin-cont: run-etcd create-systemd-services
+run-volplugin: run-etcd create-systemd-services
 	sudo systemctl stop volplugin
 	sudo systemctl start volplugin
 
-run-volsupervisor-cont:
+run-volsupervisor:
 	sudo systemctl stop volsupervisor
 	sudo systemctl start volsupervisor
 
-run-apiserver-cont:
+run-apiserver:
 	sudo systemctl stop apiserver
 	sudo systemctl start apiserver
-
-run-volplugin: run-etcd
-	sudo pkill volplugin || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volplugin &>/tmp/volplugin.log &'
-
-run-volsupervisor:
-	sudo pkill volsupervisor || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor &>/tmp/volsupervisor.log &'
-
-run-apiserver:
-	sudo pkill apiserver || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/apiserver &>/tmp/apiserver.log &'
 
 run-build:
 	GOGC=1000 go install -v \
