@@ -100,6 +100,7 @@ create-systemd-services:
 	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.sh' /usr/bin/
 	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.sh' /usr/bin/
 	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/contiv-vol-run.sh' /usr/bin/
 	sudo systemctl daemon-reload
 
 run-volplugin: run-etcd create-systemd-services
