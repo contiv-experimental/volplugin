@@ -2,6 +2,6 @@ FROM docker:1.11.2
 
 ADD systemtests/testdata/ceph/policy1.json /policy.json
 ADD systemtests/testdata/globals/global1.json /global.json
-ADD build/scripts/bootstrap-apiserver.sh /bootstrap.sh
+ADD build/scripts/contiv-vol-run.sh /bootstrap.sh
 RUN chmod +x /bootstrap.sh
-ENTRYPOINT [ "/bin/sh", "/bootstrap.sh"  ]
+ENTRYPOINT [ "/bin/sh", "/bootstrap.sh", "apiserver" ]
