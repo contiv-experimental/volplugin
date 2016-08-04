@@ -1,4 +1,4 @@
-FROM docker
+FROM docker:1.11.2
 
 ADD systemtests/testdata/ceph/policy1.json /policy.json
 ADD systemtests/testdata/globals/global1.json /global.json

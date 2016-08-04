@@ -102,6 +102,7 @@ func (s *systemtestSuite) TestVolpluginCrashRestart(c *C) {
 	time.Sleep(time.Second)
 	c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+	time.Sleep(30 * time.Second)
 	out, err = s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	c.Assert(err, NotNil, Commentf(out))
 	time.Sleep(5 * time.Second)

@@ -416,7 +416,7 @@ func restartNetplugin(node remotessh.TestbedNode) error {
 }
 
 func startVolsupervisor(node remotessh.TestbedNode) error {
-	log.Infof("Starti15 the volsupervisor on %q", node.GetName())
+	log.Infof("Starting the volsupervisor on %q", node.GetName())
 	defer time.Sleep(20 * time.Second)
 	return node.RunCommandBackground("sudo systemctl start volsupervisor")
 }

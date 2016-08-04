@@ -1,4 +1,4 @@
-FROM docker
+FROM docker:1.11.2
 
 ADD build/scripts/bootstrap-volsupervisor.sh /bootstrap.sh
 RUN chmod +x /bootstrap.sh

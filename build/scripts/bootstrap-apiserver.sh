@@ -21,6 +21,7 @@ docker run --net host --name apiserver \
     -v /dev:/dev \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph:/var/lib/ceph \
+    -v /var/run/ceph:/var/run/ceph \
     -v /lib/modules:/lib/modules:ro \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /mnt:/mnt:shared \

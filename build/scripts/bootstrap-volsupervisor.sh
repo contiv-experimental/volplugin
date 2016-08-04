@@ -20,4 +20,5 @@ docker run --net host --name volsupervisor \
   -v /lib/modules:/lib/modules:ro \
   -v /etc/ceph:/etc/ceph \
   -v /var/lib/ceph:/var/lib/ceph \
+  -v /var/run/ceph:/var/run/ceph \
   contiv/volplugin volsupervisor
