@@ -27,6 +27,11 @@ func main() {
 	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "syspath",
+			Usage: "Path to /sys; necessary for running in a container",
+			Value: "/sys",
+		},
+		cli.StringFlag{
 			Name:  "prefix",
 			Usage: "prefix key used in etcd for namespacing",
 			Value: "/volplugin",

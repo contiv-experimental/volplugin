@@ -255,7 +255,7 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 
 	a.MountCollection.Add(mc)
 
-	if err := cgroup.ApplyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
+	if err := cgroup.ApplyCGroupRateLimit(a.SysPath, volConfig.RuntimeOptions, mc); err != nil {
 		log.Errorf("Could not apply cgroups to volume %q", volConfig)
 	}
 
