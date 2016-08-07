@@ -28,7 +28,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Creating volume %s/%s", volume)
+	log.Infof("Creating volume %s", volume)
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -203,24 +203,21 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volName := volConfig.String()
+	if !volConfig.Unlocked {
+		ut := &config.UseMount{
+			Volume:   volName,
+			Reason:   lock.ReasonMount,
+			Hostname: a.Hostname,
+		}
 
-	ut := &config.UseMount{
-		Volume:   volName,
-		Reason:   lock.ReasonMount,
-		Hostname: a.Hostname,
-	}
-
-	if volConfig.Unlocked {
-		ut.Hostname = lock.Unlocked
-	}
-
-	// XXX the only times a use lock cannot be acquired when there are no
-	// previous mounts, is when in locked mode and a mount is held on another
-	// host. So we take an indefinite lock HERE while we calculate whether or not
-	// we already have one.
-	if err := a.Client.PublishUse(ut); err != nil {
-		a.HTTPError(w, errors.LockFailed.Combine(err))
-		return
+		// XXX the only times a use lock cannot be acquired when there are no
+		// previous mounts, is when in locked mode and a mount is held on another
+		// host. So we take an indefinite lock HERE while we calculate whether or not
+		// we already have one.
+		if err := a.Client.PublishUse(ut); err != nil {
+			a.HTTPError(w, errors.LockFailed.Combine(err))
+			return
+		}
 	}
 
 	// XXX docker issues unmount request after every mount failure so, this evens out
@@ -242,13 +239,13 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stopChan, err := a.Lock.AcquireWithTTLRefresh(ut, (*a.Global).TTL, (*a.Global).Timeout)
-	if err != nil {
-		a.HTTPError(w, errors.LockFailed.Combine(err))
-		return
+	// Only perform the TTL refresh if the driver is in unlocked mode.
+	if !volConfig.Unlocked {
+		if err := a.startTTLRefresh(volName); err != nil {
+			a.HTTPError(w, err)
+			return
+		}
 	}
-
-	a.AddStopChan(volName, stopChan)
 
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
@@ -271,6 +268,23 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	a.WriteMount(path, w)
 }
 
+func (a *API) startTTLRefresh(volName string) error {
+	ut := &config.UseMount{
+		Volume:   volName,
+		Reason:   lock.ReasonMount,
+		Hostname: a.Hostname,
+	}
+
+	stopChan, err := a.Lock.AcquireWithTTLRefresh(ut, (*a.Global).TTL, (*a.Global).Timeout)
+	if err != nil {
+		return err
+	}
+
+	a.AddStopChan(volName, stopChan)
+
+	return nil
+}
+
 // Unmount is the request to unmount a volume.
 func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 	request, err := a.ReadMount(r)
@@ -289,6 +303,27 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 
 	volName := volConfig.String()
 
+	ut := &config.UseMount{
+		Volume:   volName,
+		Reason:   lock.ReasonMount,
+		Hostname: a.Hostname,
+	}
+
+	if !volConfig.Unlocked {
+		a.RemoveStopChan(volName)
+
+		// XXX to doubly ensure we do not UNMOUNT something that is held elsewhere
+		// (presumably because it is mounted THERE instead), we refuse to unmount
+		// anything that doesn't acquire a lock. We also remove the TTL refresh
+		// before taking it so it is not cleared in the unlikely event the mount
+		// takes longer than the TTL. Re-establish the TTL on error only if it is in
+		// locked mode.
+		if err := a.Client.PublishUse(ut); err != nil {
+			a.HTTPError(w, errors.LockFailed.Combine(err))
+			return
+		}
+	}
+
 	if a.MountCounter.Sub(volName) > 0 {
 		log.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
 		path, err := a.getMountPath(driver, driverOpts)
@@ -296,6 +331,14 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 			a.HTTPError(w, errors.MarshalResponse.Combine(err))
 			return
 		}
+
+		if !volConfig.Unlocked {
+			if err := a.startTTLRefresh(volName); err != nil {
+				a.HTTPError(w, err)
+				return
+			}
+		}
+
 		a.WriteMount(path, w)
 		return
 	}
@@ -305,22 +348,13 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.RemoveStopChan(volName)
 	a.MountCollection.Remove(volName)
 
-	ut := &config.UseMount{
-		Volume:   volName,
-		Reason:   lock.ReasonMount,
-		Hostname: a.Hostname,
-	}
-
-	if volConfig.Unlocked {
-		ut.Hostname = lock.Unlocked
-	}
-
-	if err := a.Lock.ClearLock(ut, (*a.Global).Timeout); err != nil {
-		a.HTTPError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
-		return
+	if !volConfig.Unlocked {
+		if err := a.Lock.ClearLock(ut, (*a.Global).Timeout); err != nil {
+			a.HTTPError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
+			return
+		}
 	}
 
 	path, err := a.getMountPath(driver, driverOpts)
