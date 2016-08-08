@@ -3,6 +3,7 @@ package cgroup
 import (
 	"bytes"
 	"io/ioutil"
+	"path/filepath"
 	. "testing"
 
 	"github.com/contiv/volplugin/config"
@@ -18,7 +19,7 @@ var _ = Suite(&cgroupSuite{})
 func TestCGroup(t *T) { TestingT(t) }
 
 func (s *cgroupSuite) TestApplyCGroupRateLimit(c *C) {
-	err := ApplyCGroupRateLimit(config.RuntimeOptions{
+	err := ApplyCGroupRateLimit("/sys", config.RuntimeOptions{
 		RateLimit: config.RateLimitConfig{
 			WriteBPS: 123456,
 			ReadBPS:  654321,
@@ -27,7 +28,7 @@ func (s *cgroupSuite) TestApplyCGroupRateLimit(c *C) {
 	c.Assert(err, IsNil)
 
 	defer func() {
-		ApplyCGroupRateLimit(config.RuntimeOptions{
+		ApplyCGroupRateLimit("/sys", config.RuntimeOptions{
 			RateLimit: config.RateLimitConfig{
 				WriteBPS: 0,
 				ReadBPS:  0,
@@ -35,11 +36,11 @@ func (s *cgroupSuite) TestApplyCGroupRateLimit(c *C) {
 		}, &storage.Mount{DevMajor: 253, DevMinor: 0})
 	}()
 
-	content, err := ioutil.ReadFile(writeBPSFile)
+	content, err := ioutil.ReadFile(filepath.Join("/sys", writeBPSFile))
 	c.Assert(err, IsNil)
 	c.Assert(string(bytes.TrimSpace(content)), Matches, `^253:0 123456`)
 
-	content, err = ioutil.ReadFile(readBPSFile)
+	content, err = ioutil.ReadFile(filepath.Join("/sys", readBPSFile))
 	c.Assert(err, IsNil)
 	c.Assert(string(bytes.TrimSpace(content)), Matches, `^253:0 654321`)
 }
