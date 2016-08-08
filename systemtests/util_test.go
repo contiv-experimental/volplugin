@@ -364,13 +364,13 @@ func runCommandUntilNoError(node remotessh.TestbedNode, cmd string, timeout int)
 		return "", true
 	}
 	timeoutMessage := fmt.Sprintf("timeout reached trying to run %v on %q", cmd, node.GetName())
-	_, err := WaitForDone(runCmd, 10*time.Millisecond, 10*time.Second, timeoutMessage)
+	_, err := WaitForDone(runCmd, 10*time.Millisecond, time.Duration(timeout)*time.Second, timeoutMessage)
 	return err
 }
 
 func waitForVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Checking if volsupervisor is running on %q", node.GetName())
-	err := runCommandUntilNoError(node, "pgrep -c volsupervisor", 10)
+	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} volsupervisor | grep true", 30)
 	if err == nil {
 		log.Infof("Volsupervisor is running on %q", node.GetName())
 
@@ -380,19 +380,17 @@ func waitForVolsupervisor(node remotessh.TestbedNode) error {
 
 func waitForAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Checking if apiserver is running on %q", node.GetName())
-	err := runCommandUntilNoError(node, "pgrep -c apiserver", 10)
+	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} apiserver | grep true", 30)
 	if err == nil {
 		log.Infof("APIServer is running on %q", node.GetName())
 	}
-
 	time.Sleep(time.Second)
-
 	return nil
 }
 
 func waitForVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Checking if volplugin is running on %q", node.GetName())
-	err := runCommandUntilNoError(node, "pgrep -c volplugin", 10)
+	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} volplugin | grep true", 30)
 	if err == nil {
 		log.Infof("Volplugin is running on %q", node.GetName())
 
@@ -417,39 +415,37 @@ func restartNetplugin(node remotessh.TestbedNode) error {
 
 func startVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Starting the volsupervisor on %q", node.GetName())
-	return node.RunCommandBackground("(sudo -E nohup `which volsupervisor` </dev/null 2>&1 | sudo tee -a /tmp/volsupervisor.log) &")
+	return node.RunCommandBackground("sudo systemctl start volsupervisor")
 }
 
 func stopVolsupervisor(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the volsupervisor on %q", node.GetName())
-	return node.RunCommand("sudo pkill volsupervisor")
+	defer time.Sleep(time.Second)
+	return node.RunCommand("sudo systemctl stop volsupervisor")
 }
 
 func startAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Starting the apiserver on %q", node.GetName())
-	err := node.RunCommandBackground("(sudo -E nohup `which apiserver` </dev/null 2>&1 | sudo tee -a /tmp/apiserver.log) &")
+	err := node.RunCommandBackground("sudo systemctl start apiserver")
 	log.Infof("Waiting for apiserver startup on %q", node.GetName())
-	time.Sleep(time.Second)
 	return err
 }
 
 func stopAPIServer(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the apiserver on %q", node.GetName())
-	return node.RunCommand("sudo pkill apiserver")
+	defer time.Sleep(time.Second)
+	return node.RunCommand("sudo systemctl stop apiserver")
 }
 
 func startVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Starting the volplugin on %q", node.GetName())
-	defer time.Sleep(10 * time.Millisecond)
-
-	// FIXME this is hardcoded because it's simpler. If we move to
-	// multimaster or change the monitor subnet, we will have issues.
-	return node.RunCommandBackground("(sudo -E `which volplugin` </dev/null 2>&1 | sudo tee -a /tmp/volplugin.log) &")
+	return node.RunCommandBackground("sudo systemctl start volplugin")
 }
 
 func stopVolplugin(node remotessh.TestbedNode) error {
 	log.Infof("Stopping the volplugin on %q", node.GetName())
-	return node.RunCommand("sudo pkill volplugin")
+	defer time.Sleep(time.Second)
+	return node.RunCommand("sudo systemctl stop volplugin")
 }
 
 func waitDockerizedServicesHost(node remotessh.TestbedNode) error {

@@ -102,7 +102,7 @@ func (s *systemtestSuite) TestVolsupervisorRestart(c *C) {
 	c.Assert(startVolsupervisor(s.vagrant.GetNode("mon0")), IsNil)
 	c.Assert(waitForVolsupervisor(s.vagrant.GetNode("mon0")), IsNil)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
