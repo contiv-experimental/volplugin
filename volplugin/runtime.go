@@ -42,7 +42,7 @@ func (dc *DaemonConfig) pollRuntime() {
 			continue
 		}
 
-		if err := cgroup.ApplyCGroupRateLimit(vol.RuntimeOptions, thisMC); err != nil {
+		if err := cgroup.ApplyCGroupRateLimit(dc.SysPath, vol.RuntimeOptions, thisMC); err != nil {
 			log.Error(errored.Errorf("Error processing runtime update for volume %q", vol).Combine(err))
 			continue
 		}
