@@ -2,14 +2,11 @@
 
 set -e
 
+# cleanup the older container
 docker rm -f "$1" &>/dev/null || :
 
-out=$(docker run -i -v /mnt:/mnt:shared alpine true)
-echo "return code:" $?
-echo "output:" "${out}"
-
 ## test for shared mount capability
-if ! docker run -i -v /mnt:/mnt:shared alpine true &>/dev/null
+if ! grep "MountFlags" /lib/systemd/system/docker.service | grep shared &>/dev/null
 then
   echo 1>&2 "Docker cannot run volplugin in its current state."
   echo 1>&2 "You must change docker's systemd MountFlags to equal 'shared'"
@@ -52,6 +49,8 @@ case "$1" in
         -v /mnt:/mnt:shared \
         -v /etc/ceph:/etc/ceph \
         -v /var/lib/ceph:/var/lib/ceph \
+        -v /var/run/ceph:/var/run/ceph \
+        -v /sys/fs/cgroup:/sys/fs/cgroup \
         contiv/volplugin volplugin
     ;;
 

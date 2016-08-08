@@ -21,7 +21,8 @@ start)
 stop)
     echo stopping volplugin
     rm -f /tmp/volplugin-fifo
-    docker rm -f volplugin
+    docker stop volplugin
+    docker rm -v volplugin
     ;;
 
 *)

@@ -21,7 +21,8 @@ start)
 stop)
     echo stopping apiserver
     rm -f /tmp/apiserver-fifo
-    docker rm -fv apiserver
+    docker stop apiserver
+    docker rm -v apiserver
     ;;
 
 *)

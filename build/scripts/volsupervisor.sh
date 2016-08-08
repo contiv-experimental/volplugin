@@ -22,7 +22,8 @@ start)
 stop)
     echo stopping volsupervisor
     rm -f /tmp/volsupervisor-fifo
-    docker rm -fv volsupervisor
+    docker stop volsupervisor
+    docker rm -v volsupervisor
     ;;
 
 *)
