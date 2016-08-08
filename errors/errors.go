@@ -7,6 +7,9 @@ var (
 	// Unknown is for those times when we just. don't. know.
 	Unknown = errored.New("Unknown error")
 
+	// InvalidPath is a generic error for database issues around pathing.
+	InvalidPath = errored.New("Invalid path")
+
 	// Exists is used to exit in situations where duplicated data would be written.
 	Exists = errored.New("Already exists")
 	// NotExists is used to exit in situations where no data would be read.
@@ -99,6 +102,8 @@ var (
 	// PublishRuntime is used when publishing runtime parameters.
 	PublishRuntime = errored.New("Publishing runtime parameters")
 
+	// InvalidPolicy is used both when retrieving policies and validating the names of policies.
+	InvalidPolicy = errored.New("Invalid policy name")
 	// UnmarshalPolicy is used when unmarshalling policies.
 	UnmarshalPolicy = errored.New("Unmarshalling Policy")
 	// MarshalPolicy is used when marshalling policies.
