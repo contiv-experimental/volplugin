@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	. "testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -48,8 +49,11 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	if err != nil {
 		iter = defaultIterations
 	}
+	time.Sleep(time.Second)
 
 	batteryIterations = int(iter)
+
+	time.Sleep(time.Second)
 
 	s.vagrant = remotessh.Vagrant{}
 	c.Assert(s.vagrant.Setup(false, []string{}, 3), IsNil)

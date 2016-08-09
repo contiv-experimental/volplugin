@@ -35,6 +35,7 @@ func (v *Volume) String() string {
 // API is a typed representation of API handlers.
 type API struct {
 	Volplugin
+	SysPath           string
 	Hostname          string
 	Client            *config.Client
 	Global            **config.Global // double pointer so we can track watch updates
@@ -46,9 +47,10 @@ type API struct {
 }
 
 // NewAPI returns an *API
-func NewAPI(volplugin Volplugin, hostname string, client *config.Client, global **config.Global) *API {
+func NewAPI(volplugin Volplugin, syspath, hostname string, client *config.Client, global **config.Global) *API {
 	return &API{
 		Volplugin:       volplugin,
+		SysPath:         syspath,
 		Hostname:        hostname,
 		Client:          client,
 		Global:          global,

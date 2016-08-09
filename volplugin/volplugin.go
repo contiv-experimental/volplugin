@@ -24,6 +24,7 @@ const basePath = "/run/docker/plugins"
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
 	Hostname string
+	SysPath  string
 	Global   *config.Global
 	Client   *config.Client
 	API      *api.API
@@ -43,6 +44,7 @@ retry:
 
 	return &DaemonConfig{
 		Hostname: ctx.String("host-label"),
+		SysPath:  ctx.String("syspath"),
 		Client:   client,
 	}
 }
@@ -81,7 +83,7 @@ func (dc *DaemonConfig) Daemon() error {
 		}
 	}()
 
-	dc.API = api.NewAPI(docker.NewVolplugin(), dc.Hostname, dc.Client, &dc.Global)
+	dc.API = api.NewAPI(docker.NewVolplugin(), dc.SysPath, dc.Hostname, dc.Client, &dc.Global)
 
 	if err := dc.updateMounts(); err != nil {
 		return err

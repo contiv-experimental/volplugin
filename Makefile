@@ -73,7 +73,7 @@ unit-test-nocoverage-host:
 
 build: checks
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
-	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "pkill volplugin; pkill apiserver; pkill volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
+	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "systemctl stop volplugin apiserver volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 docker: run-build
 	docker build -t contiv/volplugin .
@@ -81,31 +81,48 @@ docker: run-build
 docker-push: docker
 	docker push contiv/volplugin
 
+clean-volplugin-containers:
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'docker ps | grep "volplugin" | cut -d " " -f 1 | xargs docker rm -fv'; done
+
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && make run-volplugin run-apiserver'; done
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && make run-volplugin run-apiserver'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
+	sleep 10
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
 
 run-etcd:
 	sudo systemctl start etcd
 
-run-volplugin: run-etcd
-	sudo pkill volplugin || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volplugin &>/tmp/volplugin.log &'
+docker-image:
+	docker build -t contiv/volplugin .
+
+create-systemd-services:
+	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.service' /etc/systemd/system/
+	sudo cp '${GUESTGOPATH}/build/scripts/volplugin.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/volsupervisor.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/apiserver.sh' /usr/bin/
+	sudo cp '${GUESTGOPATH}/build/scripts/contiv-vol-run.sh' /usr/bin/
+	sudo systemctl daemon-reload
+
+run-volplugin: run-etcd create-systemd-services
+	sudo systemctl stop volplugin
+	sudo systemctl start volplugin
 
 run-volsupervisor:
-	sudo pkill volsupervisor || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/volsupervisor &>/tmp/volsupervisor.log &'
+	sudo systemctl stop volsupervisor
+	sudo systemctl start volsupervisor
 
 run-apiserver:
-	sudo pkill apiserver || exit 0
-	sudo -E nohup bash -c '$(GUESTBINPATH)/apiserver &>/tmp/apiserver.log &'
+	sudo systemctl stop apiserver
+	sudo systemctl start apiserver
 
-run-build: 
+run-build:
 	GOGC=1000 go install -v \
 		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
 		 ./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/
-	cp /opt/golang/bin/* /tmp/bin
+	cp $(GUESTBINPATH)/* bin/
 
 system-test: system-test-ceph system-test-nfs
 
