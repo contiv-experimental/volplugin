@@ -40,6 +40,9 @@ var (
 
 	// ErrDevNotFound is for reporting device not found error while scanning /proc/devices
 	ErrDevNotFound = errored.New("Could not find kernel device")
+
+	// InvalidDBPath is used whenever pathing with the DB fails.
+	InvalidDBPath = errored.New("Invalid path to resource")
 )
 
 // storage-level errors
@@ -72,6 +75,8 @@ var (
 	PublishGlobal = errored.New("Publishing global configuration")
 	// GetGlobal is used when retriving globals.
 	GetGlobal = errored.New("Retrieving global configuration")
+	// InvalidVolume is used both when retrieving volumes and validating the names of volumes.
+	InvalidGlobal = errored.New("Invalid global parameters")
 
 	// CannotCopyVolume is used when snapshot copy -> volume operations fail.
 	CannotCopyVolume = errored.New("Cannot copy volume")
