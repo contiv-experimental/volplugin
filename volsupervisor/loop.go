@@ -126,6 +126,13 @@ func (dc *DaemonConfig) loop() {
 		volumeMutex.Unlock()
 
 		for volume, val := range volumeCopy {
+			if isUsed, err := dc.Config.IsVolumeInUse(val); err != nil {
+				log.Errorf("%s", err) // some issue with "etcd GET"; we should not hit this case
+			} else {
+				if !isUsed { // volume not in use
+					continue
+				}
+			}
 			if val.RuntimeOptions.UseSnapshots {
 				freq, err := time.ParseDuration(val.RuntimeOptions.Snapshot.Frequency)
 				if err != nil {

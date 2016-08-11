@@ -222,7 +222,7 @@ func (s *systemtestSuite) TestIntegratedVolumeSnapshotCopy(c *C) {
 	targetName := genRandomVolume()
 	targetName2 := genRandomVolume()
 
-	c.Assert(s.createVolume("mon0", fqVolName, nil), IsNil)
+	c.Assert(s.createVolume("mon0", fqVolName, map[string]string{"unlocked": "true"}), IsNil)
 
 	time.Sleep(4 * time.Second)
 
