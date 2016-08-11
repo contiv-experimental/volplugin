@@ -19,6 +19,7 @@ import (
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/mountscan"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -489,8 +490,13 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 
 // Mounted describes all the volumes currently mapped on to the host.
 func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
-	hostMounts, err := getMounts()
+	mounts := []*storage.Mount{}
+
+	hostMounts, err := mountscan.GetMounts(&mountscan.GetMountsRequest{DriverName: "ceph", KernelDriver: "rbd"})
 	if err != nil {
+		if newerr, ok := err.(*errored.Error); ok && newerr.Contains(errors.ErrDevNotFound) {
+			return mounts, nil
+		}
 		return nil, err
 	}
 
@@ -507,16 +513,14 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 		log.Debugf("Mapped: %#v", mapd)
 	}
 
-	mounts := []*storage.Mount{}
-
 	for _, hostMount := range hostMounts {
 		for _, mappedMount := range mapped {
-			if hostMount.Device == mappedMount.Device {
+			if hostMount.MountSource == mappedMount.Device {
 				mounts = append(mounts, &storage.Mount{
-					Device:   hostMount.Device,
-					DevMajor: hostMount.DevMajor,
-					DevMinor: hostMount.DevMinor,
-					Path:     hostMount.Path,
+					Device:   hostMount.MountSource,
+					DevMajor: hostMount.DeviceNumber.Major,
+					DevMinor: hostMount.DeviceNumber.Minor,
+					Path:     hostMount.MountPoint,
 					Volume:   mappedMount.Volume,
 				})
 				break

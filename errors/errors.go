@@ -34,6 +34,12 @@ var (
 
 	// ErrJSONValidation is used when JSON validation fails
 	ErrJSONValidation = errored.New("JSON validation failed")
+
+	// ErrMountScan is for when mount scanning fails
+	ErrMountScan = errored.New("Mount Scan Operation Failed")
+
+	// ErrDevNotFound is for reporting device not found error while scanning /proc/devices
+	ErrDevNotFound = errored.New("Could not find kernel device")
 )
 
 // storage-level errors

@@ -10,6 +10,7 @@ import (
 	. "testing"
 
 	"github.com/contiv/volplugin/storage"
+	"github.com/contiv/volplugin/storage/mountscan"
 
 	. "gopkg.in/check.v1"
 )
@@ -251,4 +252,40 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 		"addr":       "::1",
 		"clientaddr": "::1",
 	})
+}
+
+func (s *nfsSuite) TestMountScan(c *C) {
+	resetExports(c)
+	if err := os.RemoveAll(rootPath); !os.IsNotExist(err) {
+		c.Assert(err, IsNil)
+	}
+
+	makeExport(c, "mountscan", "rw")
+	mountD, err := NewMountDriver(mountPath)
+	c.Assert(err, IsNil)
+
+	do := storage.DriverOptions{
+		Source: nfsMount("mountscan"),
+		Volume: storage.Volume{
+			Name: "test/mountscan",
+		},
+	}
+	_, err = mountD.Mount(do)
+	c.Assert(err, IsNil)
+
+	driver := &Driver{}
+	name, err := driver.internalName(do.Volume.Name)
+	c.Assert(err, IsNil)
+
+	hostMounts, err := mountscan.GetMounts(&mountscan.GetMountsRequest{DriverName: "nfs", FsType: "nfs4"})
+	c.Assert(err, IsNil)
+
+	found := false
+	for _, hostMount := range hostMounts {
+		if found = strings.Contains(hostMount.MountPoint, name); found {
+			break
+		}
+	}
+	c.Assert(mountD.Unmount(do), IsNil)
+	c.Assert(found, Equals, true)
 }
