@@ -1,5 +1,5 @@
 #!/bin/bash
-usage="$0 start|stop"
+usage="$0 start|stop|rm"
 if [ $# -ne 1  ]; then
     echo USAGE: $usage
     exit 1
@@ -20,6 +20,12 @@ start)
 
 stop)
     echo stopping apiserver
+    rm -f /tmp/apiserver-fifo
+    docker stop apiserver
+    ;;
+
+rm)
+    echo removing apiserver container
     rm -f /tmp/apiserver-fifo
     docker stop apiserver
     docker rm -v apiserver

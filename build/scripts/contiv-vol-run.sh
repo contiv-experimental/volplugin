@@ -2,8 +2,25 @@
 
 set -e
 
-# cleanup the older container
-docker rm -f "$1" &>/dev/null || :
+# Check if the container already exists
+if docker inspect -f {{.State.Running}} $1 &>/dev/null
+then
+    # if the container is already running -> return
+    if docker inspect -f {{.State.Running}} $1 | grep "true" &>/dev/null
+    then
+        echo $1 "container is already running"
+        exit 0
+    fi
+
+    # if the container is in stopped state -> `docker start` it
+    if docker inspect -f {{.State.Running}} $1 | grep "false" &>/dev/null
+    then
+        echo $1 "container exists. Restarting it."
+        docker start $1
+        exit 0
+    fi
+fi
+
 
 ## test for shared mount capability
 if ! grep "MountFlags" /lib/systemd/system/docker.service | grep shared &>/dev/null
