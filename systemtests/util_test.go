@@ -385,7 +385,13 @@ func waitForAPIServer(node remotessh.TestbedNode) error {
 		log.Infof("APIServer is running on %q", node.GetName())
 	}
 
-	time.Sleep(2 * time.Second)
+	then := time.Now()
+	err = runCommandUntilNoError(node, "connwait 127.0.0.1:9005", 60)
+	if err != nil {
+		return err
+	}
+	log.Infof("Took %s for apiserver on %q to be accessible", time.Since(then), node.GetName())
+
 	return nil
 }
 
