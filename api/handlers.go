@@ -185,6 +185,33 @@ func (a *API) List(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type mountState struct {
+	w          http.ResponseWriter
+	err        error
+	ut         *config.UseMount
+	driver     storage.MountDriver
+	driverOpts storage.DriverOptions
+	volConfig  *config.Volume
+}
+
+// triggered on any failure during call into mount.
+func (a *API) clearMount(ms mountState) {
+	log.Errorf("MOUNT FAILURE: %v", ms.err)
+
+	if err := ms.driver.Unmount(ms.driverOpts); err != nil {
+		// literally can't do anything about this situation. Log.
+		log.Errorf("Failure during unmount after failed mount: %v %v", err, ms.err)
+	}
+
+	if err := a.Lock.ClearLock(ms.ut, (*a.Global).Timeout); err != nil {
+		a.HTTPError(ms.w, errors.RefreshMount.Combine(errored.New(ms.volConfig.String())).Combine(err).Combine(ms.err))
+		return
+	}
+
+	a.HTTPError(ms.w, errors.MountFailed.Combine(ms.err))
+	return
+}
+
 // Mount is the request to mount a volume.
 func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	request, err := a.ReadMount(r)
@@ -203,13 +230,13 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volName := volConfig.String()
-	if !volConfig.Unlocked {
-		ut := &config.UseMount{
-			Volume:   volName,
-			Reason:   lock.ReasonMount,
-			Hostname: a.Hostname,
-		}
+	ut := &config.UseMount{
+		Volume:   volName,
+		Reason:   lock.ReasonMount,
+		Hostname: a.Hostname,
+	}
 
+	if !volConfig.Unlocked {
 		// XXX the only times a use lock cannot be acquired when there are no
 		// previous mounts, is when in locked mode and a mount is held on another
 		// host. So we take an indefinite lock HERE while we calculate whether or not
@@ -239,21 +266,29 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only perform the TTL refresh if the driver is in unlocked mode.
-	if !volConfig.Unlocked {
-		if err := a.startTTLRefresh(volName); err != nil {
-			a.HTTPError(w, err)
-			return
-		}
-	}
-
+	// so. if EBUSY is returned here, the resulting unmount will unmount an
+	// existing mount. However, this should never happen because of the above
+	// counter check.
+	// I'm leaving this in because it will break tons of tests if it double
+	// mounts something, after the resulting unmount occurs. This seems like a
+	// great way to fix tons of errors in our code before they ever accidentally
+	// reach a user.
 	mc, err := driver.Mount(driverOpts)
 	if err != nil {
-		a.HTTPError(w, errors.MountFailed.Combine(err))
+		a.clearMount(mountState{w, err, ut, driver, driverOpts, volConfig})
 		return
 	}
 
 	a.MountCollection.Add(mc)
+
+	// Only perform the TTL refresh if the driver is in unlocked mode.
+	if !volConfig.Unlocked {
+		if err := a.startTTLRefresh(volName); err != nil {
+			a.RemoveStopChan(volName)
+			a.clearMount(mountState{w, err, ut, driver, driverOpts, volConfig})
+			return
+		}
+	}
 
 	if err := cgroup.ApplyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
 		log.Errorf("Could not apply cgroups to volume %q", volConfig)
@@ -261,11 +296,20 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 
 	path, err := driver.MountPath(driverOpts)
 	if err != nil {
-		a.HTTPError(w, errors.MountPath.Combine(err))
+		a.RemoveStopChan(volName)
+		a.clearMount(mountState{w, err, ut, driver, driverOpts, volConfig})
 		return
 	}
 
 	a.WriteMount(path, w)
+}
+
+func (a *API) clearLock(ut config.UseLocker) error {
+	if err := a.Lock.ClearLock(ut, (*a.Global).Timeout); err != nil {
+		return errors.RefreshMount.Combine(errored.New(ut.GetVolume())).Combine(err)
+	}
+
+	return nil
 }
 
 func (a *API) startTTLRefresh(volName string) error {
