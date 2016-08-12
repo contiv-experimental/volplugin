@@ -14,7 +14,7 @@ const (
 	mountInfoFile           = "/proc/self/mountinfo"
 	deviceInfoFile          = "/proc/devices"
 	nfsMajorID              = 0
-	totalMountInfoFieldsNum = 11
+	totalMountInfoFieldsNum = 10
 )
 
 // GetMountsRequest captures all the params required for scanning mountinfo
@@ -36,7 +36,7 @@ type MountInfo struct {
 	Separator      string        // end of optional fields
 	FilesystemType string        // e.g ext3, ext4
 	MountSource    string
-	SuperOptions   string
+	SuperOptions   string // XXX This field is *not* parsed becuase it is not present on all systems. It is here as a placeholder.
 }
 
 // DeviceNumber captures major:minor
@@ -91,7 +91,6 @@ func convertToMountInfo(mountinfo string) (*MountInfo, error) {
 		Separator:      parts[7],
 		FilesystemType: parts[8],
 		MountSource:    parts[9],
-		SuperOptions:   parts[10],
 	}
 
 	mountID, err := convertToUint(parts[0])
