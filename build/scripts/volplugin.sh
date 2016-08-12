@@ -1,5 +1,5 @@
 #!/bin/bash
-usage="$0 start|stop"
+usage="$0 start|stop|rm"
 if [ $# -ne 1  ]; then
     echo USAGE: $usage
     exit 1
@@ -20,6 +20,12 @@ start)
 
 stop)
     echo stopping volplugin
+    rm -f /tmp/volplugin-fifo
+    docker stop volplugin
+    ;;
+
+rm)
+    echo removing volplugin container
     rm -f /tmp/volplugin-fifo
     docker stop volplugin
     docker rm -v volplugin
