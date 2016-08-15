@@ -384,7 +384,8 @@ func waitForAPIServer(node remotessh.TestbedNode) error {
 	if err == nil {
 		log.Infof("APIServer is running on %q", node.GetName())
 	}
-	time.Sleep(time.Second)
+
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
