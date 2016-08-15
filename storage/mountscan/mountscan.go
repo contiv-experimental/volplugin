@@ -79,9 +79,6 @@ func getDevID(kernelDriver string) (uint, error) {
 
 func convertToMountInfo(mountinfo string) (*MountInfo, error) {
 	parts := strings.Split(mountinfo, " ")
-	if len(parts) < totalMountInfoFieldsNum {
-		return nil, errored.Errorf("Insufficient mount info data")
-	}
 
 	mountDetails := &MountInfo{
 		Root:           parts[3],
@@ -175,6 +172,10 @@ func GetMounts(request *GetMountsRequest) ([]*MountInfo, error) {
 	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
 		if !isEmpty(line) {
+			if len(strings.Split(line, " ")) < totalMountInfoFieldsNum {
+				log.Debugf("Insufficient mount info data: %q", line)
+				continue
+			}
 			if mountDetails, err := convertToMountInfo(line); err != nil {
 				log.Errorf("%s", err)
 				continue

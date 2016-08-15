@@ -1,0 +1,21 @@
+{ 
+  "name": "snaplockedvol",
+  "backends": {
+    "crud": "ceph",
+    "mount": "ceph",
+    "snapshot": "ceph"
+  },
+  "driver": {
+    "pool": "rbd"
+  },
+  "create": {
+    "size": "10MB"
+  },
+  "runtime": {
+    "snapshots": true,
+    "snapshot": {
+      "frequency": "2s",
+      "keep": 40
+    }
+  }
+}

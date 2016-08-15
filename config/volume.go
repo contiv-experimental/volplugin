@@ -421,3 +421,17 @@ func (cfg *Volume) ToDriverOptions(timeout time.Duration) (storage.DriverOptions
 func (cfg *Volume) String() string {
 	return path.Join(cfg.PolicyName, cfg.VolumeName)
 }
+
+// IsVolumeInUse checks if the given volume is mounted in any container
+func (c *Client) IsVolumeInUse(cfg *Volume) (bool, error) {
+	if !cfg.Unlocked {
+		if _, err := c.etcdClient.Get(context.Background(), c.use(UseTypeMount, cfg.String()), nil); err != nil {
+			if etcdErr := errors.EtcdToErrored(err); etcdErr != nil {
+				return !(etcdErr == errors.NotExists), nil
+			}
+			return true, err
+		}
+	}
+	// XXX To simplify the behavior, always return true for unlocked volumes as there are no mount lock exists for them.
+	return true, nil
+}
