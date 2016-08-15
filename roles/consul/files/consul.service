@@ -1,0 +1,10 @@
+[Unit]
+Description=Consul
+After=auditd.service systemd-user-sessions.service time-sync.target docker.service
+
+[Service]
+Restart=on-failure
+RestartSec=10s
+ExecStart=/usr/bin/consul.sh start
+ExecStop=/usr/bin/consul.sh stop
+KillMode=control-group

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+extra_args=""
+
+if [ "{{ node_addr }}" = "{{ consul_leader }}" ]
+then
+  extra_args=" -bootstrap"
+else
+  extra_args=" -join {{ consul_leader }}"
+fi
+
+case "$1" in
+  start)
+    docker run --name consul --rm -p 8400:8400 -p 8300:8300/udp -p 8301:8301/udp -p 8500:8500/udp -p 8300:8300 -p 8301:8301 -p 8500:8500 consul:v{{ consul_version }} agent ${extra_args} -server -node=$(hostname) -client=0.0.0.0 -advertise {{ node_addr }}
+    ;;
+  stop)
+    docker rm -f consul
+    ;;
+esac
