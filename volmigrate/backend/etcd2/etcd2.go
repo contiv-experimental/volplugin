@@ -13,6 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+// New creates a new etcd2 migration engine.
 func New(prefix string, etcdHosts []string) *Engine {
 	etcdCfg := client.Config{
 		Endpoints: etcdHosts,
@@ -35,7 +36,7 @@ type Engine struct {
 	prefix     string
 }
 
-// CurrentSchemaVersion returns the version of the last migration which was successfuly run.
+// CurrentSchemaVersion returns the version of the last migration which was successfully run.
 // If no previous migrations have been run, the schema version is 0.
 // If there's any error besides "key doesn't exist", execution is aborted.
 func (e *Engine) CurrentSchemaVersion() int64 {
