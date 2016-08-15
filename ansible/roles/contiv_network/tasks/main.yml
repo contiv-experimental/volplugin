@@ -108,3 +108,8 @@
 
 - include: aci_tasks.yml
   when: (run_as == "master") and (contiv_network_mode == "aci")
+
+- name: set fwd mode
+  shell: netctl global set --fwd-mode "{{ fwd_mode }}"
+  when: (run_as == "master")
+  run_once: true 

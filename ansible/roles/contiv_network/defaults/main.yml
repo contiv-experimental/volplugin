@@ -17,7 +17,7 @@ vxlan_port: 4789
 netplugin_rule_comment: "contiv network traffic"
 
 aci_gw_image: "contiv/aci-gw"
-contiv_network_version: "v0.1-07-14-2016.07-06-17.UTC"
+contiv_network_version: "v0.1-08-10-2016.10-55-19.UTC"
 contiv_network_tar_file: "netplugin-{{ contiv_network_version }}.tar.bz2"
 contiv_network_src_file: "https://github.com/contiv/netplugin/releases/download/{{ contiv_network_version }}/{{ contiv_network_tar_file }}"
 contiv_network_dest_file: "/tmp/{{ contiv_network_tar_file }}"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Virtualbox Server
+After=network.target auditd.service systemd-user-sessions.service time-sync.target
+
+[Service]
+ExecStart=/usr/lib/virtualbox/VBoxSVC --pidfile VBoxSVC.pid
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+User={{ ansible_user }}
+
+[Install]
+WantedBy=multi-user.target
