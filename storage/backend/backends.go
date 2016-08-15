@@ -65,35 +65,3 @@ func NewSnapshotDriver(backend string) (storage.SnapshotDriver, error) {
 
 	return f()
 }
-
-// NewDriver creates a driver based on driverType
-func NewDriver(backend string, driverType string, mountPath string, do *storage.DriverOptions) error {
-	if backend != "" && do != nil {
-		switch driverType {
-		case CRUD:
-			if crud, err := NewCRUDDriver(backend); err != nil {
-				return err
-			} else if err := crud.Validate(do); err != nil {
-				return err
-			}
-		case Mount:
-			if mount, err := NewMountDriver(backend, mountPath); err != nil {
-				return err
-			} else if err := mount.Validate(do); err != nil {
-				return err
-			}
-		case Snapshot:
-			if snapshot, err := NewSnapshotDriver(backend); err != nil {
-				return err
-			} else if err := snapshot.Validate(do); err != nil {
-				return err
-			}
-		default:
-			return errored.Errorf("Invalid driver type: %q", driverType)
-		}
-	} else {
-		return errored.Errorf("Empty backend or driver options")
-	}
-
-	return nil // On successful driver creation
-}

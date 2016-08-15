@@ -353,31 +353,47 @@ func (cfg *Volume) Validate() error {
 		return errors.ErrJSONValidation.Combine(err)
 	}
 
+	return cfg.validateBackends()
+}
+
+func (cfg *Volume) validateBackends() error {
+	// We use a few dummy variables to ensure that global configuration is
+	// not needed in the storage drivers, that the validation does not fail
+	// because of it.
 	do, err := cfg.ToDriverOptions(time.Second)
 	if err != nil {
 		return err
 	}
 
-	// We use a few dummy variables to ensure that global configuration is
-	// not needed in the storage drivers, that the validation does not fail
-	// because of it.
-	var mountPath string
-	for driverType, backendName := range map[string]string{backend.Mount: cfg.Backends.Mount, backend.CRUD: cfg.Backends.CRUD, backend.Snapshot: cfg.Backends.Snapshot} {
-		if backendName == "" {
-			continue
+	if cfg.Backends.CRUD != "" {
+		crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
+		if err != nil {
+			return err
 		}
 
-		if driverType == backend.Mount {
-			mountPath = backend.MountPath
-		} else {
-			mountPath = ""
-		}
-
-		if err := backend.NewDriver(backendName, driverType, mountPath, &do); err != nil {
+		if err := crud.Validate(&do); err != nil {
 			return err
 		}
 	}
 
+	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, backend.MountPath)
+	if err != nil {
+		return err
+	}
+
+	if err := mnt.Validate(&do); err != nil {
+		return err
+	}
+	if cfg.Backends.Snapshot != "" {
+		snapshot, err := backend.NewSnapshotDriver(cfg.Backends.Snapshot)
+		if err != nil {
+			return err
+		}
+		if err := snapshot.Validate(&do); err != nil {
+
+			return err
+		}
+	}
 	return nil
 }
 
