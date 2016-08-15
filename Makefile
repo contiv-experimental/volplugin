@@ -120,8 +120,8 @@ run-apiserver:
 
 run-build:
 	GOGC=1000 go install -v \
-		 -ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
-		 ./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/
+		-ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
+		./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/ ./volmigrate/volmigrate/
 	cp $(GUESTBINPATH)/* bin/
 
 system-test: system-test-ceph system-test-nfs
@@ -163,7 +163,7 @@ TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 
 tar: clean-tar
 	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli apiserver volplugin volsupervisor -C ${PWD} contrib
+	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli apiserver volplugin volsupervisor volmigrate -C ${PWD} contrib
 
 clean-tar:
 	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
