@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
 
 	. "gopkg.in/check.v1"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 func (s *systemtestSuite) TestVolpluginNoGlobalConfiguration(c *C) {
@@ -70,7 +69,7 @@ func (s *systemtestSuite) TestVolpluginFDLeak(c *C) {
 	iterations := 2000
 	subIterations := 50
 
-	log.Infof("Running %d iterations of `docker volume ls` to ensure no FD exhaustion", iterations)
+	logrus.Infof("Running %d iterations of `docker volume ls` to ensure no FD exhaustion", iterations)
 
 	errChan := make(chan error, iterations)
 

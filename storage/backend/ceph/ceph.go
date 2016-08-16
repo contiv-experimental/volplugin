@@ -15,13 +15,12 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/mountscan"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 const (
@@ -141,7 +140,7 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 
 	if err := c.mkfsVolume(do.FSOptions.CreateCommand, device, do.Timeout); err != nil {
 		if err := c.unmapImage(do); err != nil {
-			log.Errorf("Error while trying to unmap after failed filesystem creation: %v", err)
+			logrus.Errorf("Error while trying to unmap after failed filesystem creation: %v", err)
 		}
 		return err
 	}
@@ -189,7 +188,7 @@ retry:
 	textList := []string{}
 
 	if err := json.Unmarshal([]byte(er.Stdout), &textList); err != nil {
-		log.Errorf("Unmarshalling ls for pool %q: %v. Retrying.", poolName, err)
+		logrus.Errorf("Unmarshalling ls for pool %q: %v. Retrying.", poolName, err)
 		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}
@@ -280,7 +279,7 @@ retry:
 	if retries < 3 {
 		if err := unix.Unmount(volumeDir, 0); err != nil && err != unix.ENOENT && err != unix.EINVAL {
 			lastErr = errored.Errorf("Failed to unmount %q (retrying): %v", volumeDir, err)
-			log.Error(lastErr)
+			logrus.Error(lastErr)
 			retries++
 			time.Sleep(100 * time.Millisecond)
 			goto retry
@@ -292,7 +291,7 @@ retry:
 	// Remove the mounted directory
 	// FIXME remove all, but only after the FIXME above.
 	if err := os.Remove(volumeDir); err != nil && !os.IsNotExist(err) {
-		log.Error(errored.Errorf("error removing %q directory: %v", volumeDir, err))
+		logrus.Error(errored.Errorf("error removing %q directory: %v", volumeDir, err))
 		goto retry
 	}
 
@@ -443,19 +442,19 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		case err := <-errChan:
 			newerr, ok := err.(*errored.Error)
 			if ok && newerr.Contains(errors.SnapshotCopy) {
-				log.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
+				logrus.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
 				cmd = exec.Command("rbd", "rm", mkpool(poolName, intNewName))
 				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-					log.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
+					logrus.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
 					return
 				}
 			}
 
 			if ok && newerr.Contains(errors.SnapshotProtect) {
-				log.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
+				logrus.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
 				cmd := exec.Command("rbd", "snap", "unprotect", mkpool(poolName, intOrigName), "--snap", snapName)
 				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-					log.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
+					logrus.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
 					return
 				}
 			}
@@ -501,7 +500,7 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	}
 
 	for _, mount := range hostMounts {
-		log.Debugf("Host mounts: %#v", mount)
+		logrus.Debugf("Host mounts: %#v", mount)
 	}
 
 	mapped, err := c.getMapped(timeout)
@@ -510,7 +509,7 @@ func (c *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	}
 
 	for _, mapd := range mapped {
-		log.Debugf("Mapped: %#v", mapd)
+		logrus.Debugf("Mapped: %#v", mapd)
 	}
 
 	for _, hostMount := range hostMounts {

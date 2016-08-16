@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/watch"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 const (
@@ -146,7 +145,7 @@ func (tlc *Client) WatchGlobal(activity chan *watch.Watch) {
 			global = NewGlobalConfig()
 		} else {
 			if err := json.Unmarshal([]byte(resp.Node.Value), global); err != nil {
-				log.Error("Error decoding global config, not updating")
+				logrus.Error("Error decoding global config, not updating")
 				time.Sleep(time.Second)
 				return
 			}

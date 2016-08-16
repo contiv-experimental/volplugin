@@ -3,7 +3,7 @@ package volsupervisor
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 
 	"github.com/contiv/volplugin/config"
@@ -23,13 +23,13 @@ type DaemonConfig struct {
 func Daemon(ctx *cli.Context) {
 	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
 retry:
 	global, err := cfg.GetGlobal()
 	if err != nil {
-		log.Errorf("Could not retrieve global configuration: %v. Retrying in 1 second", err)
+		logrus.Errorf("Could not retrieve global configuration: %v. Retrying in 1 second", err)
 		time.Sleep(time.Second)
 		goto retry
 	}
@@ -56,9 +56,9 @@ func (dc *DaemonConfig) watchAndSetGlobal(globalChan chan *watch.Watch) {
 
 func (dc *DaemonConfig) setDebug() {
 	if dc.Global.Debug {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug logging enabled")
+		logrus.SetLevel(logrus.DebugLevel)
+		logrus.Debug("Debug logging enabled")
 	} else {
-		log.SetLevel(log.InfoLevel)
+		logrus.SetLevel(logrus.InfoLevel)
 	}
 }

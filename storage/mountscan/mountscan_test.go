@@ -4,9 +4,10 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/Sirupsen/logrus"
+
 	. "testing"
 
-	log "github.com/Sirupsen/logrus"
 	. "gopkg.in/check.v1"
 )
 
@@ -18,7 +19,7 @@ func TestMountscan(t *T) { TestingT(t) }
 
 func (s *mountscanSuite) SetUpTest(c *C) {
 	if os.Getenv("DEBUG") != "" {
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 }
 

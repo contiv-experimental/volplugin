@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 )
 
 // Counter implements a tracker for specific mounts.
@@ -39,7 +39,7 @@ func (c *Counter) Add(mp string) int {
 	defer c.mutex.Unlock()
 
 	c.count[mp]++
-	log.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
+	logrus.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
 	return c.count[mp]
 }
 
@@ -50,7 +50,7 @@ func (c *Counter) AddCount(mp string, n int) int {
 	defer c.mutex.Unlock()
 
 	c.count[mp] += n
-	log.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
+	logrus.Debugf("Mount count increased to %d for %q", c.count[mp], mp)
 	return c.count[mp]
 }
 
@@ -61,7 +61,7 @@ func (c *Counter) Sub(mp string) int {
 	defer c.mutex.Unlock()
 
 	c.count[mp]--
-	log.Debugf("Mount count decreased to %d for %q", c.count[mp], mp)
+	logrus.Debugf("Mount count decreased to %d for %q", c.count[mp], mp)
 	if c.count[mp] < 0 {
 		panic(fmt.Sprintf("Assertion failed while tracking unmount: mount count for %q is less than 0", mp))
 	}

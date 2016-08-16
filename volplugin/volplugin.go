@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
@@ -36,7 +36,7 @@ func NewDaemonConfig(ctx *cli.Context) *DaemonConfig {
 retry:
 	client, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
-		log.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
+		logrus.Warn("Could not establish client to etcd cluster: %v. Retrying.", err)
 		time.Sleep(wait.Jitter(time.Second, 0))
 		goto retry
 	}
@@ -51,8 +51,8 @@ retry:
 func (dc *DaemonConfig) Daemon() error {
 	global, err := dc.Client.GetGlobal()
 	if err != nil {
-		log.Errorf("Error fetching global configuration: %v", err)
-		log.Infof("No global configuration. Proceeding with defaults...")
+		logrus.Errorf("Error fetching global configuration: %v", err)
+		logrus.Infof("No global configuration. Proceeding with defaults...")
 		global = config.NewGlobalConfig()
 	}
 
@@ -60,7 +60,7 @@ func (dc *DaemonConfig) Daemon() error {
 	errored.AlwaysDebug = dc.Global.Debug
 	errored.AlwaysTrace = dc.Global.Debug
 	if dc.Global.Debug {
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	go info.HandleDebugSignal()
@@ -71,12 +71,12 @@ func (dc *DaemonConfig) Daemon() error {
 		for {
 			dc.Global = (<-activity).Config.(*config.Global)
 
-			log.Debugf("Received global %#v", dc.Global)
+			logrus.Debugf("Received global %#v", dc.Global)
 
 			errored.AlwaysDebug = dc.Global.Debug
 			errored.AlwaysTrace = dc.Global.Debug
 			if dc.Global.Debug {
-				log.SetLevel(log.DebugLevel)
+				logrus.SetLevel(logrus.DebugLevel)
 			}
 		}
 	}()
@@ -105,7 +105,7 @@ func (dc *DaemonConfig) Daemon() error {
 	srv := http.Server{Handler: dc.API.Router(dc.API)}
 	srv.SetKeepAlivesEnabled(false)
 	if err := srv.Serve(l); err != nil {
-		log.Fatalf("Fatal error serving volplugin: %v", err)
+		logrus.Fatalf("Fatal error serving volplugin: %v", err)
 	}
 	l.Close()
 	return os.Remove(driverPath)

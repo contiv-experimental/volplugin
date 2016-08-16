@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -41,7 +42,7 @@ func (s *systemtestSuite) TestVolsupervisorSnapLockedVolume(c *C) {
 
 		dockerRmOut, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(containerID)))
 		if err != nil {
-			log.Error(strings.TrimSpace(dockerRmOut))
+			logrus.Error(strings.TrimSpace(dockerRmOut))
 		}
 		time.Sleep(time.Second) // buffer time
 		elapsed := time.Since(start)

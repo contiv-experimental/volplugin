@@ -2,10 +2,10 @@ package etcd2
 
 import (
 	"fmt"
-	"log"
 	"path"
 	"strconv"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/volmigrate/backend"
@@ -21,7 +21,7 @@ func New(prefix string, etcdHosts []string) *Engine {
 
 	etcdClient, err := client.New(etcdCfg)
 	if err != nil {
-		log.Fatalf("Failed to create etcd client: %s", err)
+		logrus.Fatalf("Failed to create etcd client: %s", err)
 	}
 
 	return &Engine{
@@ -46,12 +46,12 @@ func (e *Engine) CurrentSchemaVersion() int64 {
 			return 0 // no key = schema version 0
 		}
 
-		log.Fatalf("Unexpected error when looking up schema version: %v\n", err)
+		logrus.Fatalf("Unexpected error when looking up schema version: %v\n", err)
 	}
 
 	i, err := strconv.Atoi(resp.Node.Value)
 	if err != nil {
-		log.Fatalf("Got back unexpected schema version data: %v\n", resp.Node.Value)
+		logrus.Fatalf("Got back unexpected schema version data: %v\n", resp.Node.Value)
 	}
 
 	return int64(i)
@@ -113,7 +113,7 @@ func (e *Engine) UpdateSchemaVersion(newVersion int64) error {
 
 	// sanity check to make sure the version number is actually increasing
 	if newVersion <= currentVersion {
-		log.Fatalf("Cowardly refusing to update schema version to a version <= the current version.  Current: %d, Desired: %d\n", currentVersion, newVersion)
+		logrus.Fatalf("Cowardly refusing to update schema version to a version <= the current version.  Current: %d, Desired: %d\n", currentVersion, newVersion)
 	}
 
 	data := strconv.Itoa(int(newVersion))

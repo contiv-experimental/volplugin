@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 	"github.com/coreos/etcd/client"
@@ -111,7 +111,7 @@ func (c *Client) PublishUse(ut UseLocker) error {
 		return errors.Exists.Combine(err)
 	}
 
-	log.Debugf("Publishing use: (error: %v) %#v", err, ut)
+	logrus.Debugf("Publishing use: (error: %v) %#v", err, ut)
 	return errors.EtcdToErrored(err)
 }
 
@@ -125,11 +125,11 @@ func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client
 
 	if ttl < 0 {
 		err := errored.Errorf("TTL was less than 0 for locker %#v!!!! This should not happen!", ut)
-		log.Error(err)
+		logrus.Error(err)
 		return err
 	}
 
-	log.Debugf("Publishing use with TTL %v: %#v", ttl, ut)
+	logrus.Debugf("Publishing use with TTL %v: %#v", ttl, ut)
 
 	value := string(content)
 	if exist != client.PrevNoExist {
@@ -148,7 +148,7 @@ func (c *Client) RemoveUse(ut UseLocker, force bool) error {
 		return err
 	}
 
-	log.Debugf("Removing Use Lock: %#v", ut)
+	logrus.Debugf("Removing Use Lock: %#v", ut)
 
 	opts := &client.DeleteOptions{PrevValue: string(content)}
 	if force {

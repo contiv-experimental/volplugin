@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/apiserver"
 	"github.com/contiv/volplugin/config"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 )
 
@@ -18,7 +18,7 @@ var version = ""
 func start(ctx *cli.Context) {
 	cfg, err := config.NewClient(ctx.String("prefix"), ctx.StringSlice("etcd"))
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
 	d := &apiserver.DaemonConfig{

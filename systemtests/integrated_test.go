@@ -9,9 +9,8 @@ import (
 
 	. "gopkg.in/check.v1"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
@@ -28,7 +27,7 @@ func (s *systemtestSuite) TestIntegratedUseMountLock(c *C) {
 
 	out, err := s.dockerRun("mon0", false, true, volName, "sleep 10m")
 	if err != nil {
-		log.Info(out)
+		logrus.Info(out)
 	}
 	c.Assert(err, IsNil)
 

@@ -9,14 +9,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/api/internals/mount"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // Volume abstracts the notion of a volume as it is received from the plugins.
@@ -65,22 +64,22 @@ func RESTHTTPError(w http.ResponseWriter, err error) {
 		err = errors.Unknown
 	}
 
-	log.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
+	logrus.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 // Action is a catchall for additional driver functions.
 func Action(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	log.Debugf("Unknown driver action at %q", r.URL.Path)
+	logrus.Debugf("Unknown driver action at %q", r.URL.Path)
 	content, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Debug("Error reading body for %q", r.URL.Path)
+		logrus.Debug("Error reading body for %q", r.URL.Path)
 		RESTHTTPError(w, err)
 		return
 	}
 
-	log.Debug("Body content:", string(content))
+	logrus.Debug("Body content:", string(content))
 	w.WriteHeader(503)
 }
 
@@ -90,7 +89,7 @@ func LogHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		if debug {
 			buf := new(bytes.Buffer)
 			io.Copy(buf, r.Body)
-			log.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
+			logrus.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
 			var writer *io.PipeWriter
 			r.Body, writer = io.Pipe()
 			go func() {

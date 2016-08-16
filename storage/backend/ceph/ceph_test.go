@@ -12,7 +12,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/mountscan"
 )
@@ -56,7 +56,7 @@ func TestCeph(t *T) { TestingT(t) }
 
 func (s *cephSuite) SetUpTest(c *C) {
 	if os.Getenv("DEBUG") != "" {
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	c.Assert(exec.Command("sh", "-c", "set -e; for i in $(rbd ls); do rbd snap purge $i; rbd rm $i; done").Run(), IsNil)

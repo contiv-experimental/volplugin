@@ -11,7 +11,7 @@ package lock
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	"github.com/jbeda/go-wait"
 
@@ -59,13 +59,13 @@ func NewDriver(config *config.Client) *Driver {
 // *config.UseMount.
 func (d *Driver) ExecuteWithUseLock(uc config.UseLocker, runFunc func(d *Driver, uc config.UseLocker) error) error {
 	if err := d.Config.PublishUse(uc); err != nil {
-		log.Debugf("Could not publish use lock %#v: %v", uc, err)
+		logrus.Debugf("Could not publish use lock %#v: %v", uc, err)
 		return errors.ErrLockPublish
 	}
 
 	defer func() {
 		if err := d.Config.RemoveUse(uc, false); err != nil {
-			log.Errorf("Could not remove use lock %#v: %v", uc, err)
+			logrus.Errorf("Could not remove use lock %#v: %v", uc, err)
 		}
 	}()
 
@@ -96,7 +96,7 @@ func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, timeout time.Du
 
 	for _, uc := range acquired {
 		if err := d.Config.RemoveUse(uc, false); err != nil {
-			log.Errorf("Could not remove use lock %#v: %v", uc, err)
+			logrus.Errorf("Could not remove use lock %#v: %v", uc, err)
 		}
 	}
 
@@ -122,7 +122,7 @@ func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Du
 				return
 			default:
 				if err := d.acquire(uc, ttl, timeout); err != nil {
-					log.Errorf("Could not acquire lock %v: %v", uc, err)
+					logrus.Errorf("Could not acquire lock %v: %v", uc, err)
 					return
 				}
 			}
@@ -133,9 +133,9 @@ func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Du
 }
 
 func (d *Driver) lockWait(uc config.UseLocker, timeout time.Duration, now time.Time, reason string) (bool, error) {
-	log.Warnf("Could not %s %q lock for %q", reason, uc.GetReason(), uc.GetVolume())
+	logrus.Warnf("Could not %s %q lock for %q", reason, uc.GetReason(), uc.GetVolume())
 	if timeout != 0 && (timeout == -1 || time.Since(now) < timeout) {
-		log.Warnf("Waiting 100ms for %q lock on %q to free", uc.GetReason(), uc.GetVolume())
+		logrus.Warnf("Waiting 100ms for %q lock on %q to free", uc.GetReason(), uc.GetVolume())
 		time.Sleep(wait.Jitter(100*time.Millisecond, 0))
 		return true, nil
 	} else if time.Since(now) >= timeout {
@@ -168,10 +168,10 @@ func (d *Driver) acquire(uc config.UseLocker, ttl, timeout time.Duration) error 
 retry:
 	if ttl != time.Duration(0) {
 		if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevExist); err != nil {
-			log.Debugf("Lock publish failed for %q with error: %v. Continuing.", uc, err)
+			logrus.Debugf("Lock publish failed for %q with error: %v. Continuing.", uc, err)
 			if er, ok := err.(*errored.Error); ok && er.Contains(errors.NotExists) {
 				if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevNoExist); err != nil {
-					log.Warnf("Could not acquire %q lock for %q: %v", uc.GetReason(), uc.GetVolume(), err)
+					logrus.Warnf("Could not acquire %q lock for %q: %v", uc.GetReason(), uc.GetVolume(), err)
 				}
 			} else if err != nil {
 				return err
@@ -179,7 +179,7 @@ retry:
 		}
 	} else {
 		if err = d.Config.PublishUse(uc); err != nil {
-			log.Warnf("Could not acquire %q lock for %q", uc.GetReason(), uc.GetVolume())
+			logrus.Warnf("Could not acquire %q lock for %q", uc.GetReason(), uc.GetVolume())
 		}
 	}
 

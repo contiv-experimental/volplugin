@@ -12,11 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/lock"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 var errNotFound = errors.New("not found")
@@ -77,14 +76,14 @@ func (d *Driver) HeartbeatMount(ttl time.Duration, payload *config.UseMount, sto
 		case <-stop:
 			return
 		case <-time.After(sleepTime):
-			log.Debugf("Reporting mount for volume %v", payload.Volume)
+			logrus.Debugf("Reporting mount for volume %v", payload.Volume)
 
 			if err := d.ReportMountStatus(payload); err != nil {
 				if err == errNotFound {
 					break
 				}
 
-				log.Errorf("Could not report mount for host %q to master %q: %v", payload.Hostname, d.master, err)
+				logrus.Errorf("Could not report mount for host %q to master %q: %v", payload.Hostname, d.master, err)
 				continue
 			}
 		}
@@ -125,14 +124,14 @@ func (d *Driver) reportMountEndpoint(endpoint string, ut *config.UseMount) error
 // ReportMount reports a new mount to the apiserver.
 func (d *Driver) ReportMount(ut *config.UseMount) error {
 	err := d.reportMountEndpoint("mount", ut)
-	log.Debugf("Reporting mount %#v: %v", ut, err)
+	logrus.Debugf("Reporting mount %#v: %v", ut, err)
 	return err
 }
 
 // ReportMountStatus refreshes the mount status (and lock, by axiom).
 func (d *Driver) ReportMountStatus(ut *config.UseMount) error {
 	err := d.reportMountEndpoint("mount-report", ut)
-	log.Debugf("Reporting mount status %#v: %v", ut, err)
+	logrus.Debugf("Reporting mount status %#v: %v", ut, err)
 	return err
 }
 
