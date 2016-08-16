@@ -88,7 +88,7 @@ run: build
 	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && ./build/scripts/deps.sh && make run-volplugin run-apiserver'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 	sleep 10
-	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
+	vagrant ssh mon0 -c 'connwait 127.0.0.1:9005 && volcli global upload < /testdata/globals/global1.json'
 
 run-etcd:
 	sudo systemctl start etcd
