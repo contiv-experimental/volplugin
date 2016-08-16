@@ -85,7 +85,7 @@ clean-volplugin-containers:
 	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'docker ps | grep "volplugin" | cut -d " " -f 1 | xargs docker rm -fv'; done
 
 run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && make run-volplugin run-apiserver'; done
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && ./build/scripts/deps.sh && make run-volplugin run-apiserver'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
 	sleep 10
 	vagrant ssh mon0 -c 'volcli global upload < /testdata/globals/global1.json'
