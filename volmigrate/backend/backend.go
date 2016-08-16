@@ -1,11 +1,12 @@
 package backend
 
+// SchemaVersionKey is the path to the key which holds the current schema version of our namespace.
 const SchemaVersionKey = "schema-version"
 
 // Backend defines the interface for a type which implements the functionality to talk
 // to a given datastore (etcd2, etcd3, consul, etc.)
 type Backend interface {
-	// CurrentSchemaVersion returns the version of the last migration which was successfuly run.
+	// CurrentSchemaVersion returns the version of the last migration which was successfully run.
 	// This is used to ensure that the migration we're about to run hasn't been run already.
 	// If the version key does not exist, it will return 0.
 	CurrentSchemaVersion() int64
