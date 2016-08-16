@@ -1,4 +1,4 @@
-#!/bin/sh	
+#!/bin/sh
 
 set -e
 
@@ -7,9 +7,10 @@ files=$(find . -type f -name '*.go' | grep -v ./vendor)
 
 echo "Running gofmt..."
 set +e
-out="$(gofmt -s -l ${files})"
+out=$(gofmt -s -l ${files})
 set -e
-if [ "$(echo ${out} | wc -l)" -gt 1 ]
+# gofmt can include empty lines in its output
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
 then
   echo 1>&2 "gofmt errors in:"
   echo 1>&2 "${out}"
@@ -28,7 +29,7 @@ echo "Running golint..."
 set +e
 out=$(golint ./... | grep -vE '^vendor')
 set -e
-if [ "$(echo ${out} | wc -l)" -gt 1 ]
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
 then
   echo 1>&2 "golint errors in:"
   echo 1>&2 "${out}"
@@ -40,7 +41,7 @@ set +e
 out=$(go tool vet -composites=false ${dirs} 2>&1 | grep -v vendor)
 set -e
 
-if [ "$(echo ${out} | wc -l)" -gt 1 ]
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
 then
   echo 1>&2 "go vet errors in:"
   echo 1>&2 "${out}"
