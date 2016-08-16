@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -72,7 +72,7 @@ func NewWatcher(channel chan *Watch, path string, fun WatcherFunc) *Watcher {
 // then registers it with the watch registry.
 func Create(w *Watcher) {
 	if etcdClient == nil {
-		log.Error("etcdClient is nil, cannot watch anything!")
+		logrus.Error("etcdClient is nil, cannot watch anything!")
 		return
 	}
 
@@ -92,7 +92,7 @@ func Create(w *Watcher) {
 			resp, err := watcher.Next(ctx)
 			if err != nil {
 				if err == context.Canceled {
-					log.Debugf("watch for %q canceled", w.Path)
+					logrus.Debugf("watch for %q canceled", w.Path)
 					return
 				}
 

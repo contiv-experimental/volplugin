@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
@@ -11,8 +12,6 @@ import (
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/cgroup"
 	"github.com/contiv/volplugin/storage/control"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // Create fully creates a volume
@@ -28,7 +27,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Creating volume %s", volume)
+	logrus.Infof("Creating volume %s", volume)
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -61,7 +60,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		log.Debugf("Volume Create: %#v", *volConfig)
+		logrus.Debugf("Volume Create: %#v", *volConfig)
 
 		do, err := control.CreateVolume(policyObj, volConfig, global.Timeout)
 		if err == errors.NoActionTaken {
@@ -74,7 +73,7 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 
 		if err := control.FormatVolume(volConfig, do); err != nil {
 			if err := control.RemoveVolume(volConfig, global.Timeout); err != nil {
-				log.Errorf("Error during cleanup of failed format: %v", err)
+				logrus.Errorf("Error during cleanup of failed format: %v", err)
 			}
 			return errors.FormatVolume.Combine(err)
 		}
@@ -196,11 +195,11 @@ type mountState struct {
 
 // triggered on any failure during call into mount.
 func (a *API) clearMount(ms mountState) {
-	log.Errorf("MOUNT FAILURE: %v", ms.err)
+	logrus.Errorf("MOUNT FAILURE: %v", ms.err)
 
 	if err := ms.driver.Unmount(ms.driverOpts); err != nil {
 		// literally can't do anything about this situation. Log.
-		log.Errorf("Failure during unmount after failed mount: %v %v", err, ms.err)
+		logrus.Errorf("Failure during unmount after failed mount: %v %v", err, ms.err)
 	}
 
 	if err := a.Lock.ClearLock(ms.ut, (*a.Global).Timeout); err != nil {
@@ -220,8 +219,8 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Mounting volume %q", request)
-	log.Debugf("%#v", a.MountCollection)
+	logrus.Infof("Mounting volume %q", request)
+	logrus.Debugf("%#v", a.MountCollection)
 
 	driver, volConfig, driverOpts, err := a.GetStorageParameters(request)
 	if err != nil {
@@ -251,7 +250,7 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	//     decreaseMount() in unmount
 	if a.MountCounter.Add(volName) > 1 {
 		if volConfig.Unlocked {
-			log.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
+			logrus.Warnf("Duplicate mount of %q detected: returning existing mount path", volName)
 			path, err := a.getMountPath(driver, driverOpts)
 			if err != nil {
 				a.HTTPError(w, errors.MarshalResponse.Combine(err))
@@ -261,7 +260,7 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Warnf("Duplicate mount of %q detected: Lock failed", volName)
+		logrus.Warnf("Duplicate mount of %q detected: Lock failed", volName)
 		a.HTTPError(w, errors.LockFailed.Combine(errored.Errorf("Duplicate mount")))
 		return
 	}
@@ -291,7 +290,7 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cgroup.ApplyCGroupRateLimit(volConfig.RuntimeOptions, mc); err != nil {
-		log.Errorf("Could not apply cgroups to volume %q", volConfig)
+		logrus.Errorf("Could not apply cgroups to volume %q", volConfig)
 	}
 
 	path, err := driver.MountPath(driverOpts)
@@ -337,7 +336,7 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Unmounting volume %q", request)
+	logrus.Infof("Unmounting volume %q", request)
 
 	driver, volConfig, driverOpts, err := a.GetStorageParameters(request)
 	if err != nil {
@@ -369,7 +368,7 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if a.MountCounter.Sub(volName) > 0 {
-		log.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
+		logrus.Warnf("Duplicate unmount of %q detected: ignoring and returning success", volName)
 		path, err := a.getMountPath(driver, driverOpts)
 		if err != nil {
 			a.HTTPError(w, errors.MarshalResponse.Combine(err))

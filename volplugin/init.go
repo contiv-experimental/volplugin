@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
@@ -14,8 +15,6 @@ import (
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 func (dc *DaemonConfig) getMounted() (map[string]*storage.Mount, map[string]int, error) {
@@ -37,7 +36,7 @@ func (dc *DaemonConfig) getMounted() (map[string]*storage.Mount, map[string]int,
 			if now.Sub(time.Now()) > dc.Global.Timeout {
 				panic("Cannot contact docker")
 			}
-			log.Error(errored.Errorf("Could not query docker; retrying").Combine(err))
+			logrus.Error(errored.Errorf("Could not query docker; retrying").Combine(err))
 			time.Sleep(time.Second)
 			continue
 		}
@@ -68,7 +67,7 @@ func (dc *DaemonConfig) getMounted() (map[string]*storage.Mount, map[string]int,
 		}
 
 		for _, mount := range mounted {
-			log.Debugf("Refreshing existing mount for %q: %v", mount.Volume.Name, *mount)
+			logrus.Debugf("Refreshing existing mount for %q: %v", mount.Volume.Name, *mount)
 			mounts[mount.Volume.Name] = mount
 		}
 	}
@@ -88,13 +87,13 @@ func (dc *DaemonConfig) updateMounts() error {
 	}
 
 	for name, mount := range mountNames {
-		log.Debugf("%s: %#v", name, *mount)
+		logrus.Debugf("%s: %#v", name, *mount)
 		if mount != nil {
 			dc.API.MountCounter.AddCount(name, counts[name])
 
 			parts := strings.Split(name, "/")
 			if len(parts) != 2 {
-				log.Warnf("Invalid volume named %q in mount scan: skipping refresh", name)
+				logrus.Warnf("Invalid volume named %q in mount scan: skipping refresh", name)
 				continue
 			}
 
@@ -102,13 +101,13 @@ func (dc *DaemonConfig) updateMounts() error {
 			if erd, ok := err.(*errored.Error); ok {
 				switch {
 				case erd.Contains(errors.NotExists):
-					log.Warnf("Volume %q not found in database, skipping", name)
+					logrus.Warnf("Volume %q not found in database, skipping", name)
 					continue
 				case erd.Contains(errors.GetVolume):
-					log.Fatalf("Volmaster could not be contacted; aborting volplugin.")
+					logrus.Fatalf("Volmaster could not be contacted; aborting volplugin.")
 				}
 			} else if err != nil {
-				log.Fatalf("Unknown error reading from apiserver: %v", err)
+				logrus.Fatalf("Unknown error reading from apiserver: %v", err)
 			}
 
 			payload := &config.UseMount{
@@ -127,14 +126,14 @@ func (dc *DaemonConfig) updateMounts() error {
 				// since this may run twice, it will terminate the original goroutine via the original stop channel.
 				stopChan, err := dc.API.Lock.AcquireWithTTLRefresh(payload, dc.Global.TTL, dc.Global.Timeout)
 				if err != nil {
-					log.Fatalf("Error encountered while trying to acquire lock for mount %v: %v", payload, err)
+					logrus.Fatalf("Error encountered while trying to acquire lock for mount %v: %v", payload, err)
 					continue
 				}
 
 				dc.API.AddStopChan(name, stopChan)
 			}
 		} else {
-			log.Errorf("Missing mount data for %q which was reported by volplugin or docker as previously mounted", name)
+			logrus.Errorf("Missing mount data for %q which was reported by volplugin or docker as previously mounted", name)
 		}
 	}
 

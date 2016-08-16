@@ -10,11 +10,10 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 	"github.com/vishvananda/netlink"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // Driver is a basic struct for controlling the NFS driver.
@@ -182,7 +181,7 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 retry:
 	if err := unix.Mount(do.Source, mp, "nfs", 0, opts); err != nil && err != unix.EBUSY {
 		if err == unix.EIO {
-			log.Errorf("I/O error mounting %q Retrying after timeout...", do.Volume.Name)
+			logrus.Errorf("I/O error mounting %q Retrying after timeout...", do.Volume.Name)
 			time.Sleep(do.Timeout)
 			times++
 			if times == 3 {

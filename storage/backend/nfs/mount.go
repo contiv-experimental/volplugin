@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
@@ -26,7 +26,7 @@ func (d *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 	for _, hostMount := range hostMounts {
 		rel, err := filepath.Rel(d.mountpath, hostMount.MountPoint)
 		if err != nil {
-			log.Errorf("Invalid volume calucated from mountpoint %q with mountpath %q", hostMount.MountPoint, d.mountpath)
+			logrus.Errorf("Invalid volume calucated from mountpoint %q with mountpath %q", hostMount.MountPoint, d.mountpath)
 			continue
 		}
 		mounts = append(mounts, &storage.Mount{

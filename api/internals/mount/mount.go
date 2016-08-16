@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // Collection is a data structure used for tracking live mounts.
@@ -30,7 +29,7 @@ func NewCollection() *Collection {
 func (c *Collection) Add(mc *storage.Mount) {
 	c.mountMapMutex.Lock()
 	defer c.mountMapMutex.Unlock()
-	log.Infof("Adding mount %q", mc.Volume.Name)
+	logrus.Infof("Adding mount %q", mc.Volume.Name)
 
 	if _, ok := c.mountMap[mc.Volume.Name]; ok {
 		// we should NEVER see this and volplugin should absolutely crash if it is seen.
@@ -44,7 +43,7 @@ func (c *Collection) Add(mc *storage.Mount) {
 func (c *Collection) Remove(vol string) {
 	c.mountMapMutex.Lock()
 	defer c.mountMapMutex.Unlock()
-	log.Infof("Removing mount %q", vol)
+	logrus.Infof("Removing mount %q", vol)
 	delete(c.mountMap, vol)
 }
 
@@ -52,8 +51,8 @@ func (c *Collection) Remove(vol string) {
 func (c *Collection) Get(vol string) (*storage.Mount, error) {
 	c.mountMapMutex.Lock()
 	defer c.mountMapMutex.Unlock()
-	log.Debugf("Retrieving mount %q", vol)
-	log.Debugf("Mount collection: %#v", c.mountMap)
+	logrus.Debugf("Retrieving mount %q", vol)
+	logrus.Debugf("Mount collection: %#v", c.mountMap)
 	mc, ok := c.mountMap[vol]
 	if !ok {
 		return nil, errored.Errorf("Could not find mount for volume %q", vol).Combine(errors.NotExists)

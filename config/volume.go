@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/merge"
@@ -14,7 +15,6 @@ import (
 	"github.com/contiv/volplugin/watch"
 	"github.com/docker/go-units"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -298,7 +298,7 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 		vw := &watch.Watch{Key: strings.TrimPrefix(resp.Node.Key, c.prefixed(rootVolume)+"/")}
 
 		if !resp.Node.Dir && path.Base(resp.Node.Key) == "runtime" {
-			log.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
+			logrus.Debugf("Handling watch event %q for volume %q", resp.Action, vw.Key)
 			if resp.Action != "delete" {
 				if resp.Node.Value != "" {
 					volName := strings.TrimPrefix(path.Dir(vw.Key), c.prefixed(rootVolume)+"/")
@@ -307,7 +307,7 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 					vw.Key = volName
 					volume, err := c.GetVolume(policy, vol)
 					if err != nil {
-						log.Errorf("Could not retrieve volume %q after watch notification: %v", volName, err)
+						logrus.Errorf("Could not retrieve volume %q after watch notification: %v", volName, err)
 						return
 					}
 					vw.Config = volume

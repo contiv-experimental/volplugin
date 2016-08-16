@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/remotessh"
 	"github.com/contiv/volplugin/config"
@@ -27,7 +27,7 @@ var (
 )
 
 func ClearEtcd(node remotessh.TestbedNode) {
-	log.Infof("Clearing etcd data")
+	logrus.Infof("Clearing etcd data")
 	node.RunCommand(`for i in $(etcdctl ls /); do etcdctl rm --recursive "$i"; done`)
 }
 
@@ -140,7 +140,7 @@ func (s *systemtestSuite) dockerRun(host string, tty, daemon bool, volume, comma
 		command,
 	)
 
-	log.Infof("Starting docker on %q with: %q", host, dockerCmd)
+	logrus.Infof("Starting docker on %q with: %q", host, dockerCmd)
 
 	str, err := s.vagrant.GetNode(host).RunCommandWithOutput(dockerCmd)
 	if err != nil {
@@ -174,13 +174,13 @@ func (s *systemtestSuite) readIntent(fn string) (*config.Policy, error) {
 }
 
 func (s *systemtestSuite) purgeVolume(host, volume string) error {
-	log.Infof("Purging %s on %s", volume, host)
+	logrus.Infof("Purging %s on %s", volume, host)
 
 	policy, name := volumeParts(volume)
 
 	// ignore the error here so we get to the purge if we have to
 	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(fmt.Sprintf("docker volume rm %s", volume)); err != nil {
-		log.Error(out, err)
+		logrus.Error(out, err)
 	}
 
 	defer func() {
@@ -191,7 +191,7 @@ func (s *systemtestSuite) purgeVolume(host, volume string) error {
 	}()
 
 	if out, err := s.volcli(fmt.Sprintf("volume remove %s", volume)); err != nil {
-		log.Error(out)
+		logrus.Error(out)
 		return err
 	}
 
@@ -203,7 +203,7 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 	policy, name := volumeParts(volume)
 
 	if nfsDriver() {
-		log.Infof("Making NFS mount directory /volplugin/%s/%s", policy, name)
+		logrus.Infof("Making NFS mount directory /volplugin/%s/%s", policy, name)
 		_, err := s.mon0cmd(fmt.Sprintf("sudo mkdir -p /volplugin/%s/%s && sudo chmod 4777 /volplugin/%s/%s", policy, name, policy, name))
 		if err != nil {
 			return err
@@ -214,7 +214,7 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 		}
 
 		mountstr := fmt.Sprintf("%s:/volplugin/%s/%s", s.mon0ip, policy, name)
-		log.Infof("Mapping NFS mount %q", mountstr)
+		logrus.Infof("Mapping NFS mount %q", mountstr)
 		opts["mount"] = mountstr
 	}
 
@@ -225,17 +225,17 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 		}
 	}
 
-	log.Infof("Creating %s on %q with options %q", volume, host, strings.Join(optsStr, " "))
+	logrus.Infof("Creating %s on %q with options %q", volume, host, strings.Join(optsStr, " "))
 
 	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
 
 	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(cmd); err != nil {
-		log.Info(string(out))
+		logrus.Info(string(out))
 		return err
 	}
 
 	if out, err := s.volcli(fmt.Sprintf("volume get %s/%s", policy, name)); err != nil {
-		log.Error(out)
+		logrus.Error(out)
 		return err
 	}
 
@@ -243,17 +243,17 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 }
 
 func (s *systemtestSuite) uploadGlobal(configFile string) error {
-	log.Infof("Uploading global configuration %s", configFile)
+	logrus.Infof("Uploading global configuration %s", configFile)
 	out, err := s.volcli(fmt.Sprintf("global upload < /testdata/globals/%s.json", configFile))
 	if err != nil {
-		log.Error(out)
+		logrus.Error(out)
 	}
 
 	return err
 }
 
 func (s *systemtestSuite) clearNFS() {
-	log.Info("Clearing NFS directories")
+	logrus.Info("Clearing NFS directories")
 	s.mon0cmd("sudo rm -rf /volplugin && sudo mkdir /volplugin")
 }
 
@@ -270,7 +270,7 @@ func (s *systemtestSuite) rebootstrap() error {
 		s.clearNFS()
 	}
 
-	log.Info("Clearing etcd")
+	logrus.Info("Clearing etcd")
 	ClearEtcd(s.vagrant.GetNode("mon0"))
 
 	if err := s.vagrant.IterateNodes(startAPIServer); err != nil {
@@ -302,7 +302,7 @@ func (s *systemtestSuite) rebootstrap() error {
 	}
 
 	if out, err := s.uploadIntent("policy1", "policy1"); err != nil {
-		log.Errorf("Intent upload failed. Error: %v, Output: %s", err, out)
+		logrus.Errorf("Intent upload failed. Error: %v, Output: %s", err, out)
 		return err
 	}
 
@@ -332,19 +332,19 @@ func nfsDriver() bool {
 func (s *systemtestSuite) createExports() error {
 	out, err := s.mon0cmd("sudo mkdir -p /volplugin")
 	if err != nil {
-		log.Error(out)
+		logrus.Error(out)
 		return errored.Errorf("Creating volplugin root").Combine(err)
 	}
 
 	out, err = s.mon0cmd("echo /volplugin \\*\\(rw,no_root_squash\\) | sudo tee /etc/exports.d/basic.exports")
 	if err != nil {
-		log.Error(out)
+		logrus.Error(out)
 		return errored.Errorf("Creating export").Combine(err)
 	}
 
 	out, err = s.mon0cmd("sudo exportfs -a")
 	if err != nil {
-		log.Error(out)
+		logrus.Error(out)
 		return errored.Errorf("exportfs").Combine(err)
 	}
 
@@ -352,7 +352,7 @@ func (s *systemtestSuite) createExports() error {
 }
 
 func (s *systemtestSuite) uploadIntent(policyName, fileName string) (string, error) {
-	log.Infof("Uploading intent %q as policy %q", fileName, policyName)
+	logrus.Infof("Uploading intent %q as policy %q", fileName, policyName)
 	return s.volcli(fmt.Sprintf("policy upload %s < /testdata/%s/%s.json", policyName, getDriver(), fileName))
 }
 
@@ -369,20 +369,20 @@ func runCommandUntilNoError(node remotessh.TestbedNode, cmd string, timeout int)
 }
 
 func waitForVolsupervisor(node remotessh.TestbedNode) error {
-	log.Infof("Checking if volsupervisor is running on %q", node.GetName())
+	logrus.Infof("Checking if volsupervisor is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} volsupervisor | grep true", 30)
 	if err == nil {
-		log.Infof("Volsupervisor is running on %q", node.GetName())
+		logrus.Infof("Volsupervisor is running on %q", node.GetName())
 
 	}
 	return nil
 }
 
 func waitForAPIServer(node remotessh.TestbedNode) error {
-	log.Infof("Checking if apiserver is running on %q", node.GetName())
+	logrus.Infof("Checking if apiserver is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} apiserver | grep true", 30)
 	if err == nil {
-		log.Infof("APIServer is running on %q", node.GetName())
+		logrus.Infof("APIServer is running on %q", node.GetName())
 	}
 
 	then := time.Now()
@@ -390,28 +390,28 @@ func waitForAPIServer(node remotessh.TestbedNode) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("Took %s for apiserver on %q to be accessible", time.Since(then), node.GetName())
+	logrus.Infof("Took %s for apiserver on %q to be accessible", time.Since(then), node.GetName())
 
 	return nil
 }
 
 func waitForVolplugin(node remotessh.TestbedNode) error {
-	log.Infof("Checking if volplugin is running on %q", node.GetName())
+	logrus.Infof("Checking if volplugin is running on %q", node.GetName())
 	err := runCommandUntilNoError(node, "docker inspect -f {{.State.Running}} volplugin | grep true", 30)
 	if err == nil {
-		log.Infof("Volplugin is running on %q", node.GetName())
+		logrus.Infof("Volplugin is running on %q", node.GetName())
 
 	}
 	return nil
 }
 
 func (s *systemtestSuite) pullDebian() error {
-	log.Infof("Pulling alpine:latest on all boxes")
+	logrus.Infof("Pulling alpine:latest on all boxes")
 	return s.vagrant.SSHExecAllNodes("docker pull alpine")
 }
 
 func restartNetplugin(node remotessh.TestbedNode) error {
-	log.Infof("Restarting netplugin on %q", node.GetName())
+	logrus.Infof("Restarting netplugin on %q", node.GetName())
 	err := node.RunCommand("sudo systemctl restart netplugin netmaster")
 	if err != nil {
 		return err
@@ -421,36 +421,36 @@ func restartNetplugin(node remotessh.TestbedNode) error {
 }
 
 func startVolsupervisor(node remotessh.TestbedNode) error {
-	log.Infof("Starting the volsupervisor on %q", node.GetName())
+	logrus.Infof("Starting the volsupervisor on %q", node.GetName())
 	return node.RunCommandBackground("sudo systemctl start volsupervisor")
 }
 
 func stopVolsupervisor(node remotessh.TestbedNode) error {
-	log.Infof("Stopping the volsupervisor on %q", node.GetName())
+	logrus.Infof("Stopping the volsupervisor on %q", node.GetName())
 	defer time.Sleep(time.Second)
 	return node.RunCommand("sudo systemctl stop volsupervisor")
 }
 
 func startAPIServer(node remotessh.TestbedNode) error {
-	log.Infof("Starting the apiserver on %q", node.GetName())
+	logrus.Infof("Starting the apiserver on %q", node.GetName())
 	err := node.RunCommandBackground("sudo systemctl start apiserver")
-	log.Infof("Waiting for apiserver startup on %q", node.GetName())
+	logrus.Infof("Waiting for apiserver startup on %q", node.GetName())
 	return err
 }
 
 func stopAPIServer(node remotessh.TestbedNode) error {
-	log.Infof("Stopping the apiserver on %q", node.GetName())
+	logrus.Infof("Stopping the apiserver on %q", node.GetName())
 	defer time.Sleep(time.Second)
 	return node.RunCommand("sudo systemctl stop apiserver")
 }
 
 func startVolplugin(node remotessh.TestbedNode) error {
-	log.Infof("Starting the volplugin on %q", node.GetName())
+	logrus.Infof("Starting the volplugin on %q", node.GetName())
 	return node.RunCommandBackground("sudo systemctl start volplugin")
 }
 
 func stopVolplugin(node remotessh.TestbedNode) error {
-	log.Infof("Stopping the volplugin on %q", node.GetName())
+	logrus.Infof("Stopping the volplugin on %q", node.GetName())
 	defer time.Sleep(time.Second)
 	return node.RunCommand("sudo systemctl stop volplugin")
 }
@@ -461,7 +461,7 @@ func waitDockerizedServicesHost(node remotessh.TestbedNode) error {
 	}
 
 	for s, cmd := range services {
-		log.Infof("Waiting for %s on %q", s, node.GetName())
+		logrus.Infof("Waiting for %s on %q", s, node.GetName())
 		out, err := WaitForDone(
 			func() (string, bool) {
 				out, err := node.RunCommandWithOutput(cmd)
@@ -471,7 +471,7 @@ func waitDockerizedServicesHost(node remotessh.TestbedNode) error {
 				return out, true
 			}, 2*time.Second, time.Minute, fmt.Sprintf("service %s is not healthy", s))
 		if err != nil {
-			log.Infof("a dockerized service failed. Output: %s, Error: %v", out, err)
+			logrus.Infof("a dockerized service failed. Output: %s, Error: %v", out, err)
 			return err
 		}
 	}
@@ -483,7 +483,7 @@ func (s *systemtestSuite) waitDockerizedServices() error {
 }
 
 func restartDockerHost(node remotessh.TestbedNode) error {
-	log.Infof("Restarting docker on %q", node.GetName())
+	logrus.Infof("Restarting docker on %q", node.GetName())
 	// note that for all these restart tasks we error out quietly to avoid other
 	// hosts being cleaned up
 	node.RunCommand("sudo service docker restart")
@@ -505,13 +505,13 @@ func (s *systemtestSuite) clearContainerHost(node remotessh.TestbedNode) error {
 		names = append(names, name)
 	}
 	startedContainers.Unlock()
-	log.Infof("Clearing containers %v on %q", names, node.GetName())
+	logrus.Infof("Clearing containers %v on %q", names, node.GetName())
 	node.RunCommand(fmt.Sprintf("docker rm -f %s", strings.Join(names, " ")))
 	return nil
 }
 
 func (s *systemtestSuite) clearContainers() error {
-	log.Infof("Clearing containers")
+	logrus.Infof("Clearing containers")
 	defer func() {
 		startedContainers.Lock()
 		startedContainers.names = map[string]struct{}{}
@@ -521,7 +521,7 @@ func (s *systemtestSuite) clearContainers() error {
 }
 
 func (s *systemtestSuite) clearVolumeHost(node remotessh.TestbedNode) error {
-	log.Infof("Clearing volumes on %q", node.GetName())
+	logrus.Infof("Clearing volumes on %q", node.GetName())
 	node.RunCommand("docker volume ls | tail -n +2 | awk '{ print $2 }' | xargs docker volume rm")
 	return nil
 }
@@ -535,7 +535,7 @@ func (s *systemtestSuite) clearRBD() error {
 		return nil
 	}
 
-	log.Info("Clearing rbd images")
+	logrus.Info("Clearing rbd images")
 
 	s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
 		s.vagrant.GetNode(node.GetName()).RunCommandWithOutput("for img in $(sudo rbd showmapped | tail -n +2 | awk \"{ print \\$5 }\"); do sudo umount $img; sudo umount -f $img; done")
@@ -549,7 +549,7 @@ func (s *systemtestSuite) clearRBD() error {
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("for img in $(sudo rbd ls); do sudo rbd snap purge $img; sudo rbd rm $img; done")
 	if err != nil {
-		log.Info(out)
+		logrus.Info(out)
 	}
 
 	return err

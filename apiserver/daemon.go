@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
@@ -47,14 +47,14 @@ type routeHandlers map[string]func(http.ResponseWriter, *http.Request)
 func (d *DaemonConfig) Daemon(listen string) {
 	global, err := d.Config.GetGlobal()
 	if err != nil {
-		log.Errorf("Error fetching global configuration: %v", err)
-		log.Infof("No global configuration. Proceeding with defaults...")
+		logrus.Errorf("Error fetching global configuration: %v", err)
+		logrus.Infof("No global configuration. Proceeding with defaults...")
 		global = config.NewGlobalConfig()
 	}
 
 	d.Global = global
 	if d.Global.Debug {
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 	errored.AlwaysDebug = d.Global.Debug
 	errored.AlwaysTrace = d.Global.Debug
@@ -71,7 +71,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 			errored.AlwaysDebug = d.Global.Debug
 			errored.AlwaysTrace = d.Global.Debug
 			if d.Global.Debug {
-				log.SetLevel(log.DebugLevel)
+				logrus.SetLevel(logrus.DebugLevel)
 			}
 		}
 	}()
@@ -92,7 +92,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, postRouter, "POST", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting apiserver: %v", err)
+		logrus.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	deleteRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -102,7 +102,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, deleteRouter, "DELETE", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting apiserver: %v", err)
+		logrus.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	getRouter := map[string]func(http.ResponseWriter, *http.Request){
@@ -121,7 +121,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := addRoute(r, getRouter, "GET", d.Global.Debug); err != nil {
-		log.Fatalf("Error starting apiserver: %v", err)
+		logrus.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	if d.Global.Debug {
@@ -129,7 +129,7 @@ func (d *DaemonConfig) Daemon(listen string) {
 	}
 
 	if err := http.ListenAndServe(listen, r); err != nil {
-		log.Fatalf("Error starting apiserver: %v", err)
+		logrus.Fatalf("Error starting apiserver: %v", err)
 	}
 }
 
@@ -150,7 +150,7 @@ func logHandler(name string, debug bool, actionFunc func(http.ResponseWriter, *h
 		if debug {
 			buf := new(bytes.Buffer)
 			io.Copy(buf, r.Body)
-			log.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
+			logrus.Debugf("Dispatching %s with %v", name, strings.TrimSpace(string(buf.Bytes())))
 			var writer *io.PipeWriter
 			r.Body, writer = io.Pipe()
 			go func() {
@@ -678,7 +678,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 
 	complete := func() error {
 		if err := control.RemoveVolume(vc, timeout); err != nil && err != errors.NoActionTaken {
-			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
+			logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
 		}
 
 		return etcdRemove()
@@ -686,7 +686,7 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	// this cleans up uses when forcing the removal
 	removeUse := func() {
 		if err := d.Config.RemoveUse(uc, true); err != nil {
-			log.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
+			logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
 		}
 	}
 
@@ -814,7 +814,7 @@ func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request)
 	_, err = d.Config.GetVolume(parts[0], parts[1])
 
 	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
-		log.Error("Cannot refresh mount information: volume no longer exists", err)
+		logrus.Error("Cannot refresh mount information: volume no longer exists", err)
 		w.WriteHeader(404)
 		return
 	} else if err != nil {
@@ -907,7 +907,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		log.Debugf("Volume Create: %#v", *volConfig)
+		logrus.Debugf("Volume Create: %#v", *volConfig)
 
 		do, err := control.CreateVolume(policy, volConfig, d.Global.Timeout)
 		if err == errors.NoActionTaken {
@@ -920,7 +920,7 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 		if err := control.FormatVolume(volConfig, do); err != nil {
 			if err := control.RemoveVolume(volConfig, d.Global.Timeout); err != nil {
-				log.Errorf("Error during cleanup of failed format: %v", err)
+				logrus.Errorf("Error during cleanup of failed format: %v", err)
 			}
 			return errors.FormatVolume.Combine(err)
 		}

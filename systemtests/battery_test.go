@@ -7,10 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
-
 	. "gopkg.in/check.v1"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/remotessh"
 )
 
@@ -42,11 +41,11 @@ func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
 						c.Assert(err, IsNil, Commentf("Output: %s", id))
 						dockerRmOut, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(id)))
 						if err != nil {
-							log.Error(strings.TrimSpace(dockerRmOut))
+							logrus.Error(strings.TrimSpace(dockerRmOut))
 						}
 						c.Assert(err, IsNil)
 					} else { // locked volumes
-						log.Debug("Volume %s already mounted in container %s", fqVolName, containerID)
+						logrus.Debug("Volume %s already mounted in container %s", fqVolName, containerID)
 						c.Assert(err, NotNil)
 					}
 				}
@@ -61,7 +60,7 @@ func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
 
 				dockerRmOut, err := s.mon0cmd(fmt.Sprintf("docker rm -f %s", strings.TrimSpace(containerID)))
 				if err != nil {
-					log.Error(strings.TrimSpace(dockerRmOut))
+					logrus.Error(strings.TrimSpace(dockerRmOut))
 				}
 				c.Assert(err, IsNil)
 			}(volumes[workerID], workerID)
@@ -88,7 +87,7 @@ func (s *systemtestSuite) BatteryMultiMountSameHost(c *C, isUnlocked string) {
 		for x := 0; x < threadCount; x++ {
 			err := <-purgeChan
 			if err != nil {
-				log.Error(err)
+				logrus.Error(err)
 				errs++
 			}
 		}
@@ -103,7 +102,7 @@ func (s *systemtestSuite) TestBatteryParallelMount(c *C) {
 
 repeat:
 	if unlocked {
-		log.Info("NFS unlocked test proceeding")
+		logrus.Info("NFS unlocked test proceeding")
 		out, err := s.uploadIntent("policy1", "unlocked")
 		c.Assert(err, IsNil, Commentf(out))
 	}
@@ -152,11 +151,11 @@ repeat:
 		for i := 0; i < len(nodes)*count; i++ {
 			output := <-outputChan
 			if output.err != nil {
-				log.Debug(output.out)
+				logrus.Debug(output.out)
 				errs++
 			}
 
-			//log.Infof("%q: %s", output.volume, output.out)
+			//logrus.Infof("%q: %s", output.volume, output.out)
 		}
 
 		errCount := count * (len(nodes) - 1)
@@ -178,7 +177,7 @@ repeat:
 		for x := 0; x < count; x++ {
 			err := <-purgeChan
 			if err != nil {
-				log.Error(err)
+				logrus.Error(err)
 				errs++
 			}
 		}
@@ -213,7 +212,7 @@ func (s *systemtestSuite) TestBatteryParallelCreate(c *C) {
 						defer wg.Done()
 						fqVolName := fqVolume("policy1", volume)
 						node := nodes[i]
-						log.Infof("Creating image %s on %q", fqVolName, node.GetName())
+						logrus.Infof("Creating image %s on %q", fqVolName, node.GetName())
 
 						var opt string
 

@@ -8,7 +8,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/remotessh"
 )
 
@@ -30,8 +30,8 @@ func TestSystem(t *T) {
 	}
 
 	if os.Getenv("DEBUG_TEST") != "" {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug logging enabled")
+		logrus.SetLevel(logrus.DebugLevel)
+		logrus.Debug("Debug logging enabled")
 	}
 
 	TestingT(t)
@@ -42,7 +42,7 @@ func (s *systemtestSuite) SetUpTest(c *C) {
 }
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
-	log.Infof("Bootstrapping system tests")
+	logrus.Infof("Bootstrapping system tests")
 
 	iter, err := strconv.ParseInt(os.Getenv("ITERATIONS"), 10, 64)
 	if err != nil {
@@ -55,10 +55,10 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	c.Assert(s.vagrant.Setup(false, []string{}, 3), IsNil)
 
 	if nfsDriver() {
-		log.Info("NFS Driver detected: configuring exports.")
+		logrus.Info("NFS Driver detected: configuring exports.")
 		c.Assert(s.createExports(), IsNil)
 		ip, err := s.mon0cmd(`ip addr show dev enp0s8 | grep inet | head -1 | awk "{ print \$2 }" | awk -F/ "{ print \$1 }"`)
-		log.Infof("mon0's ip is %s", strings.TrimSpace(ip))
+		logrus.Infof("mon0's ip is %s", strings.TrimSpace(ip))
 		c.Assert(err, IsNil)
 		s.mon0ip = strings.TrimSpace(ip)
 	}

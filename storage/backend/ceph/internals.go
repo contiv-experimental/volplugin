@@ -10,11 +10,10 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/executor"
 	"github.com/contiv/volplugin/storage"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 type rbdMap map[string]struct {
@@ -36,7 +35,7 @@ retry:
 	cmd := exec.Command("rbd", "map", intName, "--pool", poolName)
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if retries < 10 && err != nil {
-		log.Errorf("Error mapping image: %v (%v) (%v). Retrying.", intName, er, err)
+		logrus.Errorf("Error mapping image: %v (%v) (%v). Retrying.", intName, er, err)
 		retries++
 		goto retry
 	}
@@ -63,7 +62,7 @@ retry:
 		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", intName, do.Volume.Params["pool"])
 	}
 
-	log.Debugf("mapped volume %q as %q", intName, device)
+	logrus.Debugf("mapped volume %q as %q", intName, device)
 
 	return device, nil
 }
@@ -111,19 +110,19 @@ func (c *Driver) doUnmap(do storage.DriverOptions, rbdmap rbdMap) (bool, error) 
 
 	for _, rbd := range rbdmap {
 		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
-			log.Debugf("Unmapping volume %s/%s at device %q", poolName, intName, strings.TrimSpace(rbd.Device))
+			logrus.Debugf("Unmapping volume %s/%s at device %q", poolName, intName, strings.TrimSpace(rbd.Device))
 
 			if _, err := os.Stat(rbd.Device); err != nil {
-				log.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", poolName, intName, rbd.Device)
+				logrus.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", poolName, intName, rbd.Device)
 				continue
 			}
 
 			cmd := exec.Command("rbd", "unmap", rbd.Device)
 			er, err := runWithTimeout(cmd, do.Timeout)
 			if err != nil || er.ExitStatus != 0 {
-				log.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", intName, rbd.Device, er, err, er.Stderr)
+				logrus.Errorf("Could not unmap volume %q (device %q): %v (%v) (%v)", intName, rbd.Device, er, err, er.Stderr)
 				if er.ExitStatus == int(unix.EBUSY) {
-					log.Errorf("Retrying to unmap volume %q (device %q)...", intName, rbd.Device)
+					logrus.Errorf("Retrying to unmap volume %q (device %q)...", intName, rbd.Device)
 					time.Sleep(100 * time.Millisecond)
 					return true, nil
 				}
@@ -161,13 +160,13 @@ retry:
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 	er, err = executor.NewCapture(cmd).Run(ctx)
 	if err != nil || er.ExitStatus != 0 || er.Stdout == "" {
-		log.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
+		logrus.Warnf("Could not show mapped volumes. Retrying: %v", er.Stderr)
 		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}
 
 	if err := json.Unmarshal([]byte(er.Stdout), &rbdmap); err != nil {
-		log.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
+		logrus.Errorf("Could not parse RBD showmapped output, retrying: %s", er.Stderr)
 		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}

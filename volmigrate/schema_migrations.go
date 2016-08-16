@@ -1,9 +1,9 @@
 package volmigrate
 
 import (
-	"log"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/volmigrate/backend"
 )
 
@@ -21,7 +21,7 @@ func init() {
 // If the version number is not the next one in the sequence (incremented by 1), it will log a fatal error.
 func registerMigration(version int64, description string, f func(backend backend.Backend) error) {
 	if version < 1 {
-		log.Fatalf("Migration versions must be > 0, got: %d\n", version)
+		logrus.Fatalf("Migration versions must be > 0, got: %d\n", version)
 	}
 
 	registrationLock.Lock()
@@ -30,12 +30,12 @@ func registerMigration(version int64, description string, f func(backend backend
 	expectedVersion := latestMigrationVersion + 1
 
 	if version != expectedVersion {
-		log.Fatalf("Expected version '%d', got version '%d'\n", expectedVersion, version)
+		logrus.Fatalf("Expected version '%d', got version '%d'\n", expectedVersion, version)
 	}
 
 	_, found := availableMigrations[version]
 	if found {
-		log.Fatalf("Version '%d' is already in use by another migration\n", version)
+		logrus.Fatalf("Version '%d' is already in use by another migration\n", version)
 	}
 
 	m := &Migration{

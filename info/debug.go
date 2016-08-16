@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 )
@@ -40,7 +40,7 @@ func logDebugInfo() {
 		cephVersion = "n/a"
 	}
 
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"file_descriptors": numFileDescriptors(),
 		"goroutines":       runtime.NumGoroutine(),
 		"architecture":     runtime.GOARCH,
@@ -72,13 +72,13 @@ func HandleDumpTarballSignal(client *config.Client) {
 	for {
 		select {
 		case <-signals:
-			log.Info("received SIGUSR2; dumping etcd namespace to tarball")
+			logrus.Info("received SIGUSR2; dumping etcd namespace to tarball")
 
 			tarballPath, err := client.DumpTarball()
 			if err != nil {
-				log.Info("Failed to dump etcd namespace: ", err)
+				logrus.Info("Failed to dump etcd namespace: ", err)
 			} else {
-				log.Info("Dumped etcd namespace to ", tarballPath)
+				logrus.Info("Dumped etcd namespace to ", tarballPath)
 			}
 		}
 	}

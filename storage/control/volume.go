@@ -3,13 +3,12 @@ package control
 import (
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 const defaultFsCmd = "mkfs.ext4 -m0 %"
@@ -22,7 +21,7 @@ func CreateVolume(policy *config.Policy, config *config.Volume, timeout time.Dur
 	)
 
 	if config.Backends.CRUD == "" {
-		log.Debugf("Not creating volume %q, backend is unspecified", config)
+		logrus.Debugf("Not creating volume %q, backend is unspecified", config)
 		return storage.DriverOptions{}, errors.NoActionTaken
 	}
 
@@ -58,7 +57,7 @@ func CreateVolume(policy *config.Policy, config *config.Volume, timeout time.Dur
 		Timeout: timeout,
 	}
 
-	log.Infof("Creating volume %v with size %d", config, actualSize)
+	logrus.Infof("Creating volume %v with size %d", config, actualSize)
 	return driverOpts, driver.Create(driverOpts)
 }
 
@@ -70,7 +69,7 @@ func FormatVolume(config *config.Volume, do storage.DriverOptions) error {
 	}
 
 	if config.Backends.CRUD == "" {
-		log.Debugf("Not formatting volume %q, backend is unspecified", config)
+		logrus.Debugf("Not formatting volume %q, backend is unspecified", config)
 		return errors.NoActionTaken
 	}
 
@@ -79,14 +78,14 @@ func FormatVolume(config *config.Volume, do storage.DriverOptions) error {
 		return err
 	}
 
-	log.Infof("Formatting volume %v (filesystem %q) with size %d", config, config.CreateOptions.FileSystem, actualSize)
+	logrus.Infof("Formatting volume %v (filesystem %q) with size %d", config, config.CreateOptions.FileSystem, actualSize)
 	return driver.Format(do)
 }
 
 // ExistsVolume tells if a volume exists. It is *not* suitable for any locking primitive.
 func ExistsVolume(config *config.Volume, timeout time.Duration) (bool, error) {
 	if config.Backends.CRUD == "" {
-		log.Debugf("volume %q, backend is unspecified", config)
+		logrus.Debugf("volume %q, backend is unspecified", config)
 		return true, errors.NoActionTaken
 	}
 
@@ -109,7 +108,7 @@ func ExistsVolume(config *config.Volume, timeout time.Duration) (bool, error) {
 // RemoveVolume removes a volume.
 func RemoveVolume(config *config.Volume, timeout time.Duration) error {
 	if config.Backends.CRUD == "" {
-		log.Debugf("Not removing volume %q, backend is unspecified", config)
+		logrus.Debugf("Not removing volume %q, backend is unspecified", config)
 		return errors.NoActionTaken
 	}
 
@@ -126,7 +125,7 @@ func RemoveVolume(config *config.Volume, timeout time.Duration) error {
 		Timeout: timeout,
 	}
 
-	log.Infof("Destroying volume %v", config)
+	logrus.Infof("Destroying volume %v", config)
 
 	return driver.Destroy(driverOpts)
 }

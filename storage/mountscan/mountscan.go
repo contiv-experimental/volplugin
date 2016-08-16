@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
 )
@@ -173,11 +173,11 @@ func GetMounts(request *GetMountsRequest) ([]*MountInfo, error) {
 	for _, line := range lines {
 		if !isEmpty(line) {
 			if len(strings.Split(line, " ")) < totalMountInfoFieldsNum {
-				log.Debugf("Insufficient mount info data: %q", line)
+				logrus.Debugf("Insufficient mount info data: %q", line)
 				continue
 			}
 			if mountDetails, err := convertToMountInfo(line); err != nil {
-				log.Errorf("%s", err)
+				logrus.Errorf("%s", err)
 				continue
 			} else {
 				if mountDetails.DeviceNumber.Major == driverMajorID {

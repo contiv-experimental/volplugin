@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/gorilla/mux"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // Volplugin implements the docker volumes API via the interfaces in api/interfaces.go.
@@ -63,7 +62,7 @@ func (v *Volplugin) HTTPError(w http.ResponseWriter, err error) {
 		return
 	}
 
-	log.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
+	logrus.Errorf("Returning HTTP error handling plugin negotiation: %s", err.Error())
 	http.Error(w, string(content), http.StatusOK)
 }
 

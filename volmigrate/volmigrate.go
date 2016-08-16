@@ -3,11 +3,11 @@ package volmigrate
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/volmigrate/backend"
@@ -52,7 +52,7 @@ func promptBeforeRunning(ctx *cli.Context, msg string) {
 	reader := bufio.NewReader(os.Stdin)
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		log.Fatalf("Failed to read input from stdin: %s", err)
+		logrus.Fatalf("Failed to read input from stdin: %s", err)
 	}
 
 	text = strings.ToLower(text)

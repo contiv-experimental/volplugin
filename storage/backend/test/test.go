@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 	"github.com/coreos/etcd/client"
@@ -77,7 +77,7 @@ func New() *Driver {
 // NewMountDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
 func NewMountDriver(BaseMountPath string) (storage.MountDriver, error) {
-	log.Infof("In %s", getFunctionName())
+	logrus.Infof("In %s", getFunctionName())
 	driver := New()
 	driver.BaseMountPath = BaseMountPath
 
@@ -97,7 +97,7 @@ func NewCRUDDriver() (storage.CRUDDriver, error) {
 }
 
 func (d *Driver) logStat(funcName string) {
-	log.Infof("In %q:", funcName)
+	logrus.Infof("In %q:", funcName)
 	content, err := json.MarshalIndent(d, "\t", "  ")
 	if err != nil {
 		panic(err)
@@ -133,7 +133,7 @@ func (d *Driver) Format(do storage.DriverOptions) error {
 // Destroy deletes volume entry
 func (d *Driver) Destroy(do storage.DriverOptions) error {
 	d.logStat(getFunctionName())
-	log.Info(path.Join(volumesPrefix, do.Volume.Name))
+	logrus.Info(path.Join(volumesPrefix, do.Volume.Name))
 	_, err := d.client.Delete(context.Background(), path.Join(volumesPrefix, do.Volume.Name), nil)
 	return err
 }
@@ -141,7 +141,7 @@ func (d *Driver) Destroy(do storage.DriverOptions) error {
 // List Volumes list of volumes in etcd.
 func (d *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
 	d.logStat(getFunctionName())
-	log.Infof("In %q", getFunctionName())
+	logrus.Infof("In %q", getFunctionName())
 	nodes, err := d.client.Get(context.Background(), volumesPrefix, &client.GetOptions{Recursive: true})
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 	}
 
 	_, err = d.client.Set(context.Background(), path.Join(mountedPrefix, do.Volume.Name), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
-	log.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
+	logrus.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (d *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 func (d *Driver) Unmount(do storage.DriverOptions) error {
 	d.logStat(getFunctionName())
 	_, err := d.client.Delete(context.Background(), path.Join(mountedPrefix, do.Volume.Name), nil)
-	log.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
+	logrus.Infof("%v %v", path.Join(mountedPrefix, do.Volume.Name), err)
 	return err
 }
 
