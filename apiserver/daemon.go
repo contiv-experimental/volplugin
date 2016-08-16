@@ -526,6 +526,18 @@ func (d *DaemonConfig) handleCopy(w http.ResponseWriter, r *http.Request) {
 		)).Combine(err))
 		return
 	}
+
+	content, err := json.Marshal(newVolConfig)
+	if err != nil {
+		api.RESTHTTPError(w, errors.PublishVolume.Combine(errored.Errorf(
+			"Creating new volume %q from volume %q, snapshot %q",
+			req.Options["target"],
+			volConfig.String(),
+			req.Options["snapshot"],
+		)).Combine(err))
+	}
+
+	w.Write(content)
 }
 
 func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
