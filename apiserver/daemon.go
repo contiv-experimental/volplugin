@@ -22,7 +22,6 @@ import (
 	"github.com/contiv/volplugin/storage/backend"
 	"github.com/contiv/volplugin/storage/control"
 	"github.com/contiv/volplugin/watch"
-	"github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 )
 
@@ -83,11 +82,8 @@ func (d *DaemonConfig) Daemon(listen string) {
 		"/volumes/create":                   d.handleCreate,
 		"/volumes/copy":                     d.handleCopy,
 		"/volumes/request":                  d.handleRequest,
-		"/mount":                            d.handleMount,
-		"/mount-report":                     d.handleMountReport,
 		"/policies/{policy}":                d.handlePolicyUpload,
 		"/runtime/{policy}/{volume}":        d.handleRuntimeUpload,
-		"/unmount":                          d.handleUnmount,
 		"/snapshots/take/{policy}/{volume}": d.handleSnapshotTake,
 	}
 
@@ -778,65 +774,6 @@ func (d *DaemonConfig) handleRemoveForce(w http.ResponseWriter, r *http.Request)
 
 	if err != nil {
 		api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.Errorf("%v/%v", req.Policy, req.Name)).Combine(err))
-		return
-	}
-}
-
-func (d *DaemonConfig) handleUnmount(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalUseMount(r)
-	if err != nil {
-		api.RESTHTTPError(w, errors.UnmarshalRequest.Combine(err))
-		return
-	}
-
-	req.Reason = lock.ReasonMount
-	if err := d.Config.RemoveUse(req, false); err != nil {
-		api.RESTHTTPError(w, errors.RemoveMount.Combine(err))
-		return
-	}
-}
-
-func (d *DaemonConfig) handleMount(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalUseMount(r)
-	if err != nil {
-		api.RESTHTTPError(w, errors.UnmarshalRequest.Combine(err))
-		return
-	}
-
-	req.Reason = lock.ReasonMount
-	if err := d.Config.PublishUse(req); err != nil {
-		api.RESTHTTPError(w, errors.PublishMount.Combine(err))
-		return
-	}
-}
-
-func (d *DaemonConfig) handleMountReport(w http.ResponseWriter, r *http.Request) {
-	req, err := unmarshalUseMount(r)
-	if err != nil {
-		api.RESTHTTPError(w, errors.RefreshMount.Combine(err))
-		return
-	}
-
-	parts := strings.SplitN(req.Volume, "/", 2)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
-		api.RESTHTTPError(w, errors.InvalidVolume.Combine(errored.New(req.Volume)))
-		return
-	}
-
-	_, err = d.Config.GetVolume(parts[0], parts[1])
-
-	if erd, ok := err.(*errored.Error); ok && erd.Contains(errors.NotExists) {
-		logrus.Error("Cannot refresh mount information: volume no longer exists", err)
-		w.WriteHeader(404)
-		return
-	} else if err != nil {
-		api.RESTHTTPError(w, errors.GetVolume.Combine(err))
-		return
-	}
-
-	req.Reason = lock.ReasonMount
-	if err := d.Config.PublishUseWithTTL(req, d.Global.TTL, client.PrevExist); err != nil {
-		api.RESTHTTPError(w, errors.RefreshMount.Combine(err))
 		return
 	}
 }
