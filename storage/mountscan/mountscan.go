@@ -36,7 +36,7 @@ type MountInfo struct {
 	Separator      string        // end of optional fields
 	FilesystemType string        // e.g ext3, ext4
 	MountSource    string
-	SuperOptions   string // XXX This field is *not* parsed becuase it is not present on all systems. It is here as a placeholder.
+	SuperOptions   string // XXX This field is *not* parsed because it is not present on all systems. It is here as a placeholder.
 }
 
 // DeviceNumber captures major:minor
