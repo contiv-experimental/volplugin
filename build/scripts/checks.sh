@@ -47,3 +47,27 @@ then
   echo 1>&2 "${out}"
   exit 1
 fi
+
+echo "Running gocyclo..."
+[ -n "`which gocyclo`" ] || go get github.com/fzipp/gocyclo
+set +e
+out=$(gocyclo -over 15 . | grep -v vendor)
+set -e
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
+then
+  echo 1>&2 "gocycle errors in:"
+  echo 1>&2 "${out}"
+  exit 1
+fi
+
+echo "Running errcheck..."
+[ -n "`which errcheck`" ] || go get -u github.com/kisielk/errcheck
+set +e
+out=$(errcheck -asserts -blank -ignoretests $(go list ./... | grep -v vendor) 2>&1)
+set -e
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
+then
+  echo 1>&2 "errcheck errors in:"
+  echo 1>&2 "${out}"
+  exit 1
+fi
