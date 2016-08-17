@@ -130,31 +130,46 @@ func (v *Volume) Validate() error {
 		return errors.ErrJSONValidation.Combine(err)
 	}
 
+	return v.validateBackends() // calls ToDriverOptions.
+}
+
+func (v *Volume) validateBackends() error {
+	// We use a few dummy variables to ensure that global configuration is
+	// not needed in the storage drivers, that the validation does not fail
+	// because of it.
 	do, err := v.ToDriverOptions(time.Second)
 	if err != nil {
 		return err
 	}
 
-	// We use a few dummy variables to ensure that global configuration is
-	// not needed in the storage drivers, that the validation does not fail
-	// because of it.
-	var mountPath string
-	for driverType, backendName := range map[string]string{backend.Mount: v.Backends.Mount, backend.CRUD: v.Backends.CRUD, backend.Snapshot: v.Backends.Snapshot} {
-		if backendName == "" {
-			continue
+	if v.Backends.CRUD != "" {
+		crud, err := backend.NewCRUDDriver(v.Backends.CRUD)
+		if err != nil {
+			return err
 		}
 
-		if driverType == backend.Mount {
-			mountPath = backend.MountPath
-		} else {
-			mountPath = ""
-		}
-
-		if err := backend.NewDriver(backendName, driverType, mountPath, &do); err != nil {
+		if err := crud.Validate(&do); err != nil {
 			return err
 		}
 	}
 
+	mnt, err := backend.NewMountDriver(v.Backends.Mount, backend.MountPath)
+	if err != nil {
+		return err
+	}
+
+	if err := mnt.Validate(&do); err != nil {
+		return err
+	}
+	if v.Backends.Snapshot != "" {
+		snapshot, err := backend.NewSnapshotDriver(v.Backends.Snapshot)
+		if err != nil {
+			return err
+		}
+		if err := snapshot.Validate(&do); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
