@@ -72,7 +72,7 @@ unit-test-nocoverage-host:
 	HOST_TEST=1 GOGC=1000 go test -v ./... -check.v -check.f "${TESTRUN}"
 
 build: checks
-	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); make run-build"'
+	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); BUILD_VERSION=${BUILD_VERSION} make run-build"'
 	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "systemctl stop volplugin apiserver volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 docker: run-build
@@ -120,9 +120,9 @@ run-apiserver:
 
 run-build:
 	GOGC=1000 go install -v \
-		-ldflags '-X main.version=$(if $(BUILD_VERSION),$(BUILD_VERSION),devbuild)' \
+		-ldflags '-X main.version=$(if ${BUILD_VERSION},${BUILD_VERSION},devbuild)' \
 		./volcli/volcli/ ./volplugin/volplugin/ ./apiserver/apiserver/ ./volsupervisor/volsupervisor/ ./volmigrate/volmigrate/
-	cp $(GUESTBINPATH)/* bin/
+	cp $(GUESTBINPATH)/* bin
 
 system-test: system-test-ceph system-test-nfs
 
@@ -149,36 +149,3 @@ reflex-test: reflex
 
 reflex-unit-test: reflex
 	which reflex &>/dev/null && ulimit -n 2048 && reflex -r '.*\.go' make unit-test-nocoverage
-
-# We are using date based versioning, so for consistent version during a build
-# we evaluate and set the value of version once in a file and use it in 'tar'
-# and 'release' targets.
-NAME := volplugin
-VERSION_FILE := /tmp/$(NAME)-version
-VERSION := `cat $(VERSION_FILE)`
-TAR_EXT := tar.bz2
-TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
-TAR_LOC := .
-TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
-
-tar: clean-tar
-	@echo "v0.0.0-`date -u +%m-%d-%Y.%H-%M-%S.UTC`" > $(VERSION_FILE)
-	@tar -jcf $(TAR_FILE) -C ${PWD}/bin volcli apiserver volplugin volsupervisor volmigrate -C ${PWD} contrib
-
-clean-tar:
-	@rm -f $(TAR_LOC)/*.$(TAR_EXT)
-
-release:
-
-# GITHUB_USER and GITHUB_TOKEN are needed be set to run github-release
-release-github: tar
-	@go get github.com/aktau/github-release
-	@latest_tag=$$(git describe --tags `git rev-list --tags --max-count=1`); \
-		comparison="$$latest_tag..HEAD"; \
-		changelog=$$(git log $$comparison --oneline --no-merges --reverse); \
-		if [ -z "$$changelog" ]; then echo "No new changes to release!"; exit 0; fi; \
-		set -x; \
-		( ( github-release -v release -p -r volplugin -t $(VERSION) -d "**Changelog**<br/>$$changelog" ) && \
-		( github-release -v upload -r volplugin -t $(VERSION) -n $(TAR_FILENAME) -f $(TAR_FILE) || \
-		github-release -v delete -r volplugin -t $(VERSION) ) ) || exit 1
-	@make clean-tar
