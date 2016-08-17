@@ -17,6 +17,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/watch"
 	"github.com/kr/pty"
@@ -725,6 +726,18 @@ func volumeSnapshotCopy(ctx *cli.Context) (bool, error) {
 		}
 		return false, errored.Errorf("Volume %v Response Status Code was %d, not 200", qualifiedVolume, resp.StatusCode)
 	}
+
+	content, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, errored.New("Reading body processing response").Combine(err)
+	}
+
+	vol := &config.Volume{}
+	if err := json.Unmarshal(content, vol); err != nil {
+		return false, errors.UnmarshalVolume.Combine(err)
+	}
+
+	fmt.Println(strings.Join([]string{vol.PolicyName, vol.VolumeName}, "/"))
 
 	return false, nil
 }
