@@ -1,10 +1,12 @@
 package volplugin
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -23,10 +25,11 @@ const basePath = "/run/docker/plugins"
 // DaemonConfig is the top-level configuration for the daemon. It is used by
 // the cli package in volplugin/volplugin.
 type DaemonConfig struct {
-	Hostname string
-	Global   *config.Global
-	Client   *config.Client
-	API      *api.API
+	Hostname   string
+	Global     *config.Global
+	Client     *config.Client
+	API        *api.API
+	PluginName string
 }
 
 // NewDaemonConfig creates a DaemonConfig from the master host and hostname
@@ -41,10 +44,17 @@ retry:
 		goto retry
 	}
 
-	return &DaemonConfig{
-		Hostname: ctx.String("host-label"),
-		Client:   client,
+	dc := &DaemonConfig{
+		Hostname:   ctx.String("host-label"),
+		Client:     client,
+		PluginName: ctx.String("plugin-name"),
 	}
+
+	if dc.PluginName == "" || strings.Contains(dc.PluginName, "/") {
+		logrus.Fatal("Cannot continue; socket name contains empty value or invalid characters")
+	}
+
+	return dc
 }
 
 // Daemon starts the volplugin service.
@@ -89,7 +99,7 @@ func (dc *DaemonConfig) Daemon() error {
 
 	go dc.pollRuntime()
 
-	driverPath := path.Join(basePath, "volplugin.sock")
+	driverPath := path.Join(basePath, fmt.Sprintf("%s.sock", dc.PluginName))
 	if err := os.Remove(driverPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}

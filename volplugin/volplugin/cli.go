@@ -27,6 +27,11 @@ func main() {
 	app.Usage = "Mount and manage Ceph RBD for containers"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "plugin-name",
+			Value: "volcontiv",
+			Usage: "Name of plugin presented to docker, et al.",
+		},
+		cli.StringFlag{
 			Name:  "prefix",
 			Usage: "prefix key used in etcd for namespacing",
 			Value: "/volplugin",

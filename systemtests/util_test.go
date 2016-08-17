@@ -227,7 +227,7 @@ func (s *systemtestSuite) createVolume(host, volume string, opts map[string]stri
 
 	logrus.Infof("Creating %s on %q with options %q", volume, host, strings.Join(optsStr, " "))
 
-	cmd := fmt.Sprintf("docker volume create -d volplugin --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
+	cmd := fmt.Sprintf("docker volume create -d volcontiv --name %s/%s %s", policy, name, strings.Join(optsStr, " "))
 
 	if out, err := s.vagrant.GetNode(host).RunCommandWithOutput(cmd); err != nil {
 		logrus.Info(string(out))

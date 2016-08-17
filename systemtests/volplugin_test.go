@@ -60,7 +60,7 @@ func (s *systemtestSuite) TestVolpluginAPIServerDown(c *C) {
 func (s *systemtestSuite) TestVolpluginCleanupSocket(c *C) {
 	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
 	defer c.Assert(startVolplugin(s.vagrant.GetNode("mon0")), IsNil)
-	_, err := s.mon0cmd("test -f /run/docker/plugins/volplugin.sock")
+	_, err := s.mon0cmd("test -f /run/docker/plugins/volcontiv.sock")
 	c.Assert(err, NotNil)
 }
 
