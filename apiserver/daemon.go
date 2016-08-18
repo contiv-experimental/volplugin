@@ -635,6 +635,82 @@ func (d *DaemonConfig) handleGet(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
+func (d *DaemonConfig) createRemoveLocks(vc *config.Volume) ([]config.UseLocker, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, errors.GetHostname.Combine(err)
+	}
+
+	uc := &config.UseMount{
+		Volume:   vc.String(),
+		Reason:   lock.ReasonRemove,
+		Hostname: hostname,
+	}
+
+	snapUC := &config.UseSnapshot{
+		Volume: vc.String(),
+		Reason: lock.ReasonRemove,
+	}
+
+	return []config.UseLocker{uc, snapUC}, nil
+}
+
+func (d *DaemonConfig) removeVolume(req *config.VolumeRequest, vc *config.Volume) error {
+	if err := d.Config.RemoveVolume(req.Policy, req.Name); err != nil {
+		return errors.ClearVolume.Combine(errored.New(vc.String())).Combine(err)
+	}
+
+	return nil
+}
+
+func (d *DaemonConfig) completeRemove(req *config.VolumeRequest, vc *config.Volume) error {
+	if err := control.RemoveVolume(vc, d.Global.Timeout); err != nil && err != errors.NoActionTaken {
+		logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
+	}
+
+	return d.removeVolume(req, vc)
+}
+
+// this cleans up uses when forcing the removal
+func (d *DaemonConfig) removeVolumeUse(lock config.UseLocker, vc *config.Volume) {
+	// locks[0] is the usemount lock
+	if err := d.Config.RemoveUse(lock, true); err != nil {
+		logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
+	}
+}
+
+func (d *DaemonConfig) handleForceRemoveLock(req *config.VolumeRequest, vc *config.Volume, locks []config.UseLocker) error {
+	exists, err := control.ExistsVolume(vc, d.Global.Timeout)
+	if err != nil && err != errors.NoActionTaken {
+		return errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err)
+	}
+
+	if err == errors.NoActionTaken {
+		if err := d.completeRemove(req, vc); err != nil {
+			return err
+		}
+
+		d.removeVolumeUse(locks[0], vc)
+	}
+
+	if err != nil {
+		return errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err)
+	}
+
+	if !exists {
+		d.removeVolume(req, vc)
+		return errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists)
+	}
+
+	err = d.completeRemove(req, vc)
+	if err != nil {
+		return errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists)
+	}
+
+	d.removeVolumeUse(locks[0], vc)
+	return nil
+}
+
 func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 	// set a default timeout if none is specified
 	timeout := d.Global.Timeout
@@ -659,93 +735,35 @@ func (d *DaemonConfig) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hostname, err := os.Hostname()
+	locks, err := d.createRemoveLocks(vc)
 	if err != nil {
-		api.RESTHTTPError(w, errors.GetHostname.Combine(err))
+		api.RESTHTTPError(w, err)
 		return
 	}
 
-	uc := &config.UseMount{
-		Volume:   vc.String(),
-		Reason:   lock.ReasonRemove,
-		Hostname: hostname,
-	}
-
-	snapUC := &config.UseSnapshot{
-		Volume: vc.String(),
-		Reason: lock.ReasonRemove,
-	}
-
-	etcdRemove := func() error {
-		if err := d.Config.RemoveVolume(req.Policy, req.Name); err != nil {
-			return errors.ClearVolume.Combine(errored.New(vc.String())).Combine(err)
-		}
-
-		return nil
-	}
-
-	complete := func() error {
-		if err := control.RemoveVolume(vc, timeout); err != nil && err != errors.NoActionTaken {
-			logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
-		}
-
-		return etcdRemove()
-	}
-	// this cleans up uses when forcing the removal
-	removeUse := func() {
-		if err := d.Config.RemoveUse(uc, true); err != nil {
-			logrus.Warn(errors.RemoveImage.Combine(errored.New(vc.String())).Combine(err))
-		}
-	}
-
 	if req.Options["force"] == "true" {
-		exists, err := control.ExistsVolume(vc, timeout)
-		if err != nil && err != errors.NoActionTaken {
-			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err))
+		if err := d.handleForceRemoveLock(req, vc, locks); err != nil {
+			api.RESTHTTPError(w, err)
 			return
 		}
-
-		if err == errors.NoActionTaken {
-			err = complete()
-			removeUse()
-		}
-
-		if err != nil {
-			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(err))
-			return
-		}
-
-		if !exists {
-			etcdRemove()
-			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists))
-			return
-		}
-
-		err = complete()
-		if err != nil {
-			api.RESTHTTPError(w, errors.RemoveVolume.Combine(errored.New(vc.String())).Combine(errors.NotExists))
-			return
-		}
-
-		removeUse()
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock(locks, timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
 		exists, err := control.ExistsVolume(vc, timeout)
 		if err != nil && err != errors.NoActionTaken {
 			return err
 		}
 
 		if err == errors.NoActionTaken {
-			return complete()
+			return d.completeRemove(req, vc)
 		}
 
 		if !exists {
-			etcdRemove()
+			d.removeVolume(req, vc)
 			return errors.NotExists
 		}
 
-		return complete()
+		return d.completeRemove(req, vc)
 	})
 
 	if err == errors.NotExists {
