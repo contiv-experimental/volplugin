@@ -121,15 +121,25 @@ func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
 
 	mapOpts["addr"] = host
 
+	if err := readNetlink(mapOpts, host); err != nil {
+		return "", err
+	}
+
+	str := d.mapOptionsToString(mapOpts)
+
+	return fmt.Sprintf("nfsvers=4,%s", str), nil
+}
+
+func readNetlink(mapOpts map[string]string, host string) error {
 	if _, ok := mapOpts["clientaddr"]; !ok {
 		ip := net.ParseIP(host)
 		if ip == nil {
-			return "", errored.Errorf("Could not parse IP %q in NFS mount", host)
+			return errored.Errorf("Could not parse IP %q in NFS mount", host)
 		}
 
 		list, err := netlink.LinkList()
 		if err != nil {
-			return "", errored.Errorf("Error listing netlink interfaces during NFS mount").Combine(err)
+			return errored.Errorf("Error listing netlink interfaces during NFS mount").Combine(err)
 		}
 
 		for _, link := range list {
@@ -142,22 +152,19 @@ func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
 
 			addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 			if err != nil {
-				return "", errored.Errorf("Error listing addrs for link %q", link.Attrs().Name)
+				return errored.Errorf("Error listing addrs for link %q", link.Attrs().Name)
 			}
 
 			for _, addr := range addrs {
 				if addr.IPNet.Contains(ip) {
 					mapOpts["clientaddr"] = ip.String()
-					goto done
+					return nil
 				}
 			}
 		}
 	}
 
-done:
-	str := d.mapOptionsToString(mapOpts)
-
-	return fmt.Sprintf("nfsvers=4,%s", str), nil
+	return errored.Errorf("Could not find a suitable clientaddr for mount")
 }
 
 // Mount a Volume
