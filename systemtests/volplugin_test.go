@@ -207,3 +207,26 @@ func (s *systemtestSuite) TestVolpluginRestartMultiMount(c *C) {
 	errout, err = s.mon0cmd("grep 500 /tmp/volplugin.log")
 	c.Assert(err, NotNil, Commentf(errout))
 }
+
+func (s *systemtestSuite) TestVolpluginChangePluginName(c *C) {
+	path := "/run/docker/plugins/volplugin.sock"
+
+	c.Assert(stopVolplugin(s.vagrant.GetNode("mon0")), IsNil)
+
+	go func() {
+		_, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo nohup /opt/golang/bin/volplugin --plugin-name volplugin /dev/null<&0 2>&1 1>/tmp/volplugin-socket-test.log")
+		if err != nil {
+			logrus.Infof("Standalone volplugin terminated: %v: 143 is pkill", err)
+		}
+	}()
+
+	time.Sleep(5 * time.Second)
+
+	defer func() {
+		s.mon0cmd("sudo pkill volplugin")
+		s.mon0cmd("sudo rm " + path) // FIXME clean this up in volplugin itself.
+	}()
+
+	out, err := s.mon0cmd("sudo stat " + path)
+	c.Assert(err, IsNil, Commentf("%v", string(out)))
+}
