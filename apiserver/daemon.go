@@ -850,7 +850,19 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Reason: lock.ReasonCreate,
 	}
 
-	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, d.Global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
+	err = lock.NewDriver(d.Config).ExecuteWithMultiUseLock(
+		[]config.UseLocker{uc, snapUC},
+		d.Global.Timeout,
+		d.createVolume(w, req, policy),
+	)
+	if err != nil && err != errors.Exists {
+		api.RESTHTTPError(w, errors.CreateVolume.Combine(err))
+		return
+	}
+}
+
+func (d *DaemonConfig) createVolume(w http.ResponseWriter, req *config.VolumeRequest, policy *config.Policy) func(ld *lock.Driver, ul []config.UseLocker) error {
+	return func(ld *lock.Driver, ucs []config.UseLocker) error {
 		volConfig, err := d.Config.CreateVolume(req)
 		if err != nil {
 			return err
@@ -883,17 +895,12 @@ func (d *DaemonConfig) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		content, err = json.Marshal(volConfig)
+		content, err := json.Marshal(volConfig)
 		if err != nil {
 			return errors.MarshalPolicy.Combine(err)
 		}
 
 		w.Write(content)
 		return nil
-	})
-
-	if err != nil && err != errors.Exists {
-		api.RESTHTTPError(w, errors.CreateVolume.Combine(err))
-		return
 	}
 }
