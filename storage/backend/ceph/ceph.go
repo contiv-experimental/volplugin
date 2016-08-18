@@ -401,6 +401,45 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 	return names, nil
 }
 
+func (c *Driver) cleanupCopy(snapName, newName string, do storage.DriverOptions, errChan chan error) {
+	intOrigName, err := c.internalName(do.Volume.Name)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	intNewName, err := c.internalName(newName)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	poolName := do.Volume.Params["pool"]
+
+	select {
+	case err := <-errChan:
+		newerr, ok := err.(*errored.Error)
+		if ok && newerr.Contains(errors.SnapshotCopy) {
+			logrus.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
+			cmd := exec.Command("rbd", "rm", mkpool(poolName, intNewName))
+			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
+				logrus.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
+				return
+			}
+		}
+
+		if ok && newerr.Contains(errors.SnapshotProtect) {
+			logrus.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
+			cmd := exec.Command("rbd", "snap", "unprotect", mkpool(poolName, intOrigName), "--snap", snapName)
+			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
+				logrus.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
+				return
+			}
+		}
+	default:
+	}
+}
+
 // CopySnapshot copies a snapshot into a new volume. Takes a DriverOptions,
 // snap and volume name (string). Returns error on failure.
 func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string) error {
@@ -437,30 +476,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		return err
 	}
 
-	defer func() {
-		select {
-		case err := <-errChan:
-			newerr, ok := err.(*errored.Error)
-			if ok && newerr.Contains(errors.SnapshotCopy) {
-				logrus.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
-				cmd = exec.Command("rbd", "rm", mkpool(poolName, intNewName))
-				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-					logrus.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
-					return
-				}
-			}
-
-			if ok && newerr.Contains(errors.SnapshotProtect) {
-				logrus.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
-				cmd := exec.Command("rbd", "snap", "unprotect", mkpool(poolName, intOrigName), "--snap", snapName)
-				if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
-					logrus.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
-					return
-				}
-			}
-		default:
-		}
-	}()
+	defer c.cleanupCopy(snapName, newName, do, errChan)
 
 	cmd = exec.Command("rbd", "clone", mkpool(poolName, intOrigName), mkpool(poolName, intNewName), "--snap", snapName)
 	er, err = runWithTimeout(cmd, do.Timeout)
