@@ -1,6 +1,8 @@
 GUESTPREFIX=/opt/golang
 GUESTGOPATH=$(GUESTPREFIX)/src/github.com/contiv/volplugin
 GUESTBINPATH=$(GUESTPREFIX)/bin
+LOCALREGISTRY=contiv-reg:5000
+LOCALREGISTRYPATH=$(LOCALREGISTRY)/
 
 .PHONY: build
 
@@ -82,13 +84,29 @@ docker-push: docker
 	docker push contiv/volplugin
 
 clean-volplugin-containers:
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'docker ps | grep "volplugin" | cut -d " " -f 1 | xargs docker rm -fv'; done
+	-for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'docker rm -fv volplugin volsupervisor apiserver'; done;
 
-run: build
+run: clean-volplugin-containers build
 	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh && ./build/scripts/deps.sh && make run-volplugin run-apiserver'; done
 	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
-	sleep 10
 	vagrant ssh mon0 -c 'connwait 127.0.0.1:9005 && volcli global upload < /testdata/globals/global1.json'
+	-for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'docker rmi $$(docker images -f "dangling=true" -q)'; done;
+
+run-registry:
+	-vagrant ssh mon0 -c 'docker run -d -p 5000:5000 --restart=always --name localregistry registry'
+	vagrant ssh mon0 -c '$(GUESTGOPATH)/build/scripts/deps.sh'
+	vagrant ssh mon0 -c "$(GUESTBINPATH)/tfip2 --ip 4" | grep enp0s8: | awk '{print $$3}' | tr -d '[[:space:]]'> /tmp/contiv-reg-ip
+	set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c "sudo -i sh -c 'grep contiv-reg /etc/hosts &>/dev/null || echo $$(cat /tmp/contiv-reg-ip) contiv-reg | sudo tee --append /etc/hosts'"; done;
+	vagrant ssh mon0 -c 'echo $(LOCALREGISTRYPATH) > /tmp/contiv-registry'
+	set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c "sudo -i sh -c '$(GUESTGOPATH)/build/scripts/enable-private-registry.sh'"; done;
+
+run-fast: clean-volplugin-containers run-registry build
+	set -e; vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && ./build/scripts/build-volplugin-containers.sh'
+	set -e; vagrant ssh mon0 -c 'docker tag contiv/volplugin $(LOCALREGISTRYPATH)contiv/volplugin && docker push $(LOCALREGISTRYPATH)contiv/volplugin'
+	set -e; for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'docker pull $(LOCALREGISTRYPATH)contiv/volplugin && cd $(GUESTGOPATH) && ./build/scripts/deps.sh && make run-volplugin run-apiserver'; done
+	vagrant ssh mon0 -c 'cd $(GUESTGOPATH) && make run-volsupervisor'
+	vagrant ssh mon0 -c 'connwait 127.0.0.1:9005 && volcli global upload < /testdata/globals/global1.json'
+	-for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'docker rmi $$(docker images -f "dangling=true" -q)'; done;
 
 run-etcd:
 	sudo systemctl start etcd
