@@ -39,6 +39,9 @@ func TestSystem(t *T) {
 
 func (s *systemtestSuite) SetUpTest(c *C) {
 	c.Assert(s.rebootstrap(), IsNil)
+
+	out, err := s.uploadIntent("policy1", "policy1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) SetUpSuite(c *C) {
@@ -68,17 +71,10 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 	c.Assert(s.waitDockerizedServices(), IsNil)
 	c.Assert(s.pullDebian(), IsNil)
 	c.Assert(s.rebootstrap(), IsNil)
-
-	out, err := s.uploadIntent("policy1", "policy1")
-	c.Assert(err, IsNil, Commentf("output: %s", out))
 }
 
 func (s *systemtestSuite) TearDownSuite(c *C) {
 	if cephDriver() && os.Getenv("NO_TEARDOWN") == "" {
 		s.clearRBD()
-	}
-
-	if os.Getenv("NO_TEARDOWN") == "" {
-		c.Assert(s.rebootstrap(), IsNil)
 	}
 }
