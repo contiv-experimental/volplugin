@@ -24,6 +24,7 @@
   - { role: vagrant }
   - { role: ucarp }
   - { role: docker, etcd_client_port1: 2379 }
+  - { role: consul }
   - { role: etcd, run_as: master }
   - { role: ceph-mon, mon_group_name: volplugin-test }
   - { role: ceph-osd, mon_group_name: volplugin-test, osd_group_name: volplugin-test }

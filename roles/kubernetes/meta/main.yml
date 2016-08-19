@@ -1,0 +1,5 @@
+---
+# The dependecies contains tasks for installing kubernetes scheduler stack
+
+dependencies:
+- { role: etcd }

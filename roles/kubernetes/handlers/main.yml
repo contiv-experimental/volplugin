@@ -1,0 +1,4 @@
+# notify handlers for kubernetes
+
+- name: restart kubernetes
+  service: name=kubernetes state=restarted

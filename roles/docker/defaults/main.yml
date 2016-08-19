@@ -11,3 +11,4 @@ docker_device_metadata_size: "1000MB"
 docker_cs_engine_supported_versions_ubuntu:
     "wily": [ "1.10", "1.11" ]
     "xenial": [ "1.11" ]
+docker_mount_flags: "shared"
