@@ -14,6 +14,45 @@ import (
 	"github.com/contiv/volplugin/storage/control"
 )
 
+func (a *API) createVolume(w http.ResponseWriter, volume *config.VolumeRequest, policyObj *config.Policy) func(ld *lock.Driver, ucs []config.UseLocker) error {
+	return func(ld *lock.Driver, ucs []config.UseLocker) error {
+		global := *a.Global
+
+		volConfig, err := a.Client.CreateVolume(volume)
+		if err != nil {
+			return err
+		}
+
+		logrus.Debugf("Volume Create: %#v", *volConfig)
+
+		do, err := control.CreateVolume(policyObj, volConfig, global.Timeout)
+		if err == errors.NoActionTaken {
+			goto publish
+		}
+
+		if err != nil {
+			return errors.CreateVolume.Combine(err)
+		}
+
+		if err := control.FormatVolume(volConfig, do); err != nil {
+			if err := control.RemoveVolume(volConfig, global.Timeout); err != nil {
+				logrus.Errorf("Error during cleanup of failed format: %v", err)
+			}
+			return errors.FormatVolume.Combine(err)
+		}
+
+	publish:
+		if err := a.Client.PublishVolume(volConfig); err != nil && err != errors.Exists {
+			if _, ok := err.(*errored.Error); !ok {
+				return errors.PublishVolume.Combine(err)
+			}
+			return err
+		}
+
+		return a.WriteCreate(volConfig, w)
+	}
+}
+
 // Create fully creates a volume
 func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 	volume, err := a.ReadCreate(r)
@@ -54,40 +93,11 @@ func (a *API) Create(w http.ResponseWriter, r *http.Request) {
 
 	global := *a.Global
 
-	err = lock.NewDriver(a.Client).ExecuteWithMultiUseLock([]config.UseLocker{uc, snapUC}, global.Timeout, func(ld *lock.Driver, ucs []config.UseLocker) error {
-		volConfig, err := a.Client.CreateVolume(volume)
-		if err != nil {
-			return err
-		}
-
-		logrus.Debugf("Volume Create: %#v", *volConfig)
-
-		do, err := control.CreateVolume(policyObj, volConfig, global.Timeout)
-		if err == errors.NoActionTaken {
-			goto publish
-		}
-
-		if err != nil {
-			return errors.CreateVolume.Combine(err)
-		}
-
-		if err := control.FormatVolume(volConfig, do); err != nil {
-			if err := control.RemoveVolume(volConfig, global.Timeout); err != nil {
-				logrus.Errorf("Error during cleanup of failed format: %v", err)
-			}
-			return errors.FormatVolume.Combine(err)
-		}
-
-	publish:
-		if err := a.Client.PublishVolume(volConfig); err != nil && err != errors.Exists {
-			if _, ok := err.(*errored.Error); !ok {
-				return errors.PublishVolume.Combine(err)
-			}
-			return err
-		}
-
-		return a.WriteCreate(volConfig, w)
-	})
+	err = lock.NewDriver(a.Client).ExecuteWithMultiUseLock(
+		[]config.UseLocker{uc, snapUC},
+		global.Timeout,
+		a.createVolume(w, volume, policyObj),
+	)
 
 	if err != nil && err != errors.Exists {
 		a.HTTPError(w, errors.CreateVolume.Combine(err))

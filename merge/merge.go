@@ -2,7 +2,6 @@ package merge
 
 import (
 	"reflect"
-	"strconv"
 
 	"github.com/contiv/errored"
 )
@@ -85,54 +84,21 @@ func setValueWithType(field *reflect.Value, val string) error {
 	case reflect.Int:
 		fallthrough
 	case reflect.Int32:
-		out, err := strconv.ParseInt(val, 10, 32)
-		if err != nil {
-			return err
-		}
-
-		field.Set(reflect.ValueOf(int(out)))
+		return castInt32(field, val)
 	case reflect.Int64:
-		out, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		field.Set(reflect.ValueOf(out))
-		return nil
+		return castInt64(field, val)
 	case reflect.Uint:
 		fallthrough
 	case reflect.Uint32:
-		out, err := strconv.ParseUint(val, 10, 32)
-		if err != nil {
-			return err
-		}
-
-		field.Set(reflect.ValueOf(uint(out)))
-		return nil
+		return castUint32(field, val)
 	case reflect.Uint64:
-		out, err := strconv.ParseUint(val, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		field.Set(reflect.ValueOf(out))
-		return nil
+		return castUint64(field, val)
 	case reflect.Bool:
-		out, err := strconv.ParseBool(val)
-		if err != nil {
-			return err
-		}
-
-		field.Set(reflect.ValueOf(out))
-		return nil
+		return castBool(field, val)
 	case reflect.Ptr:
-		// in this case we have a pointer; we call the Elem() method and recurse to
-		// (hopefully) avoid a panic.
-		ptrField := field.Elem()
-		return setValueWithType(&ptrField, val)
+		return castPtr(field, val)
 	case reflect.String:
-		field.Set(reflect.ValueOf(val))
-		return nil
+		return castString(field, val)
 	}
 
 	return errored.Errorf("Could not find appropriate type %q", field.Kind().String())

@@ -47,3 +47,15 @@ then
   echo 1>&2 "${out}"
   exit 1
 fi
+
+echo "Running gocyclo..."
+[ -n "`which gocyclo`" ] || go get github.com/fzipp/gocyclo
+set +e
+out=$(gocyclo -over 15 . | grep -v vendor)
+set -e
+if [ "`echo \"${out}\" | sed '/^$/d' | wc -l`" -gt 0 ]
+then
+  echo 1>&2 "gocycle errors in:"
+  echo 1>&2 "${out}"
+  exit 1
+fi
