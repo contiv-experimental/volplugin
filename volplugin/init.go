@@ -44,7 +44,7 @@ func (dc *DaemonConfig) getMounted() (map[string]*storage.Mount, map[string]int,
 		for _, container := range containers {
 			if container.State == "running" {
 				for _, mount := range container.Mounts {
-					if mount.Driver == "volplugin" {
+					if mount.Driver == dc.PluginName {
 						mounts[mount.Name] = nil
 						counts[mount.Name]++
 					}

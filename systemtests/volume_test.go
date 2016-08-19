@@ -83,7 +83,7 @@ func (s *systemtestSuite) TestVolumeMultiCreateThroughDocker(c *C) {
 	c.Assert(strings.TrimSpace(out), Equals, "policy1."+volName)
 
 	c.Assert(s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
-		return node.RunCommand("docker volume create -d volplugin --name " + fqVolName)
+		return node.RunCommand("docker volume create -d volcontiv --name " + fqVolName)
 	}), IsNil)
 
 	c.Assert(s.vagrant.IterateNodes(func(node remotessh.TestbedNode) error {
