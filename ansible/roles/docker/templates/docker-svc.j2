@@ -12,7 +12,7 @@ ExecStart=/usr/bin/docker daemon --storage-opt dm.thinpooldev=/dev/mapper/contiv
 {% else %}
 ExecStart=/usr/bin/docker daemon -H fd:// --cluster-store=etcd://localhost:{{ etcd_client_port1 }}
 {% endif %}
-MountFlags=slave
+MountFlags={{ docker_mount_flags }}
 LimitNOFILE=1048576
 LimitNPROC=1048576
 LimitCORE=infinity

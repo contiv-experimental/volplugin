@@ -1,0 +1,32 @@
+# These tasks are run when scheduler is kubernetes
+
+- name: include kubernetes specific variables
+  include_vars: roles/kubernetes/{{ item }}/main.yml
+  with_items:
+    - defaults
+
+- name: copy contiv cni bin to k8s plugin dir
+  copy:
+    src: "/usr/bin/contiv/netplugin/contivk8s"
+    dest: "{{ k8s_net_plugin_bin_dir }}/contivk8s"
+    mode: u=rwx,g=rx,o=rx
+    remote_src: yes
+    force: yes
+  notify: restart kubernetes
+
+- name: copy contiv k8s plugin config file
+  copy:
+    src: contiv_cni.conf
+    dest: "{{ k8s_net_plugin_config_dir }}/contiv_cni.conf"
+  notify: restart kubernetes
+
+- name: ensure contiv plugin config dir exists
+  file:
+    path: "{{ contiv_network_k8s_config_dir }}"
+    recurse: yes
+    state: directory
+
+- name: setup contiv.json config for the cni plugin
+  template:
+    src: netplugin_k8s_config.j2
+    dest: "{{ contiv_network_k8s_config_dir }}/contiv.json"

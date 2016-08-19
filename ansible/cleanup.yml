@@ -11,6 +11,7 @@
         - "contiv_network"
         - "contiv_storage"
         - "swarm"
+        - "kubernetes"
         - "ucp"
         - "docker"
         - "etcd"
@@ -20,6 +21,7 @@
         - contiv_network
         - contiv_storage
         - swarm
+        - kubernetes
         - ucp
         - etcd
         - nfs

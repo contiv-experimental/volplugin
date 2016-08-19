@@ -1,0 +1,80 @@
+---
+# This role contains tasks for configuring and starting kubernetes service
+- name: check for kubernetes image
+  shell: "docker images | grep {{ k8s_image }} | grep -q {{ k8s_version }}"
+  ignore_errors: true
+  register: k8s_exists
+  tags:
+    - prebake-for-dev
+
+- name: download kubernetes container image
+  shell: docker pull {{ k8s_image }}:{{ k8s_version }}
+  when: not k8s_exists|success
+  tags:
+    - prebake-for-dev
+
+- name: download and install kubectl {{ k8s_version }}
+  get_url:
+    validate_certs: "{{ validate_certs }}"
+    url: http://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kubectl
+    dest: /usr/bin/kubectl{{ k8s_version }}
+    mode: u=rwx,g=rx,o=rx
+  tags:
+    - prebake-for-dev
+
+- name: install kubectl link
+  file:
+    src: "/usr/bin/kubectl{{ k8s_version }}"
+    dest: "/usr/bin/kubectl"
+    state: link
+    force: yes
+  tags:
+    - prebake-for-dev
+
+- name: setup iptables for kubernetes
+  shell: >
+      ( iptables -L INPUT | grep "{{ k8s_rule_comment }} ({{ item }})" ) || \
+      iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "{{ k8s_rule_comment }} ({{ item }})"
+  with_items:
+    - "{{ k8s_api_insecure_port }}"
+    - "{{ k8s_api_secure_port }}"
+
+- name: ensure kubernetes dirs exist
+  file:
+    path: "{{ item }}"
+    recurse: yes
+    state: directory
+  with_items:
+    - "{{ k8s_manifests_dir }}"
+    - "{{ k8s_cert_dir }}"
+    - "{{ k8s_net_plugin_config_dir }}"
+
+- name: copy the kubernetes certs
+  copy:
+    src: "{{ k8s_local_cert_dir }}/{{ item.file }}"
+    dest: "{{ k8s_cert_dir }}"
+    mode: "{{ item.mode }}"
+    force: yes
+  with_items:
+    - { file: basic_auth.csv, mode: "u=rw,g=r,o=r" }
+    - { file: ca.crt, mode: "u=rw,g=rw,o=" }
+    - { file: known_tokens.csv, mode: "u=rw,g=r,o=r" }
+    - { file: kubecfg.crt, mode: "u=rw,g=,o=" }
+    - { file: kubecfg.key, mode: "u=rw,g=,o=" }
+    - { file: server.cert, mode: "u=rw,g=rw,o=" }
+    - { file: server.key, mode: "u=rw,g=rw,o=" }
+
+- name: copy the kubernetes pod manifests
+  template: src={{ item }}_manifest.j2 dest={{ k8s_manifests_dir }}/{{ item }}_manifest.json
+  with_items:
+    - master
+    - worker
+
+- name: copy the kubernetes start/stop script
+  template: src=kubernetes.j2 dest=/usr/bin/kubernetes.sh mode=u=rwx,g=rx,o=rx
+
+- name: copy systemd units for kubernetes
+  copy: src=kubernetes.service dest=/etc/systemd/system/kubernetes.service
+
+- name: start kubernetes
+  service: name=kubernetes state=started
