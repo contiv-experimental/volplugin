@@ -68,6 +68,24 @@ func CreateVolume(vr *VolumeRequest) (*Volume, error) {
 	return vc, nil
 }
 
+// SetKey implements the entity interface.
+func (v *Volume) SetKey(key string) error {
+	suffix := strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), rootVolume), "/")
+	parts := strings.Split(suffix, "/")
+	if len(parts) != 2 {
+		return errors.InvalidDBPath.Combine(errored.Errorf("Args to SetKey for Volume were invalid: %v", key))
+	}
+
+	if parts[0] == "" || parts[1] == "" {
+		return errors.InvalidDBPath.Combine(errored.Errorf("One part of key %v in Volume was empty: %v", key, parts))
+	}
+
+	v.PolicyName = parts[0]
+	v.VolumeName = parts[1]
+
+	return nil
+}
+
 // Prefix provides the prefix for the volumes root.
 func (v *Volume) Prefix() string {
 	return rootVolume

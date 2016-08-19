@@ -5,6 +5,11 @@ func NewGlobal() *Global {
 	return &Global{}
 }
 
+// SetKey is not implmented here because it is not needed
+func (g *Global) SetKey(key string) error {
+	return nil
+}
+
 // Path returns the path to the global configuration
 func (g *Global) Path() (string, error) {
 	return rootGlobal, nil

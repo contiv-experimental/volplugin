@@ -13,6 +13,24 @@ func NewRuntimeOptions(policy, volume string) *RuntimeOptions {
 	return &RuntimeOptions{policyName: policy, volumeName: volume}
 }
 
+// SetKey sets the key for the runtime options. Needed for retrieval.
+func (ro *RuntimeOptions) SetKey(key string) error {
+	suffix := strings.Trim(strings.TrimPrefix(key, rootRuntimeOptions), "/")
+	parts := strings.Split(suffix, "/")
+	if len(parts) != 2 {
+		return errors.InvalidDBPath.Combine(errored.Errorf("Args to SetKey for RuntimeOptions were invalid: %v", key))
+	}
+
+	if parts[0] == "" || parts[1] == "" {
+		return errors.InvalidDBPath.Combine(errored.Errorf("One part of key %v in RuntimeOptions was empty: %v", key, parts))
+	}
+
+	ro.policyName = parts[0]
+	ro.volumeName = parts[1]
+
+	return nil
+}
+
 // Copy returns a copy of this RuntimeOptions.
 func (ro *RuntimeOptions) Copy() Entity {
 	r := *ro

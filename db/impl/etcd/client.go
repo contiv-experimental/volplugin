@@ -73,6 +73,10 @@ func (c *Client) Get(obj db.Entity) error {
 		return err
 	}
 
+	if err := obj.SetKey(c.trimPath(resp.Node.Key)); err != nil {
+		return err
+	}
+
 	if obj.Hooks().PostGet != nil {
 		if err := obj.Hooks().PostGet(c, obj); err != nil {
 			return errors.EtcdToErrored(err)
@@ -245,6 +249,10 @@ func (c *Client) watchStopPath(path string) error {
 	return nil
 }
 
+func (c *Client) trimPath(key string) string {
+	return strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), c.Prefix()), "/")
+}
+
 func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 	entities := []db.Entity{}
 	if node.Dir {
@@ -257,16 +265,21 @@ func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 		doAppend := true
 
 		if err := jsonio.Read(copy, []byte(node.Value)); err != nil {
-			// This is kept this way so a buggy policy won't break listing all of them, f.e.
+			// This is kept this way so a buggy policy won't break listing all of them
 			logrus.Errorf("Recieved error retrieving value at path %q during list: %v", node.Key, err)
 			doAppend = false
-		} else {
-			// same here. fire hooks to retrieve the full entity. only log but don't append.
-			if copy.Hooks().PostGet != nil {
-				if err := copy.Hooks().PostGet(c, copy); err != nil {
-					logrus.Errorf("Error received trying to run fetch hooks during %q list: %v", node.Key, err)
-					doAppend = false
-				}
+		}
+
+		if err := copy.SetKey(c.trimPath(node.Key)); err != nil {
+			logrus.Error(err)
+			doAppend = false
+		}
+
+		// same here. fire hooks to retrieve the full entity. only log but don't append on error.
+		if copy.Hooks().PostGet != nil {
+			if err := copy.Hooks().PostGet(c, copy); err != nil {
+				logrus.Errorf("Error received trying to run fetch hooks during %q list: %v", node.Key, err)
+				doAppend = false
 			}
 		}
 
