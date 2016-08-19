@@ -51,6 +51,11 @@
     - netplugin
     - contivk8s
 
+# k8s tasks are run after extracting the binaries as we need to copy the k8s
+# cni plugin for contiv, which is available after extraction of binaries
+- include: k8s_tasks.yml
+  when: scheduler_provider == "kubernetes"
+
 - name: copy environment file for netplugin
   template: src=netplugin.j2 dest=/etc/default/netplugin
 
@@ -82,7 +87,7 @@
     - { line: '{{ node_addr }} {{ ansible_hostname }}', regexp: ' {{ ansible_hostname }}$' }
 
 - name: copy environment file for netmaster
-  copy: src=netmaster dest=/etc/default/netmaster
+  template: src=netmaster.j2 dest=/etc/default/netmaster
   when: run_as == "master"
 
 - name: copy systemd units for netmaster
@@ -106,5 +111,18 @@
   args:
     chdir: /usr/bin/
 
+# setting global info needs netmaster to be ready
+- name: wait for netmaster to be ready
+  action: shell netctl tenant ls
+  register: tenant_result
+  until: tenant_result.stdout.find("default") != -1
+  retries: 9
+  delay: 10
+
 - include: aci_tasks.yml
   when: (run_as == "master") and (contiv_network_mode == "aci")
+
+- name: set fwd mode
+  shell: netctl global set --fwd-mode "{{ fwd_mode }}"
+  when: (run_as == "master")
+  run_once: true 

@@ -22,6 +22,12 @@
     - kernel-devel
     - dkms
 
+- name: copy systemd units for virtualbox-server
+  template: src=vbox.service.j2 dest=/etc/systemd/system/vbox.service
+
+- name: enable vbox to be started on boot-up and start it as well
+  service: name=vbox state=started enabled=yes
+
 - name: download vagrant (redhat)
   get_url:
     validate_certs: "{{ validate_certs }}"

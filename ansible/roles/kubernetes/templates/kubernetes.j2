@@ -1,0 +1,86 @@
+#!/bin/bash
+
+usage="$0 start"
+if [ $# -ne 1 ]; then
+    echo USAGE: $usage
+    exit 1
+fi
+
+set -x
+
+KUBELET_MOUNTS="\
+    -v /sys:/sys:rw \
+    -v /var/run:/var/run:rw \
+    -v /run:/run:rw \
+    -v /var/lib/docker:/var/lib/docker:rw \
+    -v /var/lib/kubelet:/var/lib/kubelet:shared \
+    -v /var/log/containers:/var/log/containers:rw \
+    -v {{ k8s_net_plugin_config_dir }}:{{ k8s_net_plugin_config_dir }}:ro \
+    -v {{ k8s_net_plugin_bin_dir }}:{{ k8s_net_plugin_bin_dir }}:ro \
+    -v {{ k8s_manifests_dir }}:{{ k8s_manifests_dir }}:ro"
+
+CNI_ARGS="\
+  --network-plugin={{ k8s_net_plugin_mode }} \
+  --network-plugin-dir={{ k8s_net_plugin_config_dir }}"
+
+start_k8s_server() {
+    /usr/bin/docker run -t \
+        --net=host \
+        --pid=host \
+        --privileged \
+        --name kube_kubelet \
+        ${KUBELET_MOUNTS} \
+        {{ k8s_image }}:{{ k8s_version }} \
+        /hyperkube kubelet \
+            --address=0.0.0.0 \
+            --enable-server \
+            --allow-privileged \
+            --api-servers=http://{{ service_vip }}:{{ k8s_api_insecure_port }} \
+            ${CNI_ARGS} \
+            --hostname-override={{ node_addr }} \
+            --config={{ k8s_manifests_dir }}/master_manifest.json \
+            --v=2
+}
+
+start_k8s_worker() {
+    /usr/bin/docker run -t \
+        --net=host \
+        --pid=host \
+        --privileged \
+        --name kube_kubelet \
+        ${KUBELET_MOUNTS} \
+        {{ k8s_image }}:{{ k8s_version }} \
+        /hyperkube kubelet \
+            --address=0.0.0.0 \
+            --enable-server \
+            --allow-privileged \
+            --api-servers=http://{{ service_vip }}:{{ k8s_api_insecure_port }} \
+            ${CNI_ARGS} \
+            --hostname-override={{ node_addr }} \
+            --config={{ k8s_manifests_dir }}/worker_manifest.json \
+            --v=2
+}
+
+case $1 in
+start)
+    set -e
+    {% if run_as == "master" -%}
+    start_k8s_server
+    {% else %}
+    start_k8s_worker
+    {% endif %}
+    ;;
+
+stop)
+    # skipping `set -e` as we shouldn't stop on error
+
+    #stop and remove the k8s containers
+    docker ps -a | grep 'kube_' | awk '{print $1}' | xargs docker rm -fv
+    docker ps -a | grep 'k8s_' | awk '{print $1}' | xargs docker rm -fv
+    ;;
+
+*)
+    echo USAGE: $usage
+    exit 1
+    ;;
+esac

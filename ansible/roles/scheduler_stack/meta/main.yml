@@ -4,4 +4,5 @@
 
 dependencies:
 - { role: swarm, when: scheduler_provider == "native-swarm" }
+- { role: kubernetes, when: scheduler_provider == "kubernetes" }
 - { role: ucp, when: scheduler_provider == "ucp-swarm" }

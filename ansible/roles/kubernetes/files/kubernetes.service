@@ -1,0 +1,8 @@
+[Unit]
+Description=Kubernetes
+After=auditd.service systemd-user-sessions.service time-sync.target etcd.service
+
+[Service]
+ExecStart=/usr/bin/kubernetes.sh start
+ExecStop=/usr/bin/kubernetes.sh stop
+KillMode=control-group
