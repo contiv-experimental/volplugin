@@ -110,6 +110,7 @@ run-fast: clean-volplugin-containers run-registry build
 
 run-etcd:
 	sudo systemctl start etcd
+	connwait 127.0.0.1:2379
 
 docker-image:
 	docker build -t contiv/volplugin .
