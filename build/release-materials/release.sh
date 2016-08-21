@@ -33,3 +33,6 @@ git push git@github.com:contiv/volplugin $1
 set -x
 github-release release -u contiv -r volplugin --tag $1 --name "Contiv Storage release $1" --description "$(cat $2)"
 github-release upload -u contiv -r volplugin --tag $1 --name "64-bit Linux release $1" --file $3
+
+docker push contiv/volplugin:$1
+docker push contiv/volplugin-autorun:$1

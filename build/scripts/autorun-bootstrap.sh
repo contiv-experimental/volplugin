@@ -2,7 +2,7 @@
 
 set -e
 
-docker rm -f apiserver volplugin volsupervisor &>/dev/null || :
+docker rm -f volplugin-etcd apiserver volplugin volsupervisor &>/dev/null || :
 
 ## test for shared mount capability
 if ! docker run -it -v /mnt:/mnt:shared alpine true &>/dev/null
@@ -16,47 +16,38 @@ fi
 
 set -x
 
+docker run --name volplugin-etcd -itd --net host quay.io/coreos/etcd
+
+sleep 2
+
+set -e
+
 docker run --net host --name apiserver \
-  --privileged -it -d \
-  -v /dev:/dev \
-  -v /etc/ceph:/etc/ceph \
-  -v /var/lib/ceph:/var/lib/ceph \
-  -v /lib/modules:/lib/modules:ro \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /mnt:/mnt:shared \
-  contiv/volplugin apiserver
-
-set +x
-
-sleep 1
-
-if [ ! -n "${NO_UPLOAD}" ]
-then
-  set -x
-  docker exec -i apiserver volcli policy upload policy1 < /policy.json
-  docker exec -i apiserver volcli global upload < /global.json
-fi
-
-set -x
+    --privileged -i -d \
+    -v /dev:/dev \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph:/var/lib/ceph \
+    -v /lib/modules:/lib/modules:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /mnt:/mnt:shared \
+    contiv/volplugin apiserver
 
 docker run --net host --name volsupervisor \
-  -itd --privileged \
-  -v /lib/modules:/lib/modules:ro \
-  -v /etc/ceph:/etc/ceph \
-  -v /var/lib/ceph:/var/lib/ceph \
-  contiv/volplugin volsupervisor
-
-set +x
-sleep 1
-set -x
+    -id --privileged \
+    -v /lib/modules:/lib/modules:ro \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph:/var/lib/ceph \
+    contiv/volplugin volsupervisor
 
 docker run --net host --name volplugin \
-  --privileged -it -d \
-  -v /dev:/dev \
-  -v /lib/modules:/lib/modules:ro \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /run/docker/plugins:/run/docker/plugins \
-  -v /mnt:/mnt:shared \
-  -v /etc/ceph:/etc/ceph \
-  -v /var/lib/ceph:/var/lib/ceph \
-  contiv/volplugin volplugin
+    --privileged -i -d \
+    -v /dev:/dev \
+    -v /lib/modules:/lib/modules:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /run/docker/plugins:/run/docker/plugins \
+    -v /mnt:/mnt:shared \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph:/var/lib/ceph \
+    -v /var/run/ceph:/var/run/ceph \
+    -v /sys/fs/cgroup:/sys/fs/cgroup \
+    contiv/volplugin volplugin
