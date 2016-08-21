@@ -20,7 +20,10 @@ cd /tmp
 tar cvjf ${OLDPWD}/$(basename $dir).tar.bz2 volplugin-${1}
 cd $OLDPWD
 
+docker build -t contiv/volplugin:$1 .
+docker build -t contiv/volplugin-autorun:$1 -f Dockerfile.autorun .
+
 git tag $1
 
-echo "Tag $1 has been created but not pushed; push it if you're sure you're ready to release!"
+echo "Tag $1 has been created but not pushed; run release.sh if you're sure you're ready to release!"
 echo "Your tarball is in $PWD/$(basename $dir).tar.bz2!"

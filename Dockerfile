@@ -1,8 +1,8 @@
 FROM ceph/rbd
 
-ADD bin/apiserver /bin/apiserver
-ADD bin/volplugin /bin/volplugin
-ADD bin/volcli /bin/volcli
-ADD bin/volsupervisor /bin/volsupervisor
+COPY bin/apiserver /bin/apiserver
+COPY bin/volplugin /bin/volplugin
+COPY bin/volcli /bin/volcli
+COPY bin/volsupervisor /bin/volsupervisor
 
 ENTRYPOINT []
