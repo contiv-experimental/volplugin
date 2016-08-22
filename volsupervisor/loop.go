@@ -1,11 +1,14 @@
 package volsupervisor
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/backend"
@@ -15,6 +18,33 @@ var (
 	volumes     = map[string]*config.Volume{}
 	volumeMutex = &sync.Mutex{}
 )
+
+func (dc *DaemonConfig) updateVolumes() {
+	myVolumes, err := dc.Config.ListAllVolumes()
+	fmt.Println(myVolumes)
+	if err == nil {
+		volumeMutex.Lock()
+		volumes = map[string]*config.Volume{}
+		for _, name := range myVolumes {
+			parts := strings.SplitN(name, "/", 2)
+			if len(parts) < 2 {
+				logrus.Errorf("Invalid volume %q. Skipping on volsupervisor read.", name)
+				continue
+			}
+
+			vol, err := dc.Config.GetVolume(parts[0], parts[1])
+			if err != nil {
+				logrus.Errorf("Could not get volume %q. Skipping.", name)
+				continue
+			}
+
+			volumes[name] = vol
+		}
+		volumeMutex.Unlock()
+	} else {
+		logrus.Error(err)
+	}
+}
 
 func (dc *DaemonConfig) pruneSnapshots(val *config.Volume) {
 	logrus.Infof("starting snapshot prune for %q", val.VolumeName)

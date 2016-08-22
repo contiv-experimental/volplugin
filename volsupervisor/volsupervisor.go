@@ -1,6 +1,9 @@
 package volsupervisor
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -8,6 +11,7 @@ import (
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
+	"github.com/contiv/volplugin/lock"
 	"github.com/contiv/volplugin/watch"
 )
 
@@ -42,8 +46,33 @@ retry:
 	go dc.watchAndSetGlobal(globalChan)
 	go info.HandleDebugSignal()
 
+	stopChan, err := lock.NewDriver(dc.Config).AcquireWithTTLRefresh(&config.UseVolsupervisor{Hostname: dc.Hostname}, dc.Global.TTL, dc.Global.Timeout)
+	if err != nil {
+		logrus.Fatal("Could not start volsupervisor: already in use")
+	}
+
+	sigChan := make(chan os.Signal, 1)
+
+	go func() {
+		<-sigChan
+		logrus.Infof("Removing volsupervisor global lock; waiting %v for lock to clear", dc.Global.TTL)
+		stopChan <- struct{}{}
+		time.Sleep(dc.Global.TTL + 1*time.Second) // give us enough time to try to clear the lock
+		os.Exit(0)
+	}()
+
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
 	dc.signalSnapshot()
-	dc.updatePolicies()
+	dc.updateVolumes()
+	// doing it here ensures the goroutine is created when the first poll completes.
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			dc.updateVolumes()
+		}
+	}()
+
 	dc.loop()
 }
 

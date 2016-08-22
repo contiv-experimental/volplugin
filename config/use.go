@@ -19,7 +19,18 @@ var (
 	UseTypeMount = "mount"
 	// UseTypeSnapshot is the string type of snapshot use locks
 	UseTypeSnapshot = "snapshot"
+
+	// UseTypeVolsupervisor is for taking locks on the volsupervisor process.
+	// Please see the UseVolsupervisor type.
+	UseTypeVolsupervisor = "volsupervisor"
 )
+
+// UseVolsupervisor is a global lock on the volsupervisor process itself.
+// UseVolsupervisor is kind of a hack currently and this will be addressed in
+// the DB rewrite.
+type UseVolsupervisor struct {
+	Hostname string
+}
 
 // UseMount is the mount locking mechanism for users. Users are hosts,
 // consumers of a volume. Examples of uses are: creating a volume, using a
@@ -88,6 +99,26 @@ func (us *UseSnapshot) Type() string {
 
 // MayExist determines if a key may exist during initial write
 func (us *UseSnapshot) MayExist() bool {
+	return false
+}
+
+// GetVolume returns a static string so it can be a singleton here.
+func (us *UseVolsupervisor) GetVolume() string {
+	return "volsupervisor"
+}
+
+// GetReason gets the reason for this use.
+func (us *UseVolsupervisor) GetReason() string {
+	return ""
+}
+
+// Type returns the type of lock.
+func (us *UseVolsupervisor) Type() string {
+	return UseTypeVolsupervisor
+}
+
+// MayExist determines if a key may exist during initial write
+func (us *UseVolsupervisor) MayExist() bool {
 	return false
 }
 
