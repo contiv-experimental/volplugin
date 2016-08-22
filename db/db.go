@@ -18,8 +18,8 @@ type Client interface {
 	// use.
 	Get(Entity) error
 
-	// Set the entity. Will persist the entity to etcd based on the path it
-	// provides. (See Path())
+	// Set the entity. Will persist the entity to the k/v store based on the path
+	// it provides. (See Path())
 	Set(Entity) error
 
 	// Delete the entity from the database. Does nothing to the underlying
@@ -35,10 +35,10 @@ type Client interface {
 
 	// WatchAll watches the prefix of the entity for changes, watching all of the
 	// specific type.
-	WatchAll(Entity) (chan Entity, chan error) // watch of subtree
+	WatchPrefix(Entity) (chan Entity, chan error) // watch of subtree
 
 	// WatchAllStop stops a WatchAll.
-	WatchAllStop(Entity) error
+	WatchPrefixStop(Entity) error
 
 	// Dump dumps a tarball make with mktemp() to the specified directory.
 	Dump(string) (string, error)

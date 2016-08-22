@@ -232,7 +232,7 @@ func (s *testSuite) TestMountSource(c *C) {
 }
 
 func (s *testSuite) TestWatchVolumes(c *C) {
-	entChan, errChan := s.client.WatchAll(&db.Volume{})
+	entChan, errChan := s.client.WatchPrefix(&db.Volume{})
 	select {
 	case err := <-errChan:
 		c.Assert(err, IsNil)
@@ -252,7 +252,7 @@ func (s *testSuite) TestWatchVolumes(c *C) {
 		c.Assert(vol, DeepEquals, vol2)
 	}
 
-	c.Assert(s.client.WatchAllStop(&db.Volume{}), IsNil)
+	c.Assert(s.client.WatchPrefixStop(&db.Volume{}), IsNil)
 
 	vol, err = db.CreateVolume(&db.VolumeRequest{Policy: testPolicies["basic"], Name: "test2"})
 	c.Assert(err, IsNil)

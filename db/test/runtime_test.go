@@ -13,7 +13,8 @@ func (s *testSuite) TestRuntimeWatch(c *C) {
 	vol, err := db.CreateVolume(&db.VolumeRequest{Policy: policy, Name: "bar"})
 	c.Assert(err, IsNil)
 
-	objChan, errChan := s.client.WatchAll(&db.RuntimeOptions{})
+	objChan, errChan := s.client.WatchPrefix(&db.RuntimeOptions{})
+	defer s.client.WatchPrefixStop(&db.RuntimeOptions{})
 	opts := db.NewRuntimeOptions(vol.PolicyName, vol.VolumeName)
 	opts.RateLimit.ReadBPS = 1000
 	c.Assert(s.client.Set(opts), IsNil)

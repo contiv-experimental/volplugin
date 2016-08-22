@@ -175,13 +175,13 @@ func (c *Client) WatchStop(obj db.Entity) error {
 	return c.watchStopPath(path)
 }
 
-// WatchAll watches all items under the given entity's
-func (c *Client) WatchAll(obj db.Entity) (chan db.Entity, chan error) {
+// WatchPrefix watches all items under the given entity's
+func (c *Client) WatchPrefix(obj db.Entity) (chan db.Entity, chan error) {
 	return c.watchPath(obj, obj.Prefix(), true)
 }
 
-// WatchAllStop stops
-func (c *Client) WatchAllStop(obj db.Entity) error {
+// WatchPrefixStop stops
+func (c *Client) WatchPrefixStop(obj db.Entity) error {
 	return c.watchStopPath(obj.Prefix())
 }
 
