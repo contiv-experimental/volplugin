@@ -108,19 +108,26 @@ func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, timeout time.Du
 // lock after a timeout, returning a stop channel. Timeout is jittered to
 // mitigate thundering herd problems.
 func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Duration) (chan struct{}, error) {
+	if err := d.Config.PublishUse(uc); err != nil {
+		return nil, err
+	}
+
 	if err := d.acquire(uc, ttl, timeout); err != nil {
 		return nil, err
 	}
 
-	stopChan := make(chan struct{})
+	stopChan := make(chan struct{}, 1)
 
 	go func() {
 		for {
-			time.Sleep(wait.Jitter(ttl/4, 0))
 			select {
 			case <-stopChan:
+				logrus.Debugf("Clearing lock for %v", uc)
+				if err := d.ClearLock(uc, timeout); err != nil {
+					logrus.Errorf("Could not clear lock %v after stop received: %v", uc, err)
+				}
 				return
-			default:
+			case <-time.After(wait.Jitter(ttl/4, 0)):
 				if err := d.acquire(uc, ttl, timeout); err != nil {
 					logrus.Errorf("Could not acquire lock %v: %v", uc, err)
 					return
