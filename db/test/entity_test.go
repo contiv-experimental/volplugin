@@ -19,6 +19,10 @@ func newTestEntity(name, somedata string) *testEntity {
 	return &testEntity{Name: name, SomeData: somedata, hooks: &db.Hooks{}}
 }
 
+func (t *testEntity) String() string {
+	return t.Name
+}
+
 func (t *testEntity) SetKey(key string) error {
 	t.Name = strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), t.Prefix()), "/")
 	return nil

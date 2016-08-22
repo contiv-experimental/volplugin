@@ -37,6 +37,10 @@ func (g *Global) Validate() error {
 	return nil
 }
 
+func (g *Global) String() string {
+	return rootGlobal
+}
+
 // Hooks returns an empty hooks set.
 func (g *Global) Hooks() *Hooks {
 	return &Hooks{}

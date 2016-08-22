@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 /*
 
 client<->entity relationship:
@@ -76,6 +78,8 @@ type Entity interface {
 	// Hooks returns a db.Hooks which contains several functions for the Entity
 	// lifecycle, such as pre-set and post-get.
 	Hooks() *Hooks
+
+	fmt.Stringer
 }
 
 // Hook is the type that represents a client hook in our entities system. Hooks
