@@ -313,14 +313,6 @@ func (a *API) Mount(w http.ResponseWriter, r *http.Request) {
 	a.WriteMount(path, w)
 }
 
-func (a *API) clearLock(ut config.UseLocker) error {
-	if err := a.Lock.ClearLock(ut, (*a.Global).Timeout); err != nil {
-		return errors.RefreshMount.Combine(errored.New(ut.GetVolume())).Combine(err)
-	}
-
-	return nil
-}
-
 func (a *API) startTTLRefresh(volName string) error {
 	ut := &config.UseMount{
 		Volume:   volName,
