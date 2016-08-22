@@ -1,6 +1,7 @@
 package db
 
 import (
+	"path"
 	"strings"
 
 	"github.com/contiv/errored"
@@ -11,6 +12,20 @@ import (
 // be found or written to.
 func NewRuntimeOptions(policy, volume string) *RuntimeOptions {
 	return &RuntimeOptions{policyName: policy, volumeName: volume}
+}
+
+// Policy returns the name of the policy associated with these runtime options
+func (ro *RuntimeOptions) Policy() string {
+	return ro.policyName
+}
+
+// Volume returns the name of the volume associated with these runtime options
+func (ro *RuntimeOptions) Volume() string {
+	return ro.volumeName
+}
+
+func (ro *RuntimeOptions) String() string {
+	return path.Join(ro.Policy(), ro.Volume())
 }
 
 // SetKey sets the key for the runtime options. Needed for retrieval.

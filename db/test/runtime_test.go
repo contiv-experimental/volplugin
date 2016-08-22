@@ -23,5 +23,9 @@ func (s *testSuite) TestRuntimeWatch(c *C) {
 		c.Assert(err, IsNil)
 	case obj := <-objChan:
 		c.Assert(obj.(*db.RuntimeOptions).RateLimit.ReadBPS, Equals, uint64(1000))
+		c.Assert(obj.(*db.RuntimeOptions).Policy(), Not(Equals), "")
+		c.Assert(obj.(*db.RuntimeOptions).Policy(), Equals, vol.PolicyName)
+		c.Assert(obj.(*db.RuntimeOptions).Volume(), Not(Equals), "")
+		c.Assert(obj.(*db.RuntimeOptions).Volume(), Equals, vol.VolumeName)
 	}
 }
