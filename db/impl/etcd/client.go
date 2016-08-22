@@ -254,6 +254,10 @@ func (c *Client) trimPath(key string) string {
 	return strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), c.Prefix()), "/")
 }
 
+// traverse walks the keyspace and converts anything that looks like an entity
+// into an entity and returns it as part of the array.
+//
+// traverse will log & skip errors to ensure bad data will not break this routine.
 func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 	entities := []db.Entity{}
 	if node.Dir {
