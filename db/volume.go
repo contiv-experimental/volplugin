@@ -100,29 +100,33 @@ func (v *Volume) Path() (string, error) {
 	return strings.Join([]string{v.Prefix(), v.PolicyName, v.VolumeName}, "/"), nil
 }
 
+func (v *Volume) postGetHook(c Client, obj Entity) error {
+	vol := obj.(*Volume)
+	ro := vol.RuntimeOptions // pointer
+	ro.policyName = vol.PolicyName
+	ro.volumeName = vol.VolumeName
+	return c.Get(ro)
+}
+
+func (v *Volume) preSetHook(c Client, obj Entity) error {
+	copy := obj.Copy()
+	if err := c.Get(copy); err == nil {
+		return errored.Errorf("%v", obj).Combine(errors.Exists)
+	}
+
+	vol := obj.(*Volume)
+	ro := vol.RuntimeOptions // pointer
+	ro.policyName = vol.PolicyName
+	ro.volumeName = vol.VolumeName
+	return c.Set(ro)
+}
+
 // Hooks provides hooks into the volume CRUD lifecycle. Currently this is used
 // to split runtime parameters out from the rest of the volume information.
 func (v *Volume) Hooks() *Hooks {
 	return &Hooks{
-		PostGet: func(c Client, obj Entity) error {
-			vol := obj.(*Volume)
-			ro := vol.RuntimeOptions // pointer
-			ro.policyName = vol.PolicyName
-			ro.volumeName = vol.VolumeName
-			return c.Get(ro)
-		},
-		PreSet: func(c Client, obj Entity) error {
-			copy := obj.Copy()
-			if err := c.Get(copy); err == nil {
-				return errored.Errorf("%v", obj).Combine(errors.Exists)
-			}
-
-			vol := obj.(*Volume)
-			ro := vol.RuntimeOptions // pointer
-			ro.policyName = vol.PolicyName
-			ro.volumeName = vol.VolumeName
-			return c.Set(ro)
-		},
+		PostGet: v.postGetHook,
+		PreSet:  v.preSetHook,
 	}
 }
 
