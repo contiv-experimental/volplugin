@@ -20,27 +20,29 @@ var (
 
 func (dc *DaemonConfig) updateVolumes() {
 	myVolumes, err := dc.Config.ListAllVolumes()
-	if err == nil {
-		volumeMutex.Lock()
-		volumes = map[string]*config.Volume{}
-		for _, name := range myVolumes {
-			parts := strings.SplitN(name, "/", 2)
-			if len(parts) < 2 {
-				logrus.Errorf("Invalid volume %q. Skipping on volsupervisor read.", name)
-				continue
-			}
-
-			vol, err := dc.Config.GetVolume(parts[0], parts[1])
-			if err != nil {
-				logrus.Errorf("Could not get volume %q. Skipping.", name)
-				continue
-			}
-
-			volumes[name] = vol
-		}
-		volumeMutex.Unlock()
-	} else {
+	if err != nil {
 		logrus.Error(err)
+		return
+	}
+
+	volumeMutex.Lock()
+	defer volumeMutex.Unlock()
+
+	volumes = map[string]*config.Volume{}
+	for _, name := range myVolumes {
+		parts := strings.SplitN(name, "/", 2)
+		if len(parts) < 2 {
+			logrus.Errorf("Invalid volume %q. Skipping on volsupervisor read.", name)
+			continue
+		}
+
+		vol, err := dc.Config.GetVolume(parts[0], parts[1])
+		if err != nil {
+			logrus.Errorf("Could not get volume %q. Skipping.", name)
+			continue
+		}
+
+		volumes[name] = vol
 	}
 }
 

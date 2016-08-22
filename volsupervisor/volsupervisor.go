@@ -8,6 +8,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	wait "github.com/jbeda/go-wait"
 
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/info"
@@ -57,7 +58,7 @@ retry:
 		<-sigChan
 		logrus.Infof("Removing volsupervisor global lock; waiting %v for lock to clear", dc.Global.TTL)
 		stopChan <- struct{}{}
-		time.Sleep(dc.Global.TTL + 1*time.Second) // give us enough time to try to clear the lock
+		time.Sleep(wait.Jitter(dc.Global.TTL+time.Second, 0)) // give us enough time to try to clear the lock
 		os.Exit(0)
 	}()
 
@@ -68,7 +69,7 @@ retry:
 	// doing it here ensures the goroutine is created when the first poll completes.
 	go func() {
 		for {
-			time.Sleep(1 * time.Second)
+			time.Sleep(wait.Jitter(time.Second, 0))
 			dc.updateVolumes()
 		}
 	}()

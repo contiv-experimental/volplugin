@@ -130,7 +130,6 @@ func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Du
 			case <-time.After(wait.Jitter(ttl/4, 0)):
 				if err := d.acquire(uc, ttl, timeout); err != nil {
 					logrus.Errorf("Could not acquire lock %v: %v", uc, err)
-					return
 				}
 			}
 		}
