@@ -423,15 +423,22 @@ func (cfg *Volume) String() string {
 }
 
 // IsVolumeInUse checks if the given volume is mounted in any container
-func (c *Client) IsVolumeInUse(cfg *Volume) (bool, error) {
+func (c *Client) IsVolumeInUse(cfg *Volume, global *Global) (bool, error) {
 	if !cfg.Unlocked {
-		if _, err := c.etcdClient.Get(context.Background(), c.use(UseTypeMount, cfg.String()), nil); err != nil {
-			if etcdErr := errors.EtcdToErrored(err); etcdErr != nil {
-				return !(etcdErr == errors.NotExists), nil
+		uc := &UseMount{Volume: cfg.String()} // fields are deliberately cleared
+		if err := c.PublishUse(uc); err != nil {
+			if er, ok := err.(*errored.Error); ok {
+				return er.Contains(errors.Exists), c.RemoveUse(uc, false)
 			}
-			return true, err
+
+			logrus.Errorf("Error received checking for volume in-use status: %v", err)
+
+			return false, c.RemoveUse(uc, false)
 		}
+
+		return false, c.RemoveUse(uc, false)
 	}
+
 	// XXX To simplify the behavior, always return true for unlocked volumes as there are no mount lock exists for them.
 	return true, nil
 }
