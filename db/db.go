@@ -46,6 +46,9 @@ type Client interface {
 
 	// List takes an Entity which it will then populate an []Entity with a list of objects.
 	List(Entity) ([]Entity, error)
+
+	// ListPrefix lists all the entities under prefix instead of listing the whole keyspace.
+	ListPrefix(string, Entity) ([]Entity, error)
 }
 
 // Entity provides an abstraction on our types and how they are persisted to

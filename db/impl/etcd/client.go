@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -296,6 +297,16 @@ func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 // trying to deserialize the entity.
 func (c *Client) List(obj db.Entity) ([]db.Entity, error) {
 	resp, err := c.client.Get(context.Background(), c.qualified(obj.Prefix()), &client.GetOptions{Recursive: true})
+	if err != nil {
+		return nil, err
+	}
+
+	return c.traverse(resp.Node, obj), nil
+}
+
+// ListPrefix is used to list a subtree of an entity, such as listing volume by policy.
+func (c *Client) ListPrefix(prefix string, obj db.Entity) ([]db.Entity, error) {
+	resp, err := c.client.Get(context.Background(), c.qualified(path.Join(obj.Prefix(), prefix)), &client.GetOptions{Recursive: true})
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package test
 
 import (
+	"sort"
+
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/db"
 	"github.com/contiv/volplugin/errors"
@@ -66,23 +68,23 @@ func (s *testSuite) TestVolumeCRUD(c *C) {
 			c.Assert(s.client.Set(vcfg), NotNil)
 		}
 
-		// volumes, err := s.client.ListVolumes(policy)
-		// c.Assert(err, IsNil)
-		//
-		// volumeKeys := []string{}
-		//
-		// for key := range volumes {
-		// 	volumeKeys = append(volumeKeys, key)
-		// }
-		//
-		// sort.Strings(volumeKeys)
-		//
-		// c.Assert(volumeNames, DeepEquals, volumeKeys)
-		// for _, vol := range volumes {
-		// 	c.Assert(vol.CreateOptions, DeepEquals, testPolicies["basic"].CreateOptions)
-		// 	c.Assert(vol.RuntimeOptions, DeepEquals, testPolicies["basic"].RuntimeOptions)
-		// }
+		volumes, err := s.client.ListPrefix(policyName, &db.Volume{})
+		c.Assert(err, IsNil)
 
+		volumeKeys := []string{}
+		for _, volume := range volumes {
+			volumeKeys = append(volumeKeys, volume.(*db.Volume).VolumeName)
+		}
+
+		sort.Strings(volumeKeys)
+
+		c.Assert(volumeNames, DeepEquals, volumeKeys)
+		for _, entity := range volumes {
+			vol := entity.(*db.Volume)
+			testPolicies["basic"].RuntimeOptions.SetKey(vol.String())
+			c.Assert(vol.CreateOptions, DeepEquals, testPolicies["basic"].CreateOptions)
+			c.Assert(vol.RuntimeOptions, DeepEquals, testPolicies["basic"].RuntimeOptions)
+		}
 	}
 
 	allVols, err := s.client.List(&db.Volume{})

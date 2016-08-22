@@ -83,7 +83,7 @@ func (v *Volume) SetKey(key string) error {
 	v.PolicyName = parts[0]
 	v.VolumeName = parts[1]
 
-	return nil
+	return v.RuntimeOptions.SetKey(suffix)
 }
 
 // Prefix provides the prefix for the volumes root.
