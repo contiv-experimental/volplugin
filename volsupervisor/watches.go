@@ -4,51 +4,8 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/watch"
 )
-
-func (dc *DaemonConfig) updatePolicies() {
-	myVolumes, err := dc.Config.ListAllVolumes()
-	if err == nil {
-		for _, name := range myVolumes {
-			parts := strings.SplitN(name, "/", 2)
-			if len(parts) < 2 {
-				logrus.Errorf("Invalid volume %q. Skipping on apiserver startup.", name)
-				continue
-			}
-
-			vol, err := dc.Config.GetVolume(parts[0], parts[1])
-			if err != nil {
-				logrus.Errorf("Could not get volume %q at apiserver startup. Skipping and waiting for update.", name)
-				continue
-			}
-			volumeMutex.Lock()
-			volumes[name] = vol
-			volumeMutex.Unlock()
-		}
-	}
-
-	volumeChan := make(chan *watch.Watch)
-	dc.Config.WatchVolumeRuntimes(volumeChan)
-
-	go func() {
-		for {
-			vc := <-volumeChan
-
-			volumeMutex.Lock()
-			if vc.Config == nil {
-				logrus.Debugf("Deleting volume %q from cache", vc.Key)
-				delete(volumes, vc.Key)
-			} else {
-				logrus.Debugf("Adding volume %q to cache", vc.Key)
-				volumes[vc.Key] = vc.Config.(*config.Volume)
-			}
-			volumeMutex.Unlock()
-		}
-	}()
-
-}
 
 func (dc *DaemonConfig) signalSnapshot() {
 	snapshotChan := make(chan *watch.Watch)
