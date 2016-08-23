@@ -19,6 +19,15 @@ import (
 
 const myMountpath = "/mnt/ceph"
 
+var driverOptions = map[string]map[string]interface{}{
+	"test": {
+		"pool": "test",
+	},
+	"rbd": {
+		"pool": "rbd",
+	},
+}
+
 var filesystems = map[string]storage.FSOptions{
 	"ext4": {
 		Type:          "ext4",
@@ -106,9 +115,9 @@ func (s *cephSuite) TestMkfsVolume(c *C) {
 
 func (s *cephSuite) TestMountUnmountVolume(c *C) {
 	// Create a new driver
-	crudDriver, err := NewCRUDDriver()
+	crudDriver, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
-	mountDriver, err := NewMountDriver(myMountpath)
+	mountDriver, err := NewMountDriver(myMountpath, driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
@@ -147,6 +156,9 @@ again:
 		Timeout:   5 * time.Second,
 	}
 
+	crudDriver, err = NewCRUDDriver(driverOptions["test"])
+	c.Assert(err, IsNil)
+
 	if done {
 		return
 	}
@@ -159,7 +171,7 @@ again:
 func (s *cephSuite) TestSnapshots(c *C) {
 	snapDrv, err := NewSnapshotDriver()
 	c.Assert(err, IsNil)
-	crudDrv, err := NewCRUDDriver()
+	crudDrv, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
@@ -195,6 +207,9 @@ again:
 		Timeout:   5 * time.Second,
 	}
 
+	crudDrv, err = NewCRUDDriver(driverOptions["test"])
+	c.Assert(err, IsNil)
+
 	if done {
 		return
 	}
@@ -205,9 +220,9 @@ again:
 }
 
 func (s *cephSuite) TestRepeatedMountUnmount(c *C) {
-	mountDrv, err := NewMountDriver(myMountpath)
+	mountDrv, err := NewMountDriver(myMountpath, driverOptions["rbd"])
 	c.Assert(err, IsNil)
-	crudDrv, err := NewCRUDDriver()
+	crudDrv, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
@@ -225,12 +240,13 @@ again:
 	defer mountDrv.Unmount(driverOpts)
 	defer crudDrv.Destroy(driverOpts)
 
+	logrus.Infof("%#v", crudDrv)
 	c.Assert(crudDrv.Create(driverOpts), IsNil)
 	c.Assert(crudDrv.Format(driverOpts), IsNil)
 	for i := 0; i < 10; i++ {
 		_, err := mountDrv.Mount(driverOpts)
 		c.Assert(err, IsNil)
-		s.readWriteTest(c, fmt.Sprintf("/mnt/ceph/%s/test.pithos", driverOpts.Volume.Params["pool"]))
+		s.readWriteTest(c, fmt.Sprintf("/mnt/ceph/%s/test.pithos", crudDrv.PoolName()))
 		c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	}
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
@@ -241,12 +257,15 @@ again:
 		Timeout:   5 * time.Second,
 	}
 
+	crudDrv, err = NewCRUDDriver(driverOptions["test"])
+	logrus.Infof("Towards end %#v", crudDrv)
+	c.Assert(err, IsNil)
+
 	if done {
 		return
 	}
 
 	done = true
-
 	goto again
 }
 
@@ -260,9 +279,9 @@ func (s *cephSuite) TestTemplateFSCmd(c *C) {
 }
 
 func (s *cephSuite) TestMounted(c *C) {
-	crudDrv, err := NewCRUDDriver()
+	crudDrv, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
-	mountDrv, err := NewMountDriver(myMountpath)
+	mountDrv, err := NewMountDriver(myMountpath, driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
@@ -295,12 +314,15 @@ again:
 		Device:   "/dev/rbd0",
 		DevMajor: 252,
 		DevMinor: 0,
-		Path:     strings.Join([]string{myMountpath, driverOpts.Volume.Params["pool"], intName}, "/"),
+		Path:     strings.Join([]string{myMountpath, crudDrv.PoolName(), intName}, "/"),
 		Volume:   driverOpts.Volume,
 	})
 
 	c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	crudDrv, err = NewCRUDDriver(driverOptions["test"])
+	c.Assert(err, IsNil)
 
 	driverOpts = storage.DriverOptions{
 		Volume:    volumeSpecTestPool,
@@ -343,7 +365,7 @@ func (s *cephSuite) TestExternalInternalNames(c *C) {
 func (s *cephSuite) TestSnapshotClone(c *C) {
 	snapDrv, err := NewSnapshotDriver()
 	c.Assert(err, IsNil)
-	crudDrv, err := NewCRUDDriver()
+	crudDrv, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driverOpts := storage.DriverOptions{
@@ -362,7 +384,7 @@ again:
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), IsNil)
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
 
-	content, err := exec.Command("rbd", "ls", driverOpts.Volume.Params["pool"]).CombinedOutput()
+	content, err := exec.Command("rbd", "ls", crudDrv.PoolName()).CombinedOutput()
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(string(content)), Equals, "test.image\ntest.pithos")
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "foo", "test/image"), NotNil)
@@ -370,10 +392,13 @@ again:
 
 	driverOpts.Volume.Name = "test/image"
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
-	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "test").Run()
-	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "testsnap").Run()
+	exec.Command("rbd", "snap", "unprotect", mkpool(crudDrv.PoolName(), "test.pithos"), "--snap", "test").Run()
+	exec.Command("rbd", "snap", "unprotect", mkpool(crudDrv.PoolName(), "test.pithos"), "--snap", "testsnap").Run()
 	driverOpts.Volume.Name = "test/pithos"
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
+
+	crudDrv, err = NewCRUDDriver(driverOptions["test"])
+	c.Assert(err, IsNil)
 
 	driverOpts = storage.DriverOptions{
 		Volume:    volumeSpecTestPool,
@@ -391,10 +416,10 @@ again:
 }
 
 func (s *cephSuite) TestMountScan(c *C) {
-	crudDriver, err := NewCRUDDriver()
+	crudDriver, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
-	mountDriver, err := NewMountDriver(myMountpath)
+	mountDriver, err := NewMountDriver(myMountpath, driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	c.Assert(crudDriver.Create(mountscanDriverOpts), IsNil)
@@ -424,10 +449,10 @@ func (s *cephSuite) TestMountScan(c *C) {
 
 func (s *cephSuite) TestMountSource(c *C) {
 	totalIterations := 5
-	crudDriver, err := NewCRUDDriver()
+	crudDriver, err := NewCRUDDriver(driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
-	mountDriver, err := NewMountDriver(myMountpath)
+	mountDriver, err := NewMountDriver(myMountpath, driverOptions["rbd"])
 	c.Assert(err, IsNil)
 
 	driver := &Driver{}

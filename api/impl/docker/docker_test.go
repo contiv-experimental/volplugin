@@ -70,7 +70,7 @@ func (s *dockerSuite) TestBasic(c *C) {
 	err := s.client.PublishPolicy("policy1", &config.Policy{
 		Name:          "policy1",
 		Backend:       "ceph",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: config.CreateOptions{
 			Size: "10MB",
 		},

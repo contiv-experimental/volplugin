@@ -87,7 +87,7 @@ func makeExport(c *C, name, mountArgs string) {
 }
 
 func (s *nfsSuite) TestSanity(c *C) {
-	d, err := NewMountDriver(mountPath)
+	d, err := NewMountDriver(mountPath, map[string]interface{}{})
 	c.Assert(err, IsNil)
 
 	c.Assert(d.Name(), Equals, BackendName)
@@ -110,7 +110,7 @@ func (s *nfsSuite) TestRepeatedMountSingleMountPoint(c *C) {
 		makeExport(c, "basic", "rw")
 
 		c.Assert(ioutil.WriteFile(path.Join(mkPath("basic"), "foo"), []byte{byte(i)}, 0644), IsNil)
-		d, err := NewMountDriver(mountPath)
+		d, err := NewMountDriver(mountPath, map[string]interface{}{})
 		c.Assert(err, IsNil)
 
 		vol := storage.Volume{
@@ -261,7 +261,7 @@ func (s *nfsSuite) TestMountScan(c *C) {
 	}
 
 	makeExport(c, "mountscan", "rw")
-	mountD, err := NewMountDriver(mountPath)
+	mountD, err := NewMountDriver(mountPath, map[string]interface{}{})
 	c.Assert(err, IsNil)
 
 	do := storage.DriverOptions{

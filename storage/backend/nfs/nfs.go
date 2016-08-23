@@ -1,6 +1,7 @@
 package nfs
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -14,19 +15,59 @@ import (
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/storage"
 	"github.com/vishvananda/netlink"
+	gojson "github.com/xeipuuv/gojsonschema"
 )
 
 // Driver is a basic struct for controlling the NFS driver.
 type Driver struct {
 	mountpath string
+	DOpts     *DOptions
+}
+
+// DOptions implements the nfs driver options
+type DOptions struct {
+	Options string `json:"options"`
 }
 
 // BackendName is the name of the driver.
 const BackendName = "nfs"
 
+func (do *DOptions) validate() error {
+	schema := gojson.NewStringLoader(DriverOptionsSchema)
+	data := gojson.NewGoLoader(do)
+
+	if result, err := gojson.Validate(schema, data); err != nil {
+		return err
+	} else if !result.Valid() {
+		var errors []string
+		for _, err := range result.Errors() {
+			errors = append(errors, fmt.Sprintf("%s\n", err))
+		}
+		return errored.New(strings.Join(errors, "\n"))
+	}
+
+	return nil
+}
+
 // NewMountDriver constructs a new NFS driver.
-func NewMountDriver(mountPath string) (storage.MountDriver, error) {
-	return &Driver{mountpath: mountPath}, nil
+func NewMountDriver(mountPath string, dOpts map[string]interface{}) (storage.MountDriver, error) {
+	driverOpts := &DOptions{}
+	if dOpts != nil {
+		content, err := json.Marshal(dOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(content, driverOpts); err != nil {
+			return nil, err
+		}
+
+		if err := driverOpts.validate(); err != nil {
+			return nil, err
+		}
+	}
+
+	return &Driver{mountpath: mountPath, DOpts: driverOpts}, nil
 }
 
 // Name returns the string associated with the storage backed of the driver
@@ -80,7 +121,7 @@ func (d *Driver) mapOptionsToString(mapOpts map[string]string) string {
 }
 
 func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
-	mapOpts, err := d.validateConvertOptions(do.Volume.Params["options"])
+	mapOpts, err := d.validateConvertOptions(d.DOpts.Options)
 	if err != nil {
 		return "", err
 	}

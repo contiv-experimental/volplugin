@@ -39,7 +39,7 @@ func CreateVolume(policy *config.Policy, config *config.Volume, timeout time.Dur
 		return storage.DriverOptions{}, err
 	}
 
-	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
+	driver, err := backend.NewCRUDDriver(config.Backends.CRUD, config.DriverOptions)
 	if err != nil {
 		return storage.DriverOptions{}, err
 	}
@@ -73,7 +73,7 @@ func FormatVolume(config *config.Volume, do storage.DriverOptions) error {
 		return errors.NoActionTaken
 	}
 
-	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
+	driver, err := backend.NewCRUDDriver(config.Backends.CRUD, config.DriverOptions)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func ExistsVolume(config *config.Volume, timeout time.Duration) (bool, error) {
 		return true, errors.NoActionTaken
 	}
 
-	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
+	driver, err := backend.NewCRUDDriver(config.Backends.CRUD, config.DriverOptions)
 	if err != nil {
 		return false, err
 	}
@@ -112,7 +112,7 @@ func RemoveVolume(config *config.Volume, timeout time.Duration) error {
 		return errors.NoActionTaken
 	}
 
-	driver, err := backend.NewCRUDDriver(config.Backends.CRUD)
+	driver, err := backend.NewCRUDDriver(config.Backends.CRUD, config.DriverOptions)
 	if err != nil {
 		return err
 	}
