@@ -110,7 +110,7 @@ run-fast: clean-volplugin-containers run-registry build
 
 run-etcd:
 	sudo systemctl start etcd
-	connwait 127.0.0.1:2379
+	while ! $$(etcdctl cluster-health | tail -1 | grep -q 'cluster is healthy'); do sleep 1; done
 
 docker-image:
 	docker build -t contiv/volplugin .
