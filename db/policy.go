@@ -84,9 +84,14 @@ func (p *Policy) Copy() Entity {
 	// XXX backends are special. They are optional and making them empty results in
 	// a nil pointer. However, in this copy we don't want to copy a pointer, just
 	// the data if it exists.
-	if p2.Backends != nil {
+	if p.Backends != nil {
 		b2 := *p.Backends
 		p2.Backends = &b2
+	}
+
+	if p.RuntimeOptions != nil {
+		ro2 := *p.RuntimeOptions
+		p2.RuntimeOptions = &ro2
 	}
 
 	return &p2
