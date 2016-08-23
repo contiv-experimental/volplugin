@@ -175,7 +175,7 @@ func (c *Client) WatchStop(obj db.Entity) error {
 	return c.watchStopPath(path)
 }
 
-// WatchPrefix watches all items under the given entity's
+// WatchPrefix watches all items under the given entity's prefix
 func (c *Client) WatchPrefix(obj db.Entity) (chan db.Entity, chan error) {
 	return c.watchPath(obj, obj.Prefix(), true)
 }
