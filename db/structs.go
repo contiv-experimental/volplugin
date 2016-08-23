@@ -7,14 +7,14 @@ import (
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
-	Name           string            `json:"name"`
-	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
-	CreateOptions  CreateOptions     `json:"create"`
-	RuntimeOptions *RuntimeOptions   `json:"runtime"`
-	DriverOptions  map[string]string `json:"driver"`
-	FileSystems    map[string]string `json:"filesystems"`
-	Backends       *BackendDrivers   `json:"backends,omitempty"`
-	Backend        string            `json:"backend,omitempty"`
+	Name           string                 `json:"name"`
+	Unlocked       bool                   `json:"unlocked,omitempty" merge:"unlocked"`
+	CreateOptions  CreateOptions          `json:"create"`
+	RuntimeOptions *RuntimeOptions        `json:"runtime"`
+	DriverOptions  map[string]interface{} `json:"driver"`
+	FileSystems    map[string]string      `json:"filesystems"`
+	Backends       *BackendDrivers        `json:"backends,omitempty"`
+	Backend        string                 `json:"backend,omitempty"`
 }
 
 // BackendDrivers is a struct containing all the drivers used under this policy
@@ -73,14 +73,14 @@ type UseLocker interface {
 // Volume is the configuration of the policy. It includes pool and
 // snapshot information.
 type Volume struct {
-	PolicyName     string            `json:"policy"`
-	VolumeName     string            `json:"name"`
-	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
-	DriverOptions  map[string]string `json:"driver"`
-	MountSource    string            `json:"mount" merge:"mount"`
-	CreateOptions  CreateOptions     `json:"create"`
-	RuntimeOptions *RuntimeOptions   `json:"runtime"`
-	Backends       *BackendDrivers   `json:"backends,omitempty"`
+	PolicyName     string                 `json:"policy"`
+	VolumeName     string                 `json:"name"`
+	Unlocked       bool                   `json:"unlocked,omitempty" merge:"unlocked"`
+	DriverOptions  map[string]interface{} `json:"driver"`
+	MountSource    string                 `json:"mount" merge:"mount"`
+	CreateOptions  CreateOptions          `json:"create"`
+	RuntimeOptions *RuntimeOptions        `json:"runtime"`
+	Backends       *BackendDrivers        `json:"backends,omitempty"`
 }
 
 // CreateOptions are the set of options used by apiserver during the volume

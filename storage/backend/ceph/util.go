@@ -13,7 +13,13 @@ func (c *Driver) MountPath(do storage.DriverOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(c.mountpath, do.Volume.Params["pool"], volName), nil
+
+	poolName, err := do.Volume.Params.Get("pool", false)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(c.mountpath, poolName, volName), nil
 }
 
 // FIXME maybe this belongs in storage/ as it's more general?

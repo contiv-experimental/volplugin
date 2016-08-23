@@ -45,7 +45,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  map[string]interface{}{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "",
@@ -55,7 +55,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  map[string]interface{}{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",
@@ -70,7 +70,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 			Snapshot: "ceph",
 			CRUD:     "ceph",
 		},
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  map[string]interface{}{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",

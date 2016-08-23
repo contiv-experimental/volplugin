@@ -10,7 +10,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
@@ -31,7 +31,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "20MB",
 			FileSystem: defaultFilesystem,
@@ -45,7 +45,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "0",
 			FileSystem: defaultFilesystem,
@@ -59,7 +59,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "20MB",
 			FileSystem: defaultFilesystem,
@@ -73,7 +73,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "not a number",
 			FileSystem: defaultFilesystem,
@@ -87,7 +87,7 @@ var testPolicies = map[string]*Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
@@ -106,7 +106,7 @@ var testPolicies = map[string]*Policy{
 			Mount: "ceph",
 		},
 		Name:          "blanksize",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			FileSystem: defaultFilesystem,
 		},
@@ -119,7 +119,7 @@ var testPolicies = map[string]*Policy{
 			Mount: "ceph",
 		},
 		Name:          "blanksize",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			FileSystem: defaultFilesystem,
 		},
@@ -128,7 +128,7 @@ var testPolicies = map[string]*Policy{
 	},
 	"nobackend": {
 		Name:          "nobackend",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: CreateOptions{
 			Size:       "10MB",
 			FileSystem: defaultFilesystem,
