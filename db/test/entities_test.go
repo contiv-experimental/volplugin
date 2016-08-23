@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	. "testing"
 
@@ -9,6 +10,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/db"
 	"github.com/contiv/volplugin/db/impl/etcd"
@@ -27,8 +29,12 @@ var _ = Suite(&testSuite{})
 func TestDB(t *T) { TestingT(t) }
 
 func (s *testSuite) SetUpTest(c *C) {
-	errored.AlwaysDebug = true
-	errored.AlwaysTrace = true
+	if os.Getenv("DEBUG") != "" {
+		errored.AlwaysDebug = true
+		errored.AlwaysTrace = true
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	exec.Command("/bin/sh", "-c", "etcdctl rm --recursive /volplugin /testing /test /watch").Run()
 	var err error
 	s.client, err = etcd.NewClient(etcdHosts, "volplugin")

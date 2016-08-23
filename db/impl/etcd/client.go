@@ -12,8 +12,11 @@ import (
 	"github.com/contiv/volplugin/db/jsonio"
 	"github.com/contiv/volplugin/errors"
 	"github.com/coreos/etcd/client"
+	wait "github.com/jbeda/go-wait"
 	"golang.org/x/net/context"
 )
+
+const etcdCodeNotFound = 105
 
 // Client implements the db.Client interface.
 type Client struct {
@@ -316,4 +319,142 @@ func (c *Client) ListPrefix(prefix string, obj db.Entity) ([]db.Entity, error) {
 	}
 
 	return c.traverse(resp.Node, obj), nil
+}
+
+// Acquire and permanently hold a lock. Attempts until timeout. If timeout is
+// zero, it will only try once.
+func (c *Client) Acquire(lock db.Lock) error {
+	logrus.Debugf("Acquiring lock %v", lock)
+
+	content, err := jsonio.Write(lock)
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	path, err := lock.Path()
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	_, err = c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
+	if er, ok := err.(client.Error); ok && er.Code == etcdCodeNotFound {
+		if lock.MayExist() {
+			_, err := c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevExist: client.PrevExist, PrevValue: string(content)})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+	} else if err != nil {
+		return err
+	}
+
+	logrus.Debugf("Acquired lock %v", lock)
+
+	return nil
+}
+
+// Free a lock. Pass force=true to force it dead.
+func (c *Client) Free(lock db.Lock, force bool) error {
+	content, err := jsonio.Write(lock)
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	path, err := lock.Path()
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	opts := &client.DeleteOptions{PrevValue: string(content)}
+
+	if force {
+		opts = &client.DeleteOptions{}
+	}
+
+	_, err = c.client.Delete(context.Background(), c.qualified(path), opts)
+	return err
+}
+
+// AcquireAndRefresh starts a goroutine to refresh the key every 1/4
+// (jittered) of the TTL. A stop channel is returned which, when sent a
+// struct, will terminate the refresh. Error is returned for anything that
+// might occur while setting up the goroutine.
+//
+// Do not use Free to free these locks, it will not work! Use the stop
+// channel.
+func (c *Client) AcquireAndRefresh(lock db.Lock, ttl time.Duration) (chan struct{}, error) {
+	logrus.Debugf("In refresh, performing preliminary permanent lock on %v", lock)
+	if err := c.Acquire(lock); err != nil {
+		return nil, err
+	}
+
+	stopChan := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-stopChan:
+				if err := c.Free(lock, false); err != nil {
+					logrus.Errorf("Error freeing lock %q: %v", lock, err)
+				}
+
+				return
+			default:
+				time.Sleep(wait.Jitter(ttl/4, 0))
+				if err := c.AcquireWithTTL(lock, ttl); err != nil {
+					logrus.Errorf("Could not acquire lock %v: %v", lock, err)
+				}
+			}
+		}
+	}()
+
+	return stopChan, nil
+}
+
+// AcquireWithTTL acquires a lock with a TTL by using two compare-and-swap
+// operations to refresh any lock that exists by us, and to take any lock that
+// is not taken.
+func (c *Client) AcquireWithTTL(lock db.Lock, ttl time.Duration) error {
+	if ttl < 0 {
+		err := errored.Errorf("TTL was less than 0 for locker %#v! This should not happen!", lock)
+		logrus.Error(err)
+		return err
+	}
+
+	content, err := jsonio.Write(lock)
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	path, err := lock.Path()
+	if err != nil {
+		return errors.LockFailed.Combine(err)
+	}
+
+	opts := &client.SetOptions{
+		PrevExist: client.PrevExist,
+		TTL:       ttl,
+		PrevValue: string(content),
+	}
+
+	logrus.Debugf("Acquiring lock %v with ttl %v", lock, ttl)
+	_, err = c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{TTL: ttl, PrevExist: client.PrevNoExist})
+	if er, ok := err.(client.Error); ok && er.Code == etcdCodeNotFound {
+		if lock.MayExist() {
+			_, err := c.client.Set(context.Background(), c.qualified(path), string(content), opts)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	logrus.Debugf("Acquired lock %v with ttl %v", lock, ttl)
+	return nil
 }
