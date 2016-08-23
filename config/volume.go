@@ -206,7 +206,7 @@ func (c *Client) GetVolumeRuntime(policy, name string) (RuntimeOptions, error) {
 
 // RemoveVolume removes a volume from configuration.
 func (c *Client) RemoveVolume(policy, name string) error {
-	// FIXME might be a consistency issue here; pass around volume structs instead.
+	logrus.Debugf("Removing volume %s/%s from database", policy, name)
 	_, err := c.etcdClient.Delete(context.Background(), c.prefixed(rootVolume, policy, name), &client.DeleteOptions{Recursive: true})
 	return errors.EtcdToErrored(err)
 }

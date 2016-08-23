@@ -355,14 +355,9 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !volConfig.Unlocked {
-		a.RemoveStopChan(volName)
-
 		// XXX to doubly ensure we do not UNMOUNT something that is held elsewhere
 		// (presumably because it is mounted THERE instead), we refuse to unmount
-		// anything that doesn't acquire a lock. We also remove the TTL refresh
-		// before taking it so it is not cleared in the unlikely event the mount
-		// takes longer than the TTL. Re-establish the TTL on error only if it is in
-		// locked mode.
+		// anything that doesn't acquire a lock.
 		if err := a.Client.PublishUse(ut); err != nil {
 			a.HTTPError(w, errors.LockFailed.Combine(err))
 			return
@@ -377,13 +372,6 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !volConfig.Unlocked {
-			if err := a.startTTLRefresh(volName); err != nil {
-				a.HTTPError(w, err)
-				return
-			}
-		}
-
 		a.WriteMount(path, w)
 		return
 	}
@@ -396,10 +384,7 @@ func (a *API) Unmount(w http.ResponseWriter, r *http.Request) {
 	a.MountCollection.Remove(volName)
 
 	if !volConfig.Unlocked {
-		if err := a.Lock.ClearLock(ut, (*a.Global).Timeout); err != nil {
-			a.HTTPError(w, errors.RefreshMount.Combine(errored.New(volConfig.String())).Combine(err))
-			return
-		}
+		a.RemoveStopChan(volName)
 	}
 
 	path, err := a.getMountPath(driver, driverOpts)

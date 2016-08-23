@@ -48,11 +48,11 @@ func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
 
 	c.Assert(s.createVolume("mon0", fqVolume("policy1", volName), map[string]string{"unlocked": "true"}), IsNil)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
-	c.Assert(len(strings.Split(strings.TrimSpace(out), "\n"))-1 > 2, Equals, true)
+	c.Assert(len(strings.Split(strings.TrimSpace(out), "\n"))-1 >= 2, Equals, true)
 
 	time.Sleep(15 * time.Second)
 
@@ -60,7 +60,8 @@ func (s *systemtestSuite) TestVolsupervisorSnapshotSchedule(c *C) {
 	c.Assert(err, IsNil)
 	mylen := len(strings.Split(strings.TrimSpace(out), "\n"))
 	c.Assert(mylen-1, Not(Equals), 0)
-	c.Assert(mylen-1 >= 5 && mylen-1 <= 10, Equals, true, Commentf("%v", out))
+	// this is 11 because in rare cases, the snapshot pruner will have not run yet when this is counted.
+	c.Assert(mylen-1 >= 5 && mylen-1 <= 11, Equals, true, Commentf("len: %d\n%v", mylen, out))
 }
 
 func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
@@ -77,7 +78,7 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 
 	c.Assert(s.createVolume("mon0", fqVolName, map[string]string{"unlocked": "true"}), IsNil)
 
-	time.Sleep(4 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	out, err := s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)
@@ -97,7 +98,7 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 	_, err = s.volcli("volume create " + fqVolName + " --opt unlocked=true")
 	c.Assert(err, IsNil)
 
-	time.Sleep(4 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, IsNil)

@@ -12,10 +12,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd/client"
 	"github.com/jbeda/go-wait"
 
-	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/config"
 	"github.com/contiv/volplugin/errors"
 )
@@ -108,11 +106,8 @@ func (d *Driver) ExecuteWithMultiUseLock(ucs []config.UseLocker, timeout time.Du
 // lock after a timeout, returning a stop channel. Timeout is jittered to
 // mitigate thundering herd problems.
 func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Duration) (chan struct{}, error) {
+	// we acquire a permanent lock, then overwrite it with a TTL lock later.
 	if err := d.Config.PublishUse(uc); err != nil {
-		return nil, err
-	}
-
-	if err := d.acquire(uc, ttl, timeout); err != nil {
 		return nil, err
 	}
 
@@ -123,7 +118,7 @@ func (d *Driver) AcquireWithTTLRefresh(uc config.UseLocker, ttl, timeout time.Du
 			select {
 			case <-stopChan:
 				logrus.Debugf("Clearing lock for %v", uc)
-				if err := d.ClearLock(uc, timeout); err != nil {
+				if err := d.Config.RemoveUse(uc, false); err != nil {
 					logrus.Errorf("Could not clear lock %v after stop received: %v", uc, err)
 				}
 				return
@@ -173,15 +168,8 @@ func (d *Driver) acquire(uc config.UseLocker, ttl, timeout time.Duration) error 
 
 retry:
 	if ttl != time.Duration(0) {
-		if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevExist); err != nil {
+		if err = d.Config.PublishUseWithTTL(uc, ttl); err != nil {
 			logrus.Debugf("Lock publish failed for %q with error: %v. Continuing.", uc, err)
-			if er, ok := err.(*errored.Error); ok && er.Contains(errors.NotExists) {
-				if err = d.Config.PublishUseWithTTL(uc, ttl, client.PrevNoExist); err != nil {
-					logrus.Warnf("Could not acquire %q lock for %q: %v", uc.GetReason(), uc.GetVolume(), err)
-				}
-			} else if err != nil {
-				return err
-			}
 		}
 	} else {
 		if err = d.Config.PublishUse(uc); err != nil {
