@@ -68,6 +68,24 @@ func CreateVolume(vr *VolumeRequest) (*Volume, error) {
 	return vc, nil
 }
 
+// SetKey implements the entity interface.
+func (v *Volume) SetKey(key string) error {
+	suffix := strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), rootVolume), "/")
+	parts := strings.Split(suffix, "/")
+	if len(parts) != 2 {
+		return errors.InvalidDBPath.Combine(errored.Errorf("Args to SetKey for Volume were invalid: %v", key))
+	}
+
+	if parts[0] == "" || parts[1] == "" {
+		return errors.InvalidDBPath.Combine(errored.Errorf("One part of key %v in Volume was empty: %v", key, parts))
+	}
+
+	v.PolicyName = parts[0]
+	v.VolumeName = parts[1]
+
+	return v.RuntimeOptions.SetKey(suffix)
+}
+
 // Prefix provides the prefix for the volumes root.
 func (v *Volume) Prefix() string {
 	return rootVolume
@@ -82,29 +100,33 @@ func (v *Volume) Path() (string, error) {
 	return strings.Join([]string{v.Prefix(), v.PolicyName, v.VolumeName}, "/"), nil
 }
 
+func (v *Volume) postGetHook(c Client, obj Entity) error {
+	vol := obj.(*Volume)
+	ro := vol.RuntimeOptions // pointer
+	ro.policyName = vol.PolicyName
+	ro.volumeName = vol.VolumeName
+	return c.Get(ro)
+}
+
+func (v *Volume) preSetHook(c Client, obj Entity) error {
+	copy := obj.Copy()
+	if err := c.Get(copy); err == nil {
+		return errored.Errorf("%v", obj).Combine(errors.Exists)
+	}
+
+	vol := obj.(*Volume)
+	ro := vol.RuntimeOptions // pointer
+	ro.policyName = vol.PolicyName
+	ro.volumeName = vol.VolumeName
+	return c.Set(ro)
+}
+
 // Hooks provides hooks into the volume CRUD lifecycle. Currently this is used
 // to split runtime parameters out from the rest of the volume information.
 func (v *Volume) Hooks() *Hooks {
 	return &Hooks{
-		PostGet: func(c Client, obj Entity) error {
-			vol := obj.(*Volume)
-			ro := vol.RuntimeOptions // pointer
-			ro.policyName = vol.PolicyName
-			ro.volumeName = vol.VolumeName
-			return c.Get(ro)
-		},
-		PreSet: func(c Client, obj Entity) error {
-			copy := obj.Copy()
-			if err := c.Get(copy); err == nil {
-				return errored.Errorf("%v", obj).Combine(errors.Exists)
-			}
-
-			vol := obj.(*Volume)
-			ro := vol.RuntimeOptions // pointer
-			ro.policyName = vol.PolicyName
-			ro.volumeName = vol.VolumeName
-			return c.Set(ro)
-		},
+		PostGet: v.postGetHook,
+		PreSet:  v.preSetHook,
 	}
 }
 

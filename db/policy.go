@@ -13,6 +13,21 @@ func NewPolicy(name string) *Policy {
 	return &Policy{Name: name}
 }
 
+// SetKey implements the SetKey entity interface.
+func (p *Policy) SetKey(key string) error {
+	suffix := strings.Trim(strings.TrimPrefix(key, rootPolicy), "/")
+	if strings.Contains(suffix, "/") {
+		return errors.InvalidDBPath.Combine(errored.Errorf("Policy name %q contains invalid characters", suffix))
+	}
+
+	if suffix == "" {
+		return errors.InvalidDBPath.Combine(errored.New("Policy name is empty"))
+	}
+
+	p.Name = suffix
+	return nil
+}
+
 // Prefix returns the path of the base directory where these entities are stored.
 func (p *Policy) Prefix() string {
 	return rootPolicy

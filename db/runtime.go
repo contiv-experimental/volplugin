@@ -1,6 +1,7 @@
 package db
 
 import (
+	"path"
 	"strings"
 
 	"github.com/contiv/errored"
@@ -11,6 +12,38 @@ import (
 // be found or written to.
 func NewRuntimeOptions(policy, volume string) *RuntimeOptions {
 	return &RuntimeOptions{policyName: policy, volumeName: volume}
+}
+
+// Policy returns the name of the policy associated with these runtime options
+func (ro *RuntimeOptions) Policy() string {
+	return ro.policyName
+}
+
+// Volume returns the name of the volume associated with these runtime options
+func (ro *RuntimeOptions) Volume() string {
+	return ro.volumeName
+}
+
+func (ro *RuntimeOptions) String() string {
+	return path.Join(ro.Policy(), ro.Volume())
+}
+
+// SetKey sets the key for the runtime options. Needed for retrieval.
+func (ro *RuntimeOptions) SetKey(key string) error {
+	suffix := strings.Trim(strings.TrimPrefix(key, rootRuntimeOptions), "/")
+	parts := strings.Split(suffix, "/")
+	if len(parts) != 2 {
+		return errors.InvalidDBPath.Combine(errored.Errorf("Args to SetKey for RuntimeOptions were invalid: %v", key))
+	}
+
+	if parts[0] == "" || parts[1] == "" {
+		return errors.InvalidDBPath.Combine(errored.Errorf("One part of key %v in RuntimeOptions was empty: %v", key, parts))
+	}
+
+	ro.policyName = parts[0]
+	ro.volumeName = parts[1]
+
+	return nil
 }
 
 // Copy returns a copy of this RuntimeOptions.

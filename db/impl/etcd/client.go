@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -70,6 +71,10 @@ func (c *Client) Get(obj db.Entity) error {
 	}
 
 	if err := jsonio.Read(obj, []byte(resp.Node.Value)); err != nil {
+		return err
+	}
+
+	if err := obj.SetKey(c.trimPath(resp.Node.Key)); err != nil {
 		return err
 	}
 
@@ -170,13 +175,13 @@ func (c *Client) WatchStop(obj db.Entity) error {
 	return c.watchStopPath(path)
 }
 
-// WatchAll watches all items under the given entity's
-func (c *Client) WatchAll(obj db.Entity) (chan db.Entity, chan error) {
+// WatchPrefix watches all items under the given entity's prefix
+func (c *Client) WatchPrefix(obj db.Entity) (chan db.Entity, chan error) {
 	return c.watchPath(obj, obj.Prefix(), true)
 }
 
-// WatchAllStop stops
-func (c *Client) WatchAllStop(obj db.Entity) error {
+// WatchPrefixStop stops
+func (c *Client) WatchPrefixStop(obj db.Entity) error {
 	return c.watchStopPath(obj.Prefix())
 }
 
@@ -245,6 +250,14 @@ func (c *Client) watchStopPath(path string) error {
 	return nil
 }
 
+func (c *Client) trimPath(key string) string {
+	return strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), c.Prefix()), "/")
+}
+
+// traverse walks the keyspace and converts anything that looks like an entity
+// into an entity and returns it as part of the array.
+//
+// traverse will log & skip errors to ensure bad data will not break this routine.
 func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 	entities := []db.Entity{}
 	if node.Dir {
@@ -257,16 +270,21 @@ func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 		doAppend := true
 
 		if err := jsonio.Read(copy, []byte(node.Value)); err != nil {
-			// This is kept this way so a buggy policy won't break listing all of them, f.e.
+			// This is kept this way so a buggy policy won't break listing all of them
 			logrus.Errorf("Recieved error retrieving value at path %q during list: %v", node.Key, err)
 			doAppend = false
-		} else {
-			// same here. fire hooks to retrieve the full entity. only log but don't append.
-			if copy.Hooks().PostGet != nil {
-				if err := copy.Hooks().PostGet(c, copy); err != nil {
-					logrus.Errorf("Error received trying to run fetch hooks during %q list: %v", node.Key, err)
-					doAppend = false
-				}
+		}
+
+		if err := copy.SetKey(c.trimPath(node.Key)); err != nil {
+			logrus.Error(err)
+			doAppend = false
+		}
+
+		// same here. fire hooks to retrieve the full entity. only log but don't append on error.
+		if copy.Hooks().PostGet != nil {
+			if err := copy.Hooks().PostGet(c, copy); err != nil {
+				logrus.Errorf("Error received trying to run fetch hooks during %q list: %v", node.Key, err)
+				doAppend = false
 			}
 		}
 
@@ -283,6 +301,16 @@ func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 // trying to deserialize the entity.
 func (c *Client) List(obj db.Entity) ([]db.Entity, error) {
 	resp, err := c.client.Get(context.Background(), c.qualified(obj.Prefix()), &client.GetOptions{Recursive: true})
+	if err != nil {
+		return nil, err
+	}
+
+	return c.traverse(resp.Node, obj), nil
+}
+
+// ListPrefix is used to list a subtree of an entity, such as listing volume by policy.
+func (c *Client) ListPrefix(prefix string, obj db.Entity) ([]db.Entity, error) {
+	resp, err := c.client.Get(context.Background(), c.qualified(path.Join(obj.Prefix(), prefix)), &client.GetOptions{Recursive: true})
 	if err != nil {
 		return nil, err
 	}
