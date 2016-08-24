@@ -15,15 +15,34 @@
         - "ucp"
         - "docker"
         - "etcd"
-    - include: roles/{{ item }}/tasks/cleanup.yml
-      with_items:
-        - ucarp
-        - contiv_network
-        - contiv_storage
-        - swarm
-        - kubernetes
-        - ucp
-        - etcd
-        - nfs
-        - docker
+    - include: roles/ucarp/tasks/cleanup.yml
       ignore_errors: yes
+    - include: roles/contiv_network/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/contiv_storage/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/swarm/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/kubernetes/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/ucp/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/etcd/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/nfs/tasks/cleanup.yml
+      ignore_errors: yes
+    - include: roles/docker/tasks/cleanup.yml
+      ignore_errors: yes
+# XXX: the following doesn't work with ansible 2.1.1 (https://github.com/ansible/ansible/issues/17144)
+#    - include: roles/{{ item }}/tasks/cleanup.yml
+#      with_items:
+#        - ucarp
+#        - contiv_network
+#        - contiv_storage
+#        - swarm
+#        - kubernetes
+#        - ucp
+#        - etcd
+#        - nfs
+#        - docker
+#      ignore_errors: yes
