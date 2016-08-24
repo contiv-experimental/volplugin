@@ -27,8 +27,10 @@ var (
 )
 
 func ClearEtcd(node remotessh.TestbedNode) {
-	logrus.Infof("Clearing etcd data")
-	node.RunCommand(`etcdctl rm --recursive /volplugin`)
+	logrus.Info("Waiting for etcd")
+	node.RunCommand("while ! $(etcdctl cluster-health | tail -1 | grep -q 'cluster is healthy'); do sleep 1; done")
+	logrus.Info("Clearing etcd data")
+	node.RunCommand("etcdctl rm --recursive /volplugin")
 }
 
 // WaitForDone polls for checkDoneFn function to return true up until specified timeout

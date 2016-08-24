@@ -4,8 +4,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/client"
-
 	. "gopkg.in/check.v1"
 )
 
@@ -67,16 +65,12 @@ func (s *configSuite) TestUseCRUD(c *C) {
 }
 
 func (s *configSuite) TestUseCRUDWithTTL(c *C) {
-	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
+	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second), IsNil)
 	use := &UseMount{}
 	c.Assert(s.tlc.GetUse(use, testUseVolumes["basic"]), IsNil)
 	c.Assert(use, DeepEquals, testUseMounts["basic"])
 	time.Sleep(10 * time.Second)
 	c.Assert(s.tlc.GetUse(use, testUseVolumes["basic"]), NotNil)
-
-	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevNoExist), IsNil)
-	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic"], 5*time.Second, client.PrevExist), IsNil)
-	c.Assert(s.tlc.PublishUseWithTTL(testUseMounts["basic2"], 5*time.Second, client.PrevNoExist), IsNil)
 }
 
 func (s *configSuite) TestUseListEtcdDown(c *C) {

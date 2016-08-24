@@ -19,7 +19,18 @@ var (
 	UseTypeMount = "mount"
 	// UseTypeSnapshot is the string type of snapshot use locks
 	UseTypeSnapshot = "snapshot"
+
+	// UseTypeVolsupervisor is for taking locks on the volsupervisor process.
+	// Please see the UseVolsupervisor type.
+	UseTypeVolsupervisor = "volsupervisor"
 )
+
+// UseVolsupervisor is a global lock on the volsupervisor process itself.
+// UseVolsupervisor is kind of a hack currently and this will be addressed in
+// the DB rewrite.
+type UseVolsupervisor struct {
+	Hostname string
+}
 
 // UseMount is the mount locking mechanism for users. Users are hosts,
 // consumers of a volume. Examples of uses are: creating a volume, using a
@@ -91,6 +102,26 @@ func (us *UseSnapshot) MayExist() bool {
 	return false
 }
 
+// GetVolume returns a static string so it can be a singleton here.
+func (us *UseVolsupervisor) GetVolume() string {
+	return "volsupervisor"
+}
+
+// GetReason gets the reason for this use.
+func (us *UseVolsupervisor) GetReason() string {
+	return ""
+}
+
+// Type returns the type of lock.
+func (us *UseVolsupervisor) Type() string {
+	return UseTypeVolsupervisor
+}
+
+// MayExist determines if a key may exist during initial write
+func (us *UseVolsupervisor) MayExist() bool {
+	return false
+}
+
 func (c *Client) use(typ string, vc string) string {
 	return c.prefixed(rootUse, typ, vc)
 }
@@ -117,7 +148,7 @@ func (c *Client) PublishUse(ut UseLocker) error {
 
 // PublishUseWithTTL pushes the use to etcd, with a TTL that expires the record
 // if it has not been updated within that time.
-func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client.PrevExistType) error {
+func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration) error {
 	content, err := json.Marshal(ut)
 	if err != nil {
 		return err
@@ -130,14 +161,22 @@ func (c *Client) PublishUseWithTTL(ut UseLocker, ttl time.Duration, exist client
 	}
 
 	logrus.Debugf("Publishing use with TTL %v: %#v", ttl, ut)
-
 	value := string(content)
-	if exist != client.PrevNoExist {
-		value = ""
+
+	// attempt to set the lock. If the lock cannot be set and it is is empty, attempt to set it now.
+	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{TTL: ttl, PrevValue: value})
+	if err != nil {
+		if er, ok := errors.EtcdToErrored(err).(*errored.Error); ok && er.Contains(errors.NotExists) {
+			_, err := c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{TTL: ttl, PrevExist: client.PrevNoExist})
+			if err != nil {
+				return errors.PublishMount.Combine(err)
+			}
+		} else {
+			return errors.PublishMount.Combine(err)
+		}
 	}
 
-	_, err = c.etcdClient.Set(context.Background(), c.use(ut.Type(), ut.GetVolume()), string(content), &client.SetOptions{TTL: ttl, PrevExist: exist, PrevValue: value})
-	return errors.EtcdToErrored(err)
+	return nil
 }
 
 // RemoveUse will remove a user from etcd. Does not fail if the user does
