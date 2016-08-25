@@ -27,7 +27,7 @@ const (
 
 	// TimeoutFixBase is our base timeout -- timeouts supplied to the user are multiplied against this for storage and evaluation.
 	TimeoutFixBase = time.Minute
-	// TTLFixBase is our base TTL. TTLs supplied to the user are multipled against this for storage and evaulation.
+	// TTLFixBase is our base TTL. TTLs supplied to the user are multiplied against this for storage and evaluation.
 	TTLFixBase = time.Second
 	// DefaultMountPath is the standard mount path for all mounts.
 	DefaultMountPath = "/mnt"
