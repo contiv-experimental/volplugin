@@ -271,7 +271,7 @@ func (c *Client) traverse(node *client.Node, obj db.Entity) []db.Entity {
 
 		if err := jsonio.Read(copy, []byte(node.Value)); err != nil {
 			// This is kept this way so a buggy policy won't break listing all of them
-			logrus.Errorf("Recieved error retrieving value at path %q during list: %v", node.Key, err)
+			logrus.Errorf("Received error retrieving value at path %q during list: %v", node.Key, err)
 			doAppend = false
 		}
 
