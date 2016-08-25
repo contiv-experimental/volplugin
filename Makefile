@@ -67,6 +67,7 @@ unit-test:
 
 unit-test-host:
 	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -check.f "${TESTRUN}"
+	DRIVER=consul go test -v ./db/test/ -check.v -check.f "${TESTRUN}"
 
 unit-test-nocoverage:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-nocoverage-host"'

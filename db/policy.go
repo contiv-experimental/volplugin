@@ -10,7 +10,13 @@ import (
 // NewPolicy creates a policy struct with the required parameters for using it.
 // It will not pass validation.
 func NewPolicy(name string) *Policy {
-	return &Policy{Name: name}
+	p := &Policy{Name: name}
+
+	if p.FileSystems == nil {
+		p.FileSystems = DefaultFilesystems
+	}
+
+	return p
 }
 
 // SetKey implements the SetKey entity interface.
@@ -44,10 +50,6 @@ func (p *Policy) Path() (string, error) {
 
 // Validate validates the policy. Returns error on failure.
 func (p *Policy) Validate() error {
-	if p.FileSystems == nil {
-		p.FileSystems = DefaultFilesystems
-	}
-
 	if err := validateJSON(RuntimeSchema, p.RuntimeOptions); err != nil {
 		return errors.ErrJSONValidation.Combine(err)
 	}

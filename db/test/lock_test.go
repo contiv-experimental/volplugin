@@ -37,6 +37,7 @@ func (s *testSuite) TestLockAcquire(c *C) {
 	c.Assert(s.client.Acquire(lock), IsNil)
 
 	lock2 := db.NewCreateOwner("mon1", v)
+	c.Assert(s.client.Acquire(lock2), NotNil)
 	c.Assert(s.client.Free(lock2, false), NotNil)
 
 	c.Assert(s.client.Free(lock, false), IsNil)
@@ -62,39 +63,41 @@ func (s *testSuite) TestLockBattery(c *C) {
 	// go routine A should never free the lock.
 	// go routine B should never succeed at acquiring it.
 
-	syncChan := make(chan struct{})
+	syncChan1 := make(chan struct{})
+	syncChan2 := make(chan struct{}, 1)
 
-	defer func(lock db.Lock) {
-		syncChan <- struct{}{} // this relays to the first one to ensure the lock is freed
-		s.client.Free(lock, true)
-	}(lock)
+	defer func() {
+		syncChan2 <- struct{}{} // this relays to the first one to ensure the lock is freed
+		syncChan1 <- struct{}{} // this relays to the second one to terminate it
+	}()
 
 	go func(v *db.Volume) {
+		lock := db.NewCreateOwner("mon0", v)
 		for {
 			select {
-			case <-syncChan:
+			case <-syncChan1:
+				s.client.Free(lock, true)
 				return
 			default:
-				lock := db.NewCreateOwner("mon0", v)
 				c.Assert(s.client.Acquire(lock), IsNil)
 			}
 		}
 	}(v)
 
 	go func(v *db.Volume) {
+		lock := db.NewCreateOwner("mon1", v)
 		for {
 			select {
-			case <-syncChan:
-				syncChan <- struct{}{}
+			case <-syncChan2:
 				return
 			default:
-				lock := db.NewCreateOwner("mon1", v)
+				logrus.Debug("Attempting to acquire lock (should fail)")
 				c.Assert(s.client.Acquire(lock), NotNil)
 			}
 		}
 	}(v)
 
-	logrus.Info("Creating contention in etcd")
+	logrus.Infof("Creating contention in %s", Driver)
 	time.Sleep(time.Minute)
 }
 
@@ -111,13 +114,15 @@ func (s *testSuite) TestLockTTL(c *C) {
 	lock2 := db.NewCreateOwner("mon1", v)
 
 	s.client.Free(lock, true)
-	c.Assert(s.client.AcquireWithTTL(lock, time.Second), IsNil)
-	c.Assert(s.client.AcquireWithTTL(lock2, time.Second), NotNil)
+	c.Assert(s.client.AcquireWithTTL(lock, 15*time.Second), IsNil)
+	c.Assert(s.client.AcquireWithTTL(lock2, 15*time.Second), NotNil)
 
-	time.Sleep(2 * time.Second) // wait for ttl to expire
+	time.Sleep(5 * time.Second)                                   // wait for ttl to expire. minimum timeout is 10s so we're testing that.
+	c.Assert(s.client.AcquireWithTTL(lock2, time.Second), NotNil) // test in the middle so we're sure the lock isn't freed yet.
+	time.Sleep(11 * time.Second)
 
 	c.Assert(s.client.AcquireWithTTL(lock2, time.Second), IsNil)
-	s.client.Free(lock2, true)
+	c.Assert(s.client.Free(lock2, false), IsNil)
 }
 
 func (s *testSuite) TestLockTTLRefresh(c *C) {
@@ -132,29 +137,49 @@ func (s *testSuite) TestLockTTLRefresh(c *C) {
 	lock := db.NewCreateOwner("mon0", v)
 	s.client.Free(lock, true)
 
-	// stopChan is sent a signal on finish of the goroutine below, this defeats a
-	// false positive in our locking system (if both channels are sent in
-	// lockstep, one will win about 50% of the time)
-	stopChan, err := s.client.AcquireAndRefresh(lock, 5*time.Second)
+	stopChan, err := s.client.AcquireAndRefresh(lock, time.Second)
 	c.Assert(err, IsNil)
 
-	syncChan := make(chan struct{})
+	sync := make(chan struct{})
+	sync2 := make(chan struct{})
 
-	defer func() { syncChan <- struct{}{} }()
-
+	// gocheck doesn't run very well in goroutines, so these panics are a
+	// makeshift version of what gocheck actually does.
 	go func(v *db.Volume) {
 		for {
 			select {
-			case <-syncChan:
-				stopChan <- struct{}{}
+			case <-sync:
+				lock := db.NewCreateOwner("mon1", v)
+				var err error
+				for i := 0; i < 5; i++ {
+					time.Sleep(1 * time.Second)
+					if err == nil {
+						break
+					}
+				}
+
+				if err := s.client.Acquire(lock); err != nil {
+					panic(err)
+				}
+
+				if err := s.client.Free(lock, false); err != nil {
+					panic(err)
+				}
+				close(sync2)
 				return
 			default:
 				lock := db.NewCreateOwner("mon1", v)
-				c.Assert(s.client.Acquire(lock), NotNil)
+				if err := s.client.Acquire(lock); err == nil {
+					panic("Acquired lock for mon1")
+				}
 			}
 		}
 	}(v)
 
-	logrus.Info("Creating contention in etcd")
+	logrus.Infof("Creating contention in %s", Driver)
 	time.Sleep(time.Minute)
+	close(stopChan)
+	close(sync)
+	<-sync2
+	logrus.Info("Lock successfully traded in background goroutine!")
 }
