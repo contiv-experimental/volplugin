@@ -54,7 +54,7 @@ func (v *Volplugin) Router(a *api.API) *mux.Router {
 }
 
 // HTTPError returns a 200 status to docker with an error struct. It returns
-// 500 if marshalling failed.
+// 500 if marshaling failed.
 func (v *Volplugin) HTTPError(w http.ResponseWriter, err error) {
 	content, errc := json.Marshal(Response{Err: err.Error()})
 	if errc != nil {

@@ -321,7 +321,7 @@ func (c *Client) WatchVolumeRuntimes(activity chan *watch.Watch) {
 	watch.Create(w)
 }
 
-// TakeSnapshot immediately takes a snapshot by signalling the volsupervisor through etcd.
+// TakeSnapshot immediately takes a snapshot by signaling the volsupervisor through etcd.
 func (c *Client) TakeSnapshot(name string) error {
 	_, err := c.etcdClient.Set(context.Background(), c.prefixed(rootSnapshots, name), "", nil)
 	return errors.EtcdToErrored(err)
