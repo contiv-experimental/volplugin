@@ -65,12 +65,12 @@ var (
 	// UnmarshalRequest is used when a request failed to decode.
 	UnmarshalRequest = errored.New("Unmarshaling Request")
 	// MarshalResponse is used when a response failed to encode.
-	MarshalResponse = errored.New("Marshalling Response")
+	MarshalResponse = errored.New("Marshaling Response")
 
 	// MarshalGlobal is used when failing to build global configuration
-	MarshalGlobal = errored.New("Marshalling global configuration")
+	MarshalGlobal = errored.New("Marshaling global configuration")
 	// UnmarshalGlobal is used when failing to unpack global configuration
-	UnmarshalGlobal = errored.New("Unmarshalling global configuration")
+	UnmarshalGlobal = errored.New("Unmarshaling global configuration")
 	// PublishGlobal is used when failing to publish global configuration
 	PublishGlobal = errored.New("Publishing global configuration")
 	// GetGlobal is used when retriving globals.
@@ -98,22 +98,22 @@ var (
 	CreateVolume = errored.New("Creating Volume")
 	// ConfiguringVolume is used when configuring the volume structs.
 	ConfiguringVolume = errored.New("Configuring volume parameters")
-	// MarshalVolume is used when marshalling volumes.
-	MarshalVolume = errored.New("Marshalling volume parameters")
-	// UnmarshalVolume is used when unmarshalling volumes.
-	UnmarshalVolume = errored.New("Unmarshalling volume parameters")
+	// MarshalVolume is used when Marshaling volumes.
+	MarshalVolume = errored.New("Marshaling volume parameters")
+	// UnmarshalVolume is used when unmarshaling volumes.
+	UnmarshalVolume = errored.New("Unmarshaling volume parameters")
 	// MountSourceRequired is used when a mount source does not exist, but is required.
 	MountSourceRequired = errored.New("A mount source does not exist, but is required")
 
-	// UnmarshalRuntime is used when unmarshalling runtime parameters.
-	UnmarshalRuntime = errored.New("Unmarshalling runtime parameters")
+	// UnmarshalRuntime is used when unmarshaling runtime parameters.
+	UnmarshalRuntime = errored.New("Unmarshaling runtime parameters")
 	// PublishRuntime is used when publishing runtime parameters.
 	PublishRuntime = errored.New("Publishing runtime parameters")
 
-	// UnmarshalPolicy is used when unmarshalling policies.
-	UnmarshalPolicy = errored.New("Unmarshalling Policy")
-	// MarshalPolicy is used when marshalling policies.
-	MarshalPolicy = errored.New("Marshalling Policy")
+	// UnmarshalPolicy is used when unmarshaling policies.
+	UnmarshalPolicy = errored.New("Unmarshaling Policy")
+	// MarshalPolicy is used when Marshaling policies.
+	MarshalPolicy = errored.New("Marshaling Policy")
 	// GetPolicy is used when retrieving policies.
 	GetPolicy = errored.New("Retrieving Policy")
 	// ListPolicy is used when listing policies.
