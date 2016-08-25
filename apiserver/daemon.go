@@ -922,3 +922,26 @@ func (d *DaemonConfig) createVolume(w http.ResponseWriter, req *config.VolumeReq
 		return nil
 	}
 }
+
+func unmarshalRequest(r *http.Request) (*config.VolumeRequest, error) {
+	cfg := &config.VolumeRequest{}
+
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return cfg, err
+	}
+
+	if err := json.Unmarshal(content, cfg); err != nil {
+		return cfg, err
+	}
+
+	if cfg.Policy == "" {
+		return cfg, errored.New("Policy was blank")
+	}
+
+	if cfg.Name == "" {
+		return cfg, errored.New("volume was blank")
+	}
+
+	return cfg, nil
+}
