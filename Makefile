@@ -33,6 +33,7 @@ clean:
 clean-vms:
 	@echo DO NOT USE THIS COMMAND UNLESS YOU ABSOLUTELY HAVE TO. PRESS CTRL-C NOW.
 	@sleep 20
+	pkill -9 VBoxHeadless
 	for i in $$(vboxmanage list vms | grep volplugin | awk '{ print $$2 }'); do vboxmanage controlvm "$$i" poweroff; vboxmanage unregistervm "$$i"; done
 	make clean
 
