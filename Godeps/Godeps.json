@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/contiv/volplugin",
-	"GoVersion": "go1.6",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
@@ -169,6 +169,25 @@
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "8096f47503459bcc74d1f4c487b7e6e42e5746b5"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/consul/api",
+			"Comment": "v0.7.0-rc2-12-g05b2a3d",
+			"Rev": "05b2a3daeb672ea3791811aeb55b9629a4074502"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/consul/watch",
+			"Comment": "v0.7.0-rc2-12-g05b2a3d",
+			"Rev": "05b2a3daeb672ea3791811aeb55b9629a4074502"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go-cleanhttp",
+			"Rev": "ad28ea4487f05916463e2423a55166280e8254b5"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/serf/coordinate",
+			"Comment": "v0.7.0-97-g9432bc0",
+			"Rev": "9432bc08aa8d486e497e27f84878ebbe8c1eab66"
 		},
 		{
 			"ImportPath": "github.com/jbeda/go-wait",
