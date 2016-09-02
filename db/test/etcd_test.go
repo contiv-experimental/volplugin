@@ -116,6 +116,7 @@ func (s *testSuite) TestCRUD(c *C) {
 
 	te := newTestEntity("test", "data")
 	path, err := te.Path()
+	c.Assert(err, IsNil)
 	c.Assert(path, Equals, "test/test")
 	c.Assert(volClient.Get(te), NotNil)
 
