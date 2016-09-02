@@ -110,10 +110,9 @@ func Create(w *Watcher) {
 		}
 	}(w)
 
-	wary, ok := watchers[w.Path]
+	_, ok := watchers[w.Path]
 	if !ok {
-		wary = []*Watcher{}
-		watchers[w.Path] = wary
+		watchers[w.Path] = []*Watcher{}
 	}
 	watchers[w.Path] = append(watchers[w.Path], w)
 }

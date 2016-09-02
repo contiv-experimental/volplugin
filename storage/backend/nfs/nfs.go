@@ -85,7 +85,7 @@ func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
 		return "", err
 	}
 
-	host := ""
+	var host string
 
 	if !strings.Contains(do.Source, ":") {
 		res, ok := mapOpts["addr"]
