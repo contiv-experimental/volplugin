@@ -51,6 +51,10 @@ func NewClient(prefix string, config *api.Config) (*Client, error) {
 		return nil, err
 	}
 
+	if prefix != "" && prefix[0] == '/' {
+		return nil, errored.Errorf("Consul paths may not start with / -- you supplied %q", prefix)
+	}
+
 	c := &Client{
 		prefix:            prefix,
 		client:            consulClient,
