@@ -95,8 +95,3 @@ func (m *Use) String() string {
 func (m *Use) Hooks() *Hooks {
 	return &Hooks{}
 }
-
-// MayExist returns true for use locks.
-func (m *Use) MayExist() bool {
-	return true
-}

@@ -113,11 +113,6 @@ type Lock interface {
 	// user + reason + path equates to a unique lock.
 	Reason() string
 
-	// MayExist indicates a lock may already exist for a given type; locks still
-	// must pass a content check. this is only consulted if the key previously
-	// exists.
-	MayExist() bool
-
 	Entity
 }
 

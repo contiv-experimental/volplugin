@@ -17,8 +17,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-const etcdCodeNotFound = 105
-
 // Client implements the db.Client interface.
 type Client struct {
 	prefix       string
@@ -203,6 +201,16 @@ func (c *Client) ListPrefix(prefix string, obj db.Entity) ([]db.Entity, error) {
 func (c *Client) Acquire(lock db.Lock) error {
 	logrus.Debugf("Acquiring lock %v", lock)
 
+	if err := c.doAcquire(lock, 0); err != nil {
+		return err
+	}
+
+	logrus.Debugf("Acquired lock %v", lock)
+
+	return nil
+}
+
+func (c *Client) doAcquire(lock db.Lock, ttl time.Duration) error {
 	content, err := jsonio.Write(lock)
 	if err != nil {
 		return errors.LockFailed.Combine(err)
@@ -213,23 +221,17 @@ func (c *Client) Acquire(lock db.Lock) error {
 		return errors.LockFailed.Combine(err)
 	}
 
-	_, err = c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevExist: client.PrevNoExist})
-	if er, ok := err.(client.Error); ok && er.Code == etcdCodeNotFound {
-		if lock.MayExist() {
-			_, err := c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevExist: client.PrevExist, PrevValue: string(content)})
-			if err != nil {
-				return err
-			}
-
-			return nil
+	_, err = c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevValue: string(content), TTL: ttl})
+	if er, ok := err.(client.Error); ok && er.Code == client.ErrorCodeKeyNotFound {
+		_, err := c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{PrevExist: client.PrevNoExist, TTL: ttl})
+		if err != nil {
+			return errors.LockFailed.Combine(err)
 		}
-	} else if err != nil {
-		return err
+
+		return nil
 	}
 
-	logrus.Debugf("Acquired lock %v", lock)
-
-	return nil
+	return err
 }
 
 // Free a lock. Pass force=true to force it dead.
@@ -300,35 +302,9 @@ func (c *Client) AcquireWithTTL(lock db.Lock, ttl time.Duration) error {
 		return err
 	}
 
-	content, err := jsonio.Write(lock)
-	if err != nil {
-		return errors.LockFailed.Combine(err)
-	}
-
-	path, err := lock.Path()
-	if err != nil {
-		return errors.LockFailed.Combine(err)
-	}
-
-	opts := &client.SetOptions{
-		PrevExist: client.PrevExist,
-		TTL:       ttl,
-		PrevValue: string(content),
-	}
-
 	logrus.Debugf("Acquiring lock %v with ttl %v", lock, ttl)
-	_, err = c.client.Set(context.Background(), c.qualified(path), string(content), &client.SetOptions{TTL: ttl, PrevExist: client.PrevNoExist})
-	if er, ok := err.(client.Error); ok && er.Code == etcdCodeNotFound {
-		if lock.MayExist() {
-			_, err := c.client.Set(context.Background(), c.qualified(path), string(content), opts)
-			if err != nil {
-				return err
-			}
 
-			return nil
-		}
-	}
-	if err != nil {
+	if err := c.doAcquire(lock, ttl); err != nil {
 		return err
 	}
 

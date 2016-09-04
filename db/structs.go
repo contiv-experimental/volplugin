@@ -58,18 +58,6 @@ type UseSnapshot struct {
 	Reason string
 }
 
-// UseLocker is an interface to locks controlled in etcd, or what we call "users".
-type UseLocker interface {
-	// GetVolume gets the volume name for this use.
-	GetVolume() string
-	// GetReason gets the reason for this use.
-	GetReason() string
-	// Type returns the type of lock.
-	Type() string
-	// MayExist determines if a key may exist during initial write
-	MayExist() bool
-}
-
 // Volume is the configuration of the policy. It includes pool and
 // snapshot information.
 type Volume struct {
