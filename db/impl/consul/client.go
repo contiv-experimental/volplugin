@@ -251,7 +251,7 @@ func (c *Client) WatchPrefixStop(obj db.Entity) error {
 	return helpers.WatchStop(c, obj.Prefix(), c.watchers, &c.watcherMutex)
 }
 
-// Dump dumps a tarball make with mktemp() to the specified directory.
+// Dump dumps a tarball made with mktemp() to the specified directory.
 func (c *Client) Dump(dir string) (string, error) {
 	pairs, _, err := c.client.KV().List(c.Prefix(), nil)
 	if err != nil {

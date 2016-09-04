@@ -137,7 +137,7 @@ func (s *testSuite) TestLockTTLRefresh(c *C) {
 	lock := db.NewCreateOwner("mon0", v)
 	s.client.Free(lock, true)
 
-	stopChan, err := s.client.AcquireAndRefresh(lock, time.Second)
+	stopChan, err := s.client.AcquireAndRefresh(lock, 15*time.Second)
 	c.Assert(err, IsNil)
 
 	sync := make(chan struct{})
@@ -151,7 +151,7 @@ func (s *testSuite) TestLockTTLRefresh(c *C) {
 			case <-sync:
 				lock := db.NewCreateOwner("mon1", v)
 
-				time.Sleep(time.Second)
+				time.Sleep(15 * time.Second)
 
 				if err := s.client.Acquire(lock); err != nil {
 					panic(err)

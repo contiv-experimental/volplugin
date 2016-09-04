@@ -140,6 +140,7 @@ func (c *Client) startWatch(wi helpers.WatchInfo) {
 			}
 
 			if _, ok := err.(*client.ClusterError); ok {
+				logrus.Errorf("Received error during watch: %v -- aborting watch.", err)
 				// silently return from the loop; this means the watch has died because
 				// the server has died.
 				return
