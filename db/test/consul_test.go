@@ -26,16 +26,8 @@ func (s *testSuite) TestNewConsulClient(c *C) {
 	_, _, err = client.KV().Get("volplugin", nil)
 	c.Assert(err, IsNil)
 
-	volClient, err = consul.NewClient("volplugin", &api.Config{})
-	c.Assert(err, IsNil, Commentf("%v", err))
-	c.Assert(volClient, NotNil)
-
-	volClient, err = consul.NewClient("volplugin", &api.Config{})
-	c.Assert(err, IsNil)
-	c.Assert(volClient, NotNil)
-
-	_, _, err = client.KV().Get("testing", nil)
-	c.Assert(err, IsNil)
+	_, err = consul.NewClient("/volplugin", &api.Config{})
+	c.Assert(err, NotNil, Commentf("Consul keyspaces can't start with /"))
 }
 
 func (s *testSuite) TestConsulDown(c *C) {

@@ -117,7 +117,3 @@ func (t *testLock) Owner() string {
 func (t *testLock) Reason() string {
 	return t.reason
 }
-
-func (t *testLock) MayExist() bool {
-	return t.mayExist
-}

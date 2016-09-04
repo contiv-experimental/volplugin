@@ -27,6 +27,8 @@ func init() {
 	if os.Getenv("DRIVER") != "" {
 		Driver = os.Getenv("DRIVER")
 	}
+
+	logrus.Infof("Enabling driver %q", Driver)
 }
 
 var etcdHosts = []string{"http://127.0.0.1:2379"}

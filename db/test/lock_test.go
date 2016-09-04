@@ -150,13 +150,8 @@ func (s *testSuite) TestLockTTLRefresh(c *C) {
 			select {
 			case <-sync:
 				lock := db.NewCreateOwner("mon1", v)
-				var err error
-				for i := 0; i < 5; i++ {
-					time.Sleep(1 * time.Second)
-					if err == nil {
-						break
-					}
-				}
+
+				time.Sleep(time.Second)
 
 				if err := s.client.Acquire(lock); err != nil {
 					panic(err)
