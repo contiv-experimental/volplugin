@@ -17,9 +17,6 @@ big:
 	BIG=1 vagrant up
 	make run
 
-demo:
-	DEMO=1 make restart
-
 stop:
 	vagrant destroy -f
 	make clean
@@ -75,7 +72,6 @@ unit-test-nocoverage-host:
 
 build: checks
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); BUILD_VERSION=${BUILD_VERSION} make run-build"'
-	if [ ! -n "$$DEMO" ]; then for i in mon1 mon2; do vagrant ssh $$i -c 'sudo sh -c "systemctl stop volplugin apiserver volsupervisor; mkdir -p /opt/golang/bin; cp /tmp/bin/* /opt/golang/bin"'; done; fi
 
 docker: run-build
 	docker build -t contiv/volplugin .
