@@ -1,0 +1,31 @@
+- name: install bind (redhat)
+  yum: 
+    name: bind
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: install bind (debian)
+  apt: 
+    name: bind9
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: start/enable bind (redhat)
+  service:
+    name: named
+    enabled: true
+    state: started
+  when: ansible_os_family == "RedHat"
+
+- name: start/enable bind (debian)
+  service:
+    name: bind9
+    enabled: true
+    state: started
+  when: ansible_os_family == "Debian"
+
+- name: rewrite resolv.conf
+  copy:
+    src: resolv.conf
+    dest: /etc/resolv.conf
+
