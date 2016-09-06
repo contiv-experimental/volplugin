@@ -10,17 +10,12 @@ config_file = File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variab
 ansible_config_file = File.expand_path(File.join(File.dirname(__FILE__), 'ansible', 'ansible.cfg'))
 settings = YAML.load_file(config_file)
 
-if ENV["DEMO"]
-  settings["vms"] = 1
-  settings["memory"] = 4096
-end
-
 ENV['ANSIBLE_CONFIG'] = ansible_config_file
 
 NMONS        = ENV["VMS"] || settings['vms']
 BOX          = settings['vagrant_box']
 BOX_VERSION  = settings['box_version']
-memory       = settings['memory']
+MEMORY       = settings['memory']
 
 SUBNET_PREFIX          = settings['subnet_prefix']
 SUBNET_ASSIGNMENT_DIR  = "/tmp/volplugin_vagrant_subnets/"
@@ -94,13 +89,7 @@ def random_subnet
   SUBNET_PREFIX + assigned_octet
 end
 
-SUBNET = random_subnet
-
-if ENV["BIG"]
-  memory = 8192
-end
-
-MEMORY   = memory
+SUBNET   = random_subnet
 NO_PROXY = [50,10,11,12].map { |n| "#{SUBNET}.#{n}" }.join(",")
 
 shell_provision = <<-EOF
