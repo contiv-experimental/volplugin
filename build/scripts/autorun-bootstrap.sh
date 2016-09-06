@@ -51,3 +51,8 @@ docker run --net host --name volplugin \
     -v /var/run/ceph:/var/run/ceph \
     -v /sys/fs/cgroup:/sys/fs/cgroup \
     contiv/volplugin volplugin
+
+sleep 5
+
+docker run -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli global upload </global.json
+docker run -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli policy upload policy1 </policy.json
