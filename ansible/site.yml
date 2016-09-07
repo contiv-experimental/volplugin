@@ -19,6 +19,7 @@
   become: true
   environment: '{{ env }}'
   roles: 
+  - { role: bind }
   - { role: base }
   - { role: nfs }
   - { role: vagrant }
