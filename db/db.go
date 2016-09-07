@@ -1,6 +1,9 @@
 package db
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 /*
 
@@ -51,6 +54,24 @@ type Client interface {
 
 	// ListPrefix lists all the entities under prefix instead of listing the whole keyspace.
 	ListPrefix(string, Entity) ([]Entity, error)
+
+	// Acquire and permanently hold a lock. Attempts until timeout.
+	Acquire(Lock) error
+
+	// AcquireWithTTL holds a lock with an expiration TTL. Attempts only once.
+	AcquireWithTTL(Lock, time.Duration) error
+
+	// Free a lock. Passing true as the second parameter will force the removal.
+	Free(Lock, bool) error
+
+	// AcquireAndRefresh starts a goroutine to refresh the key every 1/4
+	// (jittered) of the TTL. A stop channel is returned which, when sent a
+	// struct, will terminate the refresh. Error is returned for anything that
+	// might occur while setting up the goroutine.
+	//
+	// Do not use Free to free these locks, it will not work! Use the stop
+	// channel.
+	AcquireAndRefresh(Lock, time.Duration) (chan struct{}, error)
 }
 
 // Entity provides an abstraction on our types and how they are persisted to
@@ -80,6 +101,19 @@ type Entity interface {
 	Hooks() *Hooks
 
 	fmt.Stringer
+}
+
+// Lock is an interface to types used to establish locks.
+type Lock interface {
+	// Owner is the consumer of the lock, typically a hostname.
+	Owner() string
+
+	// Reason is the reason we're taking this lock. This is used typically to
+	// enforce that two different operations do not happen at the same time. The
+	// user + reason + path equates to a unique lock.
+	Reason() string
+
+	Entity
 }
 
 // Hook is the type that represents a client hook in our entities system. Hooks

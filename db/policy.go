@@ -10,7 +10,13 @@ import (
 // NewPolicy creates a policy struct with the required parameters for using it.
 // It will not pass validation.
 func NewPolicy(name string) *Policy {
-	return &Policy{Name: name}
+	p := &Policy{Name: name}
+
+	if p.FileSystems == nil {
+		p.FileSystems = DefaultFilesystems
+	}
+
+	return p
 }
 
 // SetKey implements the SetKey entity interface.
@@ -44,10 +50,6 @@ func (p *Policy) Path() (string, error) {
 
 // Validate validates the policy. Returns error on failure.
 func (p *Policy) Validate() error {
-	if p.FileSystems == nil {
-		p.FileSystems = DefaultFilesystems
-	}
-
 	if err := validateJSON(RuntimeSchema, p.RuntimeOptions); err != nil {
 		return errors.ErrJSONValidation.Combine(err)
 	}
@@ -84,9 +86,14 @@ func (p *Policy) Copy() Entity {
 	// XXX backends are special. They are optional and making them empty results in
 	// a nil pointer. However, in this copy we don't want to copy a pointer, just
 	// the data if it exists.
-	if p2.Backends != nil {
+	if p.Backends != nil {
 		b2 := *p.Backends
 		p2.Backends = &b2
+	}
+
+	if p.RuntimeOptions != nil {
+		ro2 := *p.RuntimeOptions
+		p2.RuntimeOptions = &ro2
 	}
 
 	return &p2

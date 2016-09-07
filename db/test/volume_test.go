@@ -1,8 +1,11 @@
 package test
 
 import (
+	"fmt"
 	"sort"
+	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/db"
 	"github.com/contiv/volplugin/errors"
@@ -242,14 +245,30 @@ func (s *testSuite) TestWatchVolumes(c *C) {
 	c.Assert(s.client.Set(testPolicies["basic"]), IsNil)
 	vol, err := db.CreateVolume(&db.VolumeRequest{Policy: testPolicies["basic"], Name: "test"})
 	c.Assert(err, IsNil)
-	c.Assert(s.client.Set(vol), IsNil)
 
-	select {
-	case err := <-errChan:
-		c.Assert(err, IsNil)
-	case ent := <-entChan:
-		vol2 := ent.(*db.Volume)
-		c.Assert(vol, DeepEquals, vol2)
+	for i := 0; i < 5; i++ {
+		vol.VolumeName = fmt.Sprintf("test%d", i)
+		c.Assert(s.client.Set(vol), IsNil)
+
+		select {
+		case err := <-errChan:
+			c.Assert(err, IsNil)
+		case ent := <-entChan:
+			logrus.Infof("Received object for %v during prefix watch", ent)
+			vol2 := ent.(*db.Volume)
+			c.Assert(vol, DeepEquals, vol2)
+		}
+
+		c.Assert(s.client.Delete(vol), IsNil)
+		time.Sleep(200 * time.Millisecond) // wait for watch
+		select {
+		case <-errChan:
+			panic("error received after delete in watch")
+		case <-entChan:
+			panic("object received after delete in watch")
+		default:
+			logrus.Info("Watch delete was processed successfully")
+		}
 	}
 
 	c.Assert(s.client.WatchPrefixStop(&db.Volume{}), IsNil)

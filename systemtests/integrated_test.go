@@ -354,8 +354,8 @@ func (s *systemtestSuite) TestIntegratedMultipleFileSystems(c *C) {
 
 	c.Assert(s.createVolume("mon0", ext4vol, map[string]string{"filesystem": "ext4"}), IsNil)
 
-	_, err = s.dockerRun("mon0", false, true, ext4vol, "sleep 10m")
-	c.Assert(err, IsNil)
+	out, err = s.dockerRun("mon0", false, true, ext4vol, "sleep 10m")
+	c.Assert(err, IsNil, Commentf(out))
 
 	out, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("mount -l -t ext4")
 	c.Assert(err, IsNil)

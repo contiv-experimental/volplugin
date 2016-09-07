@@ -213,3 +213,9 @@ func (s *testSuite) TestPolicyCRUD(c *C) {
 		c.Assert(s.client.Set(testPolicies[name]), NotNil, Commentf("%v", name))
 	}
 }
+
+func (s *testSuite) TestCopy(c *C) {
+	policyCopy := testPolicies["basic"].Copy()
+	policyCopy.(*db.Policy).RuntimeOptions.UseSnapshots = false
+	c.Assert(testPolicies["basic"].RuntimeOptions.UseSnapshots, Equals, true, Commentf("runtime options pointer was not copied"))
+}

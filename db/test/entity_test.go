@@ -60,3 +60,60 @@ func (t *testEntity) Copy() db.Entity {
 func (t *testEntity) Hooks() *db.Hooks {
 	return t.hooks
 }
+
+type testLock struct {
+	owner    string
+	reason   string
+	name     string
+	mayExist bool
+}
+
+func newLock(mayExist bool, owner, reason, name string) *testLock {
+	return &testLock{owner: owner, reason: reason, name: name, mayExist: mayExist}
+}
+
+func (t *testLock) String() string {
+	return t.name
+}
+
+func (t *testLock) SetKey(key string) error {
+	t.name = strings.Trim(strings.TrimPrefix(strings.Trim(key, "/"), t.Prefix()), "/")
+	return nil
+}
+
+func (t *testLock) Read(b []byte) error {
+	return json.Unmarshal(b, t)
+}
+
+func (t *testLock) Write() ([]byte, error) {
+	return json.Marshal(t)
+}
+
+func (t *testLock) Path() (string, error) {
+	return strings.Join([]string{t.Prefix(), t.name}, "/"), nil
+}
+
+func (t *testLock) Prefix() string {
+	return "test"
+}
+
+func (t *testLock) Validate() error {
+	return nil
+}
+
+func (t *testLock) Copy() db.Entity {
+	t2 := *t
+	return &t2
+}
+
+func (t *testLock) Hooks() *db.Hooks {
+	return &db.Hooks{}
+}
+
+func (t *testLock) Owner() string {
+	return t.owner
+}
+
+func (t *testLock) Reason() string {
+	return t.reason
+}

@@ -30,7 +30,8 @@ clean:
 clean-vms:
 	@echo DO NOT USE THIS COMMAND UNLESS YOU ABSOLUTELY HAVE TO. PRESS CTRL-C NOW.
 	@sleep 20
-	for i in $$(vboxmanage list vms | grep volplugin | awk '{ print $$2 }'); do vboxmanage controlvm "$$i" poweroff; vboxmanage unregistervm "$$i"; done
+	pkill -9 VBoxHeadless
+	for i in $$(vboxmanage list vms | grep volplugin | awk '{ print $$2 }'); do vboxmanage controlvm "$$i" poweroff; vboxmanage unregistervm --delete "$$i"; done
 	make clean
 
 update:
@@ -63,6 +64,7 @@ unit-test:
 
 unit-test-host:
 	go list ./... | grep -v vendor | HOST_TEST=1 GOGC=1000 xargs -I{} go test -v '{}' -coverprofile=$(GUESTPREFIX)/src/{}/cover.out -check.v -check.f "${TESTRUN}"
+	DRIVER=consul go test -v ./db/test/ -check.v -check.f "${TESTRUN}"
 
 unit-test-nocoverage:
 	vagrant ssh mon0 -c 'sudo -i sh -c "cd $(GUESTGOPATH); TESTRUN="${TESTRUN}" make unit-test-nocoverage-host"'

@@ -66,9 +66,6 @@ func (s *systemtestSuite) SetUpSuite(c *C) {
 		s.mon0ip = strings.TrimSpace(ip)
 	}
 
-	c.Assert(s.clearContainers(), IsNil)
-	c.Assert(s.restartDocker(), IsNil)
-	c.Assert(s.waitDockerizedServices(), IsNil)
 	c.Assert(s.pullDebian(), IsNil)
 }
 
