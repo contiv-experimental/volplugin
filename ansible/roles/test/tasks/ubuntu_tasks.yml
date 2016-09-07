@@ -5,6 +5,20 @@
     dest: /tmp/virtualbox-{{ vbox_major_version }}.deb
     force: no
 
+- name: check for installed vbox (ubuntu)
+  shell: VBoxManage --version
+  register: vbox_installed_version
+  ignore_errors: yes
+
+- name: stop vbox service if it is running (ubuntu)
+  service: name=vbox state=stopped
+  when: not (vbox_installed_version.stdout | match('.*{{vbox_package_version}}.*'))
+  ignore_errors: yes
+
+- name: uninstall VBox (ubuntu)
+  apt: name='virtualbox-*' state=absent
+  when: not (vbox_installed_version.stdout | match('.*{{vbox_package_version}}.*'))
+
 - name: install VBox (debian)
   apt: deb=/tmp/virtualbox-{{ vbox_major_version }}.deb state=present
 
@@ -20,7 +34,7 @@
 - name: download vagrant (debian)
   get_url:
     validate_certs: "{{ validate_certs }}"
-    url: https://releases.hashicorp.com/vagrant/1.8.1/vagrant_{{ vagrant_version }}_x86_64.deb
+    url: https://releases.hashicorp.com/vagrant/{{ vagrant_version }}/vagrant_{{ vagrant_version }}_x86_64.deb
     dest: /tmp/vagrant_{{ vagrant_version }}.deb
     force: no
 

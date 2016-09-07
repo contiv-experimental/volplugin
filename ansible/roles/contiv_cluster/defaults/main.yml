@@ -10,7 +10,7 @@ clusterm_client_port: 9007
 clusterm_args_file: "clusterm.args"
 clusterm_conf_file: "clusterm.conf"
 
-contiv_cluster_version: "v0.1-08-05-2016.08-44-24.UTC"
+contiv_cluster_version: "v0.1-08-30-2016.08-32-01.UTC"
 contiv_cluster_tar_file: "cluster-{{ contiv_cluster_version }}.tar.bz2"
 contiv_cluster_src_file: "https://github.com/contiv/cluster/releases/download/{{ contiv_cluster_version }}/{{ contiv_cluster_tar_file }}"
 contiv_cluster_dest_file: "/tmp/{{ contiv_cluster_tar_file }}"

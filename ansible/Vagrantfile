@@ -30,6 +30,8 @@ puts "Host environment: #{host_env}"
 Vagrant.configure(2) do |config|
     (0..2).each do |n|
         node_name = "host#{n}"
+        config.ssh.insert_key = false
+        config.ssh.private_key_path = "./test/files/insecure_private_key"
         config.vm.define node_name do |node|
             case n
             when 0
