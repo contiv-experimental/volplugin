@@ -23,7 +23,11 @@ type rbdMap map[string]struct {
 }
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	poolName := do.Volume.Params["pool"]
+	var poolName string
+	if err := do.Volume.Params.Get("pool", &poolName); err != nil {
+		return "", err
+	}
+
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return "", err
@@ -52,14 +56,14 @@ retry:
 	}
 
 	for _, rbd := range rbdmap {
-		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
+		if rbd.Name == intName && rbd.Pool == poolName {
 			device = rbd.Device
 			break
 		}
 	}
 
 	if device == "" {
-		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", intName, do.Volume.Params["pool"])
+		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", intName, poolName)
 	}
 
 	logrus.Debugf("mapped volume %q as %q", intName, device)
@@ -101,7 +105,10 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 }
 
 func (c *Driver) doUnmap(do storage.DriverOptions, rbdmap rbdMap) (bool, error) {
-	poolName := do.Volume.Params["pool"]
+	var poolName string
+	if err := do.Volume.Params.Get("pool", &poolName); err != nil {
+		return false, err
+	}
 
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
@@ -109,7 +116,7 @@ func (c *Driver) doUnmap(do storage.DriverOptions, rbdmap rbdMap) (bool, error) 
 	}
 
 	for _, rbd := range rbdmap {
-		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
+		if rbd.Name == intName && rbd.Pool == poolName {
 			logrus.Debugf("Unmapping volume %s/%s at device %q", poolName, intName, strings.TrimSpace(rbd.Device))
 
 			if _, err := os.Stat(rbd.Device); err != nil {
@@ -187,7 +194,7 @@ func (c *Driver) getMapped(timeout time.Duration) ([]*storage.Mount, error) {
 			Device: rbd.Device,
 			Volume: storage.Volume{
 				Name: c.externalName(rbd.Name),
-				Params: map[string]string{
+				Params: storage.DriverParams{
 					"pool": rbd.Pool,
 				},
 			},

@@ -75,7 +75,7 @@ func (dc *DaemonConfig) pruneSnapshots(val *config.Volume) {
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
 			Name: val.String(),
-			Params: storage.Params{
+			Params: storage.DriverParams{
 				"pool": val.DriverOptions["pool"],
 			},
 		},
@@ -128,7 +128,7 @@ func (dc *DaemonConfig) createSnapshot(val *config.Volume) {
 	driverOpts := storage.DriverOptions{
 		Volume: storage.Volume{
 			Name: val.String(),
-			Params: storage.Params{
+			Params: storage.DriverParams{
 				"pool": val.DriverOptions["pool"],
 			},
 		},

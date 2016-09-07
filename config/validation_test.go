@@ -1,13 +1,16 @@
 package config
 
-import . "gopkg.in/check.v1"
+import (
+	"github.com/contiv/volplugin/storage"
+	. "gopkg.in/check.v1"
+)
 
 var (
 	defaultBackends = &BackendDrivers{CRUD: "ceph", Mount: "ceph", Snapshot: "ceph"}
 	VolumeConfigs   = map[string]map[string]*Volume{
 		"valid": {
 			"basic": {
-				DriverOptions:  map[string]string{"pool": "rbd"},
+				DriverOptions:  storage.DriverParams{"pool": "rbd"},
 				CreateOptions:  CreateOptions{Size: "10MB"},
 				RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 				VolumeName:     "basicvolume",
@@ -15,7 +18,7 @@ var (
 				Backends:       defaultBackends,
 			},
 			"basicwithruntime": {
-				DriverOptions:  map[string]string{"pool": "rbd"},
+				DriverOptions:  storage.DriverParams{"pool": "rbd"},
 				CreateOptions:  CreateOptions{Size: "10MB"},
 				RuntimeOptions: RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}},
 				VolumeName:     "basicvolume",

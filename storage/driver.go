@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"encoding/json"
 	"errors"
+	"reflect"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/contiv/errored"
 )
 
@@ -12,8 +15,8 @@ var (
 	ErrVolumeExist = errors.New("Volume already exists")
 )
 
-// Params are parameters that relate directly to the location of the storage.
-type Params map[string]string
+// DriverParams are parameters that relate directly to the location of the storage.
+type DriverParams map[string]interface{}
 
 // A Mount is the resulting attributes of a Mount or Unmount operation.
 type Mount struct {
@@ -42,14 +45,14 @@ type DriverOptions struct {
 
 // ListOptions is a set of parameters used for the List operation of Driver.
 type ListOptions struct {
-	Params Params
+	Params DriverParams
 }
 
 // Volume is the basic representation of a volume name and its parameters.
 type Volume struct {
 	Name   string
 	Size   uint64
-	Params Params
+	Params DriverParams
 }
 
 // NamedDriver is a named driver and has a method called Name()
@@ -142,6 +145,54 @@ func (v Volume) Validate() error {
 
 	if v.Params == nil {
 		return errored.Errorf("Params are nil in storage driver")
+	}
+
+	return nil
+}
+
+// Get retrieves the value of attribute `attrName` from DriverParams
+func (dp DriverParams) Get(attrName string, result interface{}) error {
+	if _, ok := dp[attrName]; !ok { // attrName not found in DriverParams
+		return nil
+	}
+
+	expectedType := reflect.TypeOf(result)
+	if expectedType == nil {
+		return errored.Errorf("Cannot use <nil> as pointer type")
+	} else if expectedType.Kind() != reflect.Ptr {
+		return errored.Errorf("Cannot reference a non-pointer type %q", expectedType.Kind())
+	}
+
+	expectedKind := expectedType.Elem().Kind()
+
+	actualType := reflect.TypeOf(dp[attrName])
+	if actualType == nil { // <nil> types
+		return errored.Errorf("Expected %q; Cannot use <nil> value for driver.%q", expectedKind, attrName)
+	}
+
+	actualKind := actualType.Kind()
+
+	value := reflect.ValueOf(dp[attrName]) // returns zero-value for <nil> value
+	switch value.Kind() {
+	case reflect.String, reflect.Int, reflect.Float64, reflect.Float32, reflect.Bool:
+		if actualKind != expectedKind {
+			return errored.Errorf("Cannot use %q as type %q", expectedKind, actualKind)
+		}
+		reflect.ValueOf(result).Elem().Set(value) // succeeds only if the types match
+	case reflect.Map:
+		if expectedKind != reflect.Map && expectedKind != reflect.Struct {
+			return errored.Errorf("Expected map or struct; Cannot use %q as type %q", expectedKind, actualKind)
+		}
+		content, err := json.Marshal(value.Interface())
+		if err != nil {
+			return err
+		}
+
+		if err := json.Unmarshal(content, result); err != nil {
+			return err
+		}
+	default:
+		logrus.Info("Unknown type %q", value.Kind())
 	}
 
 	return nil

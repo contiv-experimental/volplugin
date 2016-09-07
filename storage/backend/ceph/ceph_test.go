@@ -30,7 +30,7 @@ var mountscanDriverOpts = storage.DriverOptions{
 	Volume: storage.Volume{
 		Name:   "test/mountscan",
 		Size:   10,
-		Params: storage.Params{"pool": "rbd"},
+		Params: storage.DriverParams{"pool": "rbd"},
 	},
 	FSOptions: filesystems["ext4"],
 	Timeout:   5 * time.Second,
@@ -39,13 +39,13 @@ var mountscanDriverOpts = storage.DriverOptions{
 var volumeSpec = storage.Volume{
 	Name:   "test/pithos",
 	Size:   10,
-	Params: storage.Params{"pool": "rbd"},
+	Params: storage.DriverParams{"pool": "rbd"},
 }
 
 var volumeSpecTestPool = storage.Volume{
 	Name:   "test/pithos",
 	Size:   10,
-	Params: storage.Params{"pool": "test"},
+	Params: storage.DriverParams{"pool": "test"},
 }
 
 type cephSuite struct{}
@@ -230,7 +230,10 @@ again:
 	for i := 0; i < 10; i++ {
 		_, err := mountDrv.Mount(driverOpts)
 		c.Assert(err, IsNil)
-		s.readWriteTest(c, fmt.Sprintf("/mnt/ceph/%s/test.pithos", driverOpts.Volume.Params["pool"]))
+		var poolName string
+		err = driverOpts.Volume.Params.Get("pool", &poolName)
+		c.Assert(err, IsNil)
+		s.readWriteTest(c, fmt.Sprintf("/mnt/ceph/%s/test.pithos", poolName))
 		c.Assert(mountDrv.Unmount(driverOpts), IsNil)
 	}
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
@@ -290,12 +293,16 @@ again:
 	intName, err := (&Driver{}).internalName(driverOpts.Volume.Name) // totally cheating
 	c.Assert(err, IsNil)
 
+	var poolName string
+	err = driverOpts.Volume.Params.Get("pool", &poolName)
+	c.Assert(err, IsNil)
+
 	(*mounts[0]).Volume.Size = 10 // correct this value even though it is an unnecessary value returned
 	c.Assert(*mounts[0], DeepEquals, storage.Mount{
 		Device:   "/dev/rbd0",
 		DevMajor: 252,
 		DevMinor: 0,
-		Path:     strings.Join([]string{myMountpath, driverOpts.Volume.Params["pool"], intName}, "/"),
+		Path:     strings.Join([]string{myMountpath, poolName, intName}, "/"),
 		Volume:   driverOpts.Volume,
 	})
 
@@ -362,7 +369,11 @@ again:
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "testsnap", "test/image"), IsNil)
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "test", "test/image"), NotNil)
 
-	content, err := exec.Command("rbd", "ls", driverOpts.Volume.Params["pool"]).CombinedOutput()
+	var poolName string
+	err = driverOpts.Volume.Params.Get("pool", &poolName)
+	c.Assert(err, IsNil)
+
+	content, err := exec.Command("rbd", "ls", poolName).CombinedOutput()
 	c.Assert(err, IsNil)
 	c.Assert(strings.TrimSpace(string(content)), Equals, "test.image\ntest.pithos")
 	c.Assert(snapDrv.CopySnapshot(driverOpts, "foo", "test/image"), NotNil)
@@ -370,8 +381,9 @@ again:
 
 	driverOpts.Volume.Name = "test/image"
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
-	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "test").Run()
-	exec.Command("rbd", "snap", "unprotect", mkpool(driverOpts.Volume.Params["pool"], "test.pithos"), "--snap", "testsnap").Run()
+
+	exec.Command("rbd", "snap", "unprotect", mkpool(poolName, "test.pithos"), "--snap", "test").Run()
+	exec.Command("rbd", "snap", "unprotect", mkpool(poolName, "test.pithos"), "--snap", "testsnap").Run()
 	driverOpts.Volume.Name = "test/pithos"
 	c.Assert(crudDrv.Destroy(driverOpts), IsNil)
 

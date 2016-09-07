@@ -13,6 +13,7 @@ import (
 
 	"github.com/contiv/volplugin/api"
 	"github.com/contiv/volplugin/config"
+	"github.com/contiv/volplugin/storage"
 
 	. "gopkg.in/check.v1"
 )
@@ -70,7 +71,7 @@ func (s *dockerSuite) TestBasic(c *C) {
 	err := s.client.PublishPolicy("policy1", &config.Policy{
 		Name:          "policy1",
 		Backend:       "ceph",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: storage.DriverParams{"pool": "rbd"},
 		CreateOptions: config.CreateOptions{
 			Size: "10MB",
 		},

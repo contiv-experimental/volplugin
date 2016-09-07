@@ -39,7 +39,7 @@ func CreateVolume(vr *VolumeRequest) (*Volume, error) {
 	}
 
 	if vr.Policy.DriverOptions == nil {
-		vr.Policy.DriverOptions = map[string]string{}
+		vr.Policy.DriverOptions = storage.DriverParams{}
 	}
 
 	if err := vr.Policy.Validate(); err != nil {
