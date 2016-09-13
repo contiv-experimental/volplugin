@@ -4,6 +4,10 @@ if [ -f /tmp/contiv-registry ]; then
 	registry=$(cat /tmp/contiv-registry)
 fi
 
+if [ -f /tmp/contiv-bindir ]; then
+	bindir=$(cat /tmp/contiv-bindir)
+fi
+
 set -e
 
 # Check if the container already exists
@@ -48,6 +52,7 @@ case "$1" in
         -v /lib/modules:/lib/modules:ro \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v /mnt:/mnt:shared \
+        -v ${bindir}:/opt/bin:ro \
         ${registry}contiv/volplugin apiserver
     ;;
 
@@ -57,6 +62,7 @@ case "$1" in
         -v /lib/modules:/lib/modules:ro \
         -v /etc/ceph:/etc/ceph \
         -v /var/lib/ceph:/var/lib/ceph \
+        -v ${bindir}:/opt/bin:ro \
         ${registry}contiv/volplugin volsupervisor
     ;;
 
@@ -72,6 +78,7 @@ case "$1" in
         -v /var/lib/ceph:/var/lib/ceph \
         -v /var/run/ceph:/var/run/ceph \
         -v /sys/fs/cgroup:/sys/fs/cgroup \
+        -v ${bindir}:/opt/bin:ro \
         ${registry}contiv/volplugin volplugin
     ;;
 

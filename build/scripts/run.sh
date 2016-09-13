@@ -4,13 +4,6 @@ set -e
 
 host=$(hostname)
 
-
-clean_container () {
-	if docker ps -a | grep $1 -q; then
-		docker rm -fv $1
-	fi
-}
-
 wait_for_etcd () {
 	if ! etcdctl cluster-health | grep "cluster is healthy" -q; then
 		echo $host, " waiting for etcd cluster state to be healthy.."
@@ -30,18 +23,78 @@ if [ ! -f /etc/systemd/system/volplugin.service ]; then
 	wait_for_etcd
 fi
 
-# Include the dependencies
-./build/scripts/deps.sh
+clean_container () {
+	if docker ps -a | grep $1 -q; then
+		docker rm -fv $1
+	fi
+}
 
-clean_container apiserver
-clean_container volplugin
-clean_container volsupervisor
+stop_containers () {
+	if [ $host == "mon0" ]; then
+		sudo systemctl stop volsupervisor
+	fi
+	sudo systemctl stop apiserver volplugin
+}
 
-fast=${1:-false}
-if $fast; then
+clean_containers () {
+	stop_containers
+	clean_container apiserver
+	clean_container volplugin
+	clean_container volsupervisor
+}
+
+check_for_shared () {
+	# Ensure that docker is running with MountFlags=shared
+	if ! sudo grep "MountFlags" /usr/lib/systemd/system/docker.service | grep "shared" -q; then
+		echo $host, "setting MountFlags=shared and restarting docker..."
+		sudo sed -i 's/MountFlags=slave/MountFlags=shared/g' /usr/lib/systemd/system/docker.service
+		sudo systemctl daemon-reload
+		sudo systemctl restart docker
+		wait_for_etcd
+	fi
+}
+
+start_containers () {
+	echo $host " starting containers..."
+	sudo systemctl restart volplugin apiserver
+
+	if [ $host == "mon0" ]; then
+		sudo systemctl restart volsupervisor
+
+		# Wait for the server to be available
+		connwait 127.0.0.1:9005
+		volcli global upload < /testdata/globals/global1.json
+	fi
+}
+
+remove_dangling () {
+	# Remove any leftover images
+	count=$(docker images -f "dangling=true" -q | wc -l)
+	if [ $count -gt 0 ]; then
+		docker rmi $(docker images -f "dangling=true" -q)
+	fi
+}
+
+mode=${1:-"default"}
+if [ $mode == "stop" ]; then
+	stop_containers
+elif [ $mode == "start" ]; then
+	start_containers
+elif [ $mode == "clean" ]; then
+	clean_containers
+elif [ $mode == "registry" ]; then
+	clean_containers
+	./build/scripts/deps.sh
+
 	# Inputs expected
 	localregistrypath=$2
 	localregistryip=$3
+
+	if [[ -z "${localregistryip// }" ]]; then
+		echo "Registry IP is required"
+		exit 1
+	fi
+
 	if [ $host == "mon0" ]; then
 		# Registry container is run only on first node
 		if ! docker ps | grep localregistry -q; then
@@ -80,32 +133,18 @@ if $fast; then
 		docker pull ${localregistrypath}contiv/volplugin
 	fi
 
+	# the contents from below are prefixed while doing docker run
+	echo ${localregistrypath} > /tmp/contiv-registry
+	echo ${PWD}/bin > /tmp/contiv-bindir
+
+	check_for_shared
+	start_containers
+	remove_dangling
 else
+	clean_containers
+	./build/scripts/deps.sh
 	docker build -t contiv/volplugin .
-fi
-
-# Ensure that docker is running with MountFlags=shared
-if ! sudo grep "MountFlags" /usr/lib/systemd/system/docker.service | grep "shared" -q; then
-	echo $host, "setting MountFlags=shared and restarting docker..."
-	sudo sed -i 's/MountFlags=slave/MountFlags=shared/g' /usr/lib/systemd/system/docker.service
-	sudo systemctl daemon-reload
-	sudo systemctl restart docker
-	wait_for_etcd
-fi
-
-echo $host " starting containers..."
-sudo systemctl restart volplugin apiserver
-
-if [ $host == "mon0" ]; then
-	sudo systemctl restart volsupervisor
-
-	# Wait for the server to be available
-	connwait 127.0.0.1:9005
-	volcli global upload < /testdata/globals/global1.json
-fi
-
-# Remove any leftover images
-count=$(docker images -f "dangling=true" -q | wc -l)
-if [ $count -gt 0 ]; then
-	docker rmi $(docker images -f "dangling=true" -q)
+	check_for_shared
+	start_containers
+	remove_dangling
 fi

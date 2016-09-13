@@ -11,11 +11,11 @@ start: check-ansible
 	# 10240 is the max you can set on OSX and should be higher than the default on every other OS
 	ulimit -n 10240; \
 	if [ "x${PROVIDER}" = "x" ]; then vagrant up; else vagrant up --provider=${PROVIDER}; fi
-	make run
+	make registry
 
 big:
 	BIG=1 vagrant up
-	make run
+	make registry
 
 stop:
 	vagrant destroy -f
@@ -81,15 +81,23 @@ docker: run-build
 docker-push: docker
 	docker push contiv/volplugin
 
-clean-volplugin-containers:
-	-for i in $$(seq 0 2); do vagrant ssh mon$$i -c 'docker rm -fv volplugin volsupervisor apiserver'; done;
+clean-containers:
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh "clean"'; done
 
-run: build
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh'; done
+stop-containers:
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh "stop"'; done
 
-run-fast: build
+deps:
+	vagrant ssh mon0 -c "sudo -i sh -c 'cd $(GUESTGOPATH); ./build/scripts/deps.sh'"
+
+get-reg-ip: deps
 	vagrant ssh mon0 -c "$(GUESTBINPATH)/tfip2 --ip 4" | grep enp0s8: | awk '{print $$3}' | tr -d '[[:space:]]' > /tmp/contivreg-ip
-	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh true $(LOCALREGISTRYPATH) $(shell cat /tmp/contivreg-ip)'; done
+
+registry: stop-containers build get-reg-ip
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh "registry" $(LOCALREGISTRYPATH) $(shell cat /tmp/contivreg-ip)'; done
+
+run: stop-containers build
+	set -e; for i in $$(seq 0 $$(($$(vagrant status | grep -cE 'mon.*running') - 1))); do vagrant ssh mon$$i -c 'cd $(GUESTGOPATH) && ./build/scripts/run.sh "start"'; done
 
 run-etcd:
 	sudo systemctl start etcd
