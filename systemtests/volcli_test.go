@@ -131,6 +131,29 @@ func (s *systemtestSuite) TestVolCLIPolicyNullDriver(c *C) {
 	c.Assert(testDriverIntent, DeepEquals, intentTarget)
 }
 
+func (s *systemtestSuite) TestVolCLIVolumeListForPolicy(c *C) {
+	out, err := s.uploadIntent("foo", "policy1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	fooVol := genRandomVolume()
+	c.Assert(s.createVolume("mon0", fqVolume("foo", fooVol), nil), IsNil)
+
+	out, err = s.uploadIntent("bar", "policy1")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+
+	barVol := genRandomVolume()
+	c.Assert(s.createVolume("mon0", fqVolume("bar", barVol), nil), IsNil)
+
+	// ensure each `volume list` command only shows the volumes belonging to the target policy
+	out, err = s.volcli("volume list foo")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, fooVol)
+
+	out, err = s.volcli("volume list bar")
+	c.Assert(err, IsNil, Commentf("output: %s", out))
+	c.Assert(strings.TrimSpace(out), Equals, barVol)
+}
+
 func (s *systemtestSuite) TestVolCLIVolume(c *C) {
 	out, err := s.volcli("volume list policy1")
 	c.Assert(err, IsNil, Commentf("output: %s", out))
