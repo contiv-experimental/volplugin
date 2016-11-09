@@ -9,21 +9,8 @@ import (
 
 func stopStartEtcd(c *C, f func()) {
 	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl stop etcd").Run(), IsNil)
-	for {
-		if err := exec.Command("/bin/sh", "-c", "etcdctl cluster-health").Run(); err != nil {
-			break
-		}
-
-		time.Sleep(time.Second / 4)
-	}
-
+	time.Sleep(time.Second)
 	f()
-
 	c.Assert(exec.Command("/bin/sh", "-c", "sudo systemctl start etcd").Run(), IsNil)
-	for {
-		if err := exec.Command("/bin/sh", "-c", "etcdctl cluster-health").Run(); err == nil {
-			break
-		}
-		time.Sleep(time.Second / 4)
-	}
+	time.Sleep(15 * time.Second)
 }

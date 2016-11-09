@@ -27,7 +27,10 @@ func (s *testSuite) TestGlobalEmpty(c *C) {
 func (s *testSuite) TestGlobalWatch(c *C) {
 	global := db.NewGlobal()
 
+	// XXX this leaks but w/e, we should probably implement a stop chan. not a
+	// real world problem
 	globalChan, errChan := s.client.Watch(global)
+
 	c.Assert(s.client.Set(global), IsNil)
 	select {
 	case err := <-errChan:
@@ -38,6 +41,4 @@ func (s *testSuite) TestGlobalWatch(c *C) {
 		global2 = global2.Canonical()
 		c.Assert(global, DeepEquals, global2)
 	}
-
-	c.Assert(s.client.WatchStop(global), IsNil)
 }

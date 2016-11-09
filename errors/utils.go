@@ -20,7 +20,7 @@ func EtcdToErrored(orig error) error {
 			return ce
 		}
 
-		return err.Combine(ce)
+		return err
 	}
 
 	return orig

@@ -1,4 +1,4 @@
-package db
+package etcd
 
 import (
 	"archive/tar"
@@ -10,12 +10,21 @@ import (
 	"time"
 
 	"github.com/contiv/errored"
+	"github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 )
 
-// Dump is a generic dump routine for use inside drivers.
-// It accepts a prepopulated []*Node with the entire tree stored inside it. It
-// writes to the base path (the second argument), but defaults to $TMPDIR.
-func Dump(node *Node, dir string) (string, error) {
+// Dump yields a database dump of the keyspace we manage. It will be contained
+// in a tarball based on the timestamp of the dump. If a dir is provided, it
+// will be placed under that directory.
+func (c *Client) Dump(dir string) (string, error) {
+	resp, err := c.client.Get(context.Background(), c.prefix, &client.GetOptions{Sort: true, Recursive: true, Quorum: true})
+	if err != nil {
+		return "", errored.Errorf(`Failed to recursively GET "%v" namespace from etcd`, c.prefix).Combine(err)
+	}
+
+	// FIXME the code below (yes, all of it) should be moved somewhere else. It
+	// doesn't belong in the etcd client.
 	now := time.Now()
 
 	// tar hangs during unpacking if the base directory has colons in it
@@ -40,7 +49,7 @@ func Dump(node *Node, dir string) (string, error) {
 	// ensure that the tarball extracts to a folder with the same name as the tarball
 	baseDirectory := filepath.Base(file.Name())
 
-	err = addNodeToTarball(node, tarWriter, baseDirectory)
+	err = addNodeToTarball(resp.Node, tarWriter, baseDirectory)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +65,7 @@ func Dump(node *Node, dir string) (string, error) {
 	return newFilename, nil
 }
 
-func addNodeToTarball(node *Node, writer *tar.Writer, baseDirectory string) error {
+func addNodeToTarball(node *client.Node, writer *tar.Writer, baseDirectory string) error {
 	now := time.Now()
 
 	header := &tar.Header{

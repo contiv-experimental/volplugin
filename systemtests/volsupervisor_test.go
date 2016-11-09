@@ -84,8 +84,8 @@ func (s *systemtestSuite) TestVolsupervisorStopStartSnapshot(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(strings.Split(out, "\n")) > 2, Equals, true)
 
-	out, err = s.volcli("volume remove " + fqVolName)
-	c.Assert(err, IsNil, Commentf(out))
+	_, err = s.volcli("volume remove " + fqVolName)
+	c.Assert(err, IsNil)
 
 	_, err = s.vagrant.GetNode("mon0").RunCommandWithOutput("sudo rbd snap ls policy1." + volName)
 	c.Assert(err, NotNil)

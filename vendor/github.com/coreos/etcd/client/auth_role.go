@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 type Role struct {
@@ -56,22 +56,22 @@ func NewAuthRoleAPI(c Client) AuthRoleAPI {
 }
 
 type AuthRoleAPI interface {
-	// AddRole adds a role.
+	// Add a role.
 	AddRole(ctx context.Context, role string) error
 
-	// RemoveRole removes a role.
+	// Remove a role.
 	RemoveRole(ctx context.Context, role string) error
 
-	// GetRole retrieves role details.
+	// Get role details.
 	GetRole(ctx context.Context, role string) (*Role, error)
 
-	// GrantRoleKV grants a role some permission prefixes for the KV store.
+	// Grant a role some permission prefixes for the KV store.
 	GrantRoleKV(ctx context.Context, role string, prefixes []string, permType PermissionType) (*Role, error)
 
-	// RevokeRoleKV revokes some permission prefixes for a role on the KV store.
+	// Revoke some some permission prefixes for a role on the KV store.
 	RevokeRoleKV(ctx context.Context, role string, prefixes []string, permType PermissionType) (*Role, error)
 
-	// ListRoles lists roles.
+	// List roles.
 	ListRoles(ctx context.Context) ([]string, error)
 }
 
@@ -115,20 +115,17 @@ func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		return nil, err
 	}
-	var roleList struct {
-		Roles []Role `json:"roles"`
+	var userList struct {
+		Roles []string `json:"roles"`
 	}
-	if err = json.Unmarshal(body, &roleList); err != nil {
+	err = json.Unmarshal(body, &userList)
+	if err != nil {
 		return nil, err
 	}
-	ret := make([]string, 0, len(roleList.Roles))
-	for _, r := range roleList.Roles {
-		ret = append(ret, r.Role)
-	}
-	return ret, nil
+	return userList.Roles, nil
 }
 
 func (r *httpAuthRoleAPI) AddRole(ctx context.Context, rolename string) error {
@@ -221,16 +218,17 @@ func (r *httpAuthRoleAPI) modRole(ctx context.Context, req *authRoleAPIAction) (
 	if err != nil {
 		return nil, err
 	}
-	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		var sec authError
-		err = json.Unmarshal(body, &sec)
+		err := json.Unmarshal(body, &sec)
 		if err != nil {
 			return nil, err
 		}
 		return nil, sec
 	}
 	var role Role
-	if err = json.Unmarshal(body, &role); err != nil {
+	err = json.Unmarshal(body, &role)
+	if err != nil {
 		return nil, err
 	}
 	return &role, nil

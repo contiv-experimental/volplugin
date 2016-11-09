@@ -2,19 +2,16 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// borrowed from golang/net/context/ctxhttp/cancelreq.go
+// borrowed from golang/net/context/ctxhttp/cancelreq_go14.go
 
-// +build go1.5
+// +build !go1.5
 
 package client
 
 import "net/http"
 
 func requestCanceler(tr CancelableTransport, req *http.Request) func() {
-	ch := make(chan struct{})
-	req.Cancel = ch
-
 	return func() {
-		close(ch)
+		tr.CancelRequest(req)
 	}
 }

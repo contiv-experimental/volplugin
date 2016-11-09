@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"strings"
 )
 
-// URLsMap is a map from a name to its URLs.
 type URLsMap map[string]URLs
 
 // NewURLsMap returns a URLsMap instantiated from the given string,
@@ -40,23 +39,9 @@ func NewURLsMap(s string) (URLsMap, error) {
 	return cl, nil
 }
 
-// NewURLsMapFromStringMap takes a map of strings and returns a URLsMap. The
-// string values in the map can be multiple values separated by the sep string.
-func NewURLsMapFromStringMap(m map[string]string, sep string) (URLsMap, error) {
-	var err error
-	um := URLsMap{}
-	for k, v := range m {
-		um[k], err = NewURLs(strings.Split(v, sep))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return um, nil
-}
-
-// String turns URLsMap into discovery-formatted name-to-URLs sorted by name.
+// String returns NameURLPairs into discovery-formatted name-to-URLs sorted by name.
 func (c URLsMap) String() string {
-	var pairs []string
+	pairs := make([]string, 0)
 	for name, urls := range c {
 		for _, url := range urls {
 			pairs = append(pairs, fmt.Sprintf("%s=%s", name, url.String()))
@@ -69,7 +54,7 @@ func (c URLsMap) String() string {
 // URLs returns a list of all URLs.
 // The returned list is sorted in ascending lexicographical order.
 func (c URLsMap) URLs() []string {
-	var urls []string
+	urls := make([]string, 0)
 	for _, us := range c {
 		for _, u := range us {
 			urls = append(urls, u.String())
@@ -79,7 +64,6 @@ func (c URLsMap) URLs() []string {
 	return urls
 }
 
-// Len returns the size of URLsMap.
 func (c URLsMap) Len() int {
 	return len(c)
 }
