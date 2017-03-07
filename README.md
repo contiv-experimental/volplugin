@@ -46,7 +46,7 @@ for how you can build one.
 
 
 ```
-$ docker run -it -v /var/run/docker.sock:/var/run/docker.sock contiv/volplugin-autorun
+$ docker run --rm -it -v /var/run/docker.sock:/var/run/docker.sock contiv/volplugin-autorun
 ```
 
 If you get an error like "mountpoint / is not a shared mount", set

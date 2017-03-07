@@ -5,7 +5,7 @@ set -e
 docker rm -f volplugin-etcd apiserver volplugin volsupervisor &>/dev/null || :
 
 ## test for shared mount capability
-if ! docker run -it -v /mnt:/mnt:shared alpine true &>/dev/null
+if ! docker run --rm -it -v /mnt:/mnt:shared alpine true &>/dev/null
 then
   echo 1>&2 "Docker cannot run volplugin in its current state."
   echo 1>&2 "You must change docker's systemd MountFlags to equal 'shared'"
@@ -54,5 +54,5 @@ docker run --net host --name volplugin \
 
 sleep 5
 
-docker run -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli global upload </global.json
-docker run -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli policy upload policy1 </policy.json
+docker run --rm -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli global upload </global.json
+docker run --rm -i --net host -v /run/docker/plugins:/run/docker/plugins contiv/volplugin volcli policy upload policy1 </policy.json
