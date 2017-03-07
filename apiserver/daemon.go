@@ -547,6 +547,9 @@ func (d *DaemonConfig) handleGlobal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	policy := vars["policy"]
+
 	vols, err := d.Config.ListAllVolumes()
 	if err != nil {
 		api.RESTHTTPError(w, errors.ListVolume.Combine(err))
@@ -567,7 +570,9 @@ func (d *DaemonConfig) handleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response = append(response, volConfig)
+		if parts[0] == policy {
+			response = append(response, volConfig)
+		}
 	}
 
 	content, err := json.Marshal(response)
