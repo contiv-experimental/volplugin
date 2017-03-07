@@ -59,6 +59,12 @@ func ppJSON(v interface{}) ([]byte, error) {
 	return json.MarshalIndent(v, "", "  ")
 }
 
+func ppJSONBytes(b []byte) ([]byte, error) {
+	var output bytes.Buffer
+	err := json.Indent(&output, b, "", "  ")
+	return output.Bytes(), err
+}
+
 func deleteRequest(url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
 	req, err := http.NewRequest("DELETE", url, body)
 	if err != nil {
@@ -244,7 +250,12 @@ func policyGet(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println(string(content))
+	prettyBytes, err := ppJSONBytes(content)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(prettyBytes))
 
 	return false, nil
 }
@@ -322,7 +333,12 @@ func policyGetRevision(ctx *cli.Context) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println(string(content))
+	prettyBytes, err := ppJSONBytes(content)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(string(prettyBytes))
 
 	return false, nil
 }
