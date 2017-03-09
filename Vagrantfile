@@ -121,6 +121,7 @@ ansible_provision = proc do |ansible|
 
   # In a production deployment, these should be secret
   ansible.extra_vars = {
+    etcd_version: "v3.0.6",
     scheduler_provider: ENV["UCP"] ? "ucp-swarm" : "native-swarm",
     ucp_bootstrap_node_name: "mon0",
     ucp_license_remote: ENV["HOME"] + "/docker_subscription.lic",
