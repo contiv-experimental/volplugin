@@ -7,7 +7,7 @@ var (
 	VolumeConfigs   = map[string]map[string]*Volume{
 		"valid": {
 			"basic": {
-				DriverOptions:  map[string]string{"pool": "rbd"},
+				DriverOptions:  map[string]interface{}{"pool": "rbd"},
 				CreateOptions:  CreateOptions{Size: "10MB"},
 				RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 				VolumeName:     "basicvolume",
@@ -15,7 +15,7 @@ var (
 				Backends:       defaultBackends,
 			},
 			"basicwithruntime": {
-				DriverOptions:  map[string]string{"pool": "rbd"},
+				DriverOptions:  map[string]interface{}{"pool": "rbd"},
 				CreateOptions:  CreateOptions{Size: "10MB"},
 				RuntimeOptions: RuntimeOptions{UseSnapshots: true, Snapshot: SnapshotConfig{Frequency: "10m", Keep: 10}},
 				VolumeName:     "basicvolume",

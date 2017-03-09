@@ -13,7 +13,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "10MB",
 			FileSystem: db.DefaultFilesystem,
@@ -34,7 +34,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "20MB",
 			FileSystem: db.DefaultFilesystem,
@@ -49,7 +49,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "0",
 			FileSystem: db.DefaultFilesystem,
@@ -63,7 +63,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "not a number",
 			FileSystem: db.DefaultFilesystem,
@@ -77,7 +77,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount:    "ceph",
 			Snapshot: "ceph",
 		},
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "10MB",
 			FileSystem: db.DefaultFilesystem,
@@ -96,7 +96,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount: "ceph",
 		},
 		Name:          "blanksize",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			FileSystem: db.DefaultFilesystem,
 		},
@@ -109,7 +109,7 @@ var testPolicies = map[string]*db.Policy{
 			Mount: "ceph",
 		},
 		Name:          "blanksize",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			FileSystem: db.DefaultFilesystem,
 		},
@@ -118,7 +118,7 @@ var testPolicies = map[string]*db.Policy{
 	},
 	"nobackend": {
 		Name:          "nobackend",
-		DriverOptions: map[string]string{"pool": "rbd"},
+		DriverOptions: map[string]interface{}{"pool": "rbd"},
 		CreateOptions: db.CreateOptions{
 			Size:       "10MB",
 			FileSystem: db.DefaultFilesystem,

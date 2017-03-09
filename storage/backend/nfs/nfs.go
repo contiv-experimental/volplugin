@@ -80,7 +80,12 @@ func (d *Driver) mapOptionsToString(mapOpts map[string]string) string {
 }
 
 func (d *Driver) mkOpts(do storage.DriverOptions) (string, error) {
-	mapOpts, err := d.validateConvertOptions(do.Volume.Params["options"])
+	options, err := do.Volume.Params.Get("options", true)
+	if err != nil {
+		return "", err
+	}
+
+	mapOpts, err := d.validateConvertOptions(options)
 	if err != nil {
 		return "", err
 	}
