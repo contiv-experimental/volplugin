@@ -22,14 +22,14 @@ import (
 // Volume is the configuration of the policy. It includes pool and
 // snapshot information.
 type Volume struct {
-	PolicyName     string            `json:"policy"`
-	VolumeName     string            `json:"name"`
-	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
-	DriverOptions  map[string]string `json:"driver"`
-	MountSource    string            `json:"mount" merge:"mount"`
-	CreateOptions  CreateOptions     `json:"create"`
-	RuntimeOptions RuntimeOptions    `json:"runtime"`
-	Backends       *BackendDrivers   `json:"backends,omitempty"`
+	PolicyName     string                 `json:"policy"`
+	VolumeName     string                 `json:"name"`
+	Unlocked       bool                   `json:"unlocked,omitempty" merge:"unlocked"`
+	DriverOptions  map[string]interface{} `json:"driver"`
+	MountSource    string                 `json:"mount" merge:"mount"`
+	CreateOptions  CreateOptions          `json:"create"`
+	RuntimeOptions RuntimeOptions         `json:"runtime"`
+	Backends       *BackendDrivers        `json:"backends,omitempty"`
 }
 
 // CreateOptions are the set of options used by apiserver during the volume
@@ -102,7 +102,7 @@ func (c *Client) CreateVolume(rc *VolumeRequest) (*Volume, error) {
 	}
 
 	if resp.DriverOptions == nil {
-		resp.DriverOptions = map[string]string{}
+		resp.DriverOptions = map[string]interface{}{}
 	}
 
 	if err := resp.Validate(); err != nil {
@@ -366,7 +366,7 @@ func (cfg *Volume) validateBackends() error {
 	}
 
 	if cfg.Backends.CRUD != "" {
-		crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD)
+		crud, err := backend.NewCRUDDriver(cfg.Backends.CRUD, cfg.DriverOptions)
 		if err != nil {
 			return err
 		}
@@ -376,7 +376,7 @@ func (cfg *Volume) validateBackends() error {
 		}
 	}
 
-	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, backend.MountPath)
+	mnt, err := backend.NewMountDriver(cfg.Backends.Mount, backend.MountPath, cfg.DriverOptions)
 	if err != nil {
 		return err
 	}

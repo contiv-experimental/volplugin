@@ -17,7 +17,7 @@ func (s *storageSuite) TestDriverOptionsValidate(c *C) {
 
 	c.Assert(do.Validate(), NotNil)
 
-	do = DriverOptions{Timeout: 1, Volume: Volume{Name: "hi", Params: map[string]string{}}}
+	do = DriverOptions{Timeout: 1, Volume: Volume{Name: "hi", Params: map[string]interface{}{}}}
 	c.Assert(do.Validate(), IsNil)
 	do.Timeout = 0
 	c.Assert(do.Validate(), NotNil)
@@ -29,13 +29,13 @@ func (s *storageSuite) TestVolumeValidate(c *C) {
 	v := Volume{}
 	c.Assert(v.Validate(), NotNil)
 
-	v = Volume{Name: "name", Size: 100, Params: map[string]string{}}
+	v = Volume{Name: "name", Size: 100, Params: map[string]interface{}{}}
 	c.Assert(v.Validate(), IsNil)
 	v.Name = ""
 	c.Assert(v.Validate(), NotNil)
 	v.Name = "name"
 	v.Params = nil
 	c.Assert(v.Validate(), NotNil)
-	v.Params = map[string]string{}
+	v.Params = map[string]interface{}{}
 	c.Assert(v.Validate(), IsNil)
 }

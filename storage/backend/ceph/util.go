@@ -7,13 +7,19 @@ import (
 	"github.com/contiv/volplugin/storage"
 )
 
+// PoolName returns the 'ceph' poolName for this instance
+func (c *Driver) PoolName() string {
+	return c.dOpts.PoolName
+}
+
 // MountPath returns the path of a mount for a pool/volume.
 func (c *Driver) MountPath(do storage.DriverOptions) (string, error) {
 	volName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(c.mountpath, do.Volume.Params["pool"], volName), nil
+
+	return filepath.Join(c.mountpath, c.dOpts.PoolName, volName), nil
 }
 
 // FIXME maybe this belongs in storage/ as it's more general?

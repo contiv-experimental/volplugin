@@ -56,7 +56,7 @@ func (dc *DaemonConfig) getMounted() (map[string]*storage.Mount, map[string]int,
 	}
 
 	for driverName := range backend.MountDrivers {
-		cd, err := backend.NewMountDriver(driverName, dc.Global.MountPath)
+		cd, err := backend.NewMountDriver(driverName, dc.Global.MountPath, map[string]interface{}{})
 		if err != nil {
 			return nil, nil, err
 		}

@@ -21,6 +21,7 @@ import (
 	"github.com/contiv/volplugin/errors"
 	"github.com/contiv/volplugin/storage"
 	"github.com/contiv/volplugin/storage/mountscan"
+	gojson "github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -40,6 +41,46 @@ var spaceSplitRegex = regexp.MustCompile(`\s+`)
 //
 type Driver struct {
 	mountpath string
+	dOpts     *dOptions
+}
+
+// dOptions implements the ceph driver options
+type dOptions struct {
+	PoolName string `json:"pool"`
+}
+
+func (do *dOptions) validate() error {
+	schema := gojson.NewStringLoader(DriverOptionsSchema)
+	data := gojson.NewGoLoader(do)
+
+	if result, err := gojson.Validate(schema, data); err != nil {
+		return err
+	} else if !result.Valid() {
+		var errors []string
+		for _, err := range result.Errors() {
+			errors = append(errors, fmt.Sprintf("%s\n", err))
+		}
+		return errored.New(strings.Join(errors, "\n"))
+	}
+
+	return nil
+}
+
+func (do *dOptions) mapDriverOptions(dOpts map[string]interface{}) error {
+	content, err := json.Marshal(dOpts)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(content, do); err != nil {
+		return err
+	}
+
+	if err := do.validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Driver) mkMountPath(poolName, intName string) (string, error) {
@@ -64,14 +105,35 @@ func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (*executor.ExecResult,
 
 // NewMountDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
-func NewMountDriver(mountpath string) (storage.MountDriver, error) {
-	return &Driver{mountpath: mountpath}, nil
+func NewMountDriver(mountpath string, dOpts map[string]interface{}) (storage.MountDriver, error) {
+	if dOpts == nil {
+		return nil, errored.Errorf("Driver options required to create Mount driver")
+	}
+
+	driverOpts := &dOptions{}
+	if err := driverOpts.mapDriverOptions(dOpts); err != nil {
+		return nil, err
+	}
+	return &Driver{mountpath: mountpath, dOpts: driverOpts}, nil
 }
 
 // NewCRUDDriver is a generator for Driver structs. It is used by the storage
 // framework to yield new drivers on every creation.
-func NewCRUDDriver() (storage.CRUDDriver, error) {
-	return &Driver{}, nil
+func NewCRUDDriver(dOpts map[string]interface{}) (storage.CRUDDriver, error) {
+	if dOpts == nil {
+		return nil, errored.Errorf("Driver options required to create CRUD driver")
+	}
+
+	driverOpts := &dOptions{}
+	if err := driverOpts.mapDriverOptions(dOpts); err != nil {
+		return nil, err
+	}
+
+	if len(strings.TrimSpace(driverOpts.PoolName)) == 0 {
+		return nil, errored.Errorf("Pool is required for ceph driver")
+	}
+
+	return &Driver{dOpts: driverOpts}, nil
 }
 
 // NewSnapshotDriver is a generator for Driver structs. It is used by the storage
@@ -115,7 +177,7 @@ func (c *Driver) Create(do storage.DriverOptions) error {
 		return err
 	}
 
-	cmd := exec.Command("rbd", "create", mkpool(do.Volume.Params["pool"], intName), "--size", strconv.FormatUint(do.Volume.Size, 10))
+	cmd := exec.Command("rbd", "create", mkpool(c.dOpts.PoolName, intName), "--size", strconv.FormatUint(do.Volume.Size, 10))
 	er, err := runWithTimeout(cmd, do.Timeout)
 
 	if er != nil {
@@ -150,19 +212,18 @@ func (c *Driver) Format(do storage.DriverOptions) error {
 
 // Destroy a volume.
 func (c *Driver) Destroy(do storage.DriverOptions) error {
-	poolName := do.Volume.Params["pool"]
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return err
 	}
 
-	cmd := exec.Command("rbd", "snap", "purge", mkpool(poolName, intName))
+	cmd := exec.Command("rbd", "snap", "purge", mkpool(c.dOpts.PoolName, intName))
 	er, _ := runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
 		return errored.Errorf("Destroying snapshots for disk %q: %v", intName, er.Stderr)
 	}
 
-	cmd = exec.Command("rbd", "rm", mkpool(poolName, intName))
+	cmd = exec.Command("rbd", "rm", mkpool(c.dOpts.PoolName, intName))
 	er, _ = runWithTimeout(cmd, do.Timeout)
 	if er.ExitStatus != 0 {
 		return errored.Errorf("Destroying disk %q: %v (%v)", intName, er, er.Stdout)
@@ -173,22 +234,20 @@ func (c *Driver) Destroy(do storage.DriverOptions) error {
 
 // List all volumes.
 func (c *Driver) List(lo storage.ListOptions) ([]storage.Volume, error) {
-	poolName := lo.Params["pool"]
-
 retry:
-	er, err := executor.NewCapture(exec.Command("rbd", "ls", poolName, "--format", "json")).Run(context.Background())
+	er, err := executor.NewCapture(exec.Command("rbd", "ls", c.dOpts.PoolName, "--format", "json")).Run(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
 	if er.ExitStatus != 0 {
-		return nil, errored.Errorf("Listing pool %q: %v", poolName, er)
+		return nil, errored.Errorf("Listing pool %q: %v", c.dOpts.PoolName, er)
 	}
 
 	textList := []string{}
 
 	if err := json.Unmarshal([]byte(er.Stdout), &textList); err != nil {
-		logrus.Errorf("Unmarshalling ls for pool %q: %v. Retrying.", poolName, err)
+		logrus.Errorf("Unmarshalling ls for pool %q: %v. Retrying.", c.dOpts.PoolName, err)
 		time.Sleep(100 * time.Millisecond)
 		goto retry
 	}
@@ -196,7 +255,7 @@ retry:
 	list := []storage.Volume{}
 
 	for _, name := range textList {
-		list = append(list, storage.Volume{Name: c.externalName(strings.TrimSpace(name)), Params: storage.Params{"pool": poolName}})
+		list = append(list, storage.Volume{Name: c.externalName(strings.TrimSpace(name)), Params: storage.Params{"pool": c.dOpts.PoolName}})
 	}
 
 	return list, nil
@@ -211,9 +270,7 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 		return nil, err
 	}
 
-	poolName := do.Volume.Params["pool"]
-
-	volumePath, err := c.mkMountPath(poolName, intName)
+	volumePath, err := c.mkMountPath(c.dOpts.PoolName, intName)
 	if err != nil {
 		return nil, err
 	}
@@ -260,13 +317,12 @@ func (c *Driver) Mount(do storage.DriverOptions) (*storage.Mount, error) {
 
 // Unmount a volume.
 func (c *Driver) Unmount(do storage.DriverOptions) error {
-	poolName := do.Volume.Params["pool"]
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return err
 	}
 
-	volumeDir, err := c.mkMountPath(poolName, intName)
+	volumeDir, err := c.mkMountPath(c.dOpts.PoolName, intName)
 	if err != nil {
 		return err
 	}
@@ -325,10 +381,8 @@ func (c *Driver) CreateSnapshot(snapName string, do storage.DriverOptions) error
 		return err
 	}
 
-	poolName := do.Volume.Params["pool"]
-
 	snapName = strings.Replace(snapName, " ", "-", -1)
-	cmd := exec.Command("rbd", "snap", "create", mkpool(poolName, intName), "--snap", snapName)
+	cmd := exec.Command("rbd", "snap", "create", mkpool(c.dOpts.PoolName, intName), "--snap", snapName)
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
@@ -348,9 +402,7 @@ func (c *Driver) RemoveSnapshot(snapName string, do storage.DriverOptions) error
 		return err
 	}
 
-	poolName := do.Volume.Params["pool"]
-
-	cmd := exec.Command("rbd", "snap", "rm", mkpool(poolName, intName), "--snap", snapName)
+	cmd := exec.Command("rbd", "snap", "rm", mkpool(c.dOpts.PoolName, intName), "--snap", snapName)
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if err != nil {
 		return err
@@ -371,9 +423,7 @@ func (c *Driver) ListSnapshots(do storage.DriverOptions) ([]string, error) {
 		return nil, err
 	}
 
-	poolName := do.Volume.Params["pool"]
-
-	cmd := exec.Command("rbd", "snap", "ls", mkpool(poolName, intName))
+	cmd := exec.Command("rbd", "snap", "ls", mkpool(c.dOpts.PoolName, intName))
 	ctx, _ := context.WithTimeout(context.Background(), do.Timeout)
 	er, err := executor.NewCapture(cmd).Run(ctx)
 	if err != nil {
@@ -414,14 +464,12 @@ func (c *Driver) cleanupCopy(snapName, newName string, do storage.DriverOptions,
 		return
 	}
 
-	poolName := do.Volume.Params["pool"]
-
 	select {
 	case err := <-errChan:
 		newerr, ok := err.(*errored.Error)
 		if ok && newerr.Contains(errors.SnapshotCopy) {
 			logrus.Warnf("Error received while copying snapshot %q: %v. Attempting to cleanup... Snapshot %q may still be protected!", do.Volume.Name, err, snapName)
-			cmd := exec.Command("rbd", "rm", mkpool(poolName, intNewName))
+			cmd := exec.Command("rbd", "rm", mkpool(c.dOpts.PoolName, intNewName))
 			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
 				logrus.Errorf("Error encountered removing new volume %q for volume %q, snapshot %q: %v, %v", intNewName, intOrigName, snapName, err, er.Stderr)
 				return
@@ -430,7 +478,7 @@ func (c *Driver) cleanupCopy(snapName, newName string, do storage.DriverOptions,
 
 		if ok && newerr.Contains(errors.SnapshotProtect) {
 			logrus.Warnf("Error received protecting snapshot %q: %v. Attempting to cleanup.", do.Volume.Name, err)
-			cmd := exec.Command("rbd", "snap", "unprotect", mkpool(poolName, intOrigName), "--snap", snapName)
+			cmd := exec.Command("rbd", "snap", "unprotect", mkpool(c.dOpts.PoolName, intOrigName), "--snap", snapName)
 			if er, err := runWithTimeout(cmd, do.Timeout); err != nil || er.ExitStatus != 0 {
 				logrus.Errorf("Error encountered unprotecting new volume %q for volume %q, snapshot %q: %v, %v", newName, intOrigName, snapName, err, er.Stderr)
 				return
@@ -453,9 +501,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 		return err
 	}
 
-	poolName := do.Volume.Params["pool"]
-
-	list, err := c.List(storage.ListOptions{Params: storage.Params{"pool": poolName}})
+	list, err := c.List(storage.ListOptions{Params: storage.Params{"pool": c.dOpts.PoolName}})
 	for _, vol := range list {
 		if intNewName == vol.Name {
 			return errored.Errorf("Volume %q already exists", vol.Name)
@@ -464,7 +510,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 
 	errChan := make(chan error, 1)
 
-	cmd := exec.Command("rbd", "snap", "protect", mkpool(poolName, intOrigName), "--snap", snapName)
+	cmd := exec.Command("rbd", "snap", "protect", mkpool(c.dOpts.PoolName, intOrigName), "--snap", snapName)
 	er, err := runWithTimeout(cmd, do.Timeout)
 
 	// EBUSY indicates that the snapshot is already protected.
@@ -478,7 +524,7 @@ func (c *Driver) CopySnapshot(do storage.DriverOptions, snapName, newName string
 
 	defer c.cleanupCopy(snapName, newName, do, errChan)
 
-	cmd = exec.Command("rbd", "clone", mkpool(poolName, intOrigName), mkpool(poolName, intNewName), "--snap", snapName)
+	cmd = exec.Command("rbd", "clone", mkpool(c.dOpts.PoolName, intOrigName), mkpool(c.dOpts.PoolName, intNewName), "--snap", snapName)
 	er, err = runWithTimeout(cmd, do.Timeout)
 	if err != nil && er.ExitStatus == 0 {
 		var err2 *errored.Error
@@ -552,10 +598,6 @@ func (c *Driver) Validate(do *storage.DriverOptions) error {
 	// XXX check this first to guard against nil pointers ahead of time.
 	if err := do.Validate(); err != nil {
 		return err
-	}
-
-	if do.Volume.Params["pool"] == "" {
-		return errored.Errorf("Pool is missing in ceph storage driver.")
 	}
 
 	return nil

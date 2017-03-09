@@ -23,7 +23,6 @@ type rbdMap map[string]struct {
 }
 
 func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
-	poolName := do.Volume.Params["pool"]
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return "", err
@@ -32,7 +31,7 @@ func (c *Driver) mapImage(do storage.DriverOptions) (string, error) {
 	retries := 0
 
 retry:
-	cmd := exec.Command("rbd", "map", intName, "--pool", poolName)
+	cmd := exec.Command("rbd", "map", intName, "--pool", c.dOpts.PoolName)
 	er, err := runWithTimeout(cmd, do.Timeout)
 	if retries < 10 && err != nil {
 		logrus.Errorf("Error mapping image: %v (%v) (%v). Retrying.", intName, er, err)
@@ -52,14 +51,14 @@ retry:
 	}
 
 	for _, rbd := range rbdmap {
-		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
+		if rbd.Name == intName && rbd.Pool == c.dOpts.PoolName {
 			device = rbd.Device
 			break
 		}
 	}
 
 	if device == "" {
-		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", intName, do.Volume.Params["pool"])
+		return "", errored.Errorf("Volume %s in pool %s not found in RBD showmapped output", intName, c.dOpts.PoolName)
 	}
 
 	logrus.Debugf("mapped volume %q as %q", intName, device)
@@ -101,19 +100,17 @@ func (c *Driver) unmapImage(do storage.DriverOptions) error {
 }
 
 func (c *Driver) doUnmap(do storage.DriverOptions, rbdmap rbdMap) (bool, error) {
-	poolName := do.Volume.Params["pool"]
-
 	intName, err := c.internalName(do.Volume.Name)
 	if err != nil {
 		return false, err
 	}
 
 	for _, rbd := range rbdmap {
-		if rbd.Name == intName && rbd.Pool == do.Volume.Params["pool"] {
-			logrus.Debugf("Unmapping volume %s/%s at device %q", poolName, intName, strings.TrimSpace(rbd.Device))
+		if rbd.Name == intName && rbd.Pool == c.dOpts.PoolName {
+			logrus.Debugf("Unmapping volume %s/%s at device %q", c.dOpts.PoolName, intName, strings.TrimSpace(rbd.Device))
 
 			if _, err := os.Stat(rbd.Device); err != nil {
-				logrus.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", poolName, intName, rbd.Device)
+				logrus.Debugf("Trying to unmap device %q for %s/%s that does not exist, continuing", c.dOpts.PoolName, intName, rbd.Device)
 				continue
 			}
 
@@ -187,7 +184,7 @@ func (c *Driver) getMapped(timeout time.Duration) ([]*storage.Mount, error) {
 			Device: rbd.Device,
 			Volume: storage.Volume{
 				Name: c.externalName(rbd.Name),
-				Params: map[string]string{
+				Params: map[string]interface{}{
 					"pool": rbd.Pool,
 				},
 			},

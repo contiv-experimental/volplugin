@@ -16,13 +16,13 @@ var (
 )
 
 // MountDrivers is the map of string to storage.MountDriver.
-var MountDrivers = map[string]func(string) (storage.MountDriver, error){
+var MountDrivers = map[string]func(string, map[string]interface{}) (storage.MountDriver, error){
 	ceph.BackendName: ceph.NewMountDriver,
 	nfs.BackendName:  nfs.NewMountDriver,
 }
 
 // CRUDDrivers is the map of string to storage.CRUDDriver.
-var CRUDDrivers = map[string]func() (storage.CRUDDriver, error){
+var CRUDDrivers = map[string]func(map[string]interface{}) (storage.CRUDDriver, error){
 	ceph.BackendName: ceph.NewCRUDDriver,
 }
 
@@ -33,7 +33,7 @@ var SnapshotDrivers = map[string]func() (storage.SnapshotDriver, error){
 
 // NewMountDriver instantiates and return a mount driver instance of the
 // specified type
-func NewMountDriver(backend, mountpath string) (storage.MountDriver, error) {
+func NewMountDriver(backend, mountpath string, dOptions map[string]interface{}) (storage.MountDriver, error) {
 	f, ok := MountDrivers[backend]
 	if !ok {
 		return nil, errored.Errorf("invalid mount driver backend: %q", backend)
@@ -43,17 +43,17 @@ func NewMountDriver(backend, mountpath string) (storage.MountDriver, error) {
 		return nil, errored.Errorf("mount path not specified, cannot continue")
 	}
 
-	return f(mountpath)
+	return f(mountpath, dOptions)
 }
 
 // NewCRUDDriver instantiates a CRUD Driver.
-func NewCRUDDriver(backend string) (storage.CRUDDriver, error) {
+func NewCRUDDriver(backend string, dOptions map[string]interface{}) (storage.CRUDDriver, error) {
 	f, ok := CRUDDrivers[backend]
 	if !ok {
 		return nil, errored.Errorf("invalid CRUD driver backend: %q", backend)
 	}
 
-	return f()
+	return f(dOptions)
 }
 
 // NewSnapshotDriver creates a SnapshotDriver based on the backend name.

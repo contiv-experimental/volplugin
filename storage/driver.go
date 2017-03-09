@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/contiv/errored"
@@ -13,7 +14,7 @@ var (
 )
 
 // Params are parameters that relate directly to the location of the storage.
-type Params map[string]string
+type Params map[string]interface{}
 
 // A Mount is the resulting attributes of a Mount or Unmount operation.
 type Mount struct {
@@ -145,4 +146,20 @@ func (v Volume) Validate() error {
 	}
 
 	return nil
+}
+
+// Get can be used to get only "string" types from element `driver`
+func (p Params) Get(attr string, allowEmpty bool) (string, error) {
+	switch value := p[attr].(type) {
+	case string:
+		if !allowEmpty && len(strings.TrimSpace(value)) == 0 {
+			return "", errored.Errorf("Expected non-empty string for driver.%s", attr)
+		}
+		return value, nil
+	default:
+		if allowEmpty && value == nil {
+			return "", nil
+		}
+		return "", errored.Errorf("Expected string type for driver.%s", attr)
+	}
 }

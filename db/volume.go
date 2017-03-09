@@ -39,7 +39,7 @@ func CreateVolume(vr *VolumeRequest) (*Volume, error) {
 	}
 
 	if vr.Policy.DriverOptions == nil {
-		vr.Policy.DriverOptions = map[string]string{}
+		vr.Policy.DriverOptions = map[string]interface{}{}
 	}
 
 	if err := vr.Policy.Validate(); err != nil {
@@ -165,7 +165,7 @@ func (v *Volume) validateBackends() error {
 	}
 
 	if v.Backends.CRUD != "" {
-		crud, err := backend.NewCRUDDriver(v.Backends.CRUD)
+		crud, err := backend.NewCRUDDriver(v.Backends.CRUD, v.DriverOptions)
 		if err != nil {
 			return err
 		}
@@ -175,7 +175,7 @@ func (v *Volume) validateBackends() error {
 		}
 	}
 
-	mnt, err := backend.NewMountDriver(v.Backends.Mount, backend.MountPath)
+	mnt, err := backend.NewMountDriver(v.Backends.Mount, backend.MountPath, v.DriverOptions)
 	if err != nil {
 		return err
 	}

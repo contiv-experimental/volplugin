@@ -110,7 +110,7 @@ func (a *API) GetStorageParameters(uc *Volume) (storage.MountDriver, *config.Vol
 		return nil, nil, driverOpts, err
 	}
 
-	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, (*a.Global).MountPath)
+	driver, err := backend.NewMountDriver(volConfig.Backends.Mount, (*a.Global).MountPath, volConfig.DriverOptions)
 	if err != nil {
 		return nil, nil, driverOpts, errors.GetDriver.Combine(err)
 	}
