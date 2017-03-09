@@ -174,6 +174,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder "systemtests/testdata", "/testdata"
   config.vm.synced_folder "bin", "/tmp/bin"
 
+  config.vm.boot_timeout = 500000000
+
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "mon#{i}"
