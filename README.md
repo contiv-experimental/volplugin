@@ -75,5 +75,5 @@ tests (`make system-test`) live in the `systemtests` directory.  Note that `make
 
 [ReportCard-URL]: https://goreportcard.com/report/github.com/contiv/volplugin
 [ReportCard-Image]: https://goreportcard.com/badge/github.com/contiv/volplugin
-[Build-Status-URL]: http://contiv.ngrok.io/job/Volplugin%20Push%20Build%20Master
-[Build-Status-Image]: http://contiv.ngrok.io/buildStatus/icon?job=Volplugin%20Push%20Build%20Master
+[Build-Status-URL]: http://contiv-ci.ngrok.io/job/Volplugin%20Push%20Build%20Master
+[Build-Status-Image]: http://contiv-ci.ngrok.io/buildStatus/icon?job=Volplugin%20Push%20Build%20Master
