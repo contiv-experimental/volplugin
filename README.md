@@ -3,7 +3,7 @@
 # volplugin: cluster-wide volume management for container ecosystems
 
 **Note**: Most of this documentation is about the open source project. If you
-came to try Contiv Storage, [read our documentation](http://contiv.github.io/documents/storage/index.html).
+came to try Contiv, [read our documentation](http://contiv.github.io/).
 
 volplugin controls [Ceph](http://ceph.com/) RBD or NFS devices, in a way that
 makes them easy to use for devs with docker, and flexible to configure for ops.
@@ -40,9 +40,7 @@ be extremely volatile and it is not suggested that you use this in production.
 
 This will start the suite of volplugin tools in containers from the
 `contiv/volplugin` image. It will do the work of configuring docker for you.  Note that you must have
-a working ceph environment that volplugin can already use. If not, please refer
-to the [development instructions](http://contiv.github.io/documents/gettingStarted/storage/storage.html)
-for how you can build one.
+a working ceph environment that volplugin can already use.
 
 
 ```
@@ -55,7 +53,7 @@ be set to `slave` instead.
 
 ## Development Instructions 
 
-Our [Getting Started instructions](http://contiv.github.io/documents/gettingStarted/storage/storage.html)
+Our [Getting Started instructions](http://contiv.github.io/documents/gettingStarted/)
 should be the first thing you read. The prerequisites are absolutely necessary.
 
 Please see our [CONTRIBUTING](https://github.com/contiv/volplugin/blob/master/CONTRIBUTING.md)
