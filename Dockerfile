@@ -1,8 +1,7 @@
 FROM ceph/rbd
 
-COPY bin/apiserver /bin/apiserver
-COPY bin/volplugin /bin/volplugin
-COPY bin/volcli /bin/volcli
-COPY bin/volsupervisor /bin/volsupervisor
+COPY ["bin/apiserver", "bin/volplugin",  "bin/volcli", "bin/volsupervisor", "/bin/"]
+
+ENV PATH /opt/bin:$PATH
 
 ENTRYPOINT []
