@@ -45,7 +45,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  storage.DriverParams{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "",
@@ -55,7 +55,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 	c.Assert(vc.Validate(), NotNil)
 
 	vc = &Volume{
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  storage.DriverParams{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",
@@ -70,7 +70,7 @@ func (s *configSuite) TestVolumeValidate(c *C) {
 			Snapshot: "ceph",
 			CRUD:     "ceph",
 		},
-		DriverOptions:  map[string]string{"pool": "rbd"},
+		DriverOptions:  storage.DriverParams{"pool": "rbd"},
 		CreateOptions:  CreateOptions{Size: "10MB"},
 		RuntimeOptions: RuntimeOptions{UseSnapshots: false},
 		VolumeName:     "foo",
@@ -229,7 +229,7 @@ func (s *configSuite) TestToDriverOptions(c *C) {
 		Volume: storage.Volume{
 			Name:   "policy1/test",
 			Size:   0xa,
-			Params: storage.Params{"pool": "rbd"},
+			Params: storage.DriverParams{"pool": "rbd"},
 		},
 		FSOptions: storage.FSOptions{
 			Type:          "ext4",

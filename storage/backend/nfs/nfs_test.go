@@ -203,7 +203,7 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 			Source: source,
 			Volume: storage.Volume{
 				Name: "foo/bar",
-				Params: storage.Params{
+				Params: storage.DriverParams{
 					"options": "test=1",
 				},
 			},
@@ -219,7 +219,7 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 			Source: "localhost:/mnt",
 			Volume: storage.Volume{
 				Name: "foo/bar",
-				Params: storage.Params{
+				Params: storage.DriverParams{
 					"options": options,
 				},
 			},
@@ -234,7 +234,7 @@ func (s *nfsSuite) TestNFSOptionsFromDriverOptions(c *C) {
 		Source: "localhost:/mnt",
 		Volume: storage.Volume{
 			Name: "foo/bar",
-			Params: storage.Params{
+			Params: storage.DriverParams{
 				"options": "rw,sync,test=1",
 			},
 		},

@@ -35,7 +35,7 @@ func (d *Driver) Mounted(timeout time.Duration) ([]*storage.Mount, error) {
 			Path:     hostMount.MountPoint,
 			Volume: storage.Volume{
 				Name: rel,
-				Params: map[string]string{
+				Params: storage.DriverParams{
 					"mount": hostMount.MountSource,
 				},
 			},

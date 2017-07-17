@@ -5,6 +5,7 @@ import (
 
 	"github.com/contiv/errored"
 	"github.com/contiv/volplugin/errors"
+	"github.com/contiv/volplugin/storage"
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 )
@@ -18,14 +19,14 @@ var defaultDrivers = map[string]*BackendDrivers{
 // Policy is the configuration of the policy. It includes default
 // information for items such as pool and volume configuration.
 type Policy struct {
-	Name           string            `json:"name"`
-	Unlocked       bool              `json:"unlocked,omitempty" merge:"unlocked"`
-	CreateOptions  CreateOptions     `json:"create"`
-	RuntimeOptions RuntimeOptions    `json:"runtime"`
-	DriverOptions  map[string]string `json:"driver"`
-	FileSystems    map[string]string `json:"filesystems"`
-	Backends       *BackendDrivers   `json:"backends,omitempty"`
-	Backend        string            `json:"backend,omitempty"`
+	Name           string               `json:"name"`
+	Unlocked       bool                 `json:"unlocked,omitempty" merge:"unlocked"`
+	CreateOptions  CreateOptions        `json:"create"`
+	RuntimeOptions RuntimeOptions       `json:"runtime"`
+	DriverOptions  storage.DriverParams `json:"driver"`
+	FileSystems    map[string]string    `json:"filesystems"`
+	Backends       *BackendDrivers      `json:"backends,omitempty"`
+	Backend        string               `json:"backend,omitempty"`
 }
 
 // BackendDrivers is a struct containing all the drivers used under this policy
