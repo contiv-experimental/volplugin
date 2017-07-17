@@ -173,6 +173,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder ".", "/opt/golang/src/github.com/contiv/volplugin"
   config.vm.synced_folder "systemtests/testdata", "/testdata"
   config.vm.synced_folder "bin", "/tmp/bin"
+  config.vm.synced_folder "demo", "/demo" 
 
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
